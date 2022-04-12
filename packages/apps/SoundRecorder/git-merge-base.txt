@@ -1,0 +1,114 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/SoundRecorder (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/SoundRecorder (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 73cdfb7a9ab55943fc7c2c731d9464dbf6c5ddca
+Author: wanghang@rock-chips.com <wanghang@rock-chips.com>
+Date:   Wed Nov 25 18:04:14 2020 +0800
+
+    SoundRecorder: modify to adapt GoogleMediaProvider
+    
+    1. modify the targetSdkVersion and Legacy config to insert audio uri
+    2. if the documents folder can not write, used ExternalStorage replace it
+    3. default used m4a to save record and audio/amr type for amr
+    4. not to add record to playlist
+    
+    Signed-off-by: wh <wanghang@rock-chips.com>
+    Change-Id: Ia49e274698f2a617285d935cedf2f09ec719208e
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/SoundRecorder (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/SoundRecorder (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 73cdfb7a9ab55943fc7c2c731d9464dbf6c5ddca
+Author: wanghang@rock-chips.com <wanghang@rock-chips.com>
+Date:   Wed Nov 25 18:04:14 2020 +0800
+
+    SoundRecorder: modify to adapt GoogleMediaProvider
+    
+    1. modify the targetSdkVersion and Legacy config to insert audio uri
+    2. if the documents folder can not write, used ExternalStorage replace it
+    3. default used m4a to save record and audio/amr type for amr
+    4. not to add record to playlist
+    
+    Signed-off-by: wh <wanghang@rock-chips.com>
+    Change-Id: Ia49e274698f2a617285d935cedf2f09ec719208e
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/SoundRecorder (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/SoundRecorder (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 73cdfb7a9ab55943fc7c2c731d9464dbf6c5ddca
+Author: wanghang@rock-chips.com <wanghang@rock-chips.com>
+Date:   Wed Nov 25 18:04:14 2020 +0800
+
+    SoundRecorder: modify to adapt GoogleMediaProvider
+    
+    1. modify the targetSdkVersion and Legacy config to insert audio uri
+    2. if the documents folder can not write, used ExternalStorage replace it
+    3. default used m4a to save record and audio/amr type for amr
+    4. not to add record to playlist
+    
+    Signed-off-by: wh <wanghang@rock-chips.com>
+    Change-Id: Ia49e274698f2a617285d935cedf2f09ec719208e
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/SoundRecorder (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/SoundRecorder (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 73cdfb7a9ab55943fc7c2c731d9464dbf6c5ddca
+Author: wanghang@rock-chips.com <wanghang@rock-chips.com>
+Date:   Wed Nov 25 18:04:14 2020 +0800
+
+    SoundRecorder: modify to adapt GoogleMediaProvider
+    
+    1. modify the targetSdkVersion and Legacy config to insert audio uri
+    2. if the documents folder can not write, used ExternalStorage replace it
+    3. default used m4a to save record and audio/amr type for amr
+    4. not to add record to playlist
+    
+    Signed-off-by: wh <wanghang@rock-chips.com>
+    Change-Id: Ia49e274698f2a617285d935cedf2f09ec719208e
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/SoundRecorder (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/SoundRecorder (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 73cdfb7a9ab55943fc7c2c731d9464dbf6c5ddca
+Author: wanghang@rock-chips.com <wanghang@rock-chips.com>
+Date:   Wed Nov 25 18:04:14 2020 +0800
+
+    SoundRecorder: modify to adapt GoogleMediaProvider
+    
+    1. modify the targetSdkVersion and Legacy config to insert audio uri
+    2. if the documents folder can not write, used ExternalStorage replace it
+    3. default used m4a to save record and audio/amr type for amr
+    4. not to add record to playlist
+    
+    Signed-off-by: wh <wanghang@rock-chips.com>
+    Change-Id: Ia49e274698f2a617285d935cedf2f09ec719208e
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/SoundRecorder (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/SoundRecorder (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 73cdfb7a9ab55943fc7c2c731d9464dbf6c5ddca
+Author: wanghang@rock-chips.com <wanghang@rock-chips.com>
+Date:   Wed Nov 25 18:04:14 2020 +0800
+
+    SoundRecorder: modify to adapt GoogleMediaProvider
+    
+    1. modify the targetSdkVersion and Legacy config to insert audio uri
+    2. if the documents folder can not write, used ExternalStorage replace it
+    3. default used m4a to save record and audio/amr type for amr
+    4. not to add record to playlist
+    
+    Signed-off-by: wh <wanghang@rock-chips.com>
+    Change-Id: Ia49e274698f2a617285d935cedf2f09ec719208e

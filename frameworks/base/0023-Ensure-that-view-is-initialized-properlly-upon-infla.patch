@@ -1,0 +1,29 @@
+From a2c9ab5ef6e081dff3355a4377989b3bd9dce229 Mon Sep 17 00:00:00 2001
+From: Dave Mankoff <mankoff@google.com>
+Date: Tue, 8 Oct 2019 14:23:25 -0400
+Subject: [PATCH 023/297] Ensure that view is initialized properlly upon
+ inflation.
+
+Bug: 142299585
+Test: manual
+Change-Id: Ia17e3a3ab29dd46134fa13861024b1d58a6b3d4e
+(cherry picked from commit 4889186cfb3f1a21247a5293589431405948dcd1)
+---
+ .../android/systemui/statusbar/phone/NotificationPanelView.java  | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationPanelView.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationPanelView.java
+index c7fe4a8d9a3..00736b73f12 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationPanelView.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationPanelView.java
+@@ -518,6 +518,7 @@ public class NotificationPanelView extends PanelView implements
+      * Call after this view has been fully inflated and had its children attached.
+      */
+     public void onChildrenAttached() {
++        loadDimens();
+         mKeyguardStatusBar = findViewById(R.id.keyguard_header);
+         mKeyguardStatusView = findViewById(R.id.keyguard_status_view);
+ 
+-- 
+2.35.1
+

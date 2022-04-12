@@ -1,0 +1,271 @@
+From 22b3512993ea328cf8469ff1853ef58059dc5176 Mon Sep 17 00:00:00 2001
+From: Alex Wang <alex.wang@rock-chips.com>
+Date: Wed, 21 Oct 2020 17:04:18 +0800
+Subject: [PATCH 216/297] TV box: Support volume control
+
+compatible with feature: FEATURE_TELEVISION
+
+Change-Id: Iae09428e74eb106ce91451815c86c0c88723f953
+---
+ core/java/android/os/RecoverySystem.java                   | 3 ++-
+ media/java/android/media/AudioSystem.java                  | 3 ++-
+ .../src/com/android/systemui/usb/StorageNotification.java  | 3 ++-
+ .../com/android/systemui/util/NotificationChannels.java    | 3 ++-
+ .../systemui/volume/VolumeDialogControllerImpl.java        | 3 +++
+ .../java/com/android/server/adb/AdbDebuggingManager.java   | 3 ++-
+ .../java/com/android/server/media/MediaSessionService.java | 3 ++-
+ .../android/server/notification/NotificationRecord.java    | 3 ++-
+ .../java/com/android/server/policy/PhoneWindowManager.java | 7 +++++--
+ .../server/storage/DeviceStorageMonitorService.java        | 3 ++-
+ .../com/android/server/wm/ActivityTaskManagerService.java  | 3 ++-
+ .../java/com/android/server/wm/TaskSnapshotController.java | 3 ++-
+ .../usb/java/com/android/server/usb/UsbDeviceManager.java  | 3 ++-
+ 13 files changed, 30 insertions(+), 13 deletions(-)
+ mode change 100644 => 100755 core/java/android/os/RecoverySystem.java
+ mode change 100644 => 100755 media/java/android/media/AudioSystem.java
+ mode change 100644 => 100755 packages/SystemUI/src/com/android/systemui/usb/StorageNotification.java
+ mode change 100644 => 100755 packages/SystemUI/src/com/android/systemui/util/NotificationChannels.java
+ mode change 100644 => 100755 packages/SystemUI/src/com/android/systemui/volume/VolumeDialogControllerImpl.java
+ mode change 100644 => 100755 services/core/java/com/android/server/adb/AdbDebuggingManager.java
+ mode change 100644 => 100755 services/core/java/com/android/server/media/MediaSessionService.java
+ mode change 100644 => 100755 services/core/java/com/android/server/notification/NotificationRecord.java
+ mode change 100644 => 100755 services/core/java/com/android/server/policy/PhoneWindowManager.java
+ mode change 100644 => 100755 services/core/java/com/android/server/storage/DeviceStorageMonitorService.java
+ mode change 100644 => 100755 services/core/java/com/android/server/wm/ActivityTaskManagerService.java
+ mode change 100644 => 100755 services/core/java/com/android/server/wm/TaskSnapshotController.java
+ mode change 100644 => 100755 services/usb/java/com/android/server/usb/UsbDeviceManager.java
+
+diff --git a/core/java/android/os/RecoverySystem.java b/core/java/android/os/RecoverySystem.java
+old mode 100644
+new mode 100755
+index e835b8319a2..769f1d34d47
+--- a/core/java/android/os/RecoverySystem.java
++++ b/core/java/android/os/RecoverySystem.java
+@@ -617,7 +617,8 @@ public class RecoverySystem {
+             String reason = PowerManager.REBOOT_RECOVERY_UPDATE;
+ 
+             // On TV, reboot quiescently if the screen is off
+-            if (context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK)) {
++            if (context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK)
++                || context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_TELEVISION)) {
+                 DisplayManager dm = context.getSystemService(DisplayManager.class);
+                 if (dm.getDisplay(DEFAULT_DISPLAY).getState() != Display.STATE_ON) {
+                     reason += ",quiescent";
+diff --git a/media/java/android/media/AudioSystem.java b/media/java/android/media/AudioSystem.java
+old mode 100644
+new mode 100755
+index da52cfef6bc..6bba17f0c38
+--- a/media/java/android/media/AudioSystem.java
++++ b/media/java/android/media/AudioSystem.java
+@@ -1793,7 +1793,8 @@ public class AudioSystem
+         if (((TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE))
+                 .isVoiceCapable()) {
+             return PLATFORM_VOICE;
+-        } else if (context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK)) {
++        } else if (context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK)
++            || context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_TELEVISION)) {
+             return PLATFORM_TELEVISION;
+         } else {
+             return PLATFORM_DEFAULT;
+diff --git a/packages/SystemUI/src/com/android/systemui/usb/StorageNotification.java b/packages/SystemUI/src/com/android/systemui/usb/StorageNotification.java
+old mode 100644
+new mode 100755
+index b36b53125f2..32be85229c6
+--- a/packages/SystemUI/src/com/android/systemui/usb/StorageNotification.java
++++ b/packages/SystemUI/src/com/android/systemui/usb/StorageNotification.java
+@@ -811,6 +811,7 @@ public class StorageNotification extends SystemUI {
+ 
+     private boolean isTv() {
+         PackageManager packageManager = mContext.getPackageManager();
+-        return packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK);
++        return packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
++            || packageManager.hasSystemFeature(PackageManager.FEATURE_TELEVISION);
+     }
+ }
+diff --git a/packages/SystemUI/src/com/android/systemui/util/NotificationChannels.java b/packages/SystemUI/src/com/android/systemui/util/NotificationChannels.java
+old mode 100644
+new mode 100755
+index 90b95ea9562..46e13bbd1c1
+--- a/packages/SystemUI/src/com/android/systemui/util/NotificationChannels.java
++++ b/packages/SystemUI/src/com/android/systemui/util/NotificationChannels.java
+@@ -148,6 +148,7 @@ public class NotificationChannels extends SystemUI {
+ 
+     private static boolean isTv(Context context) {
+         PackageManager packageManager = context.getPackageManager();
+-        return packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK);
++        return packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
++            || packageManager.hasSystemFeature(PackageManager.FEATURE_TELEVISION);
+     }
+ }
+diff --git a/packages/SystemUI/src/com/android/systemui/volume/VolumeDialogControllerImpl.java b/packages/SystemUI/src/com/android/systemui/volume/VolumeDialogControllerImpl.java
+old mode 100644
+new mode 100755
+index f19c49cc123..7663ec5a003
+--- a/packages/SystemUI/src/com/android/systemui/volume/VolumeDialogControllerImpl.java
++++ b/packages/SystemUI/src/com/android/systemui/volume/VolumeDialogControllerImpl.java
+@@ -465,6 +465,9 @@ public class VolumeDialogControllerImpl implements VolumeDialogController, Dumpa
+     }
+ 
+     private boolean shouldShowUI(int flags) {
++        if (mShowVolumeDialog && mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_TELEVISION)) {
++            return true;
++        }
+         // if status bar isn't null, check if phone is in AOD, else check flags
+         // since we could be using a different status bar
+         return mStatusBarOptionalLazy.map(statusBarLazy -> {
+diff --git a/services/core/java/com/android/server/adb/AdbDebuggingManager.java b/services/core/java/com/android/server/adb/AdbDebuggingManager.java
+old mode 100644
+new mode 100755
+index ed83a644cbf..7fec9dc3c69
+--- a/services/core/java/com/android/server/adb/AdbDebuggingManager.java
++++ b/services/core/java/com/android/server/adb/AdbDebuggingManager.java
+@@ -654,7 +654,8 @@ public class AdbDebuggingManager {
+         private static final String ADB_NOTIFICATION_CHANNEL_ID_TV = "usbdevicemanager.adb.tv";
+ 
+         private boolean isTv() {
+-            return mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
++            return mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK)
++                || mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_TELEVISION);
+         }
+ 
+         private void setupNotifications() {
+diff --git a/services/core/java/com/android/server/media/MediaSessionService.java b/services/core/java/com/android/server/media/MediaSessionService.java
+old mode 100644
+new mode 100755
+index 9b356f0e8ee..a39fbee718f
+--- a/services/core/java/com/android/server/media/MediaSessionService.java
++++ b/services/core/java/com/android/server/media/MediaSessionService.java
+@@ -194,7 +194,8 @@ public class MediaSessionService extends SystemService implements Monitor {
+         mSettingsObserver = new SettingsObserver();
+         mSettingsObserver.observe();
+         mHasFeatureLeanback = mContext.getPackageManager().hasSystemFeature(
+-                PackageManager.FEATURE_LEANBACK);
++                PackageManager.FEATURE_LEANBACK)
++                || mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_TELEVISION);
+ 
+         updateUser();
+ 
+diff --git a/services/core/java/com/android/server/notification/NotificationRecord.java b/services/core/java/com/android/server/notification/NotificationRecord.java
+old mode 100644
+new mode 100755
+index bae02ac75f0..a208c819eb6
+--- a/services/core/java/com/android/server/notification/NotificationRecord.java
++++ b/services/core/java/com/android/server/notification/NotificationRecord.java
+@@ -238,7 +238,8 @@ public final class NotificationRecord {
+         final Notification n = getSbn().getNotification();
+ 
+         // No notification sounds on tv
+-        if (mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK)) {
++        if (mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK)
++            || mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_TELEVISION)) {
+             return null;
+         }
+ 
+diff --git a/services/core/java/com/android/server/policy/PhoneWindowManager.java b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+old mode 100644
+new mode 100755
+index d4039096a70..a7129750d21
+--- a/services/core/java/com/android/server/policy/PhoneWindowManager.java
++++ b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+@@ -26,6 +26,7 @@ import static android.content.Context.WINDOW_SERVICE;
+ import static android.content.pm.PackageManager.FEATURE_AUTOMOTIVE;
+ import static android.content.pm.PackageManager.FEATURE_HDMI_CEC;
+ import static android.content.pm.PackageManager.FEATURE_LEANBACK;
++import static android.content.pm.PackageManager.FEATURE_TELEVISION;
+ import static android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE;
+ import static android.content.pm.PackageManager.FEATURE_WATCH;
+ import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+@@ -1734,7 +1735,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         mDisplayManager = mContext.getSystemService(DisplayManager.class);
+         mPackageManager = mContext.getPackageManager();
+         mHasFeatureWatch = mPackageManager.hasSystemFeature(FEATURE_WATCH);
+-        mHasFeatureLeanback = mPackageManager.hasSystemFeature(FEATURE_LEANBACK);
++        mHasFeatureLeanback = mPackageManager.hasSystemFeature(FEATURE_LEANBACK)
++            || mPackageManager.hasSystemFeature(FEATURE_TELEVISION);
+         mHasFeatureAuto = mPackageManager.hasSystemFeature(FEATURE_AUTOMOTIVE);
+         mHasFeatureHdmiCec = mPackageManager.hasSystemFeature(FEATURE_HDMI_CEC);
+         mAccessibilityShortcutController =
+@@ -4842,7 +4844,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+             @Override public void run() {
+                 if (mBootMsgDialog == null) {
+                     int theme;
+-                    if (mPackageManager.hasSystemFeature(FEATURE_LEANBACK)) {
++                    if (mPackageManager.hasSystemFeature(FEATURE_LEANBACK)
++                        || mPackageManager.hasSystemFeature(FEATURE_TELEVISION)) {
+                         theme = com.android.internal.R.style.Theme_Leanback_Dialog_Alert;
+                     } else {
+                         theme = 0;
+diff --git a/services/core/java/com/android/server/storage/DeviceStorageMonitorService.java b/services/core/java/com/android/server/storage/DeviceStorageMonitorService.java
+old mode 100644
+new mode 100755
+index 734b7182449..7abe63fce43
+--- a/services/core/java/com/android/server/storage/DeviceStorageMonitorService.java
++++ b/services/core/java/com/android/server/storage/DeviceStorageMonitorService.java
+@@ -280,7 +280,8 @@ public class DeviceStorageMonitorService extends SystemService {
+ 
+         // Ensure that the notification channel is set up
+         PackageManager packageManager = context.getPackageManager();
+-        boolean isTv = packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK);
++        boolean isTv = packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
++                || packageManager.hasSystemFeature(PackageManager.FEATURE_TELEVISION);
+ 
+         if (isTv) {
+             mNotifManager.createNotificationChannel(new NotificationChannel(
+diff --git a/services/core/java/com/android/server/wm/ActivityTaskManagerService.java b/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
+old mode 100644
+new mode 100755
+index 7f88b33705f..64d4112c33c
+--- a/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
++++ b/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
+@@ -45,6 +45,7 @@ import static android.content.pm.PackageManager.FEATURE_ACTIVITIES_ON_SECONDARY_
+ import static android.content.pm.PackageManager.FEATURE_CANT_SAVE_STATE;
+ import static android.content.pm.PackageManager.FEATURE_FREEFORM_WINDOW_MANAGEMENT;
+ import static android.content.pm.PackageManager.FEATURE_LEANBACK;
++import static android.content.pm.PackageManager.FEATURE_TELEVISION;
+ import static android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE;
+ import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+ import static android.os.FactoryTest.FACTORY_TEST_HIGH_LEVEL;
+@@ -740,7 +741,7 @@ public class ActivityTaskManagerService extends IActivityTaskManager.Stub {
+         synchronized (mGlobalLock) {
+             final PackageManager pm = mContext.getPackageManager();
+             mHasHeavyWeightFeature = pm.hasSystemFeature(FEATURE_CANT_SAVE_STATE);
+-            mHasLeanbackFeature = pm.hasSystemFeature(FEATURE_LEANBACK);
++            mHasLeanbackFeature = pm.hasSystemFeature(FEATURE_LEANBACK) || pm.hasSystemFeature(FEATURE_TELEVISION);
+             mAssistUtils = new AssistUtils(mContext);
+             mVrController.onSystemReady();
+             mRecentTasks.onSystemReadyLocked();
+diff --git a/services/core/java/com/android/server/wm/TaskSnapshotController.java b/services/core/java/com/android/server/wm/TaskSnapshotController.java
+old mode 100644
+new mode 100755
+index e85049cad2f..cf7f9e2eda4
+--- a/services/core/java/com/android/server/wm/TaskSnapshotController.java
++++ b/services/core/java/com/android/server/wm/TaskSnapshotController.java
+@@ -126,7 +126,8 @@ class TaskSnapshotController {
+         mLoader = new TaskSnapshotLoader(mPersister);
+         mCache = new TaskSnapshotCache(mService, mLoader);
+         mIsRunningOnTv = mService.mContext.getPackageManager().hasSystemFeature(
+-                PackageManager.FEATURE_LEANBACK);
++                PackageManager.FEATURE_LEANBACK)
++                || mService.mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_TELEVISION);
+         mIsRunningOnIoT = mService.mContext.getPackageManager().hasSystemFeature(
+                 PackageManager.FEATURE_EMBEDDED);
+         mIsRunningOnWear = mService.mContext.getPackageManager().hasSystemFeature(
+diff --git a/services/usb/java/com/android/server/usb/UsbDeviceManager.java b/services/usb/java/com/android/server/usb/UsbDeviceManager.java
+old mode 100644
+new mode 100755
+index 7595e3f249c..31efdc7c61b
+--- a/services/usb/java/com/android/server/usb/UsbDeviceManager.java
++++ b/services/usb/java/com/android/server/usb/UsbDeviceManager.java
+@@ -1203,7 +1203,8 @@ public class UsbDeviceManager implements ActivityTaskManagerInternal.ScreenObser
+         }
+ 
+         private boolean isTv() {
+-            return mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
++            return mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK)
++                || mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_TELEVISION);
+         }
+ 
+         protected long getChargingFunctions() {
+-- 
+2.35.1
+

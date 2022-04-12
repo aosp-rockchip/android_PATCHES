@@ -1,0 +1,67 @@
+From 38ca2bfb80108163b3678c6c7f9ab4309176eca2 Mon Sep 17 00:00:00 2001
+From: zj <zj@rock-chips.com>
+Date: Thu, 4 Feb 2021 11:57:03 +0800
+Subject: [PATCH 295/297] Fixed a bug where screen_on sometimes could not sync
+ to libsuspend
+
+Signed-off-by: zj <zj@rock-chips.com>
+Change-Id: Ib1c7c157e2be0bfbc0399448a4f6d7d5ae1f5b9c
+---
+ .../jni/com_android_server_power_PowerManagerService.cpp   | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/services/core/jni/com_android_server_power_PowerManagerService.cpp b/services/core/jni/com_android_server_power_PowerManagerService.cpp
+index f850273ec33..72e9acda723 100755
+--- a/services/core/jni/com_android_server_power_PowerManagerService.cpp
++++ b/services/core/jni/com_android_server_power_PowerManagerService.cpp
+@@ -391,6 +391,7 @@ void enableAutoSuspend() {
+     {
+         std::lock_guard<std::mutex> lock(gSuspendMutex);
+         if (gSuspendBlocker) {
++            //ALOGD("enableAutoSuspend gSuspendBlocker->release()");
+             gSuspendBlocker->release();
+             gSuspendBlocker.clear();
+         }
+@@ -401,6 +402,7 @@ void disableAutoSuspend() {
+     std::lock_guard<std::mutex> lock(gSuspendMutex);
+     if (!gSuspendBlocker) {
+         sp<ISystemSuspend> suspendHal = getSuspendHal();
++        //ALOGD("disableAutoSuspend acquireWakeLock PowerManager.SuspendLockout");
+         gSuspendBlocker = suspendHal->acquireWakeLock(WakeLockType::PARTIAL,
+                 "PowerManager.SuspendLockout");
+     }
+@@ -418,11 +420,13 @@ static void nativeInit(JNIEnv* env, jobject obj) {
+ 
+ static void nativeAcquireSuspendBlocker(JNIEnv *env, jclass /* clazz */, jstring nameStr) {
+     ScopedUtfChars name(env, nameStr);
++    //ALOGD("nativeAcquireSuspendBlocker %s",name.c_str());
+     acquire_wake_lock(PARTIAL_WAKE_LOCK, name.c_str());
+ }
+ 
+ static void nativeReleaseSuspendBlocker(JNIEnv *env, jclass /* clazz */, jstring nameStr) {
+     ScopedUtfChars name(env, nameStr);
++    //ALOGD("nativeReleaseSuspendBlocker %s",name.c_str());
+     release_wake_lock(name.c_str());
+ }
+ 
+@@ -462,7 +466,9 @@ static void nativeSetAutoSuspend(JNIEnv* /* env */, jclass /* clazz */, jboolean
+     if (enable) {
+         android::base::Timer t;
+         gScreenOn = false;
++        autosuspend_idle(false);
+         enableAutoSuspend();
++        //ALOGD("nativeSetAutoSuspend enableAutoSuspend");
+         if (t.duration() > 100ms) {
+             ALOGD("Excessive delay in autosuspend_enable() while turning screen off");
+         }
+@@ -470,6 +476,7 @@ static void nativeSetAutoSuspend(JNIEnv* /* env */, jclass /* clazz */, jboolean
+         android::base::Timer t;
+         gScreenOn = true;
+         disableAutoSuspend();
++        //ALOGD("nativeSetAutoSuspend disableAutoSuspend");
+         if (t.duration() > 100ms) {
+             ALOGD("Excessive delay in autosuspend_disable() while turning screen on");
+         }
+-- 
+2.35.1
+

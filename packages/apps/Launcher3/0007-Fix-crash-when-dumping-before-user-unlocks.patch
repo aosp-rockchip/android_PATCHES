@@ -1,0 +1,44 @@
+From 3f1eff5a83139750924bcce060205e86fb5c52f7 Mon Sep 17 00:00:00 2001
+From: Tony Wickham <twickham@google.com>
+Date: Mon, 9 Mar 2020 13:20:04 -0700
+Subject: [PATCH 07/13] Fix crash when dumping before user unlocks
+
+Bug: 150864182
+Bug: 151050221
+Change-Id: I29ba2ef66b4359a47f866d02306498537c45236e
+(cherry picked from commit b365cc43878e0cb4e6d4b998c10cd590adc4cb8d)
+---
+ .../src/com/android/quickstep/TouchInteractionService.java    | 4 +++-
+ .../com/android/quickstep/RecentsAnimationDeviceState.java    | 1 +
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/quickstep/recents_ui_overrides/src/com/android/quickstep/TouchInteractionService.java b/quickstep/recents_ui_overrides/src/com/android/quickstep/TouchInteractionService.java
+index 4598cdf45..0f6333693 100644
+--- a/quickstep/recents_ui_overrides/src/com/android/quickstep/TouchInteractionService.java
++++ b/quickstep/recents_ui_overrides/src/com/android/quickstep/TouchInteractionService.java
+@@ -760,7 +760,9 @@ public class TouchInteractionService extends Service implements PluginListener<O
+         } else {
+             // Dump everything
+             FeatureFlags.dump(pw);
+-            PluginManagerWrapper.INSTANCE.get(getBaseContext()).dump(pw);
++            if (mDeviceState.isUserUnlocked()) {
++                PluginManagerWrapper.INSTANCE.get(getBaseContext()).dump(pw);
++            }
+             mDeviceState.dump(pw);
+             if (mOverviewComponentObserver != null) {
+                 mOverviewComponentObserver.dump(pw);
+diff --git a/quickstep/src/com/android/quickstep/RecentsAnimationDeviceState.java b/quickstep/src/com/android/quickstep/RecentsAnimationDeviceState.java
+index d84565063..85464aa43 100644
+--- a/quickstep/src/com/android/quickstep/RecentsAnimationDeviceState.java
++++ b/quickstep/src/com/android/quickstep/RecentsAnimationDeviceState.java
+@@ -518,6 +518,7 @@ public class RecentsAnimationDeviceState implements
+                 + QuickStepContract.isAssistantGestureDisabled(mSystemUiStateFlags));
+         pw.println("  currentActiveRotation=" + getCurrentActiveRotation());
+         pw.println("  displayRotation=" + getDisplayRotation());
++        pw.println("  isUserUnlocked=" + mIsUserUnlocked);
+         mOrientationTouchTransformer.dump(pw);
+     }
+ }
+-- 
+2.35.1
+

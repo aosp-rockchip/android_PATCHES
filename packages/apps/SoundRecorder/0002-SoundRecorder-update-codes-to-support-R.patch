@@ -1,0 +1,1736 @@
+From c418e09736a872c1f4a9dfcb84fc467a5f259702 Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Sun, 15 Nov 2020 15:59:23 +0800
+Subject: [PATCH 2/3] SoundRecorder: update codes to support R
+
+1. add RecordingFileList to view or del record file
+2. add temp file codes
+3. change the record file path to DIRECTORY_DOCUMENTS
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: Id8ac83d1363449d91dd907ec717e06a02d1dcc23
+---
+ AndroidManifest.xml                           |   4 +
+ res/drawable-hdpi/delete.png                  | Bin 0 -> 1272 bytes
+ res/drawable-hdpi/recording_file_list.png     | Bin 0 -> 2956 bytes
+ res/drawable-mdpi/delete.png                  | Bin 0 -> 3064 bytes
+ res/drawable-mdpi/recording_file_list.png     | Bin 0 -> 2899 bytes
+ res/layout-land/main.xml                      |   4 +
+ res/layout-port/main.xml                      |   4 +
+ res/layout-xlarge/main.xml                    |   5 +
+ res/layout/edit_adapter.xml                   |  49 ++
+ res/layout/navigation_adapter.xml             |  49 ++
+ res/layout/recording_file_list.xml            |  67 ++
+ res/values-zh-rCN/strings.xml                 |   8 +
+ res/values/strings.xml                        |   8 +
+ .../soundrecorder/EditViewAdapter.java        | 269 +++++++
+ .../soundrecorder/ListViewProperty.java       |  57 ++
+ src/com/android/soundrecorder/Recorder.java   |  33 +-
+ .../soundrecorder/RecordingFileList.java      | 680 ++++++++++++++++++
+ .../android/soundrecorder/SoundRecorder.java  |  28 +
+ 18 files changed, 1263 insertions(+), 2 deletions(-)
+ create mode 100644 res/drawable-hdpi/delete.png
+ create mode 100644 res/drawable-hdpi/recording_file_list.png
+ create mode 100644 res/drawable-mdpi/delete.png
+ create mode 100644 res/drawable-mdpi/recording_file_list.png
+ create mode 100644 res/layout/edit_adapter.xml
+ create mode 100644 res/layout/navigation_adapter.xml
+ create mode 100644 res/layout/recording_file_list.xml
+ create mode 100644 src/com/android/soundrecorder/EditViewAdapter.java
+ create mode 100644 src/com/android/soundrecorder/ListViewProperty.java
+ create mode 100644 src/com/android/soundrecorder/RecordingFileList.java
+
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index ceeb7a5..835361c 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -47,6 +47,10 @@
+                  <category android:name="android.intent.category.DEFAULT" />
+             </intent-filter>
+         </activity>
++        <activity android:name="RecordingFileList" android:label="@string/recording_file_list"
++            android:configChanges="orientation|keyboardHidden|mnc|mcc"
++            android:theme="@style/Theme.SoundRecorder">
++        </activity>
+         <activity
+             android:name=".CheckPermissionActivity"
+             android:configChanges="orientation|keyboardHidden|screenSize"
+diff --git a/res/drawable-hdpi/delete.png b/res/drawable-hdpi/delete.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..10ae5c0087bba3d84519fc7a5a229921e637474a
+GIT binary patch
+literal 1272
+zcmV<U1PA+xP)<h;3K|Lk000e1NJLTq001xm001xu1ONa4{R=S+00009a7bBm000XU
+z000XU0RWnu7ytkR7->U8P*7-ZbZ>KLZ*U+<Lqi~Na&Km7Y-Iodc-muNV4mRU;^fLC
+zz`#&YR8r&~<QN$d8KuB}o`H>lnSp_Ufq@}0xwybFAi#%#fq@|}KQEO56)-X|e7nZL
+z$iTqBa9P*U#mSX{G{Bl%P*lRez;J+pfx##xwK$o9f#C}S14DXwNkIt%17i#W1A|CX
+zc0maP17iUL1A|C*NRTrF17iyV0~1e4YDEbH0|SF|enDkXW_m`6f}y3QrGjHhep0GJ
+zaAk2xYHqQDXI^rCQ9*uDVo7QW0|Nup4h9AW240u^5(W3f%sd4n162kpgNVo|1qcff
+zJ_s=cNG>fZg9jx8g8+j9g8_pBLjXe}Lp{R+hNBE`7{wV~7)u#fFy3PlV+vxLz;uCG
+zm^qSpA@ds+OO_6nTdaDlt*rOhEZL^9ePa)2-_4=K(Z%tFGm-NGmm}8}ZcXk5JW@PU
+zd4+f<@d@)y<Co!IETAK>L(o<5icqT158+-B6_LH7;i6x}CW#w~Uy-Pgl#@Irl`kzV
+zeL|*8R$ca%T%Wv){2zs_iiJvgN^h0dsuZZ2sQy$tsNSU!s;Q*;LF<6_B%M@UD?LHI
+zSNcZ`78uqV#TeU~$eS{ozBIdFzSClf<pirb>s*^S+dw;4dus<{M;#|MXC)T}S9v!D
+zcV!QCPhBq)ZyO(X-(bH4|NMaZz==UigLj2o41F2S6d@OB6%`R(5i>J(Puzn9wnW{e
+zu;hl6HK{k#IWjCVGqdJqU(99Cv(K+6*i`tgSi2;vbXD1#3jNBGs$DgVwO(~o>mN4i
+zHPtkqZIx>)Y(Ls5-Br|mx>vQYvH$Kwn@O`L|D75??eGkZnf<fA&q<hjdcOIBrHe!s
+zw=Vg%EOYt2l_9H6uW?zsZ@uM)ZJSIsZ`o?HZTk+Zo%?sY?m4?JZ2yCUIfs58X+I`@
+ze8oxYQ|HbkpZ#@y(nak{N3SGa{daxNO`BVH@6_K@zJKCj-ea*R`=4dL5P5m<b^crV
+zcNac1eKP(0>g$5<;Xeg_o%+-I&+-3%01W^SH2RkDT>t<8AY({UO#lFTB>(_`g8%^e
+z{{R4h=>PzAFaQARU;qF*m;eA5Z<1fdMgRZ-T1iAfRCwC#m%mB_K@i4&7Yv3Jv5Fj~
+z5JQ@vf`x~Tg=xem5bU)O8}S9iSFqJb5G>MJilj*@n;-;14kQRiAcTZ)kXQ(M;<<k=
+zS<tXwb=>aEx8Kap&aN}YEK*p4nJ1W2nzg}o%-?;U%_`_mPr(N^Bi{|1<S*nXupJwg
+zJsug*rXw<U#v<1T?6NFfLYEt^2z3c6T#!|cM4e;Z92{x52alXC!IM@ly9{&*E~zq7
+zbl>DuKL-Gd>`<aWo?`5Hk2?3%2$Joh?^t31$dkbbAmB~K%$Z8dO#c=jaiO`KQ>7tT
+zX^J&gStr9;vP$;wfHoaoB4=ljc_14p!H3CCQx})AaK_N|VHf^;f}vF)!^kv2-zu1W
+z1;#I4y+5iTpsDEPH5oz333pQGH4a7Z1bI&`Q(=phAJ;IS7A<aNtzW0<rzw3V)mJrg
+i>_glVObp|@=zRc2Y))nm362Z^0000<MNUMnLSTYi{T@;P
+
+literal 0
+HcmV?d00001
+
+diff --git a/res/drawable-hdpi/recording_file_list.png b/res/drawable-hdpi/recording_file_list.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..63cf13c593becac295571ad92aa7182bd8008ed3
+GIT binary patch
+literal 2956
+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
+Ch;oGh
+
+literal 0
+HcmV?d00001
+
+diff --git a/res/drawable-mdpi/delete.png b/res/drawable-mdpi/delete.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..1bf53a1d45efa7f2f6538268d8791469fb5077d1
+GIT binary patch
+literal 3064
+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
+GLSTZsJFoiy
+
+literal 0
+HcmV?d00001
+
+diff --git a/res/drawable-mdpi/recording_file_list.png b/res/drawable-mdpi/recording_file_list.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..6925954db12fbc0b239c735e3257d3dc854563e3
+GIT binary patch
+literal 2899
+zcmV-Z3#{~sP)<h;3K|Lk000e1NJLTq001BW001Be1^@s6b9#F800009a7bBm000XU
+z000XU0RWnu7ytkYPiaF#P*7-ZbZ>KLZ*U+<Lqi~Na&Km7Y-Iodc-oy)XH-+^7Crag
+z^g>IBfRsybQWXdwQbLP>6p<z>Aqfylh#{fb6;Z(vMMVS~$e@S=j*ftg6;Uh<iVD~V
+z<RPMtgQJLw%KPDaqifc@_vX$1wbwr9tn;0-&j-K=43<bUQ8j=JsX`tR;Dg7+#^K~H
+zK!FM*Z~zbpvt%K2{UZSY_<lS*D<Z%Lz5oGu(+dayz)hRLFdT>f59&ghTmgWD0l;*T
+zI7<kC6aYYajzXpYKt=(8otP$50H6c_V9R4-;{Z@C0AMG7=F<Rxo%or10RUT+Ar%3j
+zkpLhQWr#!oXgdI`&sK^>09Y^p6lP1rIRMx#05C~cW=H_Aw*bJ-5DT&Z2n+x)QHX^p
+z00esgV8|mQcmRZ%02D^@S3L16t`O%c004NIvOKvYIYoh62rY33S640`D9%Y2D-<?i
+z0%4j!F2Z@488U%158(66005wo6%pWr^Zj_v4zAA5HjcIqUoGmt2LB>rV&neh&#Q1i
+z007~1e$oCcFS8neI|hJl{-P!B1ZZ9hpmq0)X0i`JwE&>$+E?>%_<lS*MWK+n+1cgf
+z<k(8YLR(?VSAG6x!e78w{cQPuJpA|d;J)G{fihizM+Erb!p!tcr5w+a34~(Y=8s4G
+zw+sLL9n&JjNn*KJDiq^U5^;`1nvC-@r6P$!k}1U{(*I=Q-z@tBKHoI}uxdU5dyy@u
+zU1J0GOD7Ombim^G008p4Z^6_k2m^p<gW=D2|L;HjN1!DDfM!XOaR2~bL?kX$%CkSm
+z2mk;?pn)o|K^yeJ7%adB9Ki+L!3+FgHiSYX#KJ-lLJDMn9CBbOtb#%)hRv`YDqt_v
+zKpix|QD}yfa1JiQRk#j4a1Z)n2%f<xynzV>LC6RbVIkUx0b+_+BaR3cnT7Zv!AJxW
+zizFb)h!jyGOOZ85F;a?DAXP{m@;!0_Ifq<Ex{*7`05XF7hP+2Hl!3BQJ=6@fL%FCo
+z8iYoo3(#bAF`ADSpqtQgv>H8(HlgRxt7s3}k3K`kFu>>-2Q$QMFfPW!La{h336o>X
+zu_CMttHv6zR;&ZNiS=X8v3CR#fknUxHUxJ<AYmRsNLWl*PS{AOARHt#5!wki2?K;t
+z!Y3k=s7tgax)J%r7-BLphge7~Bi0g+6E6^Zh(p9TBoc{3GAFr^0!gu?RMHaCM$&Fl
+zBk3%un>0uoBa_M6WNWeqIg~6QE69c9o#eyhGvpiOA@W-aonk<7r1(?fC{oI5N*U!4
+z<uv66WtcKSRim0x-Ke2d5jBrmLam{;Qm;{ms1r1GnmNsb7D-E`t)i9F8fX`2_i3-_
+zbh;7Ul^#x)&{xvS=|||7=mYe33=M`AgU5(xC>fg=2N-7=cNnjjOr{yriy6mMFgG#l
+znCF=fnQv8CDz++o6_Lscl}eQ+l^ZHARH>?_s@|##Rr6KLRFA1%Q+=*RRWnoLsR`7U
+zt5vF<Q0r40Q)j6=sE4X&sBct1q<&fbi3VB2Ov6t@q*0);U*o*SAPZv|vv@2aYYnT0
+zb%8a+Cb7-ge0D0knEf5Qi#@8Tp*ce{N;6lpQuCB%KL_KOarm5cP6_8Ir<e17iry6O
+zDdH&`rZh~sF=bq9s+O0QSgS~@QL9Jmy*94xr=6y~MY~!1fet~(N+(<=M`w@D1)b+p
+z*;C!83a1uLJv#NSE~;y#8=<>IcfW3@?wFpwUVxrVZ>QdQz32KIeJ}k~{cZZE^+ya?
+z2D1z#2HOnI7(B%_ac?{wFUQ;QQA1tBKtrWrm0_3Rgps+?Jfqb{jYbcQX~taRB;#$y
+zZN{S}1|}gUOHJxc?wV3fxuz+mJ4`!F$IZ;mqRrNsHJd##*D~ju=bP7?-?v~|cv>vB
+zsJ6IeNwVZxrdjT`yl#bBIa#GxRa#xMMy;K#CDyyGyQdMSxlWT#tDe?p!?5wT$+oGt
+z8L;Kp2HUQ-ZMJ=3XJQv;x5ci*?vuTfeY$;({XGW_huIFR9a<fJbF^|4I#xQ~n$Dc=
+zKYhjYmgz5NSkDm8*fZm{6U!;YX`NG>(?@3)XSs8O^N5RyOM=TTmp(3=8^+zpz2r)C
+z^>JO{deZfso3oq3?Wo(Y?l$ge?uXo;%ru`Vo>?<<(8I_>;8Eq#KMS9gFl*neeosSB
+zfoHYnBQIkwkyowPu(zdms`p{<7e4kra-ZWq<2*OsGTvEV%s0Td$hXT+!*8Bnh2KMe
+zBmZRodjHV?r+_5^X9J0WL4jKW`}lf%A-|44I@@LTvf1rHjG(ze6+w@Jt%Bvjts!X0
+z?2xS?_ve_-k<Mujg;0Lz*3buG=3$G&ehepthlN*$KaOySSQ^nWmo<0M+(UEUMEXRQ
+zMBbZcF;6+KElM>iKB_KiJlZ$9G`c^=E@oNG)mWWaNo-3TIW8)$Hg0Ub-~8?KhvJ>$
+z3*&nim@mj(aCxE5!t{lw7O5^0EIO7zOo&c6l<+|iDySBWCGrz@C5{St!X3hAA}`T4
+z(TLbXTq+(;@<=L8dXnssyft|w#WSTW<++3>sgS%(4NTpeI-VAqb|7ssJvzNHgOZVu
+zaYCvgO_R1~>SyL=cFU|~g|hy|Zi}}s9+d~lYqOB71z9Z$wnC=pR9Yz4DhIM>Wmjgu
+z&56o6maCpC&F##y%G;1PobR9i?GnNg;gYtchD%p19a!eQtZF&3JaKv33gZ<8D~47E
+ztUS1iwkmDaPpj=$m#%)jCVEY4fnLGNg2A-`YwHVD3gv};>)hAvT~AmqS>Lr``i7kw
+zJ{5_It`yrBmlc25DBO7E8;5VoznR>Ww5hAaxn$2~(q`%A-YuS64wkBy=9dm`4cXeX
+z4c}I@?e+FW+b@^RDBHV(wnMq2zdX3SWv9u`%{xC-q*U}&`cyXV(%rRT*Z6MH?i+i&
+z_B8C(+grT%{XWUQ+f@NoP1R=AW&26{v-dx)iK^-Nmiuj8txj!m?Z*Ss1N{dh4z}01
+z)YTo*JycSU)+_5r4#yw9{+;i4Ee$peRgIj+;v;ZGdF1K$3E%e~4LaI(jC-u%2h$&R
+z9cLXcYC@Xwnns&bn)_Q~Te?roKGD|d-g^8;+aC{{G(1^(O7m37Y1-+6)01cN&y1aw
+zoqc{T`P^XJqPBbIW6s}d4{z_f5Om?vMgNQEJG?v2T=KYd^0M3I6IZxbny)%vZR&LD
+zJpPl@Psh8QyPB@KTx+@RdcC!KX7}kEo;S|j^u2lU7XQ}Oo;f|;z4Ll+_r>@1-xl3|
+zawq-H%e&ckC+@AhPrP6BK<z=<L*0kfKU@CX*zeqbYQT4(^U>T#_XdT7&;F71j}Joy
+zkC~6lh7E@6o;W@^IpRNZ{ptLtL(gQ-CY~4mqW;US7Zxvm_|@yz&e53Bp_lTPlfP|z
+zrTyx_>lv@x#=^!PzR7qqF<$gm`|ZJZ+;<)Cqu&ot<a{81DF0~rvGr5Xr~8u`lav1h
+z1DNytV>2z=0000WV@Og>004R=004l4008;_004mL004C`008P>0026e000+nl3&F}
+z0001fNkl<Zc-rihu?>JA5Jexxb?h8~0qmHQ9T>pQfv}N;LW2pxEBwEKqv65vg3CE$
+znF-?vKmg_d^TYZA1i%9ch`{kBKmfLDUd95jckH*mZGmsp!{0z^)Wcg4tCOdyzP-kt
+xxZnQ;(oh;oLun`trJ*zwfB;Sa009600{|=sD<=TMGN}Ln002ovPDHLkV1g#VVFdsH
+
+literal 0
+HcmV?d00001
+
+diff --git a/res/layout-land/main.xml b/res/layout-land/main.xml
+index e76aa2a..b5f161e 100644
+--- a/res/layout-land/main.xml
++++ b/res/layout-land/main.xml
+@@ -167,6 +167,10 @@
+                 style="@style/MediaButton"
+                 android:src="@drawable/stop" />
+ 
++            <ImageButton android:id="@+id/fileListButton"
++                android:layout_height="match_parent"
++                style="@style/MediaButton"
++                android:src="@drawable/recording_file_list" />
+         </LinearLayout>
+ 
+     </LinearLayout>
+diff --git a/res/layout-port/main.xml b/res/layout-port/main.xml
+index 8b41ba3..fcd7995 100644
+--- a/res/layout-port/main.xml
++++ b/res/layout-port/main.xml
+@@ -164,6 +164,10 @@
+                 style="@style/MediaButton"
+                 android:src="@drawable/stop" />
+ 
++            <ImageButton android:id="@+id/fileListButton"
++                android:layout_height="match_parent"
++                style="@style/MediaButton"
++                android:src="@drawable/recording_file_list" />
+         </LinearLayout>
+ 
+     </LinearLayout>
+diff --git a/res/layout-xlarge/main.xml b/res/layout-xlarge/main.xml
+index 48cae46..e522819 100644
+--- a/res/layout-xlarge/main.xml
++++ b/res/layout-xlarge/main.xml
+@@ -164,6 +164,11 @@
+                 style="@style/MediaButton"
+                 android:src="@drawable/stop" />
+ 
++            <ImageButton android:id="@+id/fileListButton"
++                android:layout_height="match_parent"
++                style="@style/MediaButton"
++                android:src="@drawable/recording_file_list" />
++
+         </LinearLayout>
+ 
+     </LinearLayout>
+diff --git a/res/layout/edit_adapter.xml b/res/layout/edit_adapter.xml
+new file mode 100644
+index 0000000..906f25b
+--- /dev/null
++++ b/res/layout/edit_adapter.xml
+@@ -0,0 +1,49 @@
++<?xml version="1.0" encoding="utf-8"?>
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="wrap_content"
++    android:gravity="center_vertical"
++    android:orientation="horizontal"
++    android:paddingBottom="6dp"
++    android:paddingTop="6dp"
++    android:splitMotionEvents="false">
++
++    <CheckBox
++        android:id="@+id/record_file_checkbox"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_marginRight="5dp"
++        android:clickable="false"
++        android:focusable="false" />
++
++    <RelativeLayout
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_marginLeft="2dp"
++        android:layout_marginRight="6dp"
++        android:splitMotionEvents="false">
++
++        <TextView
++            android:id="@+id/record_file_name"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:textAppearance="?android:attr/textAppearanceMedium" />
++
++        <TextView
++            android:id="@+id/record_file_title"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_alignLeft="@id/record_file_name"
++            android:layout_below="@id/record_file_name"
++            android:textAppearance="?android:attr/textAppearanceSmall" />
++
++        <TextView
++            android:id="@+id/record_file_duration"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_alignBottom="@id/record_file_title"
++            android:layout_alignParentRight="true"
++            android:textAppearance="?android:attr/textAppearanceSmall" />
++    </RelativeLayout>
++
++</LinearLayout>
+\ No newline at end of file
+diff --git a/res/layout/navigation_adapter.xml b/res/layout/navigation_adapter.xml
+new file mode 100644
+index 0000000..2e20085
+--- /dev/null
++++ b/res/layout/navigation_adapter.xml
+@@ -0,0 +1,49 @@
++<?xml version="1.0" encoding="utf-8"?>
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="wrap_content"
++    android:gravity="center_vertical"
++    android:orientation="horizontal"
++    android:paddingBottom="6dp"
++    android:paddingTop="6dp"
++    android:splitMotionEvents="false">
++
++    <ImageView
++        android:id="@+id/record_file_icon"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_gravity="center"
++        android:layout_marginLeft="6dp"
++        android:layout_marginRight="6dp"
++        android:src="@drawable/ic_launcher_soundrecorder" />
++
++    <RelativeLayout
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_marginLeft="2dp"
++        android:splitMotionEvents="false">
++
++        <TextView
++            android:id="@+id/record_file_name"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:textAppearance="?android:attr/textAppearanceMedium" />
++
++        <TextView
++            android:id="@+id/record_file_title"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_alignLeft="@id/record_file_name"
++            android:layout_below="@id/record_file_name"
++            android:textAppearance="?android:attr/textAppearanceSmall" />
++
++        <TextView
++            android:id="@+id/record_file_duration"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_alignBottom="@id/record_file_title"
++            android:layout_alignParentRight="true"
++            android:textAppearance="?android:attr/textAppearanceSmall" />
++    </RelativeLayout>
++
++</LinearLayout>
+\ No newline at end of file
+diff --git a/res/layout/recording_file_list.xml b/res/layout/recording_file_list.xml
+new file mode 100644
+index 0000000..5d7221d
+--- /dev/null
++++ b/res/layout/recording_file_list.xml
+@@ -0,0 +1,67 @@
++<?xml version="1.0" encoding="utf-8"?>
++<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:splitMotionEvents="false">
++
++    <ListView
++        android:id="@+id/recording_file_list_view"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:layout_above="@+id/bottomLinearLayout"
++        android:layout_alignParentTop="true" />
++
++    <TextView
++        android:id="@+id/empty_view"
++        android:layout_width="match_parent"
++        android:layout_height="match_parent"
++        android:layout_above="@+id/divider_img"
++        android:gravity="center"
++        android:text="@string/no_recording_file"
++        android:textAppearance="?android:attr/textAppearanceLarge"
++        android:visibility="gone" />
++
++    <ImageView
++        android:src="@android:drawable/divider_horizontal_dark"
++        android:id="@+id/divider_img"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:scaleType="fitXY"
++        android:layout_above="@+id/bottomLinearLayout"/>
++
++    <LinearLayout
++        android:id="@+id/bottomLinearLayout"
++        android:layout_width="match_parent"
++        android:layout_height="60dip"
++        android:layout_alignParentBottom="true"
++        android:gravity="center"
++        android:orientation="vertical"
++        android:splitMotionEvents="false" >
++
++        <LinearLayout
++            android:layout_width="match_parent"
++            android:layout_height="match_parent"
++            android:orientation="horizontal"
++            android:weightSum="2"
++            android:splitMotionEvents="false">
++
++            <ImageButton
++                android:id="@+id/recordButton"
++                style="?android:attr/buttonBarButtonStyle"
++                android:layout_height="match_parent"
++                android:layout_width="match_parent"
++                android:layout_weight="1"
++                android:src="@drawable/record" />
++
++            <ImageButton
++                android:id="@+id/deleteButton"
++                style="?android:attr/buttonBarButtonStyle"
++                android:layout_height="match_parent"
++                android:layout_width="match_parent"
++                android:layout_weight="1"
++                android:src="@drawable/delete"
++                android:visibility="gone" />
++        </LinearLayout>
++    </LinearLayout>
++
++</RelativeLayout>
+\ No newline at end of file
+diff --git a/res/values-zh-rCN/strings.xml b/res/values-zh-rCN/strings.xml
+index 9422926..4a14f4f 100644
+--- a/res/values-zh-rCN/strings.xml
++++ b/res/values-zh-rCN/strings.xml
+@@ -58,5 +58,13 @@
+     <string name="error_app_recorder_occupied">有其他应用程序正在使用录音机</string>
+     <string name="error_app_failed_title">录音失败</string>
+ 
++    <string name="recording_file_list">录音文件列表</string>
++    <string name="ok">确定</string>
++    <string name="delete">删除</string>
++    <string name="deleting">正在删除</string>
++    <string name="no_recording_file">(没有录音文件)</string>
++    <string name="alert_delete_multiple">将会删除这些文件</string>
++    <string name="alert_delete_single">将会删除该文件</string>
++
+     <string name="err_permission">"无权限"</string>
+ </resources>
+diff --git a/res/values/strings.xml b/res/values/strings.xml
+index 87695c7..1d7be4d 100644
+--- a/res/values/strings.xml
++++ b/res/values/strings.xml
+@@ -88,5 +88,13 @@
+     <string name="error_app_recorder_occupied">Recorder is occupied by other application.</string>
+     <string name="error_app_failed_title">Failed in recording</string>
+ 
++    <string name="recording_file_list">Recording file list</string>
++    <string name="ok">OK</string>
++    <string name="delete">Delete</string>
++    <string name="deleting">Deleting</string>
++    <string name="no_recording_file">(No recording file)</string>
++    <string name="alert_delete_multiple">These items will be deleted</string>
++    <string name="alert_delete_single">This item will be deleted</string>
++
+     <string name="err_permission">Permission Error</string>
+ </resources>
+diff --git a/src/com/android/soundrecorder/EditViewAdapter.java b/src/com/android/soundrecorder/EditViewAdapter.java
+new file mode 100644
+index 0000000..c7dad34
+--- /dev/null
++++ b/src/com/android/soundrecorder/EditViewAdapter.java
+@@ -0,0 +1,269 @@
++package com.android.soundrecorder;
++
++import android.content.Context;
++import android.content.res.Resources;
++import android.util.SparseBooleanArray;
++import android.util.SparseIntArray;
++import android.view.LayoutInflater;
++import android.view.View;
++import android.view.ViewGroup;
++import android.widget.BaseAdapter;
++import android.widget.CheckBox;
++import android.widget.RelativeLayout;
++import android.widget.TextView;
++
++import java.util.ArrayList;
++import java.util.List;
++
++public class EditViewAdapter extends BaseAdapter {
++    private static final int DEFAULT_SECONDARY_SIZE_TEXT_COLOR = -4276546;
++
++    private final Resources mResources;
++    private final LayoutInflater mInflater;
++    private final List<String> mNameList;
++    private final List<String> mPathList;
++    private final List<String> mTitleList;
++    private final List<String> mDurationList;
++    private final List<Integer> mIdList;
++    private final List<Integer> mCheckedItemId;
++    private final SparseBooleanArray mCheckStates;
++    private int mCurPos = -1;
++    private List<Integer> mPosCheckedList = null;
++    private final SparseIntArray mIdPos;
++
++    /**
++     * The constructor to construct a navigation view adapter
++     *
++     * @param context      the context of FileManagerActivity
++     * @param nameList     a list of file names
++     * @param pathList     a list of file path
++     * @param titleList    a list of file title
++     * @param durationList a list of file duration
++     * @param curPos       current click item index
++     */
++    public EditViewAdapter(Context context, List<String> nameList,
++                           List<String> pathList, List<String> titleList,
++                           List<String> durationList, List<Integer> idList, int curPos) {
++        mResources = context.getResources();
++        mInflater = LayoutInflater.from(context);
++        mNameList = nameList;
++        mPathList = pathList;
++        mTitleList = titleList;
++        mDurationList = durationList;
++        mIdList = idList;
++        mCheckStates = new SparseBooleanArray();
++        mCheckedItemId = new ArrayList<Integer>();
++        mIdPos = new SparseIntArray();
++        mCurPos = curPos;
++        if (mCurPos != -1) {
++            mCheckStates.put(mCurPos, true);
++        }
++    }
++
++    /**
++     * The constructor to construct a navigation view adapter
++     *
++     * @param context        the context of FileManagerActivity
++     * @param nameList       a list of file names
++     * @param pathList       a list of file path
++     * @param titleList      a list of file title
++     * @param durationList   a list of file duration
++     * @param posCheckedList current checked box list
++     */
++    public EditViewAdapter(Context context, List<String> nameList,
++                           List<String> pathList, List<String> titleList,
++                           List<String> durationList, List<Integer> idList, List<Integer> posCheckedList) {
++        mResources = context.getResources();
++        mInflater = LayoutInflater.from(context);
++        mNameList = nameList;
++        mPathList = pathList;
++        mTitleList = titleList;
++        mDurationList = durationList;
++        mIdList = idList;
++        mCheckStates = new SparseBooleanArray();
++        mCheckedItemId = new ArrayList<Integer>();
++        mPosCheckedList = posCheckedList;
++        mIdPos = new SparseIntArray();
++        if (mPosCheckedList != null) {
++            for (int i = 0; i < mPosCheckedList.size(); i++) {
++                mCheckStates.put(mPosCheckedList.get(i), true);
++            }
++        }
++    }
++
++    /**
++     * This method sets the item's check boxes
++     *
++     * @param id      the id of the item
++     * @param checked the checked state
++     */
++    protected void setCheckBox(int id, boolean checked) {
++        mCheckStates.put(id, checked);
++    }
++
++    /**
++     * This method return the list of current checked box
++     *
++     * @return current list of checked box
++     */
++    protected List<Integer> getCheckedPosList() {
++        for (int i = 0; i < mCheckStates.size(); i++) {
++            if (mCheckStates.valueAt(i)) {
++                mCheckedItemId.add(mCheckStates.keyAt(i));
++            }
++        }
++        return mCheckedItemId;
++    }
++
++    /**
++     * This method gets the number of the checked items
++     *
++     * @return the number of the checked items
++     */
++    protected int getCheckedItemsCount() {
++        int count = 0;
++
++        for (int i = 0; i < mCheckStates.size(); i++) {
++            if (mCheckStates.valueAt(i)) {
++                ++count;
++            }
++        }
++        return count;
++    }
++
++    /**
++     * This method gets the list of the checked items
++     *
++     * @return the list of the checked items
++     */
++    protected ArrayList<String> getCheckedItemsList() {
++        ArrayList<String> checkedItemsList = new ArrayList<String>();
++        for (int i = 0; i < mCheckStates.size(); i++) {
++            if (mCheckStates.valueAt(i)) {
++                checkedItemsList.add(mPathList.get(getItemPos(mCheckStates
++                        .keyAt(i))));
++            }
++        }
++        return checkedItemsList;
++    }
++
++    /**
++     * This method gets the list of the grey out items
++     *
++     * @return the list of the grey out items
++     */
++    protected SparseBooleanArray getGrayOutItems() {
++        return mCheckStates;
++    }
++
++    /**
++     * This method gets the count of the items in the name list
++     *
++     * @return the number of the items
++     */
++    @Override
++    public int getCount() {
++        return mNameList.size();
++    }
++
++    /**
++     * This method gets the name of the item at the specified position
++     *
++     * @param pos the position of item
++     * @return the name of the item
++     */
++    @Override
++    public Object getItem(int pos) {
++        return mNameList.get(pos);
++    }
++
++    /**
++     * This method gets the item id at the specified position
++     *
++     * @param pos the position of item
++     * @return the id of the item
++     */
++    @Override
++    public long getItemId(int pos) {
++        long id = mIdList.get(pos);
++        mIdPos.put((int) id, pos);
++        return id;
++    }
++
++    public int getItemPos(int id) {
++        return mIdPos.get(id);
++    }
++
++    /**
++     * This method gets the view for each item to be displayed in the list view
++     *
++     * @param pos         the position of the item
++     * @param convertView the view to be shown
++     * @param parent      the parent view
++     * @return the view to be shown
++     */
++    @Override
++    public View getView(int pos, View convertView, ViewGroup parent) {
++        EditViewTag editViewTag;
++        View editListItemView = convertView;
++
++        if (editListItemView == null) {
++            editListItemView = mInflater.inflate(R.layout.edit_adapter, null);
++
++            // construct an item tag
++            editViewTag = new EditViewTag(
++                    (TextView) editListItemView
++                            .findViewById(R.id.record_file_name),
++                    (CheckBox) editListItemView
++                            .findViewById(R.id.record_file_checkbox),
++                    (TextView) editListItemView
++                            .findViewById(R.id.record_file_title),
++                    (TextView) editListItemView
++                            .findViewById(R.id.record_file_duration));
++            editListItemView.setTag(editViewTag);
++        } else {
++            editViewTag = (EditViewTag) editListItemView.getTag();
++        }
++
++        RelativeLayout.LayoutParams params = null;
++
++        // set name
++        params = (RelativeLayout.LayoutParams) editViewTag.mName
++                .getLayoutParams();
++        editViewTag.mName.setLayoutParams(params);
++        String fileName = mNameList.get(pos);
++        editViewTag.mName.setText(fileName);
++
++        String title = mTitleList.get(pos);
++        editViewTag.mTitle.setText(title);
++
++        String duration = mDurationList.get(pos);
++        editViewTag.mDuration.setText(duration);
++
++        editViewTag.mCheckBox.setChecked(mCheckStates.get((int) getItemId(pos)));
++        return editListItemView;
++    }
++
++    static class EditViewTag {
++        protected TextView mName;
++        protected CheckBox mCheckBox;
++        protected TextView mTitle;
++        protected TextView mDuration;
++
++        /**
++         * The constructor to construct an edit view tag
++         *
++         * @param name     the name view of the item
++         * @param box      the check box view of the item
++         * @param title    the title view of the item
++         * @param duration the duration view of the item
++         */
++        public EditViewTag(TextView name, CheckBox box, TextView title,
++                           TextView duration) {
++            this.mName = name;
++            this.mCheckBox = box;
++            this.mTitle = title;
++            this.mDuration = duration;
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/src/com/android/soundrecorder/ListViewProperty.java b/src/com/android/soundrecorder/ListViewProperty.java
+new file mode 100644
+index 0000000..06608ed
+--- /dev/null
++++ b/src/com/android/soundrecorder/ListViewProperty.java
+@@ -0,0 +1,57 @@
++package com.android.soundrecorder;
++
++import java.util.List;
++
++public class ListViewProperty {
++    private List<Integer> mCheckedList;
++    private int mCurPos;
++    private int mTop;
++
++    public ListViewProperty(List<Integer> list, int curPos, int top) {
++        mCheckedList = list;
++        mCurPos = curPos;
++        mTop = top;
++    }
++
++    /**
++     * @return the mCheckedList
++     */
++    public List<Integer> getmCheckedList() {
++        return mCheckedList;
++    }
++
++    /**
++     * @param mCheckedList the mCheckedList to set
++     */
++    public void setmCheckedList(List<Integer> checkedList) {
++        this.mCheckedList = checkedList;
++    }
++
++    /**
++     * @return the mCurPos
++     */
++    public int getmCurPos() {
++        return mCurPos;
++    }
++
++    /**
++     * @param mCurPos the mCurPos to set
++     */
++    public void setmCurPos(int curPos) {
++        this.mCurPos = curPos;
++    }
++
++    /**
++     * @return the mTop
++     */
++    public int getmTop() {
++        return mTop;
++    }
++
++    /**
++     * @param mTop the mTop to set
++     */
++    public void setmTop(int top) {
++        this.mTop = top;
++    }
++}
+\ No newline at end of file
+diff --git a/src/com/android/soundrecorder/Recorder.java b/src/com/android/soundrecorder/Recorder.java
+index b7f8089..78de370 100644
+--- a/src/com/android/soundrecorder/Recorder.java
++++ b/src/com/android/soundrecorder/Recorder.java
+@@ -48,6 +48,8 @@ public class Recorder implements OnCompletionListener, OnErrorListener {
+     public static final int SDCARD_ACCESS_ERROR = 1;
+     public static final int INTERNAL_ERROR = 2;
+     public static final int IN_CALL_RECORD_ERROR = 3;
++
++    public static final String TEMP_SUFFIX = ".tmp";
+     
+     public interface OnStateChangedListener {
+         public void onStateChanged(int state);
+@@ -156,7 +158,10 @@ public class Recorder implements OnCompletionListener, OnErrorListener {
+     public void startRecording(int outputfileformat, int recordingType, String extension, Context context) {
+         stop();
+         if (mSampleFile == null) {
+-            File sampleDir = Environment.getExternalStorageDirectory();
++            String myExtension = extension + TEMP_SUFFIX;
++            //File sampleDir = Environment.getExternalStorageDirectory();
++            File sampleDir = Environment.getExternalStoragePublicDirectory(
++                    Environment.DIRECTORY_DOCUMENTS);
+             if (!sampleDir.canWrite()) // Workaround for broken sdcard support on the device.
+                 sampleDir = new File("/sdcard/sdcard");
+             String sampleDirPath = null;
+@@ -182,7 +187,7 @@ public class Recorder implements OnCompletionListener, OnErrorListener {
+                         .currentTimeMillis()));
+                 StringBuilder stringBuilder = new StringBuilder();
+                 stringBuilder.append(SAMPLE_PREFIX).append("_" + time)
+-                        .append(extension);
++                        .append(myExtension);
+                 String name = stringBuilder.toString();
+                 mSampleFile = new File(sampleDir, name);
+                 boolean result = mSampleFile.createNewFile();
+@@ -256,6 +261,30 @@ public class Recorder implements OnCompletionListener, OnErrorListener {
+         setState(RECORDING_STATE);
+     }
+ 
++    public void sampleFileDelSuffix() {
++        if ((mSampleFile != null) && mSampleFile.exists()) {
++            String oldPath = mSampleFile.getAbsolutePath();
++            if (oldPath.endsWith(TEMP_SUFFIX)) {
++                String newPath = oldPath.substring(0,
++                        oldPath.lastIndexOf(TEMP_SUFFIX));
++                File newFile = new File(newPath);
++                boolean result = mSampleFile.renameTo(newFile);
++                if (result) {
++                    mSampleFile = newFile;
++                    Log.i(TAG, "<sampleFileDelSuffix()> rename file <"
++                            + oldPath + "> to <" + newPath + ">");
++                } else {
++                    Log.i(TAG,
++                            "<sampleFileDelSuffix()> rename file fail");
++                }
++            } else {
++                Log.i(TAG, "<sampleFileDelSuffix()> file <" + oldPath
++                        + "> is not end with <.tmp>");
++                return;
++            }
++        }
++    }
++
+     public void stopRecording() {
+         if (mRecorder == null)
+             return;
+diff --git a/src/com/android/soundrecorder/RecordingFileList.java b/src/com/android/soundrecorder/RecordingFileList.java
+new file mode 100644
+index 0000000..fc356fa
+--- /dev/null
++++ b/src/com/android/soundrecorder/RecordingFileList.java
+@@ -0,0 +1,680 @@
++package com.android.soundrecorder;
++
++import android.app.Activity;
++import android.app.AlertDialog;
++import android.app.Dialog;
++import android.app.ProgressDialog;
++import android.content.BroadcastReceiver;
++import android.content.ContentResolver;
++import android.content.Context;
++import android.content.DialogInterface;
++import android.content.Intent;
++import android.content.IntentFilter;
++import android.content.res.Resources;
++import android.database.Cursor;
++import android.net.Uri;
++import android.os.AsyncTask;
++import android.os.Bundle;
++import android.provider.MediaStore;
++import android.view.View;
++import android.widget.AdapterView;
++import android.widget.CheckBox;
++import android.widget.ImageButton;
++import android.widget.ListView;
++import android.widget.SimpleAdapter;
++
++import java.io.File;
++import java.util.ArrayList;
++import java.util.HashMap;
++import java.util.List;
++
++public class RecordingFileList extends Activity implements
++        ImageButton.OnClickListener {
++    private static final String TAG = "SoundRecorder/RecordingFileList";
++    ListView mRecordingFileListView;
++    ImageButton mRecordButton;
++    ImageButton mDeleteButton;
++    View mEmptyView;
++    private ArrayList<HashMap<String, Object>> mArrlist;
++    private ArrayList<String> mNameList;
++    private ArrayList<String> mPathList;
++    private ArrayList<String> mTitleList;
++    private ArrayList<String> mDurationList;
++    private List<Integer> mIdList;
++
++    private static final int NORMAL = 1;
++    private static final int EDIT = 2;
++    private int mCurrentDapterMode = NORMAL;
++    private int mSelection = 0;
++    private int mTop = 0;
++
++    private static final String PLAY = "play";
++    private static final String RECORD = "record";
++    private static final String INIT = "init";
++    private static final String DOWHAT = "dowhat";
++    private static final String PATH = "path";
++    private static final String DURATION = "duration";
++    private static final String FILE_NAME = "filename";
++    private static final String CREAT_DATE = "creatdate";
++    private static final String FORMAT_DURATION = "formatduration";
++    private static final String RECORD_ID = "recordid";
++    private static final String SINGLE = "Single";
++    private boolean mActivityForeground = true;
++    private List<Integer> mCheckedList;
++
++    private BroadcastReceiver mSDCardMountEventReceiver = null;
++    private static final int ALERT_DELETE_DIALOG = 1;
++
++    @Override
++    public void onCreate(Bundle icycle) {
++        super.onCreate(icycle);
++        setContentView(R.layout.recording_file_list);
++        mRecordingFileListView = (ListView) findViewById(R.id.recording_file_list_view);
++        mRecordButton = (ImageButton) findViewById(R.id.recordButton);
++        mDeleteButton = (ImageButton) findViewById(R.id.deleteButton);
++        mEmptyView = findViewById(R.id.empty_view);
++        mRecordButton.setOnClickListener(this);
++        mDeleteButton.setOnClickListener(this);
++        mRecordingFileListView.setOnCreateContextMenuListener(this);
++
++        mRecordingFileListView
++                .setOnItemClickListener(new AdapterView.OnItemClickListener() {
++                    @Override
++                    public void onItemClick(AdapterView<?> arg0, View view,
++                                            int arg2, long arg3) {
++                        if (mCurrentDapterMode == EDIT) {
++                            int id = (int) ((EditViewAdapter) mRecordingFileListView
++                                    .getAdapter()).getItemId(arg2);
++                            CheckBox checkBox = (CheckBox) view
++                                    .findViewById(R.id.record_file_checkbox);
++                            if (checkBox.isChecked()) {
++                                checkBox.setChecked(false);
++                                ((EditViewAdapter) mRecordingFileListView
++                                        .getAdapter()).setCheckBox(id, false);
++
++                                int count = ((EditViewAdapter) mRecordingFileListView
++                                        .getAdapter()).getCheckedItemsCount();
++                                if (count == 0) {
++                                    saveLastSelection();
++                                    mCurrentDapterMode = NORMAL;
++                                    swicthAdapterView(-1);
++                                }
++                            } else {
++                                checkBox.setChecked(true);
++                                ((EditViewAdapter) mRecordingFileListView
++                                        .getAdapter()).setCheckBox(id, true);
++                            }
++                        } else {
++                            Intent intent = new Intent();
++                            HashMap<String, Object> map =
++                                    (HashMap<String, Object>) mRecordingFileListView
++                                            .getItemAtPosition(arg2);
++                            intent.putExtra(DOWHAT, PLAY);
++                            if (map != null && map.get(PATH) != null) {
++                                intent.putExtra(PATH, map.get(PATH).toString());
++                            }
++                            if (map != null && map.get(DURATION) != null) {
++                                intent.putExtra(DURATION, Integer.parseInt(map
++                                        .get(DURATION).toString()));
++                            }
++                            intent.setClass(RecordingFileList.this,
++                                    SoundRecorder.class);
++                            setResult(RESULT_OK, intent);
++                            finish();
++                        }
++                    }
++                });
++
++        mRecordingFileListView
++                .setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
++
++                    @Override
++                    public boolean onItemLongClick(AdapterView<?> arg0,
++                                                   View arg1, int arg2, long arg3) {
++                        int id = 0;
++                        if (mCurrentDapterMode == EDIT) {
++                            id = (int) ((EditViewAdapter) mRecordingFileListView
++                                    .getAdapter()).getItemId(arg2);
++                        } else {
++                            HashMap<String, Object> map =
++                                    (HashMap<String, Object>) mRecordingFileListView
++                                            .getItemAtPosition(arg2);
++                            id = (Integer) map.get(RECORD_ID);
++                        }
++                        if (mCurrentDapterMode == NORMAL) {
++                            saveLastSelection();
++                            mCurrentDapterMode = EDIT;
++                            swicthAdapterView(id);
++                        }
++                        return true;
++                    }
++
++                });
++        registerExternalStorageListener();
++    }
++
++    /**
++     * save the old data
++     */
++    @Override
++    public Object onRetainNonConfigurationInstance() {
++        List<Integer> checkedList = null;
++        saveLastSelection();
++        if (mCurrentDapterMode == EDIT) {
++            if (((EditViewAdapter) mRecordingFileListView.getAdapter()) != null) {
++                checkedList = ((EditViewAdapter) mRecordingFileListView
++                        .getAdapter()).getCheckedPosList();
++            }
++        }
++        ListViewProperty mListViewProperty = new ListViewProperty(checkedList, mSelection, mTop);
++        return mListViewProperty;
++    }
++
++    @Override
++    protected void onResume() {
++        super.onResume();
++        setListData(mCheckedList);
++        mActivityForeground = true;
++    }
++
++    /**
++     * This method save the selection of list view on present screen
++     */
++    protected void saveLastSelection() {
++        if (mRecordingFileListView != null) {
++            mSelection = mRecordingFileListView.getFirstVisiblePosition();
++            View cv = mRecordingFileListView.getChildAt(0);
++            if (cv != null) {
++                mTop = cv.getTop();
++            }
++        }
++    }
++
++    /**
++     * This method restore the selection saved before
++     */
++    protected void restoreLastSelection() {
++        if (mSelection >= 0) {
++            mRecordingFileListView.setSelectionFromTop(mSelection, mTop);
++            mSelection = -1;
++        }
++    }
++
++
++    @Override
++    protected void onStart() {
++        super.onStart();
++        ListViewProperty mListViewProperty = (ListViewProperty) getLastNonConfigurationInstance();
++        if (mListViewProperty != null) {
++            if (mListViewProperty.getmCheckedList() != null) {
++                mCheckedList = mListViewProperty.getmCheckedList();
++            }
++            mSelection = mListViewProperty.getmCurPos();
++            mTop = mListViewProperty.getmTop();
++        }
++    }
++
++    /**
++     * bind data to list view
++     */
++    private void setListData(List<Integer> list) {
++        mRecordingFileListView.setAdapter(null);
++        QueryDataTask queryTask = new QueryDataTask(list);
++        queryTask.execute();
++    }
++
++    /**
++     * query sound recorder recording file data
++     */
++    public ArrayList<HashMap<String, Object>> queryData() {
++        Cursor mRecordingFileCursor = this.getContentResolver().query(
++                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
++                new String[]{MediaStore.Audio.Media.ARTIST,
++                        MediaStore.Audio.Media.ALBUM,
++                        MediaStore.Audio.Media.DATA,
++                        MediaStore.Audio.Media.DURATION,
++                        MediaStore.Audio.Media.DISPLAY_NAME,
++                        MediaStore.Audio.Media.DATE_ADDED,
++                        MediaStore.Audio.Media.TITLE,
++                        MediaStore.Audio.Media._ID},
++                MediaStore.Audio.Media.IS_MUSIC + " =0 and "
++                        + MediaStore.Audio.Media.DATA + " LIKE '" + "%" + "/"
++                        + Recorder.RECORD_FOLDER + "%" + "'", null, null);
++        try {
++            if (mRecordingFileCursor == null
++                    || mRecordingFileCursor.getCount() == 0) {
++                return null;
++            }
++            mRecordingFileCursor.moveToFirst();
++            mArrlist = new ArrayList<HashMap<String, Object>>();
++            mNameList = new ArrayList<String>();
++            mPathList = new ArrayList<String>();
++            mTitleList = new ArrayList<String>();
++            mDurationList = new ArrayList<String>();
++            mIdList = new ArrayList<Integer>();
++            int num = mRecordingFileCursor.getCount();
++            for (int j = 0; j < num; j++) {
++                HashMap<String, Object> map = new HashMap<String, Object>();
++                map.put(FILE_NAME, mRecordingFileCursor.getString(4));
++                map.put(PATH, mRecordingFileCursor.getString(2));
++                map.put(DURATION, mRecordingFileCursor.getInt(3));
++                map.put(CREAT_DATE, mRecordingFileCursor.getString(6));
++                map.put(FORMAT_DURATION,
++                        formatDuration(mRecordingFileCursor.getInt(3)));
++                map.put(RECORD_ID,
++                        mRecordingFileCursor.getInt(7));
++
++                mNameList.add(mRecordingFileCursor.getString(4));
++                mPathList.add(mRecordingFileCursor.getString(2));
++                mTitleList.add(mRecordingFileCursor.getString(6));
++                mDurationList
++                        .add(formatDuration(mRecordingFileCursor.getInt(3)));
++                mIdList.add(mRecordingFileCursor.getInt(7));
++                mRecordingFileCursor.moveToNext();
++                mArrlist.add(map);
++            }
++        } catch (IllegalStateException e) {
++            e.printStackTrace();
++        } finally {
++            if (mRecordingFileCursor != null) {
++                mRecordingFileCursor.close();
++            }
++        }
++        return mArrlist;
++    }
++
++    /**
++     * update UI after query data
++     */
++    public void afterQuery(List<Integer> list) {
++        if (list == null) {
++            mCurrentDapterMode = NORMAL;
++            swicthAdapterView(-1);
++        } else {
++            list.retainAll(mIdList);
++            if (list.size() == 0) {
++                removeDialog(ALERT_DELETE_DIALOG);
++                mCurrentDapterMode = NORMAL;
++                swicthAdapterView(-1);
++            } else {
++                mCurrentDapterMode = EDIT;
++                EditViewAdapter adapter = new EditViewAdapter(
++                        getApplicationContext(), mNameList, mPathList, mTitleList,
++                        mDurationList, mIdList, list);
++                mRecordingFileListView.setAdapter(adapter);
++                mDeleteButton.setVisibility(View.VISIBLE);
++                mRecordButton.setVisibility(View.GONE);
++                restoreLastSelection();
++            }
++        }
++    }
++
++    /**
++     * format duartion to display as 00:00
++     */
++    public String formatDuration(int duration) {
++        String mTimerFormat = getResources().getString(R.string.timer_format);
++        int time = duration / 1000;
++        return String.format(mTimerFormat, time / 60, time % 60);
++    }
++
++    @Override
++    public void onClick(View button) {
++        switch (button.getId()) {
++            case R.id.recordButton:
++
++                mRecordButton.setEnabled(false);
++                Intent mIntent = new Intent();
++                mIntent.setClass(this, SoundRecorder.class);
++                mIntent.putExtra(DOWHAT, RECORD);
++                setResult(RESULT_OK, mIntent);
++                this.finish();
++                break;
++            case R.id.deleteButton:
++
++                Bundle bundle = new Bundle();
++                int count = ((EditViewAdapter) mRecordingFileListView.getAdapter())
++                        .getCheckedItemsCount();
++                if (count == 1) {
++                    bundle.putBoolean(SINGLE, true);
++                } else {
++                    bundle.putBoolean(SINGLE, false);
++                }
++                showDialog(ALERT_DELETE_DIALOG, bundle);
++                break;
++            default:
++                break;
++        }
++    }
++
++    /**
++     * switch adapter mode which weather contains check box
++     */
++    public void swicthAdapterView(int pos) {
++        if (mCurrentDapterMode == NORMAL) {
++            SimpleAdapter adapter = new SimpleAdapter(this, mArrlist,
++                    R.layout.navigation_adapter, new String[]{FILE_NAME,
++                    CREAT_DATE, FORMAT_DURATION}, new int[]{
++                    R.id.record_file_name, R.id.record_file_title,
++                    R.id.record_file_duration});
++            mRecordingFileListView.setAdapter(adapter);
++            mDeleteButton.setVisibility(View.GONE);
++            mRecordButton.setVisibility(View.VISIBLE);
++        } else {
++            EditViewAdapter adapter = new EditViewAdapter(this, mNameList,
++                    mPathList, mTitleList, mDurationList, mIdList, pos);
++            mRecordingFileListView.setAdapter(adapter);
++            mDeleteButton.setVisibility(View.VISIBLE);
++            mRecordButton.setVisibility(View.GONE);
++        }
++        restoreLastSelection();
++    }
++
++    /**
++     * The method gets the selected items and create a list of File objects
++     *
++     * @return a list of File objects
++     */
++    protected List<File> getSelectedFiles() {
++        List<File> list = new ArrayList<File>();
++        if (EDIT != mCurrentDapterMode) {
++            return list;
++        }
++        if (((EditViewAdapter) mRecordingFileListView.getAdapter()) != null) {
++            List<String> checkedList = ((EditViewAdapter) mRecordingFileListView
++                    .getAdapter()).getCheckedItemsList();
++
++            for (int i = 0; i < checkedList.size(); i++) {
++                File file = new File(checkedList.get(i));
++                if (file.exists()) {
++                    list.add(new File(checkedList.get(i)));
++                } else {
++                    deleteFromMediaDB(file);
++                }
++            }
++        }
++        return list;
++    }
++
++    /**
++     * delete file frome Media DB, if the file is add by media scanner .
++     */
++    private void deleteFromMediaDB(File file) {
++        ContentResolver resolver = getContentResolver();
++        Uri base = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
++        final String[] ids = new String[]{MediaStore.Audio.Media._ID};
++        final String where = MediaStore.Audio.Media.DATA + " LIKE '%"
++                + file.getAbsolutePath().replaceFirst("file:///", "") + "'";
++
++        Cursor cursor = query(base, ids, where, null, null);
++        try {
++            if (null != cursor && cursor.getCount() > 0) {
++                resolver.delete(base, where, null);
++            }
++        } catch (IllegalStateException e) {
++            e.printStackTrace();
++        } finally {
++            if (cursor != null) {
++                cursor.close();
++            }
++        }
++    }
++
++    /**
++     * A simple utility to do a query into the databases.
++     */
++    private Cursor query(Uri uri, String[] projection, String selection,
++                         String[] selectionArgs, String sortOrder) {
++
++        try {
++            ContentResolver resolver = getContentResolver();
++            if (resolver == null) {
++                return null;
++            }
++            return resolver.query(uri, projection, selection, selectionArgs,
++                    sortOrder);
++
++        } catch (UnsupportedOperationException ex) {
++            return null;
++        }
++    }
++
++    @Override
++    protected Dialog onCreateDialog(int id, Bundle args) {
++        if (ALERT_DELETE_DIALOG == id) {
++            return alertMultiDeleteDialog(args);
++        } else {
++            return null;
++        }
++    }
++
++    @Override
++    protected void onPrepareDialog(int id, Dialog dialog, Bundle args) {
++        if (ALERT_DELETE_DIALOG == id) {
++            AlertDialog alertDialog = (AlertDialog) dialog;
++            if (args.getBoolean(SINGLE)) {
++                alertDialog.setMessage(getResources().getString(R.string.alert_delete_single));
++            } else {
++                alertDialog.setMessage(getResources().getString(R.string.alert_delete_multiple));
++            }
++        }
++        super.onPrepareDialog(id, dialog, args);
++    }
++
++    /**
++     * The method creates an alert delete dialog
++     *
++     * @param args argument, the boolean value who will indicates whether the
++     *             selected files just only one. The prompt message will be
++     *             different.
++     * @return a dialog
++     */
++    protected AlertDialog alertMultiDeleteDialog(Bundle args) {
++        Resources mResources = this.getResources();
++        AlertDialog.Builder builder = new AlertDialog.Builder(this);
++        String alertMsg = null;
++        if (args.getBoolean(SINGLE)) {
++            alertMsg = mResources.getString(R.string.alert_delete_single);
++        } else {
++            alertMsg = mResources.getString(R.string.alert_delete_multiple);
++        }
++
++        builder.setTitle(R.string.delete)
++                .setIcon(android.R.drawable.ic_dialog_alert)
++                .setMessage(alertMsg)
++                .setPositiveButton(mResources.getString(R.string.ok),
++                        new DialogInterface.OnClickListener() {
++                            public void onClick(DialogInterface dialog, int id) {
++                                // delete selected items
++                                FileTask fileTask = new FileTask();
++                                fileTask.execute();
++                            }
++                        })
++                .setNegativeButton(mResources.getString(R.string.cancel),
++                        new DialogInterface.OnClickListener() {
++                            public void onClick(DialogInterface dialog, int id) {
++                                dialog.cancel();
++                            }
++                        });
++        return builder.create();
++    }
++
++    @Override
++    protected void onPause() {
++        List<Integer> checkedList = null;
++        if (mCurrentDapterMode == EDIT) {
++            if (((EditViewAdapter) mRecordingFileListView.getAdapter()) != null) {
++                checkedList = ((EditViewAdapter) mRecordingFileListView
++                        .getAdapter()).getCheckedPosList();
++                if (checkedList.size() >= 1) {
++                    mCheckedList = checkedList;
++                }
++            }
++        } else {
++            mCheckedList = null;
++        }
++        mActivityForeground = false;
++        saveLastSelection();
++        super.onPause();
++    }
++
++    @Override
++    public void onBackPressed() {
++        mCurrentDapterMode = NORMAL;
++        onInit();
++        super.onBackPressed();
++    }
++
++    /**
++     * FileTask for delete some recording file
++     */
++    public class FileTask extends AsyncTask<Void, Object, Void> {
++        private static final String TAG = "FileTask";
++        private final ProgressDialog mDialog = new ProgressDialog(
++                RecordingFileList.this);
++        Resources mResources = RecordingFileList.this.getResources();
++
++        /**
++         * A callback method to be invoked before the background thread starts
++         * running
++         */
++        @Override
++        protected void onPreExecute() {
++            mDialog.setTitle(mResources.getString(R.string.delete));
++            mDialog.setMessage(mResources.getString(R.string.deleting));
++            mDialog.setCancelable(false);
++            mDialog.show();
++        }
++
++        /**
++         * A callback method to be invoked when the background thread starts
++         * running
++         *
++         * @param params the method need not parameters here
++         * @return null, the background thread need not return anything
++         */
++        @Override
++        protected Void doInBackground(Void... params) {
++            // delete files
++            List<File> list = getSelectedFiles();
++            for (int i = 0; i < list.size(); i++) {
++                if (!list.get(i).delete()) {
++
++                }
++                deleteFromMediaDB(list.get(i));
++            }
++            return null;
++        }
++
++        /**
++         * A callback method to be invoked after the background thread performs
++         * the task
++         *
++         * @param result the value returned by doInBackground(), but it is not
++         *               needed here
++         */
++        @Override
++        protected void onPostExecute(Void result) {
++            if (mDialog != null) {
++                if (mDialog.isShowing()) {
++                    mDialog.dismiss();
++                    if (mActivityForeground) {
++                        mCurrentDapterMode = NORMAL;
++                        setListData(null);
++                    }
++                }
++            }
++        }
++
++        /**
++         * A callback method to be invoked when the background thread's task is
++         * cancelled
++         */
++        @Override
++        protected void onCancelled() {
++            if (mDialog != null) {
++                mDialog.dismiss();
++            }
++        }
++    }
++
++    /**
++     * through AsyncTask to query recording file data from database
++     */
++    public class QueryDataTask extends AsyncTask<Void, Object, ArrayList<HashMap<String, Object>>> {
++        List<Integer> mList;
++
++        QueryDataTask(List<Integer> list) {
++            mList = list;
++        }
++
++        /**
++         * query data from database
++         */
++        protected ArrayList<HashMap<String, Object>> doInBackground(Void... params) {
++            return queryData();
++        }
++
++        /**
++         * update ui
++         */
++        protected void onPostExecute(ArrayList<HashMap<String, Object>> result) {
++            if (mActivityForeground) {
++                if (result == null) {
++                    removeDialog(ALERT_DELETE_DIALOG);
++                    mRecordingFileListView.setEmptyView(mEmptyView);
++                    mDeleteButton.setVisibility(View.GONE);
++                    mRecordButton.setVisibility(View.VISIBLE);
++                } else {
++                    afterQuery(mList);
++                }
++            }
++        }
++    }
++
++    /**
++     * back to init state
++     */
++    public void onInit() {
++        mCurrentDapterMode = NORMAL;
++        Intent mIntent = new Intent();
++        mIntent.setClass(this, SoundRecorder.class);
++        mIntent.putExtra(DOWHAT, INIT);
++        setResult(RESULT_OK, mIntent);
++        finish();
++    }
++
++    @Override
++    public void onDestroy() {
++        if (mSDCardMountEventReceiver != null) {
++            unregisterReceiver(mSDCardMountEventReceiver);
++            mSDCardMountEventReceiver = null;
++        }
++        super.onDestroy();
++    }
++
++    /**
++     * deal with SDCard mount and eject event
++     */
++    private void registerExternalStorageListener() {
++        if (mSDCardMountEventReceiver == null) {
++            mSDCardMountEventReceiver = new BroadcastReceiver() {
++                @Override
++                public void onReceive(Context context, Intent intent) {
++                    String action = intent.getAction();
++                    if (action.equals(Intent.ACTION_MEDIA_EJECT)) {
++                        onInit();
++                    } else if (action.equals(Intent.ACTION_MEDIA_MOUNTED)) {
++                        onInit();
++                    }
++                }
++            };
++            IntentFilter iFilter = new IntentFilter();
++            iFilter.addAction(Intent.ACTION_MEDIA_EJECT);
++            iFilter.addAction(Intent.ACTION_MEDIA_MOUNTED);
++            iFilter.addDataScheme("file");
++            registerReceiver(mSDCardMountEventReceiver, iFilter);
++        }
++    }
++
++}
+\ No newline at end of file
+diff --git a/src/com/android/soundrecorder/SoundRecorder.java b/src/com/android/soundrecorder/SoundRecorder.java
+index 3dcdb6e..7d43acb 100644
+--- a/src/com/android/soundrecorder/SoundRecorder.java
++++ b/src/com/android/soundrecorder/SoundRecorder.java
+@@ -253,6 +253,7 @@ public class SoundRecorder extends Activity
+     ImageButton mRecordButton;
+     ImageButton mPlayButton;
+     ImageButton mStopButton;
++    ImageButton mFileListButton;
+ 
+     ImageView mStateLED;
+     TextView mStateMessage1;
+@@ -610,6 +611,13 @@ public class SoundRecorder extends Activity
+         mRecordButton = (ImageButton) findViewById(R.id.recordButton);
+         mPlayButton = (ImageButton) findViewById(R.id.playButton);
+         mStopButton = (ImageButton) findViewById(R.id.stopButton);
++        mFileListButton = (ImageButton) findViewById(R.id.fileListButton);
++
++        if (mRunFromLauncher) {
++            mFileListButton.setOnClickListener(this);
++        } else {
++            mFileListButton.setVisibility(View.GONE);
++        }
+ 
+         mStateLED = (ImageView) findViewById(R.id.stateLED);
+         mStateMessage1 = (TextView) findViewById(R.id.stateMessage1);
+@@ -769,6 +777,18 @@ public class SoundRecorder extends Activity
+                     finish();
+                 }
+                 break;
++            case R.id.fileListButton:
++                mFileListButton.setEnabled(false);
++                //leave this activity,set mSampleFile is null
++                if ((mRecorder != null) && mRecorder.sampleFile() != null) {
++                    mRecorder.mSampleFile = null;
++                    mRecorder.mSampleLength = 0;
++                }
++                Intent mIntent = new Intent();
++                mIntent.setClass(this, RecordingFileList.class);
++                startActivityForResult(mIntent, REQURST_FILE_LIST);
++                break;
++
+             case R.id.discardButton:
+                 mRecorder.delete();
+                 if (!mRunFromLauncher) {
+@@ -840,6 +860,7 @@ public class SoundRecorder extends Activity
+             return;
+         Uri uri = null;
+         try {
++            mRecorder.sampleFileDelSuffix();
+             uri = this.addToMediaDB(mRecorder.sampleFile());
+         } catch (UnsupportedOperationException ex) {  // Database manipulation failure
+             return;
+@@ -1158,6 +1179,9 @@ public class SoundRecorder extends Activity
+                     mStopButton.setFocusable(false);
+                     mRecordButton.requestFocus();
+ 
++                    mFileListButton.setEnabled(true);
++                    mFileListButton.setFocusable(true);
++
+                     mStateMessage1.setVisibility(View.INVISIBLE);
+                     mStateLED.setVisibility(View.INVISIBLE);
+                     mStateMessage2.setVisibility(View.INVISIBLE);
+@@ -1212,6 +1236,9 @@ public class SoundRecorder extends Activity
+                 mStopButton.setEnabled(true);
+                 mStopButton.setFocusable(true);
+ 
++                mFileListButton.setEnabled(false);
++                mFileListButton.setFocusable(false);
++
+                 mStateMessage1.setVisibility(View.VISIBLE);
+                 mStateLED.setVisibility(View.VISIBLE);
+                 mStateLED.setImageResource(R.drawable.recording_led);
+@@ -1306,6 +1333,7 @@ public class SoundRecorder extends Activity
+     @Override
+     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+         if (RESULT_OK == resultCode) {
++            mFileListButton.setEnabled(true);
+             Intent intent = data;
+             Bundle bundle = intent.getExtras();
+             if (bundle != null) {
+-- 
+2.35.1
+

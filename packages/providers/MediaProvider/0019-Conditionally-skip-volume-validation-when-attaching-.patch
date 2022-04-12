@@ -1,0 +1,122 @@
+From dffed87e361a7251f9d58ebbe756afa9905dfefd Mon Sep 17 00:00:00 2001
+From: Zim <zezeozue@google.com>
+Date: Fri, 5 Jun 2020 15:30:09 +0100
+Subject: [PATCH 19/26] Conditionally skip volume validation when attaching
+ volume
+
+We only need to validate a volume is valid when handling binder
+requests. In other cases, when we generated the volume internally in
+the MediaProvider, we can skip the validation step.
+
+With some races at boot, trying to validate a mounted volume may throw
+an exception even though the volume is truly mounted.
+
+Additionally, bring back listening for StorageVolumeCallback events
+which can be sent for volumes after user unlocks. This allows us
+refresh our cache in case we missed anything at
+notifyVolumeStateChanged
+
+Bug: 158059178
+Test: Manual
+Change-Id: I0f3fcdee93a5b7c10bb289a1fc9bba4a4db67fea
+(cherry picked from commit 604f45280b2f8803991e64b6de9be6aa1c4b0422)
+---
+ .../providers/media/MediaProvider.java        | 24 ++++++++++++-------
+ .../android/providers/media/MediaService.java |  2 +-
+ .../fuse/ExternalStorageServiceImpl.java      |  2 +-
+ 3 files changed, 17 insertions(+), 11 deletions(-)
+
+diff --git a/src/com/android/providers/media/MediaProvider.java b/src/com/android/providers/media/MediaProvider.java
+index 42f7bfe7..4e39be52 100644
+--- a/src/com/android/providers/media/MediaProvider.java
++++ b/src/com/android/providers/media/MediaProvider.java
+@@ -125,6 +125,7 @@ import android.os.SystemClock;
+ import android.os.SystemProperties;
+ import android.os.Trace;
+ import android.os.UserHandle;
++import android.os.storage.StorageManager.StorageVolumeCallback;
+ import android.os.storage.StorageManager;
+ import android.os.storage.StorageVolume;
+ import android.preference.PreferenceManager;
+@@ -868,10 +869,19 @@ public class MediaProvider extends ContentProvider {
+         packageFilter.addAction(Intent.ACTION_PACKAGE_REMOVED);
+         context.registerReceiver(mPackageReceiver, packageFilter);
+ 
++        // Watch for invalidation of cached volumes
++        mStorageManager.registerStorageVolumeCallback(context.getMainExecutor(),
++                new StorageVolumeCallback() {
++                    @Override
++                    public void onStateChanged(@NonNull StorageVolume volume) {
++                        updateVolumes();
++                   }
++                });
++
+         updateVolumes();
+-        attachVolume(MediaStore.VOLUME_INTERNAL);
++        attachVolume(MediaStore.VOLUME_INTERNAL, /* validate */ false);
+         for (String volumeName : getExternalVolumeNames()) {
+-            attachVolume(volumeName);
++            attachVolume(volumeName, /* validate */ false);
+         }
+ 
+         // Watch for performance-sensitive activity
+@@ -3053,7 +3063,7 @@ public class MediaProvider extends ContentProvider {
+ 
+         if (match == VOLUMES) {
+             String name = initialValues.getAsString("name");
+-            Uri attachedVolume = attachVolume(name);
++            Uri attachedVolume = attachVolume(name, /* validate */ true);
+             if (mMediaScannerVolume != null && mMediaScannerVolume.equals(name)) {
+                 final DatabaseHelper helper = getDatabaseForUri(
+                         MediaStore.Files.getContentUri(mMediaScannerVolume));
+@@ -6921,11 +6931,7 @@ public class MediaProvider extends ContentProvider {
+         return MediaStore.AUTHORITY_URI.buildUpon().appendPath(volumeName).build();
+     }
+ 
+-    private void attachVolume(Uri uri) {
+-        attachVolume(MediaStore.getVolumeName(uri));
+-    }
+-
+-    public Uri attachVolume(String volume) {
++    public Uri attachVolume(String volume, boolean validate) {
+         if (mCallingIdentity.get().pid != android.os.Process.myPid()) {
+             throw new SecurityException(
+                     "Opening and closing databases not allowed.");
+@@ -6935,7 +6941,7 @@ public class MediaProvider extends ContentProvider {
+         MediaStore.checkArgumentVolumeName(volume);
+ 
+         // Quick sanity check that volume actually exists
+-        if (!MediaStore.VOLUME_INTERNAL.equals(volume)) {
++        if (!MediaStore.VOLUME_INTERNAL.equals(volume) && validate) {
+             try {
+                 getVolumePath(volume);
+             } catch (IOException e) {
+diff --git a/src/com/android/providers/media/MediaService.java b/src/com/android/providers/media/MediaService.java
+index cbb0a2c8..d7c6babd 100644
+--- a/src/com/android/providers/media/MediaService.java
++++ b/src/com/android/providers/media/MediaService.java
+@@ -131,7 +131,7 @@ public class MediaService extends JobIntentService {
+         try (ContentProviderClient cpc = context.getContentResolver()
+                 .acquireContentProviderClient(MediaStore.AUTHORITY)) {
+             final MediaProvider provider = ((MediaProvider) cpc.getLocalContentProvider());
+-            provider.attachVolume(volumeName);
++            provider.attachVolume(volumeName, /* validate */ true);
+ 
+             final ContentResolver resolver = ContentResolver.wrap(cpc.getLocalContentProvider());
+ 
+diff --git a/src/com/android/providers/media/fuse/ExternalStorageServiceImpl.java b/src/com/android/providers/media/fuse/ExternalStorageServiceImpl.java
+index bec00974..0c1cb945 100644
+--- a/src/com/android/providers/media/fuse/ExternalStorageServiceImpl.java
++++ b/src/com/android/providers/media/fuse/ExternalStorageServiceImpl.java
+@@ -76,7 +76,7 @@ public final class ExternalStorageServiceImpl extends ExternalStorageService {
+ 
+         switch(vol.getState()) {
+             case Environment.MEDIA_MOUNTED:
+-                mediaProvider.attachVolume(volumeName);
++                mediaProvider.attachVolume(volumeName, /* validate */ false);
+                 break;
+             case Environment.MEDIA_UNMOUNTED:
+             case Environment.MEDIA_EJECTING:
+-- 
+2.35.1
+

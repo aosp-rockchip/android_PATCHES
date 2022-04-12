@@ -1,0 +1,43 @@
+From f8ed3d2cd835481c85cda04b3e4f604ce1bf3767 Mon Sep 17 00:00:00 2001
+From: Dave Mankoff <mankoff@google.com>
+Date: Fri, 15 Nov 2019 17:24:12 -0500
+Subject: [PATCH 049/297] Fix swiping down on the notch.
+
+This restores a local copy of a state variable that was changed in
+http://ag/9466628. The state variable needs to be briefly cached for
+everything to work correctly.
+
+Bug: 144285356
+Test: manual
+Change-Id: Iafe2abe9cd8202955b51309a048e9fc4b52732f3
+(cherry picked from commit 978588f69b044d5b9a60235ee456daefc7dbdcbf)
+---
+ .../statusbar/phone/StatusBarWindowViewController.java        | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarWindowViewController.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarWindowViewController.java
+index c1328ec2a06..6d6a1fe4d0b 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarWindowViewController.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarWindowViewController.java
+@@ -188,6 +188,7 @@ public class StatusBarWindowViewController {
+                 boolean isUp = ev.getActionMasked() == MotionEvent.ACTION_UP;
+                 boolean isCancel = ev.getActionMasked() == MotionEvent.ACTION_CANCEL;
+ 
++                boolean expandingBelowNotch = mExpandingBelowNotch;
+                 if (isUp || isCancel) {
+                     mExpandingBelowNotch = false;
+                 }
+@@ -236,8 +237,9 @@ public class StatusBarWindowViewController {
+                 // regular view bounds.
+                 if (isDown && ev.getY() >= mView.getBottom()) {
+                     mExpandingBelowNotch = true;
++                    expandingBelowNotch = true;
+                 }
+-                if (mExpandingBelowNotch) {
++                if (expandingBelowNotch) {
+                     return mStatusBarView.dispatchTouchEvent(ev);
+                 }
+ 
+-- 
+2.35.1
+

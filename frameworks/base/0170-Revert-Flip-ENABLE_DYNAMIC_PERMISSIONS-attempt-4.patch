@@ -1,0 +1,32 @@
+From b4d341837877a6d07d7a297994f2e175865fa991 Mon Sep 17 00:00:00 2001
+From: Nandana Dutt <nandana@google.com>
+Date: Tue, 2 Jun 2020 09:29:02 +0000
+Subject: [PATCH 170/297] Revert "Flip ENABLE_DYNAMIC_PERMISSIONS, attempt #4."
+
+This reverts commit 14c5c4d9974af798bbad6a6d5a5530f1c1f62d95.
+
+Reason for revert: http://b/157970772
+BUG: 157970772
+
+Change-Id: I95a35d9b99a7cc6950c7f00e42d11fe07b472a44
+(cherry picked from commit 1b8e6766e2ca550fd943756f3955614ce136a09d)
+---
+ .../java/com/android/server/uri/UriGrantsManagerService.java    | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/uri/UriGrantsManagerService.java b/services/core/java/com/android/server/uri/UriGrantsManagerService.java
+index 3796c5fda41..9476e9260c7 100644
+--- a/services/core/java/com/android/server/uri/UriGrantsManagerService.java
++++ b/services/core/java/com/android/server/uri/UriGrantsManagerService.java
+@@ -114,7 +114,7 @@ public class UriGrantsManagerService extends IUriGrantsManager.Stub {
+     private static final String TAG = "UriGrantsManagerService";
+     // Maximum number of persisted Uri grants a package is allowed
+     private static final int MAX_PERSISTED_URI_GRANTS = 128;
+-    private static final boolean ENABLE_DYNAMIC_PERMISSIONS = true;
++    private static final boolean ENABLE_DYNAMIC_PERMISSIONS = false;
+ 
+     private final Object mLock = new Object();
+     private final H mH;
+-- 
+2.35.1
+

@@ -1,0 +1,23 @@
+From 864edc962ac42dd177efbcf9cfcfd38fc3c3ffe7 Mon Sep 17 00:00:00 2001
+From: Weixin Zhou <zwx@rock-chips.com>
+Date: Mon, 16 Nov 2020 17:15:48 +0800
+Subject: [PATCH 16/21] public.libraries.android.txt: add librknnhal_bridge.so
+
+Signed-off-by: Weixin Zhou <zwx@rock-chips.com>
+Change-Id: I8d37db28a40804c6886990379319cef34842e56e
+---
+ rootdir/etc/public.libraries.android.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/rootdir/etc/public.libraries.android.txt b/rootdir/etc/public.libraries.android.txt
+index 405f5a9fc..023a9c8d7 100644
+--- a/rootdir/etc/public.libraries.android.txt
++++ b/rootdir/etc/public.libraries.android.txt
+@@ -26,3 +26,4 @@ libsync.so
+ libvulkan.so
+ libwebviewchromium_plat_support.so
+ libz.so
++librknnhal_bridge.so nopreload
+-- 
+2.35.1
+

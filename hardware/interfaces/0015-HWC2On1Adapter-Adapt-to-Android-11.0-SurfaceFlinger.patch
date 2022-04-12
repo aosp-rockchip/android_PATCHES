@@ -1,0 +1,115 @@
+From ed02619ec7f2a2c0308e7fc05ab8224368c65d9a Mon Sep 17 00:00:00 2001
+From: Yu Qiaowei <cerf.yu@rock-chips.com>
+Date: Thu, 14 Jan 2021 14:42:33 +0800
+Subject: [PATCH 15/24] HWC2On1Adapter : Adapt to Android 11.0 SurfaceFlinger.
+
+Add mHasPrepare and mHasSet to mark display has been processed
+by HWC2On1Adapter.
+
+Signed-off-by: Yu Qiaowei <cerf.yu@rock-chips.com>
+Change-Id: I3217f8f0b2191bd7cbbc8e34b5551e1817b2d85b
+---
+ .../2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp | 17 +++++++++++------
+ .../include/hwc2on1adapter/HWC2On1Adapter.h     |  6 ++++++
+ 2 files changed, 17 insertions(+), 6 deletions(-)
+
+diff --git a/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp b/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+index 1b8238b48..4e3510a17 100755
+--- a/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
++++ b/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+@@ -528,7 +528,9 @@ HWC2On1Adapter::Display::Display(HWC2On1Adapter& device, HWC2::DisplayType type)
+     mHwc1LayerMap(),
+     mNumAvailableRects(0),
+     mNextAvailableRect(nullptr),
+-    mGeometryChanged(false)
++    mGeometryChanged(false),
++    mHasPrepare(false),
++    mHasSet(false)
+     {}
+ 
+ Error HWC2On1Adapter::Display::acceptChanges() {
+@@ -786,8 +788,7 @@ Error HWC2On1Adapter::Display::getType(int32_t* outType) {
+ 
+ Error HWC2On1Adapter::Display::present(int32_t* outRetireFence) {
+     std::unique_lock<std::recursive_mutex> lock(mStateMutex);
+-
+-    if (mChanges) {
++    if (mChanges && !mHasSet) {
+         Error error = mDevice.setAllDisplays();
+         if (error != Error::None) {
+             ALOGE("[%" PRIu64 "] present: setAllDisplaysFailed (%s)", mId,
+@@ -967,7 +968,6 @@ Error HWC2On1Adapter::Display::setVsyncEnabled(Vsync enable) {
+             mHwc1Id, HWC_EVENT_VSYNC, enable == Vsync::Enable);
+     ALOGE_IF(error != 0, "setVsyncEnabled: Failed to set vsync on HWC1 (%d)",
+             error);
+-
+     mVsyncEnabled = enable;
+     return Error::None;
+ }
+@@ -976,11 +976,11 @@ Error HWC2On1Adapter::Display::validate(uint32_t* outNumTypes,
+         uint32_t* outNumRequests) {
+     std::unique_lock<std::recursive_mutex> lock(mStateMutex);
+ 
+-    if (!mChanges) {
++    if (!mChanges && !mHasPrepare) {
+         if (!mDevice.prepareAllDisplays()) {
+             return Error::BadDisplay;
+         }
+-    } else {
++    } else if(!mHasPrepare){
+         ALOGE("Validate was called more than once!");
+     }
+ 
+@@ -1278,6 +1278,7 @@ Error HWC2On1Adapter::Display::set(hwc_display_contents_1& hwcContents) {
+ 
+     if (!mChanges || (mChanges->getNumTypes() > 0)) {
+         ALOGE("[%" PRIu64 "] set failed: not validated", mId);
++
+         return Error::NotValidated;
+     }
+ 
+@@ -2401,6 +2402,8 @@ bool HWC2On1Adapter::prepareAllDisplays() {
+         auto displayId = mHwc1DisplayMap[hwc1Id];
+         auto& display = mDisplays[displayId];
+         display->generateChanges();
++        display->markHasPrepare();
++        display->resetHasSet();
+     }
+ 
+     return true;
+@@ -2525,6 +2528,8 @@ Error HWC2On1Adapter::setAllDisplays() {
+                 retireFenceFd, hwc1Id);
+         display->addRetireFence(mHwc1Contents[hwc1Id]->retireFenceFd);
+         display->addReleaseFences(*mHwc1Contents[hwc1Id]);
++        display->resetHasPrepare();
++        display->markHasSet();
+     }
+ 
+     return Error::None;
+diff --git a/graphics/composer/2.1/utils/hwc2on1adapter/include/hwc2on1adapter/HWC2On1Adapter.h b/graphics/composer/2.1/utils/hwc2on1adapter/include/hwc2on1adapter/HWC2On1Adapter.h
+index 3ae8f7f6c..27d078cf0 100755
+--- a/graphics/composer/2.1/utils/hwc2on1adapter/include/hwc2on1adapter/HWC2On1Adapter.h
++++ b/graphics/composer/2.1/utils/hwc2on1adapter/include/hwc2on1adapter/HWC2On1Adapter.h
+@@ -279,6 +279,10 @@ private:
+ 
+             void markGeometryChanged() { mGeometryChanged = true; }
+             void resetGeometryMarker() { mGeometryChanged = false;}
++            void markHasPrepare() { mHasPrepare = true; }
++            void resetHasPrepare() { mHasPrepare = false;}
++            void markHasSet() { mHasSet = true; }
++            void resetHasSet() { mHasSet = false;}
+         private:
+             class Config {
+                 public:
+@@ -459,6 +463,8 @@ private:
+             // updated with anything other than a buffer since last call to
+             // Display::set()
+             bool mGeometryChanged;
++            bool mHasPrepare;
++            bool mHasSet;
+     };
+ 
+     // Utility template calling a Display object method directly based on the
+-- 
+2.35.1
+

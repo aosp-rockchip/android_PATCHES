@@ -1,0 +1,64 @@
+From a63b74c3c220eb741ede979d0e238fdeb1f3eca5 Mon Sep 17 00:00:00 2001
+From: Kai Shi <kaishi@google.com>
+Date: Wed, 9 Sep 2020 21:52:06 -0700
+Subject: [PATCH 09/13] Unit test for the new 6GHz channelization
+
+Move up 6GHz band start and end frequencies by 10MHz per IEEE 802.11ax
+draft 7.0 Annex E Table E-4. Add operating class 135 and 136.
+
+Cherry-picking unit test changes to rvc-qpr-dev.
+
+Bug: 167426957
+Test: atest com.android.server.wifi
+Test: manual test with 6GHz capable STA and AP
+Change-Id: If0cb3dda1412f8ca3b3e8d7a3b6912f5ef15f6f5
+Merged-In: I2c9eb3d704d68b37685363c230d67758c31e17a1
+---
+ .../src/com/android/server/wifi/util/ApConfigUtilTest.java  | 6 +++---
+ .../server/wifi/util/InformationElementUtilTest.java        | 6 +++---
+ 2 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/tests/wifitests/src/com/android/server/wifi/util/ApConfigUtilTest.java b/tests/wifitests/src/com/android/server/wifi/util/ApConfigUtilTest.java
+index 16c915729..df85aa996 100644
+--- a/tests/wifitests/src/com/android/server/wifi/util/ApConfigUtilTest.java
++++ b/tests/wifitests/src/com/android/server/wifi/util/ApConfigUtilTest.java
+@@ -112,9 +112,9 @@ public class ApConfigUtilTest extends WifiBaseTest {
+             5845, SoftApConfiguration.BAND_5GHZ, 169,
+             5865, SoftApConfiguration.BAND_5GHZ, 173,
+             /* Now some 6GHz channels */
+-            5945, SoftApConfiguration.BAND_6GHZ, 1,
+-            5960, SoftApConfiguration.BAND_6GHZ, 4,
+-            6100, SoftApConfiguration.BAND_6GHZ, 32
++            5955, SoftApConfiguration.BAND_6GHZ, 1,
++            5970, SoftApConfiguration.BAND_6GHZ, 4,
++            6110, SoftApConfiguration.BAND_6GHZ, 32
+     };
+ 
+     private static final int[] EMPTY_CHANNEL_LIST = {};
+diff --git a/tests/wifitests/src/com/android/server/wifi/util/InformationElementUtilTest.java b/tests/wifitests/src/com/android/server/wifi/util/InformationElementUtilTest.java
+index 77c99a9d1..82f0bc6f6 100644
+--- a/tests/wifitests/src/com/android/server/wifi/util/InformationElementUtilTest.java
++++ b/tests/wifitests/src/com/android/server/wifi/util/InformationElementUtilTest.java
+@@ -1367,7 +1367,7 @@ public class InformationElementUtilTest extends WifiBaseTest {
+         assertTrue(heOperation.is6GhzInfoPresent());
+         assertFalse(heOperation.isVhtInfoPresent());
+         assertEquals(ScanResult.CHANNEL_WIDTH_80MHZ, heOperation.getChannelWidth());
+-        assertEquals(6040, heOperation.getCenterFreq0());
++        assertEquals(6050, heOperation.getCenterFreq0());
+         assertEquals(0, heOperation.getCenterFreq1());
+     }
+ 
+@@ -1412,8 +1412,8 @@ public class InformationElementUtilTest extends WifiBaseTest {
+         assertTrue(heOperation.is6GhzInfoPresent());
+         assertFalse(heOperation.isVhtInfoPresent());
+         assertEquals(ScanResult.CHANNEL_WIDTH_160MHZ, heOperation.getChannelWidth());
+-        assertEquals(6040, heOperation.getCenterFreq0());
+-        assertEquals(6080, heOperation.getCenterFreq1());
++        assertEquals(6050, heOperation.getCenterFreq0());
++        assertEquals(6090, heOperation.getCenterFreq1());
+     }
+ 
+     /**
+-- 
+2.35.1
+

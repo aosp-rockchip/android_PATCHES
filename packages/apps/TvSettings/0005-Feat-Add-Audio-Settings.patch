@@ -1,0 +1,1831 @@
+From 9035d701c7e4d3b9ac0ab11901ff728d40cf980b Mon Sep 17 00:00:00 2001
+From: wengtao <tao.weng@rock-chips.com>
+Date: Fri, 15 Nov 2019 11:27:16 +0800
+Subject: [PATCH 5/7] Feat: Add Audio Settings
+
+Change-Id: Ib711b6b9bf678ef6bb1b4292044e3e60a3d1e4f1
+Signed-off-by: wengtao <tao.weng@rock-chips.com>
+---
+ Settings/res/values-zh-rCN/strings.xml        | 213 ++++++------
+ Settings/res/values/arrays.xml                | 140 +++++++-
+ Settings/res/values/strings.xml               | 243 +++++++++++++-
+ Settings/res/xml/bitstream.xml                |  44 +++
+ Settings/res/xml/device.xml                   |   5 +
+ Settings/res/xml/sound.xml                    |  54 +++
+ .../PreferenceControllerFragment.java         |   6 +
+ .../device/sound/BitStreamActivity.java       |  46 +++
+ .../device/sound/BitStreamFragment.java       | 309 ++++++++++++++++++
+ .../settings/device/sound/SoundActivity.java  |  34 ++
+ .../SoundFormatPreferenceController.java      | 147 +++++++++
+ ...ndFormatPreferenceControllerBitstream.java | 158 +++++++++
+ .../settings/device/sound/SoundFragment.java  | 264 +++++++++++++++
+ 13 files changed, 1547 insertions(+), 116 deletions(-)
+ create mode 100644 Settings/res/xml/bitstream.xml
+ create mode 100644 Settings/res/xml/sound.xml
+ create mode 100644 Settings/src/com/android/tv/settings/device/sound/BitStreamActivity.java
+ create mode 100644 Settings/src/com/android/tv/settings/device/sound/BitStreamFragment.java
+ create mode 100644 Settings/src/com/android/tv/settings/device/sound/SoundActivity.java
+ create mode 100644 Settings/src/com/android/tv/settings/device/sound/SoundFormatPreferenceController.java
+ create mode 100644 Settings/src/com/android/tv/settings/device/sound/SoundFormatPreferenceControllerBitstream.java
+ create mode 100644 Settings/src/com/android/tv/settings/device/sound/SoundFragment.java
+
+diff --git a/Settings/res/values-zh-rCN/strings.xml b/Settings/res/values-zh-rCN/strings.xml
+index 746e0634..3e39bc05 100755
+--- a/Settings/res/values-zh-rCN/strings.xml
++++ b/Settings/res/values-zh-rCN/strings.xml
+@@ -68,115 +68,109 @@
+     <skip />
+     <string name="sync_one_time_sync" msgid="1665961083810584134">"立即同步<xliff:g id="LAST_SYNC_TIME">
+ %1$s</xliff:g>"</string>
+-    <string name="sync_failed" msgid="2998289556481804047">"同步失败"</string>
+-    <string name="sync_active" msgid="1621239982176888680">"正在同步"</string>
+-    <string name="connectivity_wifi" msgid="1138689464484009184">"WLAN"</string>
+-    <string name="connectivity_ethernet" msgid="4270588618633681766">"有线网络"</string>
+-    <string name="connectivity_summary_ethernet_connected" msgid="2612843587731520061">"已连接至以太网"</string>
+-    <string name="connectivity_summary_no_network_connected" msgid="6111160695454212460">"未连接任何网络"</string>
+-    <string name="connectivity_summary_wifi_disabled" msgid="7819225159680467324">"WLAN 已关闭"</string>
+-    <string name="wifi_setting_always_scan" msgid="431846292711998602">"随时都可扫描"</string>
+-    <string name="wifi_setting_always_scan_context" msgid="1092998659666221222">"允许 Google 的位置信息服务和其他应用扫描网络（即使 WLAN 已关闭）"</string>
+-    <string name="wifi_setting_enable_wifi" msgid="5276730445393952969">"WLAN"</string>
+-    <string name="connectivity_hint_message" msgid="5638304246522516583">"连接到网络"</string>
+-    <string name="apps_recently_used_category_title" msgid="7877660412428813933">"最近打开的应用"</string>
+-    <string name="apps_see_all_apps" msgid="2002886135933443688">"查看所有应用"</string>
+-    <string name="apps_permissions_category_title" msgid="8099660060701465267">"权限"</string>
+-    <string name="all_apps_title" msgid="3717294436135280133">"所有应用"</string>
+-    <string name="all_apps_show_system_apps" msgid="1260688031005374302">"显示系统应用"</string>
+-    <string name="all_apps_installed" msgid="8217778476185598971">"已安装的应用"</string>
+-    <string name="all_apps_other" msgid="4420174882983813158">"系统应用"</string>
+-    <string name="all_apps_disabled" msgid="2776041242863791053">"已停用的应用"</string>
+-    <string name="device_daydream" msgid="2631191946958113220">"屏保"</string>
+-    <string name="device_display" msgid="244634591698925025">"显示"</string>
+-    <string name="device_display_sound" msgid="7399153506435649193">"显示和声音"</string>
+-    <string name="device_sound" msgid="8616320533559404963">"声音"</string>
+-    <string name="device_surround_sound" msgid="1889436002598316470">"环绕声"</string>
+-    <string name="device_sound_effects" msgid="2000295001122684957">"系统声音"</string>
+-    <string name="device_apps" msgid="2134756632245008919">"应用"</string>
+-    <string name="device_storage" msgid="8540243547121791073">"存储空间"</string>
+-    <string name="device_reset" msgid="6115282675800077867">"恢复出厂设置"</string>
+-    <string name="device_backup_restore" msgid="4552158624969018687">"备份和还原"</string>
+-    <string name="device_factory_reset" msgid="1110189450013225971">"恢复出厂设置"</string>
+-    <string name="device_calibration" msgid="2907914144048739705">"校准"</string>
+-    <string name="device_energy_saver" msgid="1105023232841036991">"节能模式"</string>
+-    <string name="surround_sound_select_formats" msgid="6070283650131226239">"选择格式"</string>
+-    <string name="surround_sound_category_title" msgid="5688539514178173911">"环绕声"</string>
+-    <string name="surround_sound_format_ac3" msgid="4759143098751306492">"Dolby Digital"</string>
+-    <string name="surround_sound_format_e_ac3" msgid="6923129088903887242">"Dolby Digital Plus"</string>
+-    <string name="surround_sound_format_dts" msgid="8331816247117135587">"DTS"</string>
+-    <string name="surround_sound_format_dts_hd" msgid="4268947520371740146">"DTS-HD"</string>
+-    <string name="surround_sound_format_iec61937" msgid="9035476171988404170">"IEC61937"</string>
+-    <string name="surround_sound_auto_info" msgid="852202989256054406">"注意：如果您的设备未正确报告其支持的格式，“自动”选项可能无法正常使用。"</string>
+-    <string name="surround_sound_auto_summary" msgid="5559552398163510156">"自动：使用设备报告的支持格式（建议）"</string>
+-    <string name="surround_sound_none_summary" msgid="2791597033750908940">"无：一律不使用环绕声"</string>
+-    <string name="surround_sound_manual_summary" msgid="8945926149168263067">"手动：选择要使用的格式"</string>
+-    <string name="display_category_title" msgid="247804007525046312">"显示"</string>
+-    <string name="advanced_display_settings_title" msgid="6293280819870140631">"高级显示设置"</string>
+-    <string name="advanced_sound_settings_title" msgid="319921303039469139">"高级声音设置"</string>
+-    <string name="game_mode_title" msgid="7280816243531315755">"允许游戏模式"</string>
+-    <string name="device_storage_clear_cache_title" msgid="14370154552302965">"要清除缓存的数据吗？"</string>
+-    <string name="device_storage_clear_cache_message" msgid="4352802738505831032">"此操作会清除所有应用的缓存数据。"</string>
+-    <string name="accessories_add" msgid="413764175035531452">"添加配件"</string>
+-    <string name="accessory_state_pairing" msgid="15908899628218319">"正在配对…"</string>
+-    <string name="accessory_state_connecting" msgid="6560241025917621212">"正在连接…"</string>
+-    <string name="accessory_state_error" msgid="8353621828816824428">"无法配对"</string>
+-    <string name="accessory_state_canceled" msgid="4794837663402063770">"已取消"</string>
+-    <string name="accessory_state_paired" msgid="3296695242499532000">"已配对"</string>
+-    <string name="accessory_options" msgid="774592782382321681">"配件"</string>
+-    <string name="accessory_unpair" msgid="2473411128146068804">"取消配对"</string>
+-    <string name="accessory_battery" msgid="2283700366184703548">"剩余电量：<xliff:g id="PERCENTAGE">%1$d</xliff:g>%%"</string>
+-    <string name="accessory_unpairing" msgid="2529195578082286563">"正在取消与设备的配对…"</string>
+-    <string name="accessory_connected" msgid="5229574480869175180">"已连接"</string>
+-    <string name="accessory_change_name" msgid="6493717176878500683">"更改名称"</string>
+-    <string name="accessory_change_name_title" msgid="451188562035392238">"为此配件输入新的名称"</string>
+-    <string name="accessories_add_title" msgid="7704824893011194433">"正在搜索配件…"</string>
+-    <string name="accessories_add_bluetooth_inst" msgid="5109947637581187896">"在配对您的蓝牙设备之前，请确保它们处于配对模式"</string>
+-    <string name="accessories_autopair_msg" msgid="2501824457418285019">"发现了一部设备，将会在<xliff:g id="COUNTDOWN">%1$s</xliff:g>秒后自动配对"</string>
+-    <string name="error_action_not_supported" msgid="5377532621386080296">"此设备不支持执行此操作"</string>
+-    <string name="bluetooth_pairing_request" msgid="6120176967230348092">"蓝牙配对请求"</string>
+-    <string name="bluetooth_confirm_passkey_msg" msgid="7397401633869153520">"要与名称为“&lt;b&gt;<xliff:g id="DEVICE_NAME">%1$s</xliff:g>&lt;/b&gt;”的设备配对，请确保该设备上显示以下配对密钥：&lt;b&gt;<xliff:g id="PASSKEY">%2$s</xliff:g>&lt;/b&gt;"</string>
+-    <string name="bluetooth_incoming_pairing_msg" msgid="8587851808387685613">"以下设备发出配对请求：&lt;b&gt;<xliff:g id="DEVICE_NAME">%1$s</xliff:g>&lt;/b&gt;&lt;br&gt;要与此设备配对吗？"</string>
+-    <string name="bluetooth_display_passkey_pin_msg" msgid="6934651048757228432">"要与名称为“&lt;b&gt;<xliff:g id="DEVICE_NAME">%1$s</xliff:g>&lt;/b&gt;”的设备配对，&lt;br&gt;请在该设备上输入：&lt;b&gt;<xliff:g id="PASSKEY">%2$s</xliff:g>&lt;/b&gt;，然后按回车键。"</string>
+-    <string name="bluetooth_enter_pin_msg" msgid="8905524093007140634">"要与名称为“&lt;b&gt;<xliff:g id="DEVICE_NAME">%1$s</xliff:g>&lt;/b&gt;”的设备配对，&lt;br&gt;请输入该设备所需的 PIN 码："</string>
+-    <string name="bluetooth_enter_passkey_msg" msgid="889584097447402492">"要与名称为“&lt;b&gt;<xliff:g id="DEVICE_NAME">%1$s</xliff:g>&lt;/b&gt;”的设备配对，&lt;br&gt;请输入该设备所需的配对密钥："</string>
+-    <string name="bluetooth_pin_values_hint" msgid="6237371515577342950">"通常为0000或1234"</string>
+-    <string name="bluetooth_pair" msgid="2410285813728786067">"配对"</string>
+-    <string name="bluetooth_cancel" msgid="4415185529332987034">"取消"</string>
+-    <string name="send_feedback" msgid="936698637869795473">"发送反馈"</string>
+-    <string name="launch_help" msgid="2607478763131952469">"帮助中心"</string>
+-    <string name="system_cast" msgid="6081391679828510058">"Google Cast"</string>
+-    <string name="system_date_time" msgid="6938588387002473344">"日期和时间"</string>
+-    <string name="system_language" msgid="5516099388471974346">"语言"</string>
+-    <string name="system_keyboard" msgid="1514460705385401872">"键盘"</string>
+-    <string name="system_keyboard_autofill" msgid="8530944165814838255">"键盘和自动填充"</string>
+-    <string name="system_autofill" msgid="6983989261108020046">"自动填充"</string>
+-    <string name="system_home" msgid="2149349845791104094">"主屏幕"</string>
+-    <string name="system_search" msgid="3170169128257586925">"搜索"</string>
+-    <string name="system_google" msgid="945985164023885276">"Google"</string>
+-    <string name="system_security" msgid="5053021134921182612">"安全和限制"</string>
+-    <string name="system_speech" msgid="8779582280374089518">"语音"</string>
+-    <string name="system_inputs" msgid="5552840337357572096">"输入端口"</string>
+-    <string name="system_inputs_devices" msgid="8423782334271632810">"输入和设备"</string>
+-    <string name="system_home_theater_control" msgid="6228949628173590310">"家庭影院控件"</string>
+-    <string name="system_accessibility" msgid="3081009195560501010">"无障碍"</string>
+-    <string name="system_developer_options" msgid="8480844257066475479">"开发者选项"</string>
+-    <string name="accessibility_none" msgid="6355646833528306702">"无"</string>
+-    <string name="system_diagnostic" msgid="1654842813331919958">"使用情况和诊断信息"</string>
+-    <string name="tutorials" msgid="7880770425872110455">"教程"</string>
+-    <string name="about_system_update" msgid="7421264399111367755">"系统更新"</string>
+-    <string name="about_preference" msgid="9112690446998150670">"关于"</string>
+-    <string name="device_name" msgid="566626587332817733">"设备名称"</string>
+-    <string name="restart_button_label" msgid="2124590135040611899">"重新启动"</string>
+-    <string name="about_legal_info" msgid="2148797328415559733">"法律信息"</string>
+-    <string name="about_legal_license" msgid="4801707286720681261">"开放源代码许可"</string>
+-    <string name="about_terms_of_service" msgid="8514826341101557623">"Google 法律信息"</string>
+-    <string name="about_license_activity_unavailable" msgid="4559187037375581674">"无法获取许可数据"</string>
+-    <string name="about_model" msgid="9164284529291439296">"型号"</string>
+-    <string name="about_version" msgid="7800676128792880991">"版本"</string>
+-    <string name="about_serial" msgid="3432319328808745459">"序列号"</string>
+-    <string name="about_build" msgid="1139171613038225768">"内部版本号"</string>
+-    <plurals name="show_dev_countdown" formatted="false" msgid="523455736684670250">
++    <string name="sync_failed" msgid="5514824149810480551">"同步失败"</string>
++    <string name="sync_active" msgid="6891115263481154378">"正在同步"</string>
++    <string name="connectivity_wifi" msgid="489974791299647708">"WLAN"</string>
++    <string name="connectivity_ethernet" msgid="2182407318634700320">"有线网络"</string>
++    <string name="connectivity_summary_ethernet_connected" msgid="2015335020646410586">"已连接至以太网"</string>
++    <string name="connectivity_summary_no_network_connected" msgid="5187378791046457432">"未连接任何网络"</string>
++    <string name="connectivity_summary_wifi_disabled" msgid="6904637079319724455">"WLAN 已关闭"</string>
++    <string name="wifi_setting_always_scan" msgid="8883713018717323351">"随时都可扫描"</string>
++    <string name="wifi_setting_always_scan_context" msgid="398651204440349752">"允许 Google 的位置信息服务和其他应用扫描网络（即使 WLAN 已关闭）"</string>
++    <string name="wifi_setting_enable_wifi" msgid="9214100840401870408">"WLAN"</string>
++    <string name="connectivity_hint_message" msgid="1314202316675864203">"连接到网络"</string>
++    <string name="apps_recently_used_category_title" msgid="5254492409677346900">"最近打开的应用"</string>
++    <string name="apps_see_all_apps" msgid="5546179088197139203">"查看所有应用"</string>
++    <string name="apps_permissions_category_title" msgid="4476837368840442313">"权限"</string>
++    <string name="all_apps_title" msgid="5330174847732759402">"所有应用"</string>
++    <string name="all_apps_show_system_apps" msgid="4648447904721171884">"显示系统应用"</string>
++    <string name="all_apps_installed" msgid="54800379871111518">"已安装的应用"</string>
++    <string name="all_apps_other" msgid="8297097642727891911">"系统应用"</string>
++    <string name="all_apps_disabled" msgid="2016067533586741345">"已停用的应用"</string>
++    <string name="device_daydream" msgid="3354366974209179614">"屏保"</string>
++    <string name="device_display" msgid="101455384386372747">"显示"</string>
++    <string name="device_sound" msgid="9214182566287657481">"声音"</string>
++    <string name="device_surround_sound" msgid="6272196310566546860">"环绕声"</string>
++    <string name="device_sound_effects" msgid="7793281745920228622">"系统声音"</string>
++    <string name="device_sound_bootsafe">开机音量保护</string>
++    <string name="device_bit_stream">解码与源码</string>
++    <string name="device_apps" msgid="1971794537385509294">"应用"</string>
++    <string name="device_storage" msgid="5536683600091277826">"存储空间"</string>
++    <string name="device_reset" msgid="1885840356489458285">"重置"</string>
++    <string name="device_backup_restore" msgid="5627523987587511884">"备份和还原"</string>
++    <string name="device_factory_reset" msgid="6537106927211842545">"恢复出厂设置"</string>
++    <string name="device_calibration" msgid="8632962533376605191">"校准"</string>
++    <string name="surround_sound_select_formats" msgid="6329868407147678259">"选择格式"</string>
++    <string name="surround_sound_category_title" msgid="1331285587464316534">"环绕声"</string>
++    <string name="surround_sound_format_ac3" msgid="1724977459494885356">"Dolby Digital"</string>
++    <string name="surround_sound_format_e_ac3" msgid="4307389628668099135">"Dolby Digital Plus"</string>
++    <string name="surround_sound_format_dts" msgid="1730946367570023539">"DTS"</string>
++    <string name="surround_sound_format_dts_hd" msgid="3324695734675414927">"DTS-HD"</string>
++    <string name="surround_sound_format_iec61937" msgid="1610948713240264858">"IEC61937"</string>
++    <string name="surround_sound_auto_info" msgid="4957977219847012992">"注意：如果您的设备未正确报告其支持的格式，“自动”选项可能无法正常使用。"</string>
++    <string name="surround_sound_auto_summary" msgid="175387511376834034">"自动：使用设备报告的支持格式（建议）"</string>
++    <string name="surround_sound_none_summary" msgid="4295042972785042496">"无：一律不使用环绕声"</string>
++    <string name="surround_sound_manual_summary" msgid="9208540024024014501">"手动：选择要使用的格式"</string>
++    <string name="device_storage_clear_cache_title" msgid="3365635664766067643">"要清除缓存的数据吗？"</string>
++    <string name="device_storage_clear_cache_message" msgid="6495570470005696210">"此操作会清除所有应用的缓存数据。"</string>
++    <string name="accessories_add" msgid="1347802656349218830">"添加配件"</string>
++    <string name="accessory_state_pairing" msgid="7501989679637780963">"正在配对…"</string>
++    <string name="accessory_state_connecting" msgid="8777884957977608529">"正在连接…"</string>
++    <string name="accessory_state_error" msgid="4529815543328841909">"无法配对"</string>
++    <string name="accessory_state_canceled" msgid="4419328837733619447">"已取消"</string>
++    <string name="accessory_state_paired" msgid="1959238931866401476">"已配对"</string>
++    <string name="accessory_options" msgid="4799658564005710297">"配件"</string>
++    <string name="accessory_unpair" msgid="8242725516604465355">"取消配对"</string>
++    <string name="accessory_battery" msgid="7021788232835772126">"剩余电量：<xliff:g id="PERCENTAGE">%1$d</xliff:g>%%"</string>
++    <string name="accessory_unpairing" msgid="7568241162181184667">"正在取消与设备的配对…"</string>
++    <string name="accessory_connected" msgid="2156489304110030393">"已连接"</string>
++    <string name="accessory_change_name" msgid="8958916008739792785">"更改名称"</string>
++    <string name="accessory_change_name_title" msgid="4630819456923061184">"为此配件输入新的名称"</string>
++    <string name="accessories_add_title" msgid="6940361421891873321">"正在搜索配件…"</string>
++    <string name="accessories_add_bluetooth_inst" msgid="5892952745770640383">"在配对您的蓝牙设备之前，请确保它们处于配对模式"</string>
++    <string name="accessories_autopair_msg" msgid="8618829246837821752">"发现了一部设备，将会在<xliff:g id="COUNTDOWN">%1$s</xliff:g>秒后自动配对"</string>
++    <string name="error_action_not_supported" msgid="300552308104354666">"此设备不支持执行此操作"</string>
++    <string name="bluetooth_pairing_request" msgid="4523088117471287665">"蓝牙配对请求"</string>
++    <string name="bluetooth_confirm_passkey_msg" msgid="7031117992819855434">"要与名称为“&lt;b&gt;<xliff:g id="DEVICE_NAME">%1$s</xliff:g>&lt;/b&gt;”的设备配对，请确保该设备上显示以下配对密钥：&lt;b&gt;<xliff:g id="PASSKEY">%2$s</xliff:g>&lt;/b&gt;"</string>
++    <string name="bluetooth_incoming_pairing_msg" msgid="8234127565393932499">"以下设备发出配对请求：&lt;b&gt;<xliff:g id="DEVICE_NAME">%1$s</xliff:g>&lt;/b&gt;&lt;br&gt;要与此设备配对吗？"</string>
++    <string name="bluetooth_display_passkey_pin_msg" msgid="8951451728250058901">"要与名称为“&lt;b&gt;<xliff:g id="DEVICE_NAME">%1$s</xliff:g>&lt;/b&gt;”的设备配对，&lt;br&gt;请在该设备上输入：&lt;b&gt;<xliff:g id="PASSKEY">%2$s</xliff:g>&lt;/b&gt;，然后按回车键。"</string>
++    <string name="bluetooth_enter_pin_msg" msgid="7443458826667686394">"要与名称为“&lt;b&gt;<xliff:g id="DEVICE_NAME">%1$s</xliff:g>&lt;/b&gt;”的设备配对，&lt;br&gt;请输入该设备所需的 PIN 码："</string>
++    <string name="bluetooth_enter_passkey_msg" msgid="7980787196089653577">"要与名称为“&lt;b&gt;<xliff:g id="DEVICE_NAME">%1$s</xliff:g>&lt;/b&gt;”的设备配对，&lt;br&gt;请输入该设备所需的配对密钥："</string>
++    <string name="bluetooth_pin_values_hint" msgid="2319900367581543300">"通常为0000或1234"</string>
++    <string name="bluetooth_pair" msgid="7836818609620478122">"配对"</string>
++    <string name="bluetooth_cancel" msgid="4152153558528588479">"取消"</string>
++    <string name="system_cast" msgid="6421567823845207156">"Google Cast"</string>
++    <string name="system_date_time" msgid="8898457978560618950">"日期和时间"</string>
++    <string name="system_language" msgid="2337138146114609247">"语言"</string>
++    <string name="system_keyboard" msgid="7680159735294672514">"键盘"</string>
++    <string name="system_keyboard_autofill" msgid="5787948036400896834">"键盘和自动填充"</string>
++    <string name="system_autofill" msgid="8647914463541617409">"自动填充"</string>
++    <string name="system_home" msgid="2858989138172296012">"主屏幕"</string>
++    <string name="system_search" msgid="2837264654143247611">"搜索"</string>
++    <string name="system_google" msgid="8560404305602209622">"Google"</string>
++    <string name="system_security" msgid="8230080273993484407">"安全和限制"</string>
++    <string name="system_speech" msgid="8128688499687306982">"语音"</string>
++    <string name="system_inputs" msgid="2413907183796651102">"输入端口"</string>
++    <string name="system_inputs_devices" msgid="8700905419497948327">"输入和设备"</string>
++    <string name="system_home_theater_control" msgid="2053198603790384368">"家庭影院控件"</string>
++    <string name="system_accessibility" msgid="6215431399759498005">"无障碍"</string>
++    <string name="system_developer_options" msgid="3237985523474863638">"开发者选项"</string>
++    <string name="accessibility_none" msgid="3441648940134070004">"无"</string>
++    <string name="system_diagnostic" msgid="7269638365915225701">"使用情况和诊断信息"</string>
++    <string name="tutorials" msgid="3731493987558093244">"教程"</string>
++    <string name="about_system_update" msgid="7282772247661356586">"系统更新"</string>
++    <string name="about_preference" msgid="4131396784531360434">"关于"</string>
++    <string name="device_name" msgid="2670488158531273028">"设备名称"</string>
++    <string name="restart_button_label" msgid="8153112858638352970">"重新启动"</string>
++    <string name="about_legal_info" msgid="8511870741437307531">"法律信息"</string>
++    <string name="about_legal_license" msgid="7867205982113209033">"开放源代码许可"</string>
++    <string name="about_terms_of_service" msgid="7743088207977334874">"Google 法律信息"</string>
++    <string name="about_license_activity_unavailable" msgid="8522566562321418498">"无法获取许可数据"</string>
++    <string name="about_model" msgid="6625269442206323995">"型号"</string>
++    <string name="about_version" msgid="1177287676732287266">"版本"</string>
++    <string name="about_serial" msgid="2723560490027171187">"序列号"</string>
++    <string name="about_build" msgid="9148789767199785676">"内部版本号"</string>
++    <plurals name="show_dev_countdown" formatted="false" msgid="5361765297521871966">
+       <item quantity="other">现在只需再执行 <xliff:g id="STEP_COUNT_1">%1$d</xliff:g> 步操作即可进入开发者模式</item>
+       <item quantity="one">现在只需再执行 <xliff:g id="STEP_COUNT_0">%1$d</xliff:g> 步操作即可进入开发者模式</item>
+     </plurals>
+@@ -837,6 +831,7 @@
+     <string name="max_brightness">最大亮度</string>
+     <string name="min_brightness">最小亮度</string>
+     <string name="ok">确定</string>
++    <string name="color">色深及颜色空间</string>
+     <string name="confirm_dialog_title">保存确认</string>
+     <string name="confirm_dialog_message">将会取消</string>
+     <string name="audio_device">音频设备</string>
+diff --git a/Settings/res/values/arrays.xml b/Settings/res/values/arrays.xml
+index af908cc7..207142e4 100755
+--- a/Settings/res/values/arrays.xml
++++ b/Settings/res/values/arrays.xml
+@@ -303,14 +303,146 @@
+     </string-array>
+ 
+      <string-array name="audio_device_list">
+-        <item>Default Output</item>
+-        <item>Spdif Passthrough</item>
++	<item>Decode</item>
+         <item>HDMI Bitstream</item>
++        <item>Spdif Passthrough</item>
+     </string-array>
+     <string-array name="audio_device_list_values">
+-        <item>default</item>
+-        <item>spdif</item>
++	<item>decode</item>
+         <item>hdmi</item>
++        <item>spdif</item>
++    </string-array>
++
++    <string-array name="audio_device_hdmi_entries">
++        <item>Auto</item>
++        <item>Manual</item>
++    </string-array>
++
++    <string-array name="audio_device_hdmi">
++        <item>@string/surround_sound_auto_summary</item>
++        <item>@string/surround_sound_manual_summary</item>
++    </string-array>
++
++    <string-array name="decode_formats">
++        <item>MP1</item>
++        <item>MP2</item>
++        <item>MP3</item>
++        <item>AAC</item>
++        <item>APE</item>
++        <item>WMALOSSLESS</item>
++        <item>WMAPRO</item>
++        <item>WMAV1</item>
++        <item>WMAV2</item>
++        <item>ADPCM_IMA_QT</item>
++        <item>VORBIS</item>
++        <item>PCM_S16LE</item>
++        <item>PCM_S24LE</item>
++        <item>FLAC</item>
++    </string-array>
++
++    <string-array name="hdmi_formats">
++      <item>AC3</item>
++      <item>DTS</item>
++      <item>EAC3</item>
++      <item>DTSHD</item>
++      <item>TRUEHD</item>
++    </string-array>
++
++    <string-array name="spdif_formats">
++      <item>AC3</item>
++      <item>DTS</item>
++    </string-array>
++
++    <string-array name="surround_sound_entries_spdif" translatable="false">
++        <item>@string/surround_sound_none_summary</item>
++        <item>@string/surround_sound_manual_summary</item>
++    </string-array>
++
++
++    <string-array name="surround_sound_entry_values_spdif" translatable="false">
++        <item>never</item>
++        <item>manual</item>
++    </string-array>
++
++    <!-- vpn interface -->
++    <string-array name="vpn_types" translatable="false">
++        <item>PPTP</item>
++        <item>L2TP/IPSec PSK</item>
++        <item>L2TP/IPSec RSA</item>
++        <item>IPSec Xauth PSK</item>
++        <item>IPSec Xauth RSA</item>
++        <item>IPSec Hybrid RSA</item>
++    </string-array>
++    <string-array name="vpn_states">
++        <!-- Status message when VPN is disconnected. -->
++        <item>Disconnected</item>
++        <!-- Status message when VPN is initializing. -->
++        <item>Initializing\u2026</item>
++        <!-- Status message when VPN is connecting. -->
++        <item>Connecting\u2026</item>
++        <!-- Status message when VPN is connected. -->
++        <item>Connected</item>
++        <!-- Status message when VPN is timeout. -->
++        <item>Timeout</item>
++        <!-- Status message when VPN is failed. -->
++        <item>Unsuccessful</item>
++    </string-array>
++
++    <!-- hotspot -->
++    <string-array name="wifi_ap_band_config_2G_only">
++        <item>@string/wifi_ap_choose_2G</item>
++    </string-array>
++
++    <string-array name="wifi_ap_security">
++        <item>@string/wifi_security_none</item>
++        <item>@string/wifi_security_wpa2</item>
++    </string-array>
++
++    <string-array name="wifi_ap_band_config_full">
++        <item>@string/wifi_ap_choose_2G</item>
++        <item>@string/wifi_ap_choose_5G</item>
++    </string-array>
++
++    <string-array name="power_key_choose">
++        <item>@string/dormancy</item>
++        <item>@string/power_off</item>
++        <item>@string/reboot</item>
++    </string-array>
++
++    <string-array name="power_key_choose_values">
++        <item>0</item>
++        <item>1</item>
++        <item>2</item>
++    </string-array>
++
++    <string-array name="audio_mode_list">
++        <item>RF</item>
++        <item>Line</item>
++    </string-array>
++
++    <string-array name="audio_mode_list_values">
++        <item>RF Mode</item>
++        <item>Line Mode</item>
++    </string-array>
++
++    <string-array name="device_apps_app_management_ui_mode_entry">
++        <item>@string/device_apps_app_management_ui_mode_normal</item>
++        <item>@string/device_apps_app_management_ui_mode_desk</item>
++        <item>@string/device_apps_app_management_ui_mode_car</item>
++        <item>@string/device_apps_app_management_ui_mode_television</item>
++        <item>@string/device_apps_app_management_ui_mode_appliance</item>
++        <item>@string/device_apps_app_management_ui_mode_watch</item>
++        <item>@string/device_apps_app_management_ui_mode_vr_headset</item>
++    </string-array>
++
++    <string-array name="device_apps_app_management_ui_mode_entry_value">
++        <item>1</item>
++        <item>2</item>
++        <item>3</item>
++        <item>4</item>
++        <item>5</item>
++        <item>6</item>
++        <item>7</item>
+     </string-array>
+ 
+ </resources>
+diff --git a/Settings/res/values/strings.xml b/Settings/res/values/strings.xml
+index 71888d55..9f0fa9fc 100755
+--- a/Settings/res/values/strings.xml
++++ b/Settings/res/values/strings.xml
+@@ -188,6 +188,9 @@
+     <string name="device_surround_sound">Surround sound</string>
+     <!-- Preference and title which changes system sounds settings. [CHAR LIMIT=50] -->
+     <string name="device_sound_effects">System sounds</string>
++    <string name="device_sound_bootsafe">Enforce safe volume</string>
++    <string name="device_bit_stream">Decode &#038; BitStream</string>
++    <string name="hdmi">HDMI</string>
+     <!-- Preference which manages apps. [CHAR LIMIT=50] -->
+     <string name="device_apps">Applications</string>
+     <!-- Preference which shows storage status. [CHAR LIMIT=50] -->
+@@ -1458,7 +1461,8 @@
+     <string name="pin_toast_wrong">Wrong PIN, try again</string>
+     <!-- Toast message when an user couldn't pass the PIN confirmation. [CHAR LIMIT=128] -->
+     <string name="pin_toast_not_match">Try again, PIN doesn\'t match</string>
+-
++    <!-- Application management choice for displaying the application's permissions [CHAR LIMIT=40] -->
++    <string name="device_apps_app_management_permissions">Permissions</string>
+     <!-- Message displayed to prompt the user to input the network password, ^1 will be replaced with the name of the network and should be a possive form related to password [CHAR LIMIT=NONE] -->
+     <string name="wifi_setup_input_password">Enter password for <xliff:g id="ssid">%1$s</xliff:g></string>
+     <!-- Message displayed when the selected Wi-Fi network has been connected to [CHAR LIMIT=40] -->
+@@ -1506,10 +1510,16 @@
+     <string name="device_apps_app_management_clear_cache">Clear cache</string>
+     <!-- Application management choice for changing the application's notifications option [CHAR LIMIT=40] -->
+     <string name="device_apps_app_management_notifications">Notifications</string>
++    <string name="device_apps_app_management_ui_mode">Ui Mode</string>
++    <string name="device_apps_app_management_ui_mode_normal">NORMAL</string>                                                                                         
++    <string name="device_apps_app_management_ui_mode_desk">DESK</string>
++    <string name="device_apps_app_management_ui_mode_car">CAR</string>
++    <string name="device_apps_app_management_ui_mode_television">TELEVISION</string>
++    <string name="device_apps_app_management_ui_mode_appliance">APPLIANCE</string>
++    <string name="device_apps_app_management_ui_mode_watch">WATCH</string>
++    <string name="device_apps_app_management_ui_mode_vr_headset">VR HEADSET</string>
+     <!-- Application management choice for displaying the application's open source licenses [CHAR LIMIT=40] -->
+     <string name="device_apps_app_management_licenses">Open source licenses</string>
+-    <!-- Application management choice for displaying the application's permissions [CHAR LIMIT=40] -->
+-    <string name="device_apps_app_management_permissions">Permissions</string>
+     <!-- Application management toast message when an app cannot be launched [CHAR LIMIT=100]-->
+     <string name="device_apps_app_management_not_available">Application unavailable</string>
+     <!-- General settings choice for agreeing to the displayed action [CHAR LIMIT=40] -->
+@@ -1831,5 +1841,232 @@
+     <string name="confirm_dialog_title">Save Confirm</string>
+     <string name="confirm_dialog_message">Will cancel in</string>
+     <string name="audio_device">Audio device</string>
++    <string name="audio_mode">Audio mode</string>
++    <string name="formats">Formats</string>
++    <string name="surround_sound_format_true_hd">Dolby TrueHD</string>
++
++     <!-- Bluetooth interface -->
++    <string name="bluetooth">Bluetooth</string>
++    <string name="bluetooth_rename">Rename</string>
++    <string name="bluetooth_refresh">Refresh</string>
++    <string name="bluetooth_received">Display received files</string>
++    <string name="avaliable_bluetooth">Available bluetooth</string>
++    <string name="bluetooth_is_discoverable">Visible to all nearby Bluetooth devices (<xliff:g id="discoverable_time_period">%1$s</xliff:g>)</string>
++    <string name="bluetooth_is_discoverable_always">Visible to all nearby Bluetooth devices</string>
++    <string name="bluetooth_not_visible_to_other_devices">Not visible to other Bluetooth devices</string>
++    <string name="bluetooth_only_visible_to_paired_devices">Only visible to paired devices</string>
++    <string name="bluetooth_visibility_timeout">Visibility timeout</string>
++    <string name="bluetooth_lock_voice_dialing">Lock voice dialing</string>
++    <string name="bluetooth_devices">Bluetooth devices</string>
++    <string name="bluetooth_device_name">Device name</string>
++    <string name="bluetooth_device_details">Device settings</string>
++    <string name="bluetooth_profile_details">Profile settings</string>
++    <string name="bluetooth_name_not_set">No name set, using account name</string>
++    <string name="bluetooth_scan_for_devices">Scan for devices</string>
++    <string name="bluetooth_rename_device">Rename this device</string>
++    <string name="bluetooth_rename_button">Rename</string>
++    <string name="bluetooth_disconnect_title">Disconnect?</string>
++    <string name="bluetooth_disconnect_all_profiles">This will end your connection with:&lt;br>&lt;b><xliff:g id="device_name">%1$s</xliff:g>&lt;/b></string>
++    <string name="bluetooth_empty_list_user_restricted">You don\u2019t have permission to change Bluetooth settings.</string>
++    <string name="bluetooth_is_visible_message"><xliff:g id="device_name">%1$s</xliff:g> is visible to nearby devices while Bluetooth settings is open.</string>
++    <string name="bluetooth_is_disconnect_question">Disconnect <xliff:g id="device_name">%1$s</xliff:g>?</string>
++    <string name="bluetooth_broadcasting">Broadcasting</string>
++    <string name="bluetooth_disable_profile_title">Disable profile?</string>
++    <string name="bluetooth_disable_profile_message">This will disable:&lt;br>&lt;b><xliff:g id="profile_name">%1$s</xliff:g>&lt;/b>&lt;br>&lt;br>From:&lt;br>&lt;b><xliff:g id="device_name">%2$s</xliff:g>&lt;/b></string>
++    <string name="bluetooth_unknown" />
++    <string name="bluetooth_device">Unnamed Bluetooth device</string>
++    <string name="bluetooth_no_devices_found">No nearby Bluetooth devices were found.</string>
++    <string name="bluetooth_notif_ticker">Bluetooth pairing request</string>
++    <string name="bluetooth_notif_title">Pairing request</string>
++    <string name="bluetooth_notif_message">Tap to pair with <xliff:g id="device_name">%1$s</xliff:g>.</string>
++    <string name="bluetooth_show_received_files">Show received files</string>
++    <string name="device_picker">Choose Bluetooth device</string>
++    <string name="bluetooth_ask_enablement">An app wants to turn Bluetooth ON for this device.</string>
++    <string name="bluetooth_ask_discovery" product="default">An app wants to make your phone visible to other Bluetooth devices for <xliff:g id="timeout">%1$d</xliff:g> seconds.</string>
++    <string name="bluetooth_ask_lasting_discovery" product="default">An app wants to make your phone visible to other Bluetooth devices. You can change this later in Bluetooth settings.</string>
++    <string name="bluetooth_ask_start_broadcast" product="default"><xliff:g id="app_name">%1$s</xliff:g> wants to turn on Bluetooth broadcasting to communicate with other devices nearby. You can change this later in Bluetooth settings.</string>
++    <string name="bluetooth_ask_enablement_and_start_broadcast" product="default"><xliff:g id="app_name">%1$s</xliff:g> wants to turn on Bluetooth and Bluetooth broadcasting to communicate with other devices nearby. You can change this later in Bluetooth settings.</string>
++    <string name="bluetooth_broadcasting_explaination" product="default">When this feature is turned on, your phone can communicate with other devices nearby.\n\nBroadcasting uses low-power Bluetooth signals.</string>
++    <string name="bluetooth_ask_enablement_and_discovery">An app wants to turn on Bluetooth and make your tablet visible to other devices for <xliff:g id="timeout">%1$d</xliff:g> seconds.</string>
++    <string name="bluetooth_ask_enablement_and_lasting_discovery" product="default">An app wants to turn on Bluetooth and make your phone visible to other devices. You can change this later in Bluetooth settings.</string>
++    <string name="bluetooth_auto_connect">Auto-connect</string>
++    <string name="bluetooth_connection_permission_request">"Bluetooth connection request"</string>
++    <string name="bluetooth_connection_notif_message">"Tap to connect to \u0022<xliff:g id="device_name">%1$s</xliff:g>\u0022."</string>
++    <string name="bluetooth_connection_dialog_text">"Do you want to connect to \u0022<xliff:g id="device_name">%1$s</xliff:g>\u0022?"</string>
++    <string name="bluetooth_phonebook_request">"Phone book access request"</string>
++    <string name="bluetooth_pb_acceptance_dialog_text">%1$s wants to access your contacts and call history. Give access to %2$s?</string>
++    <string name="bluetooth_remember_choice">Don\u2019t ask again</string>
++    <string name="bluetooth_pb_remember_choice">Don\u2019t ask again</string>
++    <string name="bluetooth_map_request">"Message access request"</string>
++    <string name="bluetooth_map_acceptance_dialog_text">%1$s wants to access your messages. Give access to %2$s?</string>
++    <string name="bluetooth_sap_request">"SIM access request"</string>
++    <string name="bluetooth_sap_acceptance_dialog_text"><xliff:g id="device_name">%1$s</xliff:g> wants to access your SIM card. Granting access to the SIM card will disable data connectivity on your device for the duration of the connection. Give access to <xliff:g id="device_name">%2$s?</xliff:g></string>
++    <string name="radio_controls_summary">Manage Wi\u2011Fi, Bluetooth, airplane mode, cellular networks, &amp; VPNs</string>
++    <string name="bluetooth_quick_toggle_title">Bluetooth</string>
++    <string name="bluetooth_quick_toggle_summary">Turn on Bluetooth</string>
++    <string name="bluetooth_settings">Bluetooth</string>
++    <!--Wireless controls screen, settings title for the item to take you to the bluetooth settings screen -->
++    <string name="bluetooth_settings_title">Bluetooth</string>
++    <!--Wireless controls screen, settings summary for the item tot ake you to the bluetooth settings screen -->
++    <string name="bluetooth_settings_summary">Manage connections, set device name &amp; discoverability</string>
++    <!-- Message when bluetooth is informing the user of the pairing key. [CHAR LIMIT=NONE] -->
++    <string name="bluetooth_pairing_key_msg">Bluetooth pairing code</string>
++    <!-- Message when bluetooth dialog for passkey entry is showing. [CHAR LIMIT=NONE] -->
++    <string name="bluetooth_enable_alphanumeric_pin">PIN contains letters or symbols</string>
++    <!-- Bluetooth PIN hint text (below the text entry box). [CHAR LIMIT=30] -->
++    <!-- Bluetooth PIN hint text (below the text entry box). [CHAR LIMIT=30] -->
++    <string name="bluetooth_pin_values_hint_16_digits">Must be 16 digits</string>
++    <string name="bluetooth_enter_pin_other_device">You may also need to type this PIN on the other device.</string>
++    <string name="bluetooth_enter_passkey_other_device">You may also need to type this passkey on the other device.</string>
++    <!-- Message when bluetooth incoming pairing request for (2.1 devices) dialog is showing -->
++    <!-- Message when bluetooth dialog when passkey or pin needs to be displayed. -->
++    <string name="bluetooth_pairing_shares_phonebook">Allow <xliff:g id="device_name">%1$s</xliff:g> to access your contacts and call history</string>
++    <string name="bluetooth_error_title"></string>
++    <string name="bluetooth_connecting_error_message">Couldn\u2019t connect to <xliff:g id="device_name">%1$s</xliff:g>.</string>
++    <!-- Bluetooth settings: The title of the preference (list item) that initiates a scan for devices -->
++    <string name="bluetooth_preference_scan_title">Scan for devices</string>
++    <!-- Bluetooth settings: The title of the action button that initiates a search for nearby devices [CHAR LIMIT=20] -->
++    <string name="bluetooth_search_for_devices">Refresh</string>
++    <!-- Bluetooth settings: The title of the action button while a search for nearby devices is in progress [CHAR LIMIT=20] -->
++    <string name="bluetooth_searching_for_devices">Searching\u2026</string>
++    <!-- Bluetooth settings: The sub heading for device settings. [CHAR LIMIT=30] -->
++    <string name="bluetooth_preference_device_settings">Device settings</string>
++    <!-- Bluetooth settings: Paired dialog title [CHAR LIMIT=40] -->
++    <string name="bluetooth_preference_paired_dialog_title">Paired device</string>
++    <!-- Bluetooth settings: Name label [CHAR LIMIT=40] -->
++    <string name="bluetooth_preference_paired_dialog_name_label">Name</string>
++    <!-- Bluetooth settings: Checkbox label for enable/disable internet connection.  [CHAR LIMIT=40] -->
++    <string name="bluetooth_preference_paired_dialog_internet_option">Internet connection</string>
++    <!-- Bluetooth settings: Checkbox label for enable/disable keyboard connection.  [CHAR LIMIT=40] -->
++    <string name="bluetooth_preference_paired_dialog_keyboard_option">Keyboard</string>
++    <!-- Bluetooth settings: Checkbox label for enable/disable contacts connection.  [CHAR LIMIT=40] -->
++    <string name="bluetooth_preference_paired_dialog_contacts_option">Contacts and call history</string>
++    <!-- Bluetooth settings: pairing dialog title.  [CHAR LIMIT=40] -->
++    <string name="bluetooth_pairing_dialog_title">Pair with this device?</string>
++    <!-- Bluetooth settings: share phone book title.  [CHAR LIMIT=40] -->
++    <string name="bluetooth_pairing_dialog_sharing_phonebook_title">Share phone book?</string>
++    <!-- Bluetooth settings: Message informing user that a bluetooth wants to access contant and call history.  [CHAR LIMIT=100] -->
++    <!-- Bluetooth settings: Message informing user that a bluetooth wants to access contant and call history.  [CHAR LIMIT=100] -->
++    <string name="bluetooth_pairing_dialog_contants_request"><xliff:g id="device_name">%1$s</xliff:g> wants to access your contacts and call history.</string>
++    <!-- Bluetooth settings: paring permission message.  [CHAR LIMIT=100] -->
++    <string name="bluetooth_pairing_dialog_paring_request"><xliff:g id="device_name">%1$s</xliff:g> wants to pair with Bluetooth. When connected, it will have access to your contacts and call history.</string>
++    <!-- Bluetooth settings: The sub heading for devices which have already been paired with this device. [CHAR LIMIT=40] -->
++    <string name="bluetooth_preference_paired_devices">Paired devices</string>
++    <!-- Bluetooth settings: The sub heading for available devices during and after scanning. [CHAR LIMIT=40] -->
++    <string name="bluetooth_preference_found_devices">Available devices</string>
++    <!-- Bluetooth settings: The message displayed if no Bluetooth devices were found. [CHAR LIMIT=40] -->
++    <!-- Bluetooth settings: The message displayed if no Bluetooth devices were found. [CHAR LIMIT=40] -->
++    <string name="bluetooth_preference_no_found_devices">No devices available</string>
++    <!-- Bluetooth settings.  Context menu item for a device.  Action will connect to all profiles on the device. -->
++    <string name="bluetooth_device_context_connect">Connect</string>
++    <!-- Bluetooth settings.  Context menu item for a device.  Action will disconnect from all profiles on the device. -->
++    <string name="bluetooth_device_context_disconnect">Disconnect</string>
++    <!-- Bluetooth settings.  Context menu item for a device.  Action will first pair, and then connect to all profiles on the device. -->
++    <string name="bluetooth_device_context_pair_connect">Pair &amp; connect</string>
++    <!-- Bluetooth settings.  Context menu item for a device.  Action will remove pairing with the device. -->
++    <string name="bluetooth_device_context_unpair">Unpair</string>
++    <!-- Bluetooth settings.  Context menu item for a device.  Action will disconnect and remove pairing with the device. -->
++    <string name="bluetooth_device_context_disconnect_unpair">Disconnect &amp; unpair</string>
++    <!-- Bluetooth settings.  Context menu item for a device.  Action will take the user to another screen where they can choose exactly which profiles to connect to. -->
++    <string name="bluetooth_device_context_connect_advanced">Options\u2026</string>
++    <!-- Bluetooth settings.  Menu option to Bluetooth advanced settings [CHAR LIMIT=20]-->
++    <!-- Bluetooth settings.  Menu option to Bluetooth advanced settings [CHAR LIMIT=20]-->
++    <string name="bluetooth_menu_advanced">Advanced</string>
++    <!-- Bluetooth settings. Title of the advanced bluetooth settings screen [CHAR LIMIT=30]-->
++    <!-- Bluetooth settings. Title of the advanced bluetooth settings screen [CHAR LIMIT=30]-->
++    <string name="bluetooth_advanced_titlebar">Advanced Bluetooth</string>
++    <!-- Bluetooth settings. Text displayed when Bluetooth is off and device list is empty [CHAR LIMIT=50]-->
++    <!-- Bluetooth settings. Text displayed when Bluetooth is off and device list is empty [CHAR LIMIT=50]-->
++    <string name="bluetooth_empty_list_bluetooth_off">When Bluetooth is turned on, your device can communicate with other nearby Bluetooth devices.</string>
++    <string name="bluetooth_connect_specific_profiles_title">Connect to\u2026</string>
++    <!-- Bluetooth settings.  Message for disconnecting from the A2DP profile. [CHAR LIMIT=80] -->
++    <string name="bluetooth_disconnect_a2dp_profile"><xliff:g id="device_name">%1$s</xliff:g> will be disconnected from media audio.</string>
++    <!-- Bluetooth settings.  Message for disconnecting from the headset profile. [CHAR LIMIT=80] -->
++    <string name="bluetooth_disconnect_headset_profile"><xliff:g id="device_name">%1$s</xliff:g> will be disconnected from handsfree audio.</string>
++    <!-- Bluetooth settings.  Message for disconnecting from the HID profile. [CHAR LIMIT=80] -->
++    <string name="bluetooth_disconnect_hid_profile"><xliff:g id="device_name">%1$s</xliff:g> will be disconnected from input device.</string>
++    <!-- Bluetooth settings.  Message for disconnecting from the PAN profile (user role). [CHAR LIMIT=80] -->
++    <string name="bluetooth_disconnect_pan_user_profile">Internet access via <xliff:g id="device_name">%1$s</xliff:g> will be disconnected.</string>
++    <!-- Bluetooth settings.  Message for disconnecting from the PAN profile (NAP role). [CHAR LIMIT=80] -->
++    <string name="bluetooth_disconnect_pan_nap_profile" product="tablet"><xliff:g id="device_name">%1$s</xliff:g> will be disconnected from sharing this tablet\u2019s Internet connection.</string>
++    <!-- Bluetooth settings.  Message for disconnecting from the PAN profile (NAP role). [CHAR LIMIT=80] -->
++    <string name="bluetooth_disconnect_pan_nap_profile" product="default"><xliff:g id="device_name">%1$s</xliff:g> will be disconnected from sharing this phone\u2019s Internet connection.</string>
++    <!-- Bluetooth settings.  Connection options screen.  The title of the screen. [CHAR LIMIT=40] -->
++    <string name="bluetooth_device_advanced_title">Paired Bluetooth device</string>
++    <!-- Bluetooth settings.  Connection options screen.  The title of the checkbox that controls whether the device is in "online" mode or "offline" mode.  This essentially is the checkbox that controls whether any checks / unchecks on a profile should be applied immediately, or next time the device is connected. -->
++    <string name="bluetooth_device_advanced_online_mode_title">Connect</string>
++    <!-- Bluetooth settings.  Connection options screen.  The summary of the online mode checkbox.  This describes what the setting does in the context of the screen. -->
++    <string name="bluetooth_device_advanced_online_mode_summary">Connect to Bluetooth device</string>
++    <!-- Bluetooth settings.  Connection options screen.  The title of the header that is above all of the profiles.
++         When a user decides what Bluetooth capabilities to use with the device.  -->
++    <string name="bluetooth_device_advanced_profile_header_title">Use for</string>
++    <!-- Bluetooth settings. Connection options screen. Title for option to rename the device. [CHAR LIMIT=30] -->
++    <string name="bluetooth_device_advanced_rename_device">Rename</string>
++    <!-- Bluetooth settings. Connection options screen. Title for checkbox to enable incoming file transfers [CHAR LIMIT=30] -->
++    <string name="bluetooth_device_advanced_enable_opp_title">Allow incoming file transfers</string>
++    <!-- Bluetooth settings. Connection options screen. The summary for the checkbox preference when PAN is connected (user role). [CHAR LIMIT=25]-->
++    <string name="bluetooth_pan_user_profile_summary_connected">Connected to device for Internet access</string>
++    <!-- Bluetooth settings. Connection options screen. The summary for the checkbox preference when PAN is connected (NAP role). [CHAR LIMIT=25]-->
++    <string name="bluetooth_pan_nap_profile_summary_connected">Sharing local Internet connection with device</string>
++    <!-- Bluetooth settings.  Dock Setting Title -->
++    <string name="bluetooth_dock_settings">Dock Settings</string>
++    <!-- Bluetooth settings.  Dock Setting Dialog Title -->
++    <string name="bluetooth_dock_settings_title">Use dock for audio</string>
++    <!-- Bluetooth settings.  Dock Setting Dialog - Checkbox selection 1: Use dock as speaker phone -->
++    <string name="bluetooth_dock_settings_headset">As speaker phone</string>
++    <string name="power_bluetooth">Bluetooth</string>
++    <string name="battery_action_bluetooth">Bluetooth settings</string>
++    <string name="battery_desc_bluetooth">Battery used by Bluetooth</string>
++    <string name="battery_sugg_bluetooth_basic">Turn off Bluetooth when you aren\u2019t using it</string>
++    <string name="battery_sugg_bluetooth_headset">Try connecting to a different Bluetooth device</string>
++    <string name="gadget_toggle_bluetooth">Updating Bluetooth setting</string>
++    <string name="gadget_bluetooth">Bluetooth</string>
++    <string name="help_url_bluetooth" translatable="false"></string>
++    <string name="restriction_bluetooth_config_title">Bluetooth</string>
++    <string name="restriction_bluetooth_config_summary">Allow modification of Bluetooth pairings and settings</string>
++    <string name="keywords_voice_input">recognizer, input, speech, speak, language, hands-free, hand free, recognition, offensive, word, audio, history, bluetooth headset</string>
++    <string name="condition_airplane_summary">Wi-Fi, Bluetooth, and cellular network are turned off. You can\'t make phone calls or connect to the Internet.</string>
++    <string name="bluetooth_disabled">Disabled</string>
++    <string name="bluetooth_talkback_computer">Computer</string>
++    <string name="bluetooth_talkback_headset">Headset</string>
++    <string name="bluetooth_talkback_phone">Phone</string>
++    <string name="bluetooth_talkback_imaging">Imaging</string>
++    <string name="bluetooth_talkback_headphone">Headphone</string>
++    <string name="bluetooth_talkback_input_peripheral">Input Peripheral</string>
++    <string name="bluetooth_talkback_bluetooth">Bluetooth</string>
++        <string name="bluetooth_dock_settings_a2dp">For music and media</string>
++    <string name="bluetooth_dock_settings_remember">Remember settings</string>
++    <string name="storage_detail_dialog_other">Other includes shared files saved by apps, files downloaded from the Internet or Bluetooth, Android files, and so on.
++\n\nTo see the visible contents of this <xliff:g id="name" example="SD card">^1</xliff:g>, tap Explore.</string>
++    <string name="reset_network_desc">This will reset all network settings, including:\n\n<li>Wi\u2011Fi</li>\n<li>Cellular data</li>\n<li>Bluetooth</li>"</string>
++    <string name="tether_settings_title_bluetooth">Bluetooth tethering</string>
++    <string name="tether_settings_title_usb_bluetooth">Tethering</string>
++    <string name="bluetooth_tethering_off_subtext_config">Sharing this <xliff:g id="device_name">%1$d</xliff:g>\u2019s Internet connection</string>
++    <string name="bluetooth_tethering_overflow_error">Can\u2019t tether to more than <xliff:g id="maxConnection">%1$d</xliff:g> devices.</string>
++    <string name="bluetooth_untether_blank"><xliff:g id="device_name">%1$s</xliff:g> will be untethered.</string>
++    <string name="location_mode_high_accuracy_description">Use GPS, Wi\u2011Fi, Bluetooth, or cellular networks to determine location </string>
++    <string name="location_mode_battery_saving_description">Use Wi\u2011Fi, Bluetooth, or cellular networks to determine location</string>
++    <string name="location_scanning_bluetooth_always_scanning_title">Bluetooth scanning</string>
++    <string name="location_scanning_bluetooth_always_scanning_description">Improve location by allowing system apps and services to detect Bluetooth devices at any
++        time.</string>
++    <string name="bluetooth_on_time">Wi\u2011Fi on time</string>
++    <string name="wifi_in_airplane_mode">In Airplane mode</string>
++    <string name="bluetooth_paired">Paired devices</string>
++    <string name="bluetooth_turning_off">"Turning Bluetooth off\u2026"</string>
++    <string name="bluetooth_turning_on">"Turning Bluetooth on\u2026"</string>
++    <string name="forget">Forget</string>
++    <!-- Strings for Dialog allow button -->
++    <string name="allow">Allow</string>
++    <!-- Strings for Dialog deny button -->
++    <string name="deny">Deny</string>
++    <!--string name="progress_scanning">Searching</string -->
++    <!-- power -->
++    <string name="power_key">Power Key</string>
++    <string name="power_key_definition">Power Key Definition</string>
++    <string name="dormancy">Dormancy</string>
++    <string name="power_off">Power Off</string>                                                                                                                      
++    <string name="reboot">Reboot</string>
++    <string name="wifi_ap_choose_2G">2.4 GHz Band</string>                                                                                                           
++    <string name="wifi_ap_choose_5G">5 GHz Band</string>
+ 
+ </resources>
+diff --git a/Settings/res/xml/bitstream.xml b/Settings/res/xml/bitstream.xml
+new file mode 100644
+index 00000000..81622612
+--- /dev/null
++++ b/Settings/res/xml/bitstream.xml
+@@ -0,0 +1,44 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++  Copyright (C) 2016 The Android Open Source Project
++
++  Licensed under the Apache License, Version 2.0 (the "License");
++  you may not use this file except in compliance with the License.
++  You may obtain a copy of the License at
++
++       http://www.apache.org/licenses/LICENSE-2.0
++
++  Unless required by applicable law or agreed to in writing, software
++  distributed under the License is distributed on an "AS IS" BASIS,
++  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++  See the License for the specific language governing permissions and
++  limitations under the License
++  -->
++
++<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
++    android:title="@string/device_bit_stream">
++
++    <ListPreference
++        android:key="audio_device"
++        android:title="@string/audio_device"
++        android:entries="@array/audio_device_list"
++        android:entryValues="@array/audio_device_list_values"
++        android:summary="%s" />
++
++    <PreferenceCategory
++        android:key="bit_stream_surround_sound_category"
++        android:title="@string/formats"
++        android:layout="@layout/preference_category_compact_layout" >
++
++        <ListPreference
++            android:key="bit_stream_surround_passthrough"
++            android:persistent="true"
++            android:entries="@array/audio_device_hdmi"
++            android:entryValues="@array/audio_device_hdmi_entries"
++            android:title="@string/surround_sound_select_formats"
++            android:summary="%s"
++            android:dialogMessage="@string/surround_sound_auto_info"/>
++
++    </PreferenceCategory>
++
++</PreferenceScreen>
+diff --git a/Settings/res/xml/device.xml b/Settings/res/xml/device.xml
+index e3b1df30..83bc4f7f 100755
+--- a/Settings/res/xml/device.xml
++++ b/Settings/res/xml/device.xml
+@@ -42,6 +42,11 @@
+         android:icon="@drawable/ic_keyboard"
+         android:key="keyboard"
+         android:title="@string/system_keyboard"/>
++     <Preference
++        android:fragment="com.android.tv.settings.device.sound.SoundFragment"
++        android:icon="@drawable/ic_volume_up"
++        android:key="sound_effects"
++        android:title="@string/device_sound"/>
+     <Preference
+         android:fragment="com.android.tv.settings.device.displaysound.DisplaySoundFragment"
+         android:icon="@drawable/ic_display_sound"
+diff --git a/Settings/res/xml/sound.xml b/Settings/res/xml/sound.xml
+new file mode 100644
+index 00000000..dbc6ccea
+--- /dev/null
++++ b/Settings/res/xml/sound.xml
+@@ -0,0 +1,54 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++  Copyright (C) 2016 The Android Open Source Project
++
++  Licensed under the Apache License, Version 2.0 (the "License");
++  you may not use this file except in compliance with the License.
++  You may obtain a copy of the License at
++
++       http://www.apache.org/licenses/LICENSE-2.0
++
++  Unless required by applicable law or agreed to in writing, software
++  distributed under the License is distributed on an "AS IS" BASIS,
++  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++  See the License for the specific language governing permissions and
++  limitations under the License
++  -->
++
++<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
++    android:title="@string/device_sound">
++
++    <SwitchPreference
++        android:key="sound_effects"
++        android:persistent="true"
++        android:title="@string/device_sound_effects"/>
++
++    <!-- <SwitchPreference
++        android:key="sound_safe"
++        android:persistent="true"
++        android:title="@string/device_sound_bootsafe"/> -->
++
++    <Preference
++        android:key="bit_stream"
++        android:title="@string/device_bit_stream"
++        android:fragment="com.android.tv.settings.device.sound.BitStreamFragment"/>
++
++    <PreferenceCategory
++        android:key="surround_sound_category"
++        android:title="@string/surround_sound_category_title"
++        android:layout="@layout/preference_category_compact_layout" >
++
++        <ListPreference
++            android:key="surround_passthrough"
++            android:persistent="true"
++            android:entries="@array/surround_sound_entries"
++            android:entryValues="@array/surround_sound_entry_values"
++            android:title="@string/surround_sound_select_formats"
++            android:summary="%s"
++            android:dialogMessage="@string/surround_sound_auto_info"/>
++
++        <!-- Switches for each surround sound format programmatically added here. -->
++
++    </PreferenceCategory>
++
++</PreferenceScreen>
+diff --git a/Settings/src/com/android/tv/settings/PreferenceControllerFragment.java b/Settings/src/com/android/tv/settings/PreferenceControllerFragment.java
+index 21b8b56a..3658442f 100644
+--- a/Settings/src/com/android/tv/settings/PreferenceControllerFragment.java
++++ b/Settings/src/com/android/tv/settings/PreferenceControllerFragment.java
+@@ -155,4 +155,10 @@ public abstract class PreferenceControllerFragment extends SettingsPreferenceFra
+      */
+     protected abstract List<AbstractPreferenceController> onCreatePreferenceControllers(
+             Context context);
++
++    protected void clearPreferenceControllers() {
++        if (mPreferenceControllers != null && mPreferenceControllers.size() > 0) {
++            mPreferenceControllers.clear();
++        }
++    }
+ }
+diff --git a/Settings/src/com/android/tv/settings/device/sound/BitStreamActivity.java b/Settings/src/com/android/tv/settings/device/sound/BitStreamActivity.java
+new file mode 100644
+index 00000000..4b05dfae
+--- /dev/null
++++ b/Settings/src/com/android/tv/settings/device/sound/BitStreamActivity.java
+@@ -0,0 +1,46 @@
++/*
++ * Copyright (C) 2014 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.tv.settings.device.sound;
++
++import android.app.Fragment;
++
++import com.android.tv.settings.BaseSettingsFragment;
++import com.android.tv.settings.TvSettingsActivity;
++
++/**
++ * Activity that allows the enabling and disabling of sound effects.
++ */
++public class BitStreamActivity extends TvSettingsActivity {
++
++    @Override
++    protected Fragment createSettingsFragment() {
++        return SettingsFragment.newInstance();
++    }
++
++    public static class SettingsFragment extends BaseSettingsFragment {
++
++        public static SettingsFragment newInstance() {
++            return new SettingsFragment();
++        }
++
++        @Override
++        public void onPreferenceStartInitialScreen() {
++            final BitStreamFragment fragment = BitStreamFragment.newInstance();
++            startPreferenceFragment(fragment);
++        }
++    }
++}
+diff --git a/Settings/src/com/android/tv/settings/device/sound/BitStreamFragment.java b/Settings/src/com/android/tv/settings/device/sound/BitStreamFragment.java
+new file mode 100644
+index 00000000..b390080e
+--- /dev/null
++++ b/Settings/src/com/android/tv/settings/device/sound/BitStreamFragment.java
+@@ -0,0 +1,309 @@
++/*
++ * Copyright (C) 2015 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License
++ */
++
++package com.android.tv.settings.device.sound;
++
++import android.content.ContentResolver;
++import android.content.Context;
++import android.media.AudioFormat;
++import android.media.AudioManager;
++import android.os.audio.RkAudioSettingManager;
++import android.media.AudioSystem;
++import android.os.Bundle;
++import android.provider.Settings;
++import androidx.preference.SwitchPreference;
++import androidx.preference.ListPreference;
++import androidx.preference.Preference;
++import androidx.preference.PreferenceCategory;
++import androidx.preference.PreferenceViewHolder;
++import androidx.preference.TwoStatePreference;
++import android.text.TextUtils;
++
++import com.android.internal.logging.nano.MetricsProto;
++import com.android.settingslib.core.AbstractPreferenceController;
++import com.android.tv.settings.PreferenceControllerFragment;
++import com.android.tv.settings.R;
++
++import java.util.ArrayList;
++import java.util.LinkedHashMap;
++import java.util.Collection;
++import java.util.List;
++import java.util.Map;
++import android.util.Log;
++import android.os.SystemProperties;
++
++/**
++ * The "BitStreamFragment" screen in Sound Settings.
++ */
++public class BitStreamFragment extends PreferenceControllerFragment implements Preference.OnPreferenceChangeListener {
++    private static final String TAG = "BitStreamFragment";
++
++    static final String KEY_SURROUND_PASSTHROUGH = "bit_stream_surround_passthrough";
++    static final String KEY_SURROUND_SOUND_CATEGORY = "bit_stream_surround_sound_category";
++    static final String KEY_SURROUND_SOUND_FORMAT_PREFIX = "surround_sound_format_";
++    static final String KEY_AUDIO_DEVICE = "audio_device";
++
++    static final String VAL_SURROUND_SOUND_AUTO = "Auto";
++    static final String VAL_SURROUND_SOUND_NEVER = "never";
++    static final String VAL_SURROUND_SOUND_ALWAYS = "always";
++    static final String VAL_SURROUND_SOUND_MANUAL = "Manual";
++
++    public static final String DECODE = "decode";
++    public static final String HDMI = "hdmi";
++    public static final String SPDIF = "spdif";
++
++    public static final int MODE_DECODE = 0;
++    public static final int MODE_HDMI = 1;
++    public static final int MODE_SPDIF = 2;
++
++    public static final int DEVICE_DECODE = 0;
++    public static final int DEVICE_BITSTREAM = 1;
++
++    public static final int MODE_NOT_SET = 0;
++    public static final int MODE_SUCCESS = 1;
++
++    public static final int MODE_AUTO = 0;
++    public static final int MDOE_MANUAL = 1;
++
++    static public RkAudioSettingManager mAudioSetting;
++    private Map<String, Boolean> mFormats;
++    private List<AbstractPreferenceController> mPreferenceControllers;
++    private PreferenceCategory mSurroundSoundCategoryPref;
++    private ListPreference audioDevicePref;
++    private ListPreference audioDeviceHdmiPref;
++    private ListPreference surroundPref;
++
++    private String[] decodeFormats;
++    private String[] hdmiFormats;
++    private String[] spdifFormats;
++
++    public static BitStreamFragment newInstance() {
++        return new BitStreamFragment();
++    }
++
++    @Override
++    public void onAttach(Context context) {
++        mAudioSetting = new RkAudioSettingManager();
++        // decodeFormats = context.getResources().getStringArray(R.array.decode_formats);
++        hdmiFormats = context.getResources().getStringArray(R.array.hdmi_formats);
++        spdifFormats = context.getResources().getStringArray(R.array.spdif_formats);
++        mFormats = new LinkedHashMap<String, Boolean>();
++        getFormats();
++        super.onAttach(context);
++    }
++
++    @Override
++    protected int getPreferenceScreenResId() {
++        return R.xml.bitstream;
++    }
++
++    @Override
++    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
++        setPreferencesFromResource(R.xml.bitstream, null);
++
++        audioDevicePref = (ListPreference) findPreference(KEY_AUDIO_DEVICE);
++
++        audioDevicePref.setOnPreferenceChangeListener(this);
++
++        surroundPref = (ListPreference) findPreference(KEY_SURROUND_PASSTHROUGH);
++        surroundPref.setOnPreferenceChangeListener(this);
++
++        mSurroundSoundCategoryPref = (PreferenceCategory) findPreference(KEY_SURROUND_SOUND_CATEGORY);
++        buildPref(getDevice());
++
++        createFormatPreferences();
++        updateFormatPreferencesStates();
++    }
++
++    @Override
++    protected List<AbstractPreferenceController> onCreatePreferenceControllers(Context context) {
++        mPreferenceControllers = new ArrayList<>(mFormats.size());
++        for (Map.Entry<String, Boolean> format : mFormats.entrySet()) {
++            mPreferenceControllers
++                    .add(new SoundFormatPreferenceControllerBitstream(context, format.getKey() /* formatId */));
++        }
++        return mPreferenceControllers;
++    }
++
++    /** Creates and adds switches for each surround sound format. */
++    private void createFormatPreferences() {
++        Log.i(TAG, "mFormats = " + mFormats.size() + ", = " + mFormats.toString());
++        mPreferenceControllers.clear();
++        clearPreferenceControllers();
++        for (AbstractPreferenceController controller : onCreatePreferenceControllers(getActivity())) {
++            addPreferenceController(controller);
++        }
++        for (Map.Entry<String, Boolean> format : mFormats.entrySet()) {
++            String formatId = format.getKey();
++            boolean enabled = format.getValue();
++            Log.i(TAG, "for formatId = " + formatId + ", enabled = " + enabled);
++            SwitchPreference pref = new SwitchPreference(getPreferenceManager().getContext()) {
++                @Override
++                public void onBindViewHolder(PreferenceViewHolder holder) {
++                    super.onBindViewHolder(holder);
++                    // Enabling the view will ensure that the preference is focusable even if it
++                    // the preference is disabled. This allows the user to scroll down over the
++                    // disabled surround sound formats and see them all.
++                    holder.itemView.setEnabled(true);
++                }
++            };
++            pref.setTitle(getFormatDisplayName(formatId));
++            pref.setKey(formatId);
++            pref.setChecked(enabled);
++            mSurroundSoundCategoryPref.addPreference(pref);
++        }
++    }
++
++    /**
++     * @return the display name for each surround sound format.
++     */
++    private String getFormatDisplayName(String formatId) {
++        switch (formatId) {
++        case "AC3":
++            return getContext().getResources().getString(R.string.surround_sound_format_ac3);
++        case "EAC3":
++            return getContext().getResources().getString(R.string.surround_sound_format_e_ac3);
++        case "DTS":
++            return getContext().getResources().getString(R.string.surround_sound_format_dts);
++        case "DTSHD":
++            return getContext().getResources().getString(R.string.surround_sound_format_dts_hd);
++        case "TRUEHD":
++            return getContext().getResources().getString(R.string.surround_sound_format_true_hd);
++        /* case AudioFormat.ENCODING_AC4:
++            return "AC4"; */
++        default:
++            // Fallback in case new formats have been added that we don't know of.
++            return formatId;
++        }
++    }
++
++    private void updateFormatPreferencesStates() {
++        for (AbstractPreferenceController controller : mPreferenceControllers) {
++            Preference preference = mSurroundSoundCategoryPref.findPreference(controller.getPreferenceKey());
++            if (preference != null) {
++                controller.updateState(preference);
++            }
++        }
++    }
++
++    @Override
++    public boolean onPreferenceTreeClick(Preference preference) {
++        return super.onPreferenceTreeClick(preference);
++    }
++
++    @Override
++    public boolean onPreferenceChange(Preference preference, Object newValue) {
++        if (TextUtils.equals(preference.getKey(), KEY_SURROUND_PASSTHROUGH)) {
++            final String selection = (String) newValue;
++            switch (selection) {
++            case VAL_SURROUND_SOUND_AUTO:
++                mAudioSetting.setMode(DEVICE_BITSTREAM, MODE_AUTO);
++                break;
++            case VAL_SURROUND_SOUND_MANUAL:
++                mAudioSetting.setMode(DEVICE_BITSTREAM, MDOE_MANUAL);
++                break;
++            default:
++                throw new IllegalArgumentException("Unknown surround sound pref value: " + selection);
++            }
++            updateFormatPreferencesStates();
++            return true;
++        } else if (TextUtils.equals(preference.getKey(), KEY_AUDIO_DEVICE)) {
++            final String selection = (String) newValue;
++            Log.i(TAG, "ROCKCHIP selection = " + selection);
++             if (selection.equals(HDMI)) {
++                mAudioSetting.setSelect(MODE_HDMI);
++                mAudioSetting.setMode(DEVICE_BITSTREAM, MODE_AUTO);
++            } else if (selection.equals(SPDIF)) {
++                mAudioSetting.setSelect(MODE_SPDIF);
++                initSpdifFormats();
++                // mAudioSetting.setMode(DEVICE_BITSTREAM, MDOE_MANUAL);
++            } else {
++                mAudioSetting.setSelect(MODE_DECODE);
++                mAudioSetting.setMode(DEVICE_DECODE, MODE_AUTO);
++            }
++            buildPref(selection);
++            getFormats();
++            createFormatPreferences();
++            updateFormatPreferencesStates();
++        }
++        return true;
++    }
++
++    @Override
++    public int getMetricsCategory() {
++        return MetricsProto.MetricsEvent.SOUND;
++    }
++
++    public String getDevice() {
++        String device = DECODE;
++        if (mAudioSetting.getSelect(MODE_HDMI) == MODE_SUCCESS) {
++            device = HDMI;
++        } else if (mAudioSetting.getSelect(MODE_SPDIF) == MODE_SUCCESS) {
++            device = SPDIF;
++        } else {
++            device = DECODE;
++        }
++        return device;
++    }
++
++    private void buildPref(String device) {
++        audioDevicePref.setValue(device);
++        mSurroundSoundCategoryPref.removeAll();
++        if (device.equals(HDMI)) {
++            getPreferenceScreen().addPreference(mSurroundSoundCategoryPref);
++            mSurroundSoundCategoryPref.addPreference(surroundPref);
++            int bitstreamMode = mAudioSetting.getMode(MODE_HDMI);
++            Log.i(TAG, "buildPref bitstreamMode = " + bitstreamMode);
++            if (bitstreamMode == MODE_AUTO) {
++                surroundPref.setValue(VAL_SURROUND_SOUND_AUTO);
++            }
++            if (bitstreamMode == MDOE_MANUAL) {
++                surroundPref.setValue(VAL_SURROUND_SOUND_MANUAL);
++            }
++            surroundPref.setOnPreferenceChangeListener(this);
++        } else if (device.equals(SPDIF)) {
++            // mSurroundSoundCategoryPref.removePreference(surroundPref);
++            getPreferenceScreen().addPreference(mSurroundSoundCategoryPref);
++        } else {
++            getPreferenceScreen().removePreference(mSurroundSoundCategoryPref);
++        }
++    }
++
++    private void getFormats() {
++        mFormats.clear();
++        Log.i(TAG, "getForamts  = " + getDevice());
++        if (getDevice().equals(SPDIF)) {
++            for (String str : spdifFormats) {
++                mFormats.put(str, mAudioSetting.getFormat(MODE_SPDIF, str) == MODE_SUCCESS);
++            }
++        } else if (getDevice().equals(HDMI)) {
++            for (String str : hdmiFormats) {
++                mFormats.put(str, mAudioSetting.getFormat(MODE_HDMI, str) == MODE_SUCCESS);
++            }
++        } else {
++
++        }
++    }
++
++    private void initSpdifFormats() {
++        for (String format : hdmiFormats) {
++            mAudioSetting.setFormat(MODE_HDMI, SoundFormatPreferenceControllerBitstream.MODE_CLOSE, format);
++        }
++        for (String format : spdifFormats) {
++            mAudioSetting.setFormat(MODE_SPDIF, SoundFormatPreferenceControllerBitstream.MODE_OPEN, format);
++        }
++    }
++}
+diff --git a/Settings/src/com/android/tv/settings/device/sound/SoundActivity.java b/Settings/src/com/android/tv/settings/device/sound/SoundActivity.java
+new file mode 100644
+index 00000000..84dd008f
+--- /dev/null
++++ b/Settings/src/com/android/tv/settings/device/sound/SoundActivity.java
+@@ -0,0 +1,34 @@
++/*
++ * Copyright (C) 2014 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.tv.settings.device.sound;
++
++import android.app.Fragment;
++
++import com.android.tv.settings.TvSettingsActivity;
++import com.android.tv.settings.overlay.FeatureFactory;
++
++/**
++ * Activity that allows the enabling and disabling of sound effects.
++ */
++public class SoundActivity extends TvSettingsActivity {
++
++    @Override
++    protected Fragment createSettingsFragment() {
++        return FeatureFactory.getFactory(this).getSettingsFragmentProvider()
++            .newSettingsFragment(SoundFragment.class.getName(), null);
++    }
++}
+diff --git a/Settings/src/com/android/tv/settings/device/sound/SoundFormatPreferenceController.java b/Settings/src/com/android/tv/settings/device/sound/SoundFormatPreferenceController.java
+new file mode 100644
+index 00000000..7854c548
+--- /dev/null
++++ b/Settings/src/com/android/tv/settings/device/sound/SoundFormatPreferenceController.java
+@@ -0,0 +1,147 @@
++/*
++ * Copyright (C) 2018 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.tv.settings.device.sound;
++
++import android.content.Context;
++import android.media.AudioManager;
++import android.provider.Settings;
++import android.text.TextUtils;
++import android.util.Log;
++
++import androidx.preference.Preference;
++import androidx.preference.SwitchPreference;
++
++import com.android.settingslib.core.AbstractPreferenceController;
++
++import java.util.Arrays;
++import java.util.HashSet;
++import java.util.Map;
++
++/**
++ * Controller for the surround sound switch preferences.
++ */
++public class SoundFormatPreferenceController extends AbstractPreferenceController {
++
++    private static final String TAG = "SoundFormatController";
++
++    private int mFormatId;
++    private AudioManager mAudioManager;
++    private Map<Integer, Boolean> mFormats;
++    private Map<Integer, Boolean> mReportedFormats;
++
++    public SoundFormatPreferenceController(
++            Context context,
++            int formatId,
++            Map<Integer, Boolean> formats,
++            Map<Integer, Boolean> reportedFormats) {
++        super(context);
++        mFormatId = formatId;
++        mFormats = formats;
++        mReportedFormats = reportedFormats;
++    }
++
++    @Override
++    public boolean isAvailable() {
++        return true;
++    }
++
++    @Override
++    public String getPreferenceKey() {
++        return SoundFragment.KEY_SURROUND_SOUND_FORMAT_PREFIX + mFormatId;
++    }
++
++    @Override
++    public void updateState(Preference preference) {
++        super.updateState(preference);
++        if (preference.getKey().equals(getPreferenceKey())) {
++            preference.setEnabled(getFormatPreferencesEnabledState());
++            ((SwitchPreference) preference).setChecked(getFormatPreferenceCheckedState());
++        }
++    }
++
++    @Override
++    public boolean handlePreferenceTreeClick(Preference preference) {
++        if (preference.getKey().equals(getPreferenceKey())) {
++            setSurroundManualFormatsSetting(((SwitchPreference) preference).isChecked());
++        }
++        return super.handlePreferenceTreeClick(preference);
++    }
++
++    /**
++     * @return checked state of a surround sound format switch based on passthrough setting and
++     * audio manager state for the format.
++     */
++    private boolean getFormatPreferenceCheckedState() {
++        switch (SoundFragment.getSurroundPassthroughSetting(mContext)) {
++            case SoundFragment.VAL_SURROUND_SOUND_NEVER:
++                return false;
++            case SoundFragment.VAL_SURROUND_SOUND_ALWAYS:
++                return true;
++            case SoundFragment.VAL_SURROUND_SOUND_AUTO:
++                return isReportedFormat();
++            case SoundFragment.VAL_SURROUND_SOUND_MANUAL:
++                return getFormatsEnabledInManualMode().contains(mFormatId);
++            default: return false;
++        }
++    }
++
++    /** @return true if the format checkboxes should be enabled, i.e. in manual mode. */
++    private boolean getFormatPreferencesEnabledState() {
++        return SoundFragment.getSurroundPassthroughSetting(mContext)
++                == SoundFragment.VAL_SURROUND_SOUND_MANUAL;
++    }
++
++    /** @return the formats that are enabled in manual mode, from global settings */
++    private HashSet<Integer> getFormatsEnabledInManualMode() {
++        HashSet<Integer> formats = new HashSet<>();
++        String enabledFormats = Settings.Global.getString(mContext.getContentResolver(),
++                Settings.Global.ENCODED_SURROUND_OUTPUT_ENABLED_FORMATS);
++        if (enabledFormats == null) {
++            // Starting with Android P passthrough setting ALWAYS has been replaced with MANUAL.
++            // In that case all formats will be enabled when in MANUAL mode.
++            formats.addAll(mFormats.keySet());
++        } else {
++            try {
++                Arrays.stream(TextUtils.split(enabledFormats, ",")).mapToInt(Integer::parseInt)
++                        .forEach(formats::add);
++            } catch (NumberFormatException e) {
++                Log.w(TAG, "ENCODED_SURROUND_OUTPUT_ENABLED_FORMATS misformatted.", e);
++            }
++        }
++        return formats;
++    }
++
++    /**
++     * Writes enabled/disabled state for a given format to the global settings.
++     */
++    private void setSurroundManualFormatsSetting(boolean enabled) {
++        HashSet<Integer> formats = getFormatsEnabledInManualMode();
++        if (enabled) {
++            formats.add(mFormatId);
++        } else {
++            formats.remove(mFormatId);
++        }
++        Settings.Global.putString(mContext.getContentResolver(),
++                Settings.Global.ENCODED_SURROUND_OUTPUT_ENABLED_FORMATS,
++                TextUtils.join(",", formats));
++    }
++
++    /** @return true if the given format is reported by the device. */
++    private boolean isReportedFormat() {
++        return mReportedFormats != null && mReportedFormats.get(mFormatId) != null;
++    }
++}
+diff --git a/Settings/src/com/android/tv/settings/device/sound/SoundFormatPreferenceControllerBitstream.java b/Settings/src/com/android/tv/settings/device/sound/SoundFormatPreferenceControllerBitstream.java
+new file mode 100644
+index 00000000..6c1d771a
+--- /dev/null
++++ b/Settings/src/com/android/tv/settings/device/sound/SoundFormatPreferenceControllerBitstream.java
+@@ -0,0 +1,158 @@
++/*
++ * Copyright (C) 2018 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.tv.settings.device.sound;
++
++import android.content.Context;
++import android.media.AudioFormat;
++import android.media.AudioManager;
++import android.os.audio.RkAudioSettingManager;
++import android.provider.Settings;
++import androidx.preference.SwitchPreference;
++import androidx.preference.Preference;
++import android.text.TextUtils;
++import android.util.Log;
++
++import com.android.settingslib.core.AbstractPreferenceController;
++
++import java.util.Arrays;
++import java.util.LinkedHashMap;
++import java.util.HashSet;
++import java.util.Map;
++import android.media.AudioSystem;
++import com.android.tv.settings.R;
++
++/**
++ * Controller for the surround sound switch preferences.
++ */
++public class SoundFormatPreferenceControllerBitstream extends AbstractPreferenceController {
++
++    private static final String TAG = "SoundFormatPreferenceControllerBitstream";
++
++    public static final int MODE_OPEN = 0;
++    public static final int MODE_CLOSE = 1;
++
++    private String mFormatId;
++    private AudioManager mAudioManager;
++    private Map<String, Boolean> mReportedFormats;
++    private RkAudioSettingManager mAudioSetting;
++    private String[] decodeFormats;
++    private String[] hdmiFormats;
++    private String[] spdifFormats;
++
++    public SoundFormatPreferenceControllerBitstream(Context context, String formatId) {
++        super(context);
++        mFormatId = formatId;
++        mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
++        mAudioSetting = BitStreamFragment.mAudioSetting;
++        mReportedFormats = new LinkedHashMap<String, Boolean>();
++        // decodeFormats = context.getResources().getStringArray(R.array.decode_formats);
++        hdmiFormats = context.getResources().getStringArray(R.array.hdmi_formats);
++        spdifFormats = context.getResources().getStringArray(R.array.spdif_formats);
++        Log.i(TAG, "SoundFormatPreferenceControllerBitstream isDecodeDevice = " + (mAudioSetting.getSelect(BitStreamFragment.MODE_DECODE) == BitStreamFragment.MODE_SUCCESS));
++        if (mAudioSetting.getSelect(BitStreamFragment.MODE_HDMI) == BitStreamFragment.MODE_SUCCESS) {
++            Log.i(TAG, "SoundFormatPreferenceControllerBitstream hdmi");
++            for (String str : hdmiFormats) {
++                mReportedFormats.put(str,
++                        mAudioSetting.getFormat(BitStreamFragment.MODE_HDMI, str) == BitStreamFragment.MODE_SUCCESS);
++            }
++        } else if (mAudioSetting.getSelect(BitStreamFragment.MODE_SPDIF) == BitStreamFragment.MODE_SUCCESS) {
++            Log.i(TAG, "SoundFormatPreferenceControllerBitstream spdif");
++            for (String str : spdifFormats) {
++                mReportedFormats.put(str,
++                        mAudioSetting.getFormat(BitStreamFragment.MODE_SPDIF, str) == BitStreamFragment.MODE_SUCCESS);
++            }
++        } else {
++            Log.i(TAG, "SoundFormatPreferenceControllerBitstream decode");
++        }
++    }
++
++    @Override
++    public boolean isAvailable() {
++        return true;
++    }
++
++    @Override
++    public String getPreferenceKey() {
++        return mFormatId;
++    }
++
++    @Override
++    public void updateState(Preference preference) {
++        super.updateState(preference);
++        if (preference.getKey().equals(getPreferenceKey())) {
++            preference.setEnabled(getFormatPreferencesEnabledState());
++            ((SwitchPreference) preference).setChecked(getFormatPreferenceCheckedState());
++        }
++    }
++
++    @Override
++    public boolean handlePreferenceTreeClick(Preference preference) {
++        if (preference.getKey().equals(getPreferenceKey())) {
++            setSurroundManualFormatsSetting(((SwitchPreference) preference).isChecked());
++        }
++        return super.handlePreferenceTreeClick(preference);
++    }
++
++    /**
++     * @return checked state of a surround sound format switch based on passthrough
++     *         setting and audio manager state for the format.
++     */
++    private boolean getFormatPreferenceCheckedState() {
++        if (mAudioSetting.getSelect(BitStreamFragment.MODE_HDMI) == BitStreamFragment.MODE_SUCCESS) {
++            return mAudioSetting.getFormat(BitStreamFragment.MODE_HDMI, mFormatId) == BitStreamFragment.MODE_SUCCESS;
++        } else if (mAudioSetting.getSelect(BitStreamFragment.MODE_SPDIF) == BitStreamFragment.MODE_SUCCESS) {
++            return mAudioSetting.getFormat(BitStreamFragment.MODE_SPDIF, mFormatId) == BitStreamFragment.MODE_SUCCESS;
++        } else {
++            return mAudioSetting.getFormat(BitStreamFragment.MODE_DECODE, mFormatId) == BitStreamFragment.MODE_SUCCESS;
++        }
++    }
++
++    /**
++     * @return true if the format checkboxes should be enabled, i.e. in manual mode.
++     */
++    private boolean getFormatPreferencesEnabledState() {
++        if (mAudioSetting.getSelect(BitStreamFragment.MODE_DECODE) == BitStreamFragment.MODE_SUCCESS) {
++            return false;
++        } else {
++            Log.i(TAG, "getFormatPreferencesEnabledState spdif = " + mAudioSetting.getSelect(BitStreamFragment.MODE_SPDIF));
++            Log.i(TAG, "getFormatPreferencesEnabledState hdmi = " + mAudioSetting.getSelect(BitStreamFragment.MODE_HDMI));
++            if (mAudioSetting
++                    .getSelect(BitStreamFragment.MODE_SPDIF) == BitStreamFragment.MODE_SUCCESS) {
++                return true;
++            }
++            if (mAudioSetting.getSelect(BitStreamFragment.MODE_HDMI) == BitStreamFragment.MODE_SUCCESS && mAudioSetting.getMode(BitStreamFragment.MODE_HDMI) == BitStreamFragment.MDOE_MANUAL) {
++                return true;
++            } else {
++                return false;
++            }
++        }
++    }
++
++    /**
++     * Writes enabled/disabled state for a given format to the global settings.
++     */
++    private void setSurroundManualFormatsSetting(boolean enabled) {
++        if (mAudioSetting.getSelect(BitStreamFragment.MODE_HDMI) == BitStreamFragment.MODE_SUCCESS) {
++            mAudioSetting.setFormat(BitStreamFragment.MODE_HDMI, enabled ? MODE_OPEN : MODE_CLOSE, mFormatId);
++        } else if (mAudioSetting.getSelect(BitStreamFragment.MODE_SPDIF) == BitStreamFragment.MODE_SUCCESS) {
++            mAudioSetting.setFormat(BitStreamFragment.MODE_SPDIF, enabled ? MODE_OPEN : MODE_CLOSE, mFormatId);
++        } else {
++            mAudioSetting.setFormat(BitStreamFragment.MODE_DECODE, enabled ? MODE_OPEN : MODE_CLOSE, mFormatId);
++        }
++    }
++
++}
+diff --git a/Settings/src/com/android/tv/settings/device/sound/SoundFragment.java b/Settings/src/com/android/tv/settings/device/sound/SoundFragment.java
+new file mode 100644
+index 00000000..54fa871c
+--- /dev/null
++++ b/Settings/src/com/android/tv/settings/device/sound/SoundFragment.java
+@@ -0,0 +1,264 @@
++/*
++ * Copyright (C) 2015 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License
++ */
++
++package com.android.tv.settings.device.sound;
++
++import android.content.ContentResolver;
++import android.content.Context;
++import android.media.AudioFormat;
++import android.media.AudioManager;
++import android.os.Bundle;
++import android.provider.Settings;
++import android.text.TextUtils;
++
++import androidx.annotation.Keep;
++import androidx.preference.ListPreference;
++import androidx.preference.Preference;
++import androidx.preference.PreferenceCategory;
++import androidx.preference.PreferenceViewHolder;
++import androidx.preference.SwitchPreference;
++import androidx.preference.TwoStatePreference;
++
++import com.android.internal.logging.nano.MetricsProto;
++import com.android.settingslib.core.AbstractPreferenceController;
++import com.android.tv.settings.PreferenceControllerFragment;
++import com.android.tv.settings.R;
++
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Map;
++import android.os.SystemProperties;
++
++/**
++ * The "Sound" screen in TV Settings.
++ */
++@Keep
++public class SoundFragment extends PreferenceControllerFragment implements
++        Preference.OnPreferenceChangeListener {
++
++    static final String KEY_SOUND_EFFECTS = "sound_effects";
++    static final String KEY_SOUND_SAFE = "sound_safe";
++    static final String KEY_SURROUND_PASSTHROUGH = "surround_passthrough";
++    static final String KEY_SURROUND_SOUND_CATEGORY = "surround_sound_category";
++    static final String KEY_SURROUND_SOUND_FORMAT_PREFIX = "surround_sound_format_";
++
++    static final String VAL_SURROUND_SOUND_AUTO = "auto";
++    static final String VAL_SURROUND_SOUND_NEVER = "never";
++    static final String VAL_SURROUND_SOUND_ALWAYS = "always";
++    static final String VAL_SURROUND_SOUND_MANUAL = "manual";
++
++    private AudioManager mAudioManager;
++    private Map<Integer, Boolean> mFormats;
++    private Map<Integer, Boolean> mReportedFormats;
++    private List<AbstractPreferenceController> mPreferenceControllers;
++    private PreferenceCategory mSurroundSoundCategoryPref;
++
++    public static SoundFragment newInstance() {
++        return new SoundFragment();
++    }
++
++    @Override
++    public void onAttach(Context context) {
++        mAudioManager = context.getSystemService(AudioManager.class);
++        mFormats = mAudioManager.getSurroundFormats();
++        mReportedFormats = mAudioManager.getReportedSurroundFormats();
++        super.onAttach(context);
++    }
++
++    @Override
++    protected int getPreferenceScreenResId() {
++        return R.xml.sound;
++    }
++
++    @Override
++    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
++        setPreferencesFromResource(R.xml.sound, null);
++
++        final TwoStatePreference soundPref = (TwoStatePreference) findPreference(KEY_SOUND_EFFECTS);
++        soundPref.setChecked(getSoundEffectsEnabled());
++
++        /* final TwoStatePreference soundSafe = (TwoStatePreference) findPreference(KEY_SOUND_SAFE);
++        soundSafe.setChecked(getSoundBootSafeEnabled()); */
++
++        final ListPreference surroundPref =
++                (ListPreference) findPreference(KEY_SURROUND_PASSTHROUGH);
++        surroundPref.setValue(getSurroundPassthroughSetting(getContext()));
++        surroundPref.setOnPreferenceChangeListener(this);
++
++        mSurroundSoundCategoryPref =
++                (PreferenceCategory) findPreference(KEY_SURROUND_SOUND_CATEGORY);
++        createFormatPreferences();
++        updateFormatPreferencesStates();
++    }
++
++    @Override
++    protected List<AbstractPreferenceController> onCreatePreferenceControllers(Context context) {
++        mPreferenceControllers = new ArrayList<>(mFormats.size());
++        for (Map.Entry<Integer, Boolean> format : mFormats.entrySet()) {
++            mPreferenceControllers.add(new SoundFormatPreferenceController(context,
++                    format.getKey() /*formatId*/, mFormats, mReportedFormats));
++        }
++        return mPreferenceControllers;
++    }
++
++    /** Creates and adds switches for each surround sound format. */
++    private void createFormatPreferences() {
++        for (Map.Entry<Integer, Boolean> format : mFormats.entrySet()) {
++            int formatId = format.getKey();
++            boolean enabled = format.getValue();
++            SwitchPreference pref = new SwitchPreference(getPreferenceManager().getContext()) {
++                @Override
++                public void onBindViewHolder(PreferenceViewHolder holder) {
++                    super.onBindViewHolder(holder);
++                    // Enabling the view will ensure that the preference is focusable even if it
++                    // the preference is disabled. This allows the user to scroll down over the
++                    // disabled surround sound formats and see them all.
++                    holder.itemView.setEnabled(true);
++                }
++            };
++            pref.setTitle(getFormatDisplayName(formatId));
++            pref.setKey(KEY_SURROUND_SOUND_FORMAT_PREFIX + formatId);
++            pref.setChecked(enabled);
++            mSurroundSoundCategoryPref.addPreference(pref);
++        }
++    }
++
++    /**
++     * @return the display name for each surround sound format.
++     */
++    private String getFormatDisplayName(int formatId) {
++        switch (formatId) {
++            case AudioFormat.ENCODING_AC3:
++                return getContext().getResources().getString(R.string.surround_sound_format_ac3);
++            case AudioFormat.ENCODING_E_AC3:
++                return getContext().getResources().getString(R.string.surround_sound_format_e_ac3);
++            case AudioFormat.ENCODING_DTS:
++                return getContext().getResources().getString(R.string.surround_sound_format_dts);
++            case AudioFormat.ENCODING_DTS_HD:
++                return getContext().getResources().getString(R.string.surround_sound_format_dts_hd);
++            default:
++                // Fallback in case new formats have been added that we don't know of.
++                return AudioFormat.toDisplayName(formatId);
++        }
++    }
++
++    private void updateFormatPreferencesStates() {
++        for (AbstractPreferenceController controller : mPreferenceControllers) {
++            Preference preference = mSurroundSoundCategoryPref.findPreference(
++                    controller.getPreferenceKey());
++            if (preference != null) {
++                controller.updateState(preference);
++            }
++        }
++    }
++
++    @Override
++    public boolean onPreferenceTreeClick(Preference preference) {
++        if (TextUtils.equals(preference.getKey(), KEY_SOUND_EFFECTS)) {
++            final TwoStatePreference soundPref = (TwoStatePreference) preference;
++            setSoundEffectsEnabled(soundPref.isChecked());
++        }
++        /* if (TextUtils.equals(preference.getKey(), KEY_SOUND_SAFE)) {
++            final TwoStatePreference soundSafe = (TwoStatePreference) preference;
++            setSoundBootSafeEnabled(soundSafe.isChecked());
++        } */
++        return super.onPreferenceTreeClick(preference);
++    }
++
++    @Override
++    public boolean onPreferenceChange(Preference preference, Object newValue) {
++        if (TextUtils.equals(preference.getKey(), KEY_SURROUND_PASSTHROUGH)) {
++            final String selection = (String) newValue;
++            switch (selection) {
++                case VAL_SURROUND_SOUND_AUTO:
++                    setSurroundPassthroughSetting(Settings.Global.ENCODED_SURROUND_OUTPUT_AUTO);
++                    break;
++                case VAL_SURROUND_SOUND_NEVER:
++                    setSurroundPassthroughSetting(Settings.Global.ENCODED_SURROUND_OUTPUT_NEVER);
++                    break;
++                case VAL_SURROUND_SOUND_ALWAYS:
++                    setSurroundPassthroughSetting(Settings.Global.ENCODED_SURROUND_OUTPUT_ALWAYS);
++                    break;
++                case VAL_SURROUND_SOUND_MANUAL:
++                    setSurroundPassthroughSetting(Settings.Global.ENCODED_SURROUND_OUTPUT_MANUAL);
++                    break;
++                default:
++                    throw new IllegalArgumentException("Unknown surround sound pref value: "
++                            + selection);
++            }
++            updateFormatPreferencesStates();
++            return true;
++        }
++        return true;
++    }
++
++    private boolean getSoundBootSafeEnabled() {
++        return "true".equals(SystemProperties.get("persist.sys.audio.enforce_safevolume","true"));
++    }
++    private void setSoundBootSafeEnabled(boolean enabled) {
++        if(enabled)
++            SystemProperties.set("persist.sys.audio.enforce_safevolume","true");
++        else
++            SystemProperties.set("persist.sys.audio.enforce_safevolume", "false");
++    }
++
++    private boolean getSoundEffectsEnabled() {
++        return getSoundEffectsEnabled(getActivity().getContentResolver());
++    }
++
++    public static boolean getSoundEffectsEnabled(ContentResolver contentResolver) {
++        return Settings.System.getInt(contentResolver, Settings.System.SOUND_EFFECTS_ENABLED, 1)
++                != 0;
++    }
++
++    private void setSoundEffectsEnabled(boolean enabled) {
++        if (enabled) {
++            mAudioManager.loadSoundEffects();
++        } else {
++            mAudioManager.unloadSoundEffects();
++        }
++        Settings.System.putInt(getActivity().getContentResolver(),
++                Settings.System.SOUND_EFFECTS_ENABLED, enabled ? 1 : 0);
++    }
++
++    private void setSurroundPassthroughSetting(int newVal) {
++        Settings.Global.putInt(getContext().getContentResolver(),
++                Settings.Global.ENCODED_SURROUND_OUTPUT, newVal);
++    }
++
++    static String getSurroundPassthroughSetting(Context context) {
++        final int value = Settings.Global.getInt(context.getContentResolver(),
++                Settings.Global.ENCODED_SURROUND_OUTPUT,
++                Settings.Global.ENCODED_SURROUND_OUTPUT_AUTO);
++
++        switch (value) {
++            case Settings.Global.ENCODED_SURROUND_OUTPUT_AUTO:
++            default:
++                return VAL_SURROUND_SOUND_AUTO;
++            case Settings.Global.ENCODED_SURROUND_OUTPUT_NEVER:
++                return VAL_SURROUND_SOUND_NEVER;
++            // On Android P ALWAYS is replaced by MANUAL.
++            case Settings.Global.ENCODED_SURROUND_OUTPUT_ALWAYS:
++            case Settings.Global.ENCODED_SURROUND_OUTPUT_MANUAL:
++                return VAL_SURROUND_SOUND_MANUAL;
++        }
++    }
++
++    @Override
++    public int getMetricsCategory() {
++        return MetricsProto.MetricsEvent.SOUND;
++    }
++}
+-- 
+2.35.1
+

@@ -1,0 +1,39 @@
+From 497e1e19f4651f642091b94854fe09f1cc42f451 Mon Sep 17 00:00:00 2001
+From: Alex Zhao <zzc@rock-chips.com>
+Date: Mon, 4 Jan 2021 20:10:57 +0800
+Subject: [PATCH 14/24] Revert "Add support for wifi sleep power down"
+
+This reverts commit c170629e34b42ca00830abbec1c2216492d7b22c.
+
+Signed-off-by: Alex Zhao <zzc@rock-chips.com>
+Change-Id: I1faf9acfcf3167eed5e7efbb368104e7d1e1f190
+---
+ wifi/1.4/default/service.cpp | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/wifi/1.4/default/service.cpp b/wifi/1.4/default/service.cpp
+index 42a9f42b9..64476f812 100644
+--- a/wifi/1.4/default/service.cpp
++++ b/wifi/1.4/default/service.cpp
+@@ -15,7 +15,6 @@
+  */
+ 
+ #include <android-base/logging.h>
+-#include <cutils/properties.h>
+ #include <hidl/HidlLazyUtils.h>
+ #include <hidl/HidlTransportSupport.h>
+ #include <utils/Looper.h>
+@@ -49,9 +48,7 @@ int main(int /*argc*/, char** argv) {
+         argv, android::base::LogdLogger(android::base::SYSTEM));
+     LOG(INFO) << "Wifi Hal is booting up...";
+ 
+-    bool config = property_get_bool("ro.wifi.sleep.power.down", false);
+-    if (!config)
+-	wifi_load_driver();
++    wifi_load_driver();
+     configureRpcThreadpool(1, true /* callerWillJoin */);
+ 
+     const auto iface_tool =
+-- 
+2.35.1
+

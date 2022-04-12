@@ -1,0 +1,132 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/hardware/interfaces (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/hardware/interfaces (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk35/eink/11.0/develop
+commit 1a14a470d51860065de4f7c645ac06f12bc174a1
+Author: Weixin Zhou <zwx@rock-chips.com>
+Date:   Wed Jan 27 14:56:49 2021 +0800
+
+    suspend: add new config of mem_sleep
+    
+    mem:
+    echo deep > sys/power/mem_sleep
+    echo mem > sys/power/state
+    
+    ultra:
+    echo ultra > sys/power/mem_sleep
+    echo mem > sys/power/state
+    
+    Signed-off-by: Weixin Zhou <zwx@rock-chips.com>
+    Change-Id: I700a2a3ee3db7ad69325ce252545d6d224c2abed
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/hardware/interfaces (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/hardware/interfaces (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk35/eink/11.0/develop
+commit 1a14a470d51860065de4f7c645ac06f12bc174a1
+Author: Weixin Zhou <zwx@rock-chips.com>
+Date:   Wed Jan 27 14:56:49 2021 +0800
+
+    suspend: add new config of mem_sleep
+    
+    mem:
+    echo deep > sys/power/mem_sleep
+    echo mem > sys/power/state
+    
+    ultra:
+    echo ultra > sys/power/mem_sleep
+    echo mem > sys/power/state
+    
+    Signed-off-by: Weixin Zhou <zwx@rock-chips.com>
+    Change-Id: I700a2a3ee3db7ad69325ce252545d6d224c2abed
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/hardware/interfaces (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/hardware/interfaces (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk35/eink/11.0/develop
+commit 1a14a470d51860065de4f7c645ac06f12bc174a1
+Author: Weixin Zhou <zwx@rock-chips.com>
+Date:   Wed Jan 27 14:56:49 2021 +0800
+
+    suspend: add new config of mem_sleep
+    
+    mem:
+    echo deep > sys/power/mem_sleep
+    echo mem > sys/power/state
+    
+    ultra:
+    echo ultra > sys/power/mem_sleep
+    echo mem > sys/power/state
+    
+    Signed-off-by: Weixin Zhou <zwx@rock-chips.com>
+    Change-Id: I700a2a3ee3db7ad69325ce252545d6d224c2abed
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/hardware/interfaces (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/hardware/interfaces (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk35/eink/11.0/develop
+commit 1a14a470d51860065de4f7c645ac06f12bc174a1
+Author: Weixin Zhou <zwx@rock-chips.com>
+Date:   Wed Jan 27 14:56:49 2021 +0800
+
+    suspend: add new config of mem_sleep
+    
+    mem:
+    echo deep > sys/power/mem_sleep
+    echo mem > sys/power/state
+    
+    ultra:
+    echo ultra > sys/power/mem_sleep
+    echo mem > sys/power/state
+    
+    Signed-off-by: Weixin Zhou <zwx@rock-chips.com>
+    Change-Id: I700a2a3ee3db7ad69325ce252545d6d224c2abed
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/hardware/interfaces (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/hardware/interfaces (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk35/eink/11.0/develop
+commit 1a14a470d51860065de4f7c645ac06f12bc174a1
+Author: Weixin Zhou <zwx@rock-chips.com>
+Date:   Wed Jan 27 14:56:49 2021 +0800
+
+    suspend: add new config of mem_sleep
+    
+    mem:
+    echo deep > sys/power/mem_sleep
+    echo mem > sys/power/state
+    
+    ultra:
+    echo ultra > sys/power/mem_sleep
+    echo mem > sys/power/state
+    
+    Signed-off-by: Weixin Zhou <zwx@rock-chips.com>
+    Change-Id: I700a2a3ee3db7ad69325ce252545d6d224c2abed
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/hardware/interfaces (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/hardware/interfaces (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk35/eink/11.0/develop
+commit 1a14a470d51860065de4f7c645ac06f12bc174a1
+Author: Weixin Zhou <zwx@rock-chips.com>
+Date:   Wed Jan 27 14:56:49 2021 +0800
+
+    suspend: add new config of mem_sleep
+    
+    mem:
+    echo deep > sys/power/mem_sleep
+    echo mem > sys/power/state
+    
+    ultra:
+    echo ultra > sys/power/mem_sleep
+    echo mem > sys/power/state
+    
+    Signed-off-by: Weixin Zhou <zwx@rock-chips.com>
+    Change-Id: I700a2a3ee3db7ad69325ce252545d6d224c2abed

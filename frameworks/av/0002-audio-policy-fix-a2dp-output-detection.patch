@@ -1,0 +1,39 @@
+From d3e9770bd3a88bea7bda089b9ae00caa6c25a461 Mon Sep 17 00:00:00 2001
+From: Eric Laurent <elaurent@google.com>
+Date: Thu, 13 Feb 2020 17:47:56 -0800
+Subject: [PATCH 02/25] audio policy: fix a2dp output detection
+
+The logic in IOProfile::devicesSupportEncodedFormats()
+was only checking if the first device in the list of supported devices
+was supporting currently selected A2DP encoding format.
+But if more than one devices match the queried types, we need to check
+all devices in case one of them supports the selected encoding format.
+
+Bug: 147789166
+Test: repro steps in the bug.
+Change-Id: I704c5c6278eed524f15e7b73cec68a24f04d3a8c
+(cherry picked from commit 4dc6d002af4915c19e54dcb0e524a5c6dfb43a44)
+---
+ .../common/managerdefinitions/include/IOProfile.h           | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/services/audiopolicy/common/managerdefinitions/include/IOProfile.h b/services/audiopolicy/common/managerdefinitions/include/IOProfile.h
+index 2044863dbf..5f551d5966 100644
+--- a/services/audiopolicy/common/managerdefinitions/include/IOProfile.h
++++ b/services/audiopolicy/common/managerdefinitions/include/IOProfile.h
+@@ -135,8 +135,10 @@ public:
+         }
+         DeviceVector deviceList =
+             mSupportedDevices.getDevicesFromTypes(deviceTypes);
+-        if (!deviceList.empty()) {
+-            return deviceList.itemAt(0)->hasCurrentEncodedFormat();
++        for (const auto& device : deviceList) {
++            if (device->hasCurrentEncodedFormat()) {
++                return true;
++            }
+         }
+         return false;
+     }
+-- 
+2.35.1
+

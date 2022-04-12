@@ -1,0 +1,49 @@
+From 4eb63db904cf85c5eb027f0ef9484103ecbcfba5 Mon Sep 17 00:00:00 2001
+From: Dave Mankoff <mankoff@google.com>
+Date: Tue, 10 Sep 2019 13:56:37 -0400
+Subject: [PATCH 014/297] Remove KeyguardUpdateMonitor.getInstance().
+
+This class is now provided via dependency injection.
+
+This fixes the fingerprint sensor.
+
+Bug: 140712902
+Test: manual.
+Change-Id: I37f55e946d67e6c7ad443a2110ad4955fdb52894
+(cherry picked from commit cd84b099443113805fe36040147e022c63b1b21c)
+---
+ .../com/android/keyguard/KeyguardUpdateMonitor.java   | 11 -----------
+ 1 file changed, 11 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java b/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
+index b964edf7fc4..720074b0ad7 100644
+--- a/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
++++ b/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
+@@ -217,8 +217,6 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener {
+         }
+     }
+ 
+-    private static KeyguardUpdateMonitor sInstance;
+-
+     private final Context mContext;
+     private final boolean mIsPrimaryUser;
+     HashMap<Integer, SimData> mSimDatas = new HashMap<Integer, SimData>();
+@@ -1389,15 +1387,6 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener {
+         Trace.endSection();
+     }
+ 
+-
+-    /** Provides access to the static instance. */
+-    public static KeyguardUpdateMonitor getInstance(Context context) {
+-        if (sInstance == null) {
+-            sInstance = new KeyguardUpdateMonitor(context, Looper.getMainLooper());
+-        }
+-        return sInstance;
+-    }
+-
+     protected void handleStartedGoingToSleep(int arg1) {
+         checkIsHandlerThread();
+         mLockIconPressed = false;
+-- 
+2.35.1
+

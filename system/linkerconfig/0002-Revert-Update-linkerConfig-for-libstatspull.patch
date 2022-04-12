@@ -1,0 +1,46 @@
+From bf86553cddefdae4e168d08262cbe5ba0ca344cb Mon Sep 17 00:00:00 2001
+From: Wonsik Kim <wonsik@google.com>
+Date: Fri, 14 Feb 2020 11:15:54 -0800
+Subject: [PATCH 2/6] Revert "Update linkerConfig for libstatspull"
+
+This reverts commit 9548694cad549d02d2f6e53398d0674255a71646.
+
+Reason for revert: major functional regression
+Exempt-From-Owner-Approval: revert
+Bug: 149538115
+Change-Id: I2510f2ae628832b5b856bc9319749e5d8bb2396a
+(cherry picked from commit 351c988bd1e853f2199f55d9262a6ecc39ea879f)
+---
+ contents/namespace/apexplatform.cc  | 2 --
+ contents/namespace/systemdefault.cc | 2 --
+ 2 files changed, 4 deletions(-)
+
+diff --git a/contents/namespace/apexplatform.cc b/contents/namespace/apexplatform.cc
+index 2594729..b13476b 100644
+--- a/contents/namespace/apexplatform.cc
++++ b/contents/namespace/apexplatform.cc
+@@ -43,8 +43,6 @@ std::vector<std::string> required_libs = {
+     "libnativeloader.so",
+     // TODO(b/122876336): Remove libpac.so once it's migrated to Webview
+     "libpac.so",
+-    // statsd
+-    "libstatspull.so",
+ };
+ }  // namespace
+ 
+diff --git a/contents/namespace/systemdefault.cc b/contents/namespace/systemdefault.cc
+index c447a9f..9e8d091 100644
+--- a/contents/namespace/systemdefault.cc
++++ b/contents/namespace/systemdefault.cc
+@@ -120,8 +120,6 @@ Namespace BuildSystemDefaultNamespace([[maybe_unused]] const Context& ctx) {
+       "libnetd_resolv.so",
+       // nn
+       "libneuralnetworks.so",
+-      // statsd
+-      "libstatspull.so",
+   });
+ 
+   ns.AddProvides(GetSystemStubLibraries());
+-- 
+2.35.1
+

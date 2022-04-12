@@ -1,0 +1,51 @@
+From ab6e02f73ed400dd3cccdc7f266430a75632af3d Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Wed, 27 Jan 2021 09:58:32 +0800
+Subject: [PATCH 290/297] allow some eink app has default permission
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: Id70f23dd29e94e71ce6aad11113bef0e16606870
+---
+ .../permission/PermissionManagerService.java  | 26 +++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+
+diff --git a/services/core/java/com/android/server/pm/permission/PermissionManagerService.java b/services/core/java/com/android/server/pm/permission/PermissionManagerService.java
+index 9963cf7e212..f641e63d9ed 100644
+--- a/services/core/java/com/android/server/pm/permission/PermissionManagerService.java
++++ b/services/core/java/com/android/server/pm/permission/PermissionManagerService.java
+@@ -3043,6 +3043,32 @@ public class PermissionManagerService extends IPermissionManager.Stub {
+                 }
+             }
+ 
++            //Slog.d(TAG, "PMS=====" + pkg..getPackageName());
++            if((null != pkg && null != pkg.getPackageName() && null != pkg.getRequestedPermissions())
++                && (pkg.getPackageName().equals("com.wetao.elauncher")
++                    || pkg.getPackageName().equals("com.yuewen.ebook")
++                    || pkg.getPackageName().equals("com.rockchip.ebook"))) {
++                int permissionsSize = pkg.getRequestedPermissions().size();
++                for (int i = 0; i < permissionsSize; i++) {
++                    String name = pkg.getRequestedPermissions().get(i);
++                    //Slog.d(TAG, "permission name="+name);
++                    /*if (TextUtils.isEmpty(name)
++                        || !"android.permission.XXX".equals(name)) {
++                        continue;
++                    }*/
++                    Slog.d(TAG, pkg.getPackageName() + " grantInstallPermission " + name);
++                    if (null == mSettings || null == mSettings.mPermissions) {
++                        Slog.w(TAG, "mSettings is " + mSettings);
++                        break;
++                    }
++                    BasePermission bp = mSettings.mPermissions.get(name);
++                    if(null != bp && permissionsState.grantInstallPermission(bp) != PermissionsState.PERMISSION_OPERATION_FAILURE) {
++                        changedInstallPermission = true;
++                        Slog.d(TAG, pkg.getPackageName() + " grantInstallPermission " + name + " success");
++                    }
++                }
++            }
++
+             if ((changedInstallPermission || replace) && !ps.areInstallPermissionsFixed() &&
+                     !ps.isSystem() || ps.getPkgState().isUpdatedSystemApp()) {
+                 // This is the first that we have heard about this package, so the
+-- 
+2.35.1
+

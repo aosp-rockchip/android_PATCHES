@@ -1,0 +1,502 @@
+From fa51ed294bb352dd3ea30bcede920817a0724af5 Mon Sep 17 00:00:00 2001
+From: aisx <aisx@rock-chips.com>
+Date: Wed, 29 Aug 2018 16:46:32 +0800
+Subject: [PATCH 17/36] change persist.sys to persist.vendor
+
+Change-Id: I95b56e167992d020766d5b05d0f7e1bcbff8052a
+---
+ modules/hw_output/hw_output.cpp | 168 +++++++++++++++++---------------
+ 1 file changed, 92 insertions(+), 76 deletions(-)
+
+diff --git a/modules/hw_output/hw_output.cpp b/modules/hw_output/hw_output.cpp
+index 243003c3..c4b241e9 100644
+--- a/modules/hw_output/hw_output.cpp
++++ b/modules/hw_output/hw_output.cpp
+@@ -311,28 +311,28 @@ static void saveBcshConfig(struct file_base_paramer *base_paramer, int dpy){
+         char property[PROPERTY_VALUE_MAX];
+ 
+         memset(property,0,sizeof(property));
+-        property_get("persist.sys.brightness.main", property, "0");
++        property_get("persist.vendor.brightness.main", property, "0");
+         if (atoi(property) > 0)
+             base_paramer->main.bcsh.brightness = atoi(property);
+         else
+             base_paramer->main.bcsh.brightness = DEFAULT_BRIGHTNESS;
+ 
+         memset(property,0,sizeof(property));
+-        property_get("persist.sys.contrast.main", property, "0");
++        property_get("persist.vendor.contrast.main", property, "0");
+         if (atoi(property) > 0)
+             base_paramer->main.bcsh.contrast = atoi(property);
+         else
+             base_paramer->main.bcsh.contrast = DEFAULT_CONTRAST;
+ 
+         memset(property,0,sizeof(property));
+-        property_get("persist.sys.saturation.main", property, "0");
++        property_get("persist.vendor.saturation.main", property, "0");
+         if (atoi(property) > 0)
+             base_paramer->main.bcsh.saturation = atoi(property);
+         else
+             base_paramer->main.bcsh.saturation = DEFAULT_SATURATION;
+ 
+         memset(property,0,sizeof(property));
+-        property_get("persist.sys.hue.main", property, "0");
++        property_get("persist.vendor.hue.main", property, "0");
+         if (atoi(property) > 0)
+             base_paramer->main.bcsh.hue = atoi(property);
+         else
+@@ -341,28 +341,28 @@ static void saveBcshConfig(struct file_base_paramer *base_paramer, int dpy){
+         char property[PROPERTY_VALUE_MAX];
+ 
+         memset(property,0,sizeof(property));
+-        property_get("persist.sys.brightness.aux", property, "0");
++        property_get("persist.vendor.brightness.aux", property, "0");
+         if (atoi(property) > 0)
+             base_paramer->aux.bcsh.brightness = atoi(property);
+         else
+             base_paramer->aux.bcsh.brightness = DEFAULT_BRIGHTNESS;
+ 
+         memset(property,0,sizeof(property));
+-        property_get("persist.sys.contrast.aux", property, "0");
++        property_get("persist.vendor.contrast.aux", property, "0");
+         if (atoi(property) > 0)
+             base_paramer->aux.bcsh.contrast = atoi(property);
+         else
+             base_paramer->aux.bcsh.contrast = DEFAULT_CONTRAST;
+ 
+         memset(property,0,sizeof(property));
+-        property_get("persist.sys.saturation.aux", property, "0");
++        property_get("persist.vendor.saturation.aux", property, "0");
+         if (atoi(property) > 0)
+             base_paramer->aux.bcsh.saturation = atoi(property);
+         else
+             base_paramer->aux.bcsh.saturation = DEFAULT_SATURATION;
+ 
+         memset(property,0,sizeof(property));
+-        property_get("persist.sys.hue.aux", property, "0");
++        property_get("persist.vendor.hue.aux", property, "0");
+         if (atoi(property) > 0)
+             base_paramer->aux.bcsh.hue = atoi(property);
+         else
+@@ -389,7 +389,7 @@ static void hw_output_save_config(struct hw_output_device* dev){
+         unsigned int vsync_start=0,vsync_end=0,vtotal=0,flags=0;
+         float vfresh=0.0000;
+ 
+-        property_get("persist.sys.resolution.main", resolution, "0x0@0.00-0-0-0-0-0-0-0");
++        property_get("persist.vendor.resolution.main", resolution, "0x0@0.00-0-0-0-0-0-0-0");
+         if (strncmp(resolution, "Auto", 4) != 0 && strncmp(resolution, "0x0p0-0", 7) !=0)
+             sscanf(resolution,"%dx%d@%f-%d-%d-%d-%d-%d-%d-%x", &w, &h, &vfresh, &hsync_start,&hsync_end,
+                     &htotal,&vsync_start,&vsync_end, &vtotal, &flags);
+@@ -429,7 +429,7 @@ static void hw_output_save_config(struct hw_output_device* dev){
+         unsigned int vsync_start=0,vsync_end=0,vtotal=0,flags;
+         float vfresh=0;
+ 
+-        property_get("persist.sys.resolution.aux", resolution, "0x0@0.00-0-0-0-0-0-0-0");
++        property_get("persist.vendor.resolution.aux", resolution, "0x0@0.00-0-0-0-0-0-0-0");
+         if (strncmp(resolution, "Auto", 4) != 0 && strncmp(resolution, "0x0p0-0", 7) !=0)
+             sscanf(resolution,"%dx%d@%f-%d-%d-%d-%d-%d-%d-%x", &w, &h, &vfresh, &hsync_start,&hsync_end,&htotal,&vsync_start,&vsync_end,
+                     &vtotal, &flags);
+@@ -511,7 +511,7 @@ static void hw_output_save_config(struct hw_output_device* dev){
+ 
+             base_paramer.main.screen_list[slot].type = conn->get_type();
+             base_paramer.main.screen_list[slot].feature &= AUTO_BIT_RESET;
+-            property_get("persist.sys.resolution.main", property, "0x0@0.00-0-0-0-0-0-0-0");
++            property_get("persist.vendor.resolution.main", property, "0x0@0.00-0-0-0-0-0-0-0");
+             if (strncmp(property, "Auto", 4) != 0 && strncmp(property, "0x0p0-0", 7) !=0) {
+                 ALOGD("saveConfig resolution = %s", property);
+                 std::vector<DrmMode> mModes = primary->modes();
+@@ -544,7 +544,7 @@ static void hw_output_save_config(struct hw_output_device* dev){
+             }
+ 
+             memset(property,0,sizeof(property));
+-            property_get("persist.sys.overscan.main", property, "overscan 100,100,100,100");
++            property_get("persist.vendor.overscan.main", property, "overscan 100,100,100,100");
+             sscanf(property, "overscan %d,%d,%d,%d",
+                     &left,
+                     &top,
+@@ -556,7 +556,7 @@ static void hw_output_save_config(struct hw_output_device* dev){
+             base_paramer.main.scan.bottomscale = (unsigned short)bottom;
+ 
+             memset(property,0,sizeof(property));
+-            property_get("persist.sys.color.main", property, "Auto");
++            property_get("persist.vendor.color.main", property, "Auto");
+             if (strncmp(property, "Auto", 4) != 0){
+                 if (strstr(property, "RGB") != 0)
+                     base_paramer.main.screen_list[slot].format = output_rgb;
+@@ -585,12 +585,12 @@ static void hw_output_save_config(struct hw_output_device* dev){
+             }
+ 
+             memset(property,0,sizeof(property));
+-            property_get("persist.sys.hdcp1x.main", property, "0");
++            property_get("persist.vendor.hdcp1x.main", property, "0");
+             if (atoi(property) > 0)
+                 base_paramer.main.screen_list[slot].feature |= HDCP1X_EN;
+ 
+             memset(property,0,sizeof(property));
+-            property_get("persist.sys.resolution_white.main", property, "0");
++            property_get("persist.vendor.resolution_white.main", property, "0");
+             if (atoi(property) > 0)
+                 base_paramer.main.screen_list[slot].feature |= RESOLUTION_WHITE_EN;
+             saveBcshConfig(&base_paramer, HWC_DISPLAY_PRIMARY_BIT);
+@@ -613,7 +613,7 @@ static void hw_output_save_config(struct hw_output_device* dev){
+ 
+             base_paramer.aux.screen_list[slot].type = conn->get_type();
+             base_paramer.aux.screen_list[slot].feature &= AUTO_BIT_RESET;
+-            property_get("persist.sys.resolution.aux", property, "0x0p0-0");
++            property_get("persist.vendor.resolution.aux", property, "0x0p0-0");
+             if (strncmp(property, "Auto", 4) != 0 && strncmp(property, "0x0p0-0", 7) !=0) {
+                 std::vector<DrmMode> mModes = extend->modes();
+                 sscanf(property,"%dx%d@%f-%d-%d-%d-%d-%d-%d-%x", &w, &h, &vfresh, &hsync_start,&hsync_end,&htotal,&vsync_start,&vsync_end,
+@@ -639,7 +639,7 @@ static void hw_output_save_config(struct hw_output_device* dev){
+             }
+ 
+             memset(property,0,sizeof(property));
+-            property_get("persist.sys.overscan.aux", property, "overscan 100,100,100,100");
++            property_get("persist.vendor.overscan.aux", property, "overscan 100,100,100,100");
+             sscanf(property, "overscan %d,%d,%d,%d",
+                     &left,
+                     &top,
+@@ -651,7 +651,7 @@ static void hw_output_save_config(struct hw_output_device* dev){
+             base_paramer.aux.scan.bottomscale = (unsigned short)bottom;
+ 
+             memset(property,0,sizeof(property));
+-            property_get("persist.sys.color.aux", property, "Auto");
++            property_get("persist.vendor.color.aux", property, "Auto");
+             if (strncmp(property, "Auto", 4) != 0){
+                 char color[16];
+                 char depth[16];
+@@ -683,12 +683,12 @@ static void hw_output_save_config(struct hw_output_device* dev){
+             }
+ 
+             memset(property,0,sizeof(property));
+-            property_get("persist.sys.hdcp1x.aux", property, "0");
++            property_get("persist.vendor.hdcp1x.aux", property, "0");
+             if (atoi(property) > 0)
+                 base_paramer.aux.screen_list[slot].feature |= HDCP1X_EN;
+ 
+             memset(property,0,sizeof(property));
+-            property_get("persist.sys.resolution_white.aux", property, "0");
++            property_get("persist.vendor.resolution_white.aux", property, "0");
+             if (atoi(property) > 0)
+                 base_paramer.aux.screen_list[slot].feature |= RESOLUTION_WHITE_EN;
+             /*add for BCSH*/
+@@ -862,19 +862,22 @@ static int hw_output_set_mode(struct hw_output_device*, int dpy, const char* mod
+     char property[PROPERTY_VALUE_MAX];
+ 
+     if (dpy == HWC_DISPLAY_PRIMARY){
+-        property_get("persist.sys.resolution.main", property, NULL);
+-        property_set("persist.sys.resolution.main", mode);
++        property_get("persist.vendor.resolution.main", property, NULL);
+     } else {
+-        property_get("persist.sys.resolution.main", property, NULL);
+-        property_set("persist.sys.resolution.aux", mode);
++        property_get("persist.vendor.resolution.aux", property, NULL);
+     }
+-    ALOGD("nativeSetMode %s display %d ", mode, dpy);
++    ALOGD("nativeSetMode %s display %d", mode, dpy);
+ 
+     if (strcmp(mode, property) !=0) {
+         char tmp[128];
++
+         timeline++;
+         sprintf(tmp, "%d", timeline);
+-        property_set("sys.display.timeline", tmp);
++        if (dpy == HWC_DISPLAY_PRIMARY)
++            property_set("persist.vendor.resolution.main", mode);
++        else 
++            property_set("persist.vendor.resolution.aux", mode);
++        property_set("vendor.display.timeline", tmp);
+     }
+     return 0;
+ }
+@@ -902,18 +905,21 @@ static int hw_output_set_brightness(struct hw_output_device*, int dpy, int brigh
+ 
+     sprintf(tmp, "%d", brightness);
+     if (dpy == HWC_DISPLAY_PRIMARY){
+-        property_get("persist.sys.brightness.main", property, "50");
+-        property_set("persist.sys.brightness.main", tmp);
++        property_get("persist.vendor.brightness.main", property, "50");
+     } else {
+-        property_get("persist.sys.brightness.aux", property, "50");
+-        property_set("persist.sys.brightness.aux", tmp);
++        property_get("persist.vendor.brightness.aux", property, "50");
+     }
+ 
+     if (atoi(property) != brightness) {
+         timeline++;
+         memset(tmp, 0, sizeof(tmp));
+         sprintf(tmp, "%d", timeline);
+-        property_set("sys.display.timeline", tmp);
++
++        if (dpy == HWC_DISPLAY_PRIMARY)
++            property_set("persist.vendor.brightness.main", tmp);
++        else
++            property_set("persist.vendor.brightness.aux", tmp);
++        property_set("vendor.display.timeline", tmp);
+     }
+     return 0;
+ }
+@@ -925,18 +931,20 @@ static int hw_output_set_contrast(struct hw_output_device*, int dpy, int contras
+ 
+     sprintf(tmp, "%d", contrast);
+     if (dpy == HWC_DISPLAY_PRIMARY){
+-        property_get("persist.sys.contrast.main", property, "50");
+-        property_set("persist.sys.contrast.main", tmp);
++        property_get("persist.vendor.contrast.main", property, "50");
+     } else {
+-        property_get("persist.sys.contrast.aux", property, "50");
+-        property_set("persist.sys.contrast.aux", tmp);
++        property_get("persist.vendor.contrast.aux", property, "50");
+     }
+ 
+     if (atoi(property) != contrast) {
+         timeline++;
+         memset(tmp, 0, sizeof(tmp));
+         sprintf(tmp, "%d", timeline);
+-        property_set("sys.display.timeline", tmp);
++        if (dpy == HWC_DISPLAY_PRIMARY)
++            property_set("persist.vendor.contrast.main", tmp);
++        else
++            property_set("persist.vendor.contrast.aux", tmp);
++        property_set("vendor.display.timeline", tmp);
+     }
+     return 0;
+ }
+@@ -948,18 +956,20 @@ static int hw_output_set_sat(struct hw_output_device*, int dpy, int sat)
+ 
+     sprintf(tmp, "%d", sat);
+     if (dpy == HWC_DISPLAY_PRIMARY){
+-        property_get("persist.sys.saturation.main", property, "50");
+-        property_set("persist.sys.saturation.main", tmp);
++        property_get("persist.vendor.saturation.main", property, "50");
+     } else {
+-        property_get("persist.sys.saturation.aux", property, "50");
+-        property_set("persist.sys.saturation.aux", tmp);
++        property_get("persist.vendor.saturation.aux", property, "50");
+     }
+ 
+     if (atoi(property) != sat) {
+         timeline++;
+         memset(tmp, 0, sizeof(tmp));
+         sprintf(tmp, "%d", timeline);
+-        property_set("sys.display.timeline", tmp);
++        if (dpy == HWC_DISPLAY_PRIMARY)
++            property_set("persist.vendor.saturation.main", tmp);
++        else
++            property_set("persist.vendor.saturation.aux", tmp);
++        property_set("vendor.display.timeline", tmp);
+     }
+     return 0;
+ }
+@@ -971,18 +981,20 @@ static int hw_output_set_hue(struct hw_output_device*, int dpy, int hue)
+ 
+     sprintf(tmp, "%d", hue);
+     if (dpy == HWC_DISPLAY_PRIMARY){
+-        property_get("persist.sys.hue.main", property, "50");
+-        property_set("persist.sys.hue.main", tmp);
++        property_get("persist.vendor.hue.main", property, "50");
+     } else {
+-        property_get("persist.sys.hue.aux", property, "50");
+-        property_set("persist.sys.hue.aux", tmp);
++        property_get("persist.vendor.hue.aux", property, "50");
+     }
+ 
+     if (atoi(property) != hue) {
+         timeline++;
+         memset(tmp, 0, sizeof(tmp));
+         sprintf(tmp, "%d", timeline);
+-        property_set("sys.display.timeline", tmp);
++        if (dpy == HWC_DISPLAY_PRIMARY)
++            property_set("persist.vendor.hue.main", tmp);
++        else
++            property_set("persist.vendor.hue.aux", tmp);
++        property_set("vendor.display.timeline", tmp);
+     }
+     return 0;
+ }
+@@ -994,9 +1006,9 @@ static int hw_output_set_screen_scale(struct hw_output_device*, int dpy, int dir
+     int left,top,right,bottom;
+ 
+     if(dpy == HWC_DISPLAY_PRIMARY)
+-        property_get("persist.sys.overscan.main", property, "overscan 100,100,100,100");
++        property_get("persist.vendor.overscan.main", property, "overscan 100,100,100,100");
+     else
+-        property_get("persist.sys.overscan.aux", property, "overscan 100,100,100,100");
++        property_get("persist.vendor.overscan.aux", property, "overscan 100,100,100,100");
+ 
+     sscanf(property, "overscan %d,%d,%d,%d", &left, &top, &right, &bottom);
+ 
+@@ -1011,16 +1023,16 @@ static int hw_output_set_screen_scale(struct hw_output_device*, int dpy, int dir
+ 
+     sprintf(overscan, "overscan %d,%d,%d,%d", left, top, right, bottom);
+ 
+-    if(dpy == HWC_DISPLAY_PRIMARY)
+-        property_set("persist.sys.overscan.main", overscan);
+-    else
+-        property_set("persist.sys.overscan.aux", overscan);
+-
+     if (strcmp(property, overscan) != 0) {
+         char tmp[128];
++
+         timeline++;
+         sprintf(tmp, "%d", timeline);
+-        property_set("sys.display.timeline", tmp);
++        if(dpy == HWC_DISPLAY_PRIMARY)
++            property_set("persist.vendor.overscan.main", overscan);
++        else
++            property_set("persist.vendor.overscan.aux", overscan);
++        property_set("vendor.display.timeline", tmp);
+     }
+ 
+     return 0;
+@@ -1033,18 +1045,20 @@ static int hw_output_set_hdr_mode(struct hw_output_device*, int dpy, int hdr_mod
+ 
+     sprintf(tmp, "%d", hdr_mode);
+     if (dpy == HWC_DISPLAY_PRIMARY){
+-        property_get("persist.sys.hdr_mode.main", property, "50");
+-        property_set("persist.sys.hdr_mode.main", tmp);
++        property_get("persist.vendor.hdr_mode.main", property, "50");
+     } else {
+-        property_get("persist.sys.hdr_mode.aux", property, "50");
+-        property_set("persist.sys.hdr_mode.aux", tmp);
++        property_get("persist.vendor.hdr_mode.aux", property, "50");
+     }
+ 
+     if (atoi(property) != hdr_mode) {
+         timeline++;
+         memset(tmp, 0, sizeof(tmp));
+         sprintf(tmp, "%d", timeline);
+-        property_set("sys.display.timeline", tmp);
++        if (dpy == HWC_DISPLAY_PRIMARY)
++            property_set("persist.vendor.hdr_mode.main", tmp);
++        else
++            property_set("persist.vendor.hdr_mode.aux", tmp);
++        property_set("vendor.display.timeline", tmp);
+     }
+     return 0;
+ }
+@@ -1054,11 +1068,9 @@ static int hw_output_set_color_mode(struct hw_output_device*, int dpy, const cha
+     char property[PROPERTY_VALUE_MAX];
+ 
+     if (dpy == HWC_DISPLAY_PRIMARY){
+-        property_get("persist.sys.color.main", property, NULL);
+-        property_set("persist.sys.color.main", color_mode);
++        property_get("persist.vendor.color.main", property, NULL);
+     } else {
+-        property_get("persist.sys.color.aux", property, NULL);
+-        property_set("persist.sys.color.aux", color_mode);
++        property_get("persist.vendor.color.aux", property, NULL);
+     }
+     ALOGD("hw_output_set_color_mode %s display %d ", color_mode, dpy);
+ 
+@@ -1066,7 +1078,11 @@ static int hw_output_set_color_mode(struct hw_output_device*, int dpy, const cha
+         char tmp[128];
+         timeline++;
+         sprintf(tmp, "%d", timeline);
+-        property_set("sys.display.timeline", tmp);
++        if (dpy == HWC_DISPLAY_PRIMARY)
++            property_set("persist.vendor.color.main", color_mode);
++        else
++            property_set("persist.vendor.color.aux", color_mode);
++        property_set("vendor.display.timeline", tmp);
+     }
+     return 0;
+ }
+@@ -1097,9 +1113,9 @@ static int hw_output_get_cur_color_mode(struct hw_output_device* dev, int dpy, c
+     DrmConnector* mCurConnector;
+ 
+     if (dpy == HWC_DISPLAY_PRIMARY) {
+-        len = property_get("persist.sys.color.main", colorMode, NULL);
++        len = property_get("persist.vendor.color.main", colorMode, NULL);
+     } else if (dpy == HWC_DISPLAY_EXTERNAL) {
+-        len = property_get("persist.sys.color.aux", colorMode, NULL);
++        len = property_get("persist.vendor.color.aux", colorMode, NULL);
+     }
+ 
+     ALOGD("nativeGetCurCorlorMode: property=%s", colorMode);
+@@ -1191,9 +1207,9 @@ static int hw_output_get_overscan(struct hw_output_device*, int dpy, uint32_t* o
+     int left,top,right,bottom;
+ 
+     if(dpy == HWC_DISPLAY_PRIMARY)
+-        property_get("persist.sys.overscan.main", property, "overscan 100,100,100,100");
++        property_get("persist.vendor.overscan.main", property, "overscan 100,100,100,100");
+     else
+-        property_get("persist.sys.overscan.aux", property, "overscan 100,100,100,100");
++        property_get("persist.vendor.overscan.aux", property, "overscan 100,100,100,100");
+ 
+     sscanf(property, "overscan %d,%d,%d,%d", &left, &top, &right, &bottom);
+     overscans[0] = left;
+@@ -1211,7 +1227,7 @@ static int hw_output_get_bcsh(struct hw_output_device*, int dpy, uint32_t* bcshs
+ 
+     foudBaseParameter = getBaseParameterInfo(&base_paramer);
+     if (dpy == HWC_DISPLAY_PRIMARY) {
+-        if (property_get("persist.sys.brightness.main", mBcshProperty, NULL) > 0)
++        if (property_get("persist.vendor.brightness.main", mBcshProperty, NULL) > 0)
+             bcshs[0] = atoi(mBcshProperty);
+         else if (foudBaseParameter)
+             bcshs[0] = base_paramer.main.bcsh.brightness;
+@@ -1219,7 +1235,7 @@ static int hw_output_get_bcsh(struct hw_output_device*, int dpy, uint32_t* bcshs
+             bcshs[0] = DEFAULT_BRIGHTNESS;
+ 
+         memset(mBcshProperty, 0, sizeof(mBcshProperty));
+-        if (property_get("persist.sys.contrast.main", mBcshProperty, NULL) > 0)
++        if (property_get("persist.vendor.contrast.main", mBcshProperty, NULL) > 0)
+             bcshs[1] = atoi(mBcshProperty);
+         else if (foudBaseParameter)
+             bcshs[1] = base_paramer.main.bcsh.contrast;
+@@ -1227,7 +1243,7 @@ static int hw_output_get_bcsh(struct hw_output_device*, int dpy, uint32_t* bcshs
+             bcshs[1] = DEFAULT_CONTRAST;
+ 
+         memset(mBcshProperty, 0, sizeof(mBcshProperty));
+-        if (property_get("persist.sys.saturation.main", mBcshProperty, NULL) > 0)
++        if (property_get("persist.vendor.saturation.main", mBcshProperty, NULL) > 0)
+             bcshs[2] = atoi(mBcshProperty);
+         else if (foudBaseParameter)
+             bcshs[2] = base_paramer.main.bcsh.saturation;
+@@ -1235,14 +1251,14 @@ static int hw_output_get_bcsh(struct hw_output_device*, int dpy, uint32_t* bcshs
+             bcshs[2] = DEFAULT_SATURATION;
+ 
+         memset(mBcshProperty, 0, sizeof(mBcshProperty));
+-        if (property_get("persist.sys.hue.main",mBcshProperty, NULL) > 0)
++        if (property_get("persist.vendor.hue.main",mBcshProperty, NULL) > 0)
+             bcshs[3] = atoi(mBcshProperty);
+         else if (foudBaseParameter)
+             bcshs[3] = base_paramer.main.bcsh.hue;
+         else
+             bcshs[3] = DEFAULT_HUE;
+     } else if (dpy == HWC_DISPLAY_EXTERNAL){
+-        if (property_get("persist.sys.brightness.aux", mBcshProperty, NULL) > 0)
++        if (property_get("persist.vendor.brightness.aux", mBcshProperty, NULL) > 0)
+             bcshs[0] = atoi(mBcshProperty);
+         else if (foudBaseParameter)
+             bcshs[0] = base_paramer.aux.bcsh.brightness;
+@@ -1250,7 +1266,7 @@ static int hw_output_get_bcsh(struct hw_output_device*, int dpy, uint32_t* bcshs
+             bcshs[0] = DEFAULT_BRIGHTNESS;
+ 
+         memset(mBcshProperty, 0, sizeof(mBcshProperty));
+-        if (property_get("persist.sys.contrast.aux", mBcshProperty, NULL) > 0)
++        if (property_get("persist.vendor.contrast.aux", mBcshProperty, NULL) > 0)
+             bcshs[1] = atoi(mBcshProperty);
+         else if (foudBaseParameter)
+             bcshs[1] = base_paramer.aux.bcsh.contrast;
+@@ -1258,7 +1274,7 @@ static int hw_output_get_bcsh(struct hw_output_device*, int dpy, uint32_t* bcshs
+             bcshs[1] = DEFAULT_CONTRAST;
+ 
+         memset(mBcshProperty, 0, sizeof(mBcshProperty));
+-        if (property_get("persist.sys.saturation.aux", mBcshProperty, NULL) > 0)
++        if (property_get("persist.vendor.saturation.aux", mBcshProperty, NULL) > 0)
+             bcshs[2] = atoi(mBcshProperty);
+         else if (foudBaseParameter)
+             bcshs[2] = base_paramer.aux.bcsh.saturation;
+@@ -1266,7 +1282,7 @@ static int hw_output_get_bcsh(struct hw_output_device*, int dpy, uint32_t* bcshs
+             bcshs[2] = DEFAULT_SATURATION;
+ 
+         memset(mBcshProperty, 0, sizeof(mBcshProperty));
+-        if (property_get("persist.sys.hue.aux",mBcshProperty, NULL) > 0)
++        if (property_get("persist.vendor.hue.aux",mBcshProperty, NULL) > 0)
+             bcshs[3] = atoi(mBcshProperty);
+         else if (foudBaseParameter)
+             bcshs[3] = base_paramer.aux.bcsh.hue;
+-- 
+2.35.1
+

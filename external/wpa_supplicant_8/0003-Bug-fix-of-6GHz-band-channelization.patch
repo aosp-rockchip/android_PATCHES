@@ -1,0 +1,33 @@
+From 3c724d72c23db36b108820157e3042c71ba82a83 Mon Sep 17 00:00:00 2001
+From: Kai Shi <kaishi@google.com>
+Date: Wed, 16 Sep 2020 20:05:13 -0700
+Subject: [PATCH 3/4] Bug fix of 6GHz band channelization
+
+Add the special case of 6G band channel 2.
+
+Bug: 167426957
+Test: manual test with 6GHz capable STA and AP
+Change-Id: I0a74591d9102f76b2c3ab13b181825314eb82b92
+Merged-In: I0a74591d9102f76b2c3ab13b181825314eb82b92
+---
+ hostapd/hidl/1.2/hostapd.cpp | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/hostapd/hidl/1.2/hostapd.cpp b/hostapd/hidl/1.2/hostapd.cpp
+index 537353a7..7789ed69 100644
+--- a/hostapd/hidl/1.2/hostapd.cpp
++++ b/hostapd/hidl/1.2/hostapd.cpp
+@@ -196,6 +196,10 @@ int getOpClassForChannel(int channel, int band, bool support11n, bool support11a
+ 			// 160MHz channel
+ 			return 134;
+ 		}
++		if (channel == 2) {
++			// 20MHz channel
++			return 136;
++		}
+ 		// Error
+ 		return 0;
+ 	}
+-- 
+2.35.1
+

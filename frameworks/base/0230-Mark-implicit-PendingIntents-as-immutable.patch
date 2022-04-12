@@ -1,0 +1,62 @@
+From a32ebbea7754839d7481079e38c3aaee518daa45 Mon Sep 17 00:00:00 2001
+From: Steve Elliott <steell@google.com>
+Date: Mon, 3 Aug 2020 13:45:44 -0400
+Subject: [PATCH 230/297] Mark implicit PendingIntents as immutable
+
+Bug: 156020795
+Test: manual, atest
+Change-Id: I72206c7a52b067b77d6542d170a6483713dfeee7
+(cherry picked from commit 84e08280d3882cfe4bad12ab426016c6d0efc7fb)
+(cherry picked from commit 02bdeeffb3135de0f3e18c3a85e6730b021fd191)
+---
+ .../screenshot/ScreenshotNotificationsController.java     | 6 ++++--
+ .../src/com/android/systemui/util/leak/LeakReporter.java  | 8 ++++++--
+ 2 files changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/screenshot/ScreenshotNotificationsController.java b/packages/SystemUI/src/com/android/systemui/screenshot/ScreenshotNotificationsController.java
+index fbcd6ba0ff4..42dde4064a9 100644
+--- a/packages/SystemUI/src/com/android/systemui/screenshot/ScreenshotNotificationsController.java
++++ b/packages/SystemUI/src/com/android/systemui/screenshot/ScreenshotNotificationsController.java
+@@ -205,7 +205,8 @@ public class ScreenshotNotificationsController {
+         mPublicNotificationBuilder
+                 .setContentTitle(mResources.getString(R.string.screenshot_saved_title))
+                 .setContentText(mResources.getString(R.string.screenshot_saved_text))
+-                .setContentIntent(PendingIntent.getActivity(mContext, 0, launchIntent, 0))
++                .setContentIntent(PendingIntent
++                        .getActivity(mContext, 0, launchIntent, PendingIntent.FLAG_IMMUTABLE))
+                 .setWhen(now)
+                 .setAutoCancel(true)
+                 .setColor(mContext.getColor(
+@@ -213,7 +214,8 @@ public class ScreenshotNotificationsController {
+         mNotificationBuilder
+                 .setContentTitle(mResources.getString(R.string.screenshot_saved_title))
+                 .setContentText(mResources.getString(R.string.screenshot_saved_text))
+-                .setContentIntent(PendingIntent.getActivity(mContext, 0, launchIntent, 0))
++                .setContentIntent(PendingIntent
++                        .getActivity(mContext, 0, launchIntent, PendingIntent.FLAG_IMMUTABLE))
+                 .setWhen(now)
+                 .setAutoCancel(true)
+                 .setColor(mContext.getColor(
+diff --git a/packages/SystemUI/src/com/android/systemui/util/leak/LeakReporter.java b/packages/SystemUI/src/com/android/systemui/util/leak/LeakReporter.java
+index b25df5f9c07..5e7280840bb 100644
+--- a/packages/SystemUI/src/com/android/systemui/util/leak/LeakReporter.java
++++ b/packages/SystemUI/src/com/android/systemui/util/leak/LeakReporter.java
+@@ -104,9 +104,13 @@ public class LeakReporter {
+                     .setContentText(String.format(
+                             "SystemUI has detected %d leaked objects. Tap to send", garbageCount))
+                     .setSmallIcon(com.android.internal.R.drawable.stat_sys_adb)
+-                    .setContentIntent(PendingIntent.getActivityAsUser(mContext, 0,
++                    .setContentIntent(PendingIntent.getActivityAsUser(
++                            mContext,
++                            0,
+                             getIntent(hprofFile, dumpFile),
+-                            PendingIntent.FLAG_UPDATE_CURRENT, null, UserHandle.CURRENT));
++                            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE,
++                            null,
++                            UserHandle.CURRENT));
+             notiMan.notify(TAG, 0, builder.build());
+         } catch (IOException e) {
+             Log.e(TAG, "Couldn't dump heap for leak", e);
+-- 
+2.35.1
+

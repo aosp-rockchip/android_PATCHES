@@ -1,0 +1,880 @@
+From a7a9154f24a4d419c2a36d97eeccd6159e4d84e8 Mon Sep 17 00:00:00 2001
+From: Samuel Fufa <sfufa@google.com>
+Date: Mon, 11 May 2020 19:48:59 -0700
+Subject: [PATCH 09/13] Switch to new protocol for hybrid hotseat
+
+- create predictor from items in bgModel instead of scanning views
+- Launcher no longer checks for duplicates before sending pin/unpin events
+- sending cached items from last prediction to reduce UI shuffle
+- Switch to using UserCache to persist and read ComponentKey
+
+Bug: 148814143
+Bug: 156413231
+Bug: 156200931
+Change-Id: Ide6330bed8eb7f0c6fbec1d1ac21e7f67a9b2be2
+(cherry picked from commit d12d6ab98a6f390c5b4c59b303e35a3f596645be)
+(cherry picked from commit fa369310e2108a6e5915b5873d3bab16482213fd)
+---
+ .../res/values/override.xml                   |   2 +
+ .../HotseatPredictionController.java          | 285 +++++-------------
+ .../hybridhotseat/HotseatPredictionModel.java | 136 +++++++++
+ res/values/config.xml                         |   1 +
+ src/com/android/launcher3/DropTarget.java     |  12 +
+ .../android/launcher3/LauncherAppState.java   |   2 +-
+ .../launcher3/model/BaseLoaderResults.java    |   4 +-
+ .../android/launcher3/model/LoaderTask.java   |   8 +-
+ .../launcher3/model/PredictionModel.java      |  94 ++++--
+ 9 files changed, 291 insertions(+), 253 deletions(-)
+ create mode 100644 quickstep/recents_ui_overrides/src/com/android/launcher3/hybridhotseat/HotseatPredictionModel.java
+
+diff --git a/quickstep/recents_ui_overrides/res/values/override.xml b/quickstep/recents_ui_overrides/res/values/override.xml
+index ed3ba929a..6aa9619cc 100644
+--- a/quickstep/recents_ui_overrides/res/values/override.xml
++++ b/quickstep/recents_ui_overrides/res/values/override.xml
+@@ -26,5 +26,7 @@
+   <string name="main_process_initializer_class" translatable="false">com.android.quickstep.QuickstepProcessInitializer</string>
+ 
+   <string name="user_event_dispatcher_class" translatable="false">com.android.quickstep.logging.UserEventDispatcherAppPredictionExtension</string>
++
++  <string name="prediction_model_class" translatable="false">com.android.launcher3.hybridhotseat.HotseatPredictionModel</string>
+ </resources>
+ 
+diff --git a/quickstep/recents_ui_overrides/src/com/android/launcher3/hybridhotseat/HotseatPredictionController.java b/quickstep/recents_ui_overrides/src/com/android/launcher3/hybridhotseat/HotseatPredictionController.java
+index e9f35345c..7a73e50da 100644
+--- a/quickstep/recents_ui_overrides/src/com/android/launcher3/hybridhotseat/HotseatPredictionController.java
++++ b/quickstep/recents_ui_overrides/src/com/android/launcher3/hybridhotseat/HotseatPredictionController.java
+@@ -25,10 +25,7 @@ import android.app.prediction.AppPredictionManager;
+ import android.app.prediction.AppPredictor;
+ import android.app.prediction.AppTarget;
+ import android.app.prediction.AppTargetEvent;
+-import android.app.prediction.AppTargetId;
+ import android.content.ComponentName;
+-import android.os.Bundle;
+-import android.os.Process;
+ import android.util.Log;
+ import android.view.View;
+ import android.view.ViewGroup;
+@@ -36,8 +33,6 @@ import android.view.ViewGroup;
+ import androidx.annotation.NonNull;
+ import androidx.annotation.Nullable;
+ 
+-import com.android.launcher3.BubbleTextView;
+-import com.android.launcher3.CellLayout;
+ import com.android.launcher3.DragSource;
+ import com.android.launcher3.DropTarget;
+ import com.android.launcher3.Hotseat;
+@@ -48,7 +43,6 @@ import com.android.launcher3.LauncherSettings;
+ import com.android.launcher3.LauncherState;
+ import com.android.launcher3.R;
+ import com.android.launcher3.Utilities;
+-import com.android.launcher3.Workspace;
+ import com.android.launcher3.allapps.AllAppsStore;
+ import com.android.launcher3.anim.AnimationSuccessListener;
+ import com.android.launcher3.appprediction.ComponentKeyMapper;
+@@ -57,12 +51,10 @@ import com.android.launcher3.dragndrop.DragController;
+ import com.android.launcher3.dragndrop.DragOptions;
+ import com.android.launcher3.icons.IconCache;
+ import com.android.launcher3.logging.FileLog;
+-import com.android.launcher3.model.PredictionModel;
+ import com.android.launcher3.model.data.AppInfo;
+ import com.android.launcher3.model.data.FolderInfo;
+ import com.android.launcher3.model.data.ItemInfo;
+ import com.android.launcher3.model.data.ItemInfoWithIcon;
+-import com.android.launcher3.model.data.LauncherAppWidgetInfo;
+ import com.android.launcher3.model.data.WorkspaceItemInfo;
+ import com.android.launcher3.popup.SystemShortcut;
+ import com.android.launcher3.shortcuts.ShortcutKey;
+@@ -77,7 +69,6 @@ import java.lang.ref.WeakReference;
+ import java.util.ArrayList;
+ import java.util.Collections;
+ import java.util.List;
+-import java.util.Locale;
+ import java.util.OptionalInt;
+ import java.util.stream.IntStream;
+ 
+@@ -93,17 +84,6 @@ public class HotseatPredictionController implements DragController.DragListener,
+     private static final String TAG = "PredictiveHotseat";
+     private static final boolean DEBUG = false;
+ 
+-    //TODO: replace this with AppTargetEvent.ACTION_UNPIN (b/144119543)
+-    private static final int APPTARGET_ACTION_UNPIN = 4;
+-
+-    private static final String APP_LOCATION_HOTSEAT = "hotseat";
+-    private static final String APP_LOCATION_WORKSPACE = "workspace";
+-
+-    private static final String BUNDLE_KEY_HOTSEAT = "hotseat_apps";
+-    private static final String BUNDLE_KEY_WORKSPACE = "workspace_apps";
+-
+-    private static final String BUNDLE_KEY_PIN_EVENTS = "pin_events";
+-
+     private static final String PREDICTION_CLIENT = "hotseat";
+     private DropTarget.DragObject mDragObject;
+     private int mHotSeatItemsCount;
+@@ -116,13 +96,14 @@ public class HotseatPredictionController implements DragController.DragListener,
+ 
+     private DynamicItemCache mDynamicItemCache;
+ 
+-    private final PredictionModel mPredictionModel;
++    private final HotseatPredictionModel mPredictionModel;
+     private AppPredictor mAppPredictor;
+     private AllAppsStore mAllAppsStore;
+     private AnimatorSet mIconRemoveAnimators;
+     private boolean mUIUpdatePaused = false;
+     private boolean mRequiresCacheUpdate = true;
+     private boolean mIsCacheEmpty;
++    private boolean mIsDestroyed = false;
+ 
+     private HotseatEduController mHotseatEduController;
+ 
+@@ -141,13 +122,13 @@ public class HotseatPredictionController implements DragController.DragListener,
+         mLauncher = launcher;
+         mHotseat = launcher.getHotseat();
+         mAllAppsStore = mLauncher.getAppsView().getAppsStore();
+-        mPredictionModel = LauncherAppState.INSTANCE.get(launcher).getPredictionModel();
++        LauncherAppState appState = LauncherAppState.getInstance(launcher);
++        mPredictionModel = (HotseatPredictionModel) appState.getPredictionModel();
+         mAllAppsStore.addUpdateListener(this);
+         mDynamicItemCache = new DynamicItemCache(mLauncher, this::fillGapsWithPrediction);
+         mHotSeatItemsCount = mLauncher.getDeviceProfile().inv.numHotseatIcons;
+         launcher.getDeviceProfile().inv.addOnChangeListener(this);
+         mHotseat.addOnAttachStateChangeListener(this);
+-        mIsCacheEmpty = mPredictionModel.getPredictionComponentKeys().isEmpty();
+         if (mHotseat.isAttachedToWindow()) {
+             onViewAttachedToWindow(mHotseat);
+         }
+@@ -260,6 +241,7 @@ public class HotseatPredictionController implements DragController.DragListener,
+      * Unregisters callbacks and frees resources
+      */
+     public void destroy() {
++        mIsDestroyed = true;
+         mAllAppsStore.removeUpdateListener(this);
+         mLauncher.getDeviceProfile().inv.removeOnChangeListener(this);
+         mHotseat.removeOnAttachStateChangeListener(this);
+@@ -293,99 +275,52 @@ public class HotseatPredictionController implements DragController.DragListener,
+         if (mAppPredictor != null) {
+             mAppPredictor.destroy();
+         }
+-        mAppPredictor = apm.createAppPredictionSession(
+-                new AppPredictionContext.Builder(mLauncher)
+-                        .setUiSurface(PREDICTION_CLIENT)
+-                        .setPredictedTargetCount(mHotSeatItemsCount)
+-                        .setExtras(getAppPredictionContextExtra())
+-                        .build());
+         WeakReference<HotseatPredictionController> controllerRef = new WeakReference<>(this);
+-        mAppPredictor.registerPredictionUpdates(mLauncher.getApplicationContext().getMainExecutor(),
+-                list -> {
+-                    if (controllerRef.get() != null) {
+-                        controllerRef.get().setPredictedApps(list);
+-                    }
+-                });
+ 
++
++        mPredictionModel.createBundle(bundle -> {
++            if (mIsDestroyed) return;
++            mAppPredictor = apm.createAppPredictionSession(
++                    new AppPredictionContext.Builder(mLauncher)
++                            .setUiSurface(PREDICTION_CLIENT)
++                            .setPredictedTargetCount(mHotSeatItemsCount)
++                            .setExtras(bundle)
++                            .build());
++            mAppPredictor.registerPredictionUpdates(
++                    mLauncher.getApplicationContext().getMainExecutor(),
++                    list -> {
++                        if (controllerRef.get() != null) {
++                            controllerRef.get().setPredictedApps(list);
++                        }
++                    });
++            mAppPredictor.requestPredictionUpdate();
++        });
+         setPauseUIUpdate(false);
+         if (!isEduSeen()) {
+             mHotseatEduController = new HotseatEduController(mLauncher, this::createPredictor);
+         }
+-        mAppPredictor.requestPredictionUpdate();
+     }
+ 
+     /**
+      * Create WorkspaceItemInfo objects and binds PredictedAppIcon views for cached predicted items.
+      */
+-    public void showCachedItems(List<AppInfo> apps, IntArray ranks) {
++    public void showCachedItems(List<AppInfo> apps,  IntArray ranks) {
++        mIsCacheEmpty = apps.isEmpty();
+         int count = Math.min(ranks.size(), apps.size());
+         List<WorkspaceItemInfo> items = new ArrayList<>(count);
++        mComponentKeyMappers.clear();
+         for (int i = 0; i < count; i++) {
+             WorkspaceItemInfo item = new WorkspaceItemInfo(apps.get(i));
++            ComponentKey componentKey = new ComponentKey(item.getTargetComponent(), item.user);
+             preparePredictionInfo(item, ranks.get(i));
+             items.add(item);
+-        }
+-        mComponentKeyMappers.clear();
+-        for (ComponentKey key : mPredictionModel.getPredictionComponentKeys()) {
+-            mComponentKeyMappers.add(new ComponentKeyMapper(key, mDynamicItemCache));
++
++            mComponentKeyMappers.add(new ComponentKeyMapper(componentKey, mDynamicItemCache));
+         }
+         updateDependencies();
+         bindItems(items, false, null);
+     }
+ 
+-    private Bundle getAppPredictionContextExtra() {
+-        Bundle bundle = new Bundle();
+-
+-        //TODO: remove this way of reporting items
+-        bundle.putParcelableArrayList(BUNDLE_KEY_HOTSEAT,
+-                getPinnedAppTargetsInViewGroup((mHotseat.getShortcutsAndWidgets())));
+-        bundle.putParcelableArrayList(BUNDLE_KEY_WORKSPACE, getPinnedAppTargetsInViewGroup(
+-                mLauncher.getWorkspace().getScreenWithId(
+-                        Workspace.FIRST_SCREEN_ID).getShortcutsAndWidgets()));
+-
+-        ArrayList<AppTargetEvent> pinEvents = new ArrayList<>();
+-        getPinEventsForViewGroup(pinEvents, mHotseat.getShortcutsAndWidgets(),
+-                APP_LOCATION_HOTSEAT);
+-        getPinEventsForViewGroup(pinEvents, mLauncher.getWorkspace().getScreenWithId(
+-                Workspace.FIRST_SCREEN_ID).getShortcutsAndWidgets(), APP_LOCATION_WORKSPACE);
+-        bundle.putParcelableArrayList(BUNDLE_KEY_PIN_EVENTS, pinEvents);
+-
+-        return bundle;
+-    }
+-
+-    private ArrayList<AppTargetEvent> getPinEventsForViewGroup(ArrayList<AppTargetEvent> pinEvents,
+-            ViewGroup views, String root) {
+-        for (int i = 0; i < views.getChildCount(); i++) {
+-            View child = views.getChildAt(i);
+-            final AppTargetEvent event;
+-            if (child.getTag() instanceof ItemInfo && getAppTargetFromInfo(
+-                    (ItemInfo) child.getTag()) != null) {
+-                ItemInfo info = (ItemInfo) child.getTag();
+-                event = wrapAppTargetWithLocation(getAppTargetFromInfo(info),
+-                        AppTargetEvent.ACTION_PIN, info);
+-            } else {
+-                CellLayout.LayoutParams params = (CellLayout.LayoutParams) views.getLayoutParams();
+-                event = wrapAppTargetWithLocation(getBlockAppTarget(), AppTargetEvent.ACTION_PIN,
+-                        root, 0, params.cellX, params.cellY, params.cellHSpan, params.cellVSpan);
+-            }
+-            pinEvents.add(event);
+-        }
+-        return pinEvents;
+-    }
+-
+-
+-    private ArrayList<AppTarget> getPinnedAppTargetsInViewGroup(ViewGroup viewGroup) {
+-        ArrayList<AppTarget> pinnedApps = new ArrayList<>();
+-        for (int i = 0; i < viewGroup.getChildCount(); i++) {
+-            View child = viewGroup.getChildAt(i);
+-            if (isPinnedIcon(child)) {
+-                WorkspaceItemInfo itemInfo = (WorkspaceItemInfo) child.getTag();
+-                pinnedApps.add(getAppTargetFromItemInfo(itemInfo));
+-            }
+-        }
+-        return pinnedApps;
+-    }
+-
+     private void setPredictedApps(List<AppTarget> appTargets) {
+         mComponentKeyMappers.clear();
+         StringBuilder predictionLog = new StringBuilder("predictedApps: [\n");
+@@ -443,8 +378,11 @@ public class HotseatPredictionController implements DragController.DragListener,
+                 workspaceItemInfo.cellX, workspaceItemInfo.cellY);
+         ObjectAnimator.ofFloat(icon, SCALE_PROPERTY, 1, 0.8f, 1).start();
+         icon.pin(workspaceItemInfo);
+-        AppTarget appTarget = getAppTargetFromItemInfo(workspaceItemInfo);
+-        notifyItemAction(appTarget, APP_LOCATION_HOTSEAT, AppTargetEvent.ACTION_PIN);
++        AppTarget appTarget = mPredictionModel.getAppTargetFromInfo(workspaceItemInfo);
++        if (appTarget != null) {
++            notifyItemAction(mPredictionModel.wrapAppTargetWithLocation(appTarget,
++                    AppTargetEvent.ACTION_PIN, workspaceItemInfo));
++        }
+         mRequiresCacheUpdate = true;
+     }
+ 
+@@ -524,10 +462,9 @@ public class HotseatPredictionController implements DragController.DragListener,
+         mIconRemoveAnimators.start();
+     }
+ 
+-    private void notifyItemAction(AppTarget target, String location, int action) {
++    private void notifyItemAction(AppTargetEvent event) {
+         if (mAppPredictor != null) {
+-            mAppPredictor.notifyAppTargetEvent(new AppTargetEvent.Builder(target,
+-                    action).setLaunchLocation(location).build());
++            mAppPredictor.notifyAppTargetEvent(event);
+         }
+     }
+ 
+@@ -545,36 +482,35 @@ public class HotseatPredictionController implements DragController.DragListener,
+     /**
+      * Unpins pinned app when it's converted into a folder
+      */
+-    public void folderCreatedFromWorkspaceItem(ItemInfo info, FolderInfo folderInfo) {
+-        if (info.itemType != LauncherSettings.Favorites.ITEM_TYPE_APPLICATION) {
+-            return;
++    public void folderCreatedFromWorkspaceItem(ItemInfo itemInfo, FolderInfo folderInfo) {
++        AppTarget folderTarget = mPredictionModel.getAppTargetFromInfo(folderInfo);
++        AppTarget itemTarget = mPredictionModel.getAppTargetFromInfo(itemInfo);
++        if (folderTarget != null && HotseatPredictionModel.isTrackedForPrediction(folderInfo)) {
++            notifyItemAction(mPredictionModel.wrapAppTargetWithLocation(folderTarget,
++                    AppTargetEvent.ACTION_PIN, folderInfo));
+         }
+-        AppTarget target = getAppTargetFromItemInfo(info);
+-        ViewGroup hotseatVG = mHotseat.getShortcutsAndWidgets();
+-        ViewGroup firstScreenVG = mLauncher.getWorkspace().getScreenWithId(
+-                Workspace.FIRST_SCREEN_ID).getShortcutsAndWidgets();
+-
+-        if (isInHotseat(folderInfo) && !getPinnedAppTargetsInViewGroup(hotseatVG).contains(
+-                target)) {
+-            notifyItemAction(target, APP_LOCATION_HOTSEAT, APPTARGET_ACTION_UNPIN);
+-        } else if (isInFirstPage(folderInfo) && !getPinnedAppTargetsInViewGroup(
+-                firstScreenVG).contains(target)) {
+-            notifyItemAction(target, APP_LOCATION_WORKSPACE, APPTARGET_ACTION_UNPIN);
++        // using folder info with isTrackedForPrediction as itemInfo.container is already changed
++        // to folder by this point
++        if (itemTarget != null && HotseatPredictionModel.isTrackedForPrediction(folderInfo)) {
++            notifyItemAction(mPredictionModel.wrapAppTargetWithLocation(itemTarget,
++                    AppTargetEvent.ACTION_UNPIN, folderInfo
++            ));
+         }
+     }
+ 
+     /**
+      * Pins workspace item created when all folder items are removed but one
+      */
+-    public void folderConvertedToWorkspaceItem(ItemInfo info, FolderInfo folderInfo) {
+-        if (info.itemType != LauncherSettings.Favorites.ITEM_TYPE_APPLICATION) {
+-            return;
++    public void folderConvertedToWorkspaceItem(ItemInfo itemInfo, FolderInfo folderInfo) {
++        AppTarget folderTarget = mPredictionModel.getAppTargetFromInfo(folderInfo);
++        AppTarget itemTarget = mPredictionModel.getAppTargetFromInfo(itemInfo);
++        if (folderTarget != null && HotseatPredictionModel.isTrackedForPrediction(folderInfo)) {
++            notifyItemAction(mPredictionModel.wrapAppTargetWithLocation(folderTarget,
++                    AppTargetEvent.ACTION_UNPIN, folderInfo));
+         }
+-        AppTarget target = getAppTargetFromItemInfo(info);
+-        if (isInHotseat(info)) {
+-            notifyItemAction(target, APP_LOCATION_HOTSEAT, AppTargetEvent.ACTION_PIN);
+-        } else if (isInFirstPage(info)) {
+-            notifyItemAction(target, APP_LOCATION_WORKSPACE, AppTargetEvent.ACTION_PIN);
++        if (itemTarget != null && HotseatPredictionModel.isTrackedForPrediction(itemInfo)) {
++            notifyItemAction(mPredictionModel.wrapAppTargetWithLocation(itemTarget,
++                    AppTargetEvent.ACTION_PIN, itemInfo));
+         }
+     }
+ 
+@@ -585,29 +521,18 @@ public class HotseatPredictionController implements DragController.DragListener,
+         }
+ 
+         ItemInfo dragInfo = mDragObject.dragInfo;
+-        ViewGroup hotseatVG = mHotseat.getShortcutsAndWidgets();
+-        ViewGroup firstScreenVG = mLauncher.getWorkspace().getScreenWithId(
+-                Workspace.FIRST_SCREEN_ID).getShortcutsAndWidgets();
+-
+-        if (dragInfo instanceof WorkspaceItemInfo
+-                && dragInfo.itemType == LauncherSettings.Favorites.ITEM_TYPE_APPLICATION
+-                && dragInfo.getTargetComponent() != null) {
+-            AppTarget appTarget = getAppTargetFromItemInfo(dragInfo);
+-            if (!isInHotseat(dragInfo) && isInHotseat(mDragObject.originalDragInfo)) {
+-                if (!getPinnedAppTargetsInViewGroup(hotseatVG).contains(appTarget)) {
+-                    notifyItemAction(appTarget, APP_LOCATION_HOTSEAT, APPTARGET_ACTION_UNPIN);
+-                }
+-            }
+-            if (!isInFirstPage(dragInfo) && isInFirstPage(mDragObject.originalDragInfo)) {
+-                if (!getPinnedAppTargetsInViewGroup(firstScreenVG).contains(appTarget)) {
+-                    notifyItemAction(appTarget, APP_LOCATION_WORKSPACE, APPTARGET_ACTION_UNPIN);
+-                }
+-            }
+-            if (isInHotseat(dragInfo) && !isInHotseat(mDragObject.originalDragInfo)) {
+-                notifyItemAction(appTarget, APP_LOCATION_HOTSEAT, AppTargetEvent.ACTION_PIN);
++        if (mDragObject.isMoved()) {
++            AppTarget appTarget = mPredictionModel.getAppTargetFromInfo(dragInfo);
++            //always send pin event first to prevent AiAi from predicting an item moved within
++            // the same page
++            if (appTarget != null && HotseatPredictionModel.isTrackedForPrediction(dragInfo)) {
++                notifyItemAction(mPredictionModel.wrapAppTargetWithLocation(appTarget,
++                        AppTargetEvent.ACTION_PIN, dragInfo));
+             }
+-            if (isInFirstPage(dragInfo) && !isInFirstPage(mDragObject.originalDragInfo)) {
+-                notifyItemAction(appTarget, APP_LOCATION_WORKSPACE, AppTargetEvent.ACTION_PIN);
++            if (appTarget != null && HotseatPredictionModel.isTrackedForPrediction(
++                    mDragObject.originalDragInfo)) {
++                notifyItemAction(mPredictionModel.wrapAppTargetWithLocation(appTarget,
++                        AppTargetEvent.ACTION_UNPIN, mDragObject.originalDragInfo));
+             }
+         }
+         mDragObject = null;
+@@ -615,6 +540,7 @@ public class HotseatPredictionController implements DragController.DragListener,
+         mRequiresCacheUpdate = true;
+     }
+ 
++
+     @Nullable
+     @Override
+     public SystemShortcut<QuickstepLauncher> getShortcut(QuickstepLauncher activity,
+@@ -711,77 +637,4 @@ public class HotseatPredictionController implements DragController.DragListener,
+                 && ((WorkspaceItemInfo) view.getTag()).container
+                 == LauncherSettings.Favorites.CONTAINER_HOTSEAT_PREDICTION;
+     }
+-
+-    private static boolean isPinnedIcon(View view) {
+-        if (!(view instanceof BubbleTextView && view.getTag() instanceof WorkspaceItemInfo)) {
+-            return false;
+-        }
+-        ItemInfo info = (ItemInfo) view.getTag();
+-        return info.container != LauncherSettings.Favorites.CONTAINER_HOTSEAT_PREDICTION && (
+-                info.itemType == LauncherSettings.Favorites.ITEM_TYPE_APPLICATION);
+-    }
+-
+-    private static boolean isInHotseat(ItemInfo itemInfo) {
+-        return itemInfo.container == LauncherSettings.Favorites.CONTAINER_HOTSEAT;
+-    }
+-
+-    private static boolean isInFirstPage(ItemInfo itemInfo) {
+-        return itemInfo.container == LauncherSettings.Favorites.CONTAINER_DESKTOP
+-                && itemInfo.screenId == Workspace.FIRST_SCREEN_ID;
+-    }
+-
+-    private static AppTarget getAppTargetFromItemInfo(ItemInfo info) {
+-        if (info.getTargetComponent() == null) return null;
+-        ComponentName cn = info.getTargetComponent();
+-        return new AppTarget.Builder(new AppTargetId("app:" + cn.getPackageName()),
+-                cn.getPackageName(), info.user).setClassName(cn.getClassName()).build();
+-    }
+-
+-    private AppTarget getAppTargetFromInfo(ItemInfo info) {
+-        if (info == null) return null;
+-        if (info.itemType == LauncherSettings.Favorites.ITEM_TYPE_APPWIDGET
+-                && info instanceof LauncherAppWidgetInfo
+-                && ((LauncherAppWidgetInfo) info).providerName != null) {
+-            ComponentName cn = ((LauncherAppWidgetInfo) info).providerName;
+-            return new AppTarget.Builder(new AppTargetId("widget:" + cn.getPackageName()),
+-                    cn.getPackageName(), info.user).setClassName(cn.getClassName()).build();
+-        } else if (info.itemType == LauncherSettings.Favorites.ITEM_TYPE_APPLICATION
+-                && info.getTargetComponent() != null) {
+-            ComponentName cn = info.getTargetComponent();
+-            return new AppTarget.Builder(new AppTargetId("app:" + cn.getPackageName()),
+-                    cn.getPackageName(), info.user).setClassName(cn.getClassName()).build();
+-        } else if (info.itemType == LauncherSettings.Favorites.ITEM_TYPE_DEEP_SHORTCUT
+-                && info instanceof WorkspaceItemInfo) {
+-            ShortcutKey shortcutKey = ShortcutKey.fromItemInfo(info);
+-            //TODO: switch to using full shortcut info
+-            return new AppTarget.Builder(new AppTargetId("shortcut:" + shortcutKey.getId()),
+-                    shortcutKey.componentName.getPackageName(), shortcutKey.user).build();
+-        } else if (info.itemType == LauncherSettings.Favorites.ITEM_TYPE_FOLDER) {
+-            return new AppTarget.Builder(new AppTargetId("folder:" + info.id),
+-                    mLauncher.getPackageName(), info.user).build();
+-        }
+-        return null;
+-    }
+-
+-    private AppTargetEvent wrapAppTargetWithLocation(AppTarget target, int action, ItemInfo info) {
+-        return wrapAppTargetWithLocation(target, action,
+-                info.container == LauncherSettings.Favorites.CONTAINER_HOTSEAT
+-                        ? APP_LOCATION_HOTSEAT : APP_LOCATION_WORKSPACE, info.screenId, info.cellX,
+-                info.cellY, info.spanX, info.spanY);
+-    }
+-
+-    private AppTargetEvent wrapAppTargetWithLocation(AppTarget target, int action, String root,
+-            int screenId, int x, int y, int spanX, int spanY) {
+-        return new AppTargetEvent.Builder(target, action).setLaunchLocation(
+-                String.format(Locale.ENGLISH, "%s/%d/[%d,%d]/[%d,%d]", root, screenId, x, y, spanX,
+-                        spanY)).build();
+-    }
+-
+-    /**
+-     * A helper method to generate an AppTarget that's used to communicate workspace layout
+-     */
+-    private AppTarget getBlockAppTarget() {
+-        return new AppTarget.Builder(new AppTargetId("block"),
+-                mLauncher.getPackageName(), Process.myUserHandle()).build();
+-    }
+ }
+diff --git a/quickstep/recents_ui_overrides/src/com/android/launcher3/hybridhotseat/HotseatPredictionModel.java b/quickstep/recents_ui_overrides/src/com/android/launcher3/hybridhotseat/HotseatPredictionModel.java
+new file mode 100644
+index 000000000..5a038d27a
+--- /dev/null
++++ b/quickstep/recents_ui_overrides/src/com/android/launcher3/hybridhotseat/HotseatPredictionModel.java
+@@ -0,0 +1,136 @@
++/*
++ * Copyright (C) 2020 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.launcher3.hybridhotseat;
++
++import static com.android.launcher3.util.Executors.MAIN_EXECUTOR;
++
++import android.app.prediction.AppTarget;
++import android.app.prediction.AppTargetEvent;
++import android.app.prediction.AppTargetId;
++import android.content.ComponentName;
++import android.content.Context;
++import android.os.Bundle;
++
++import com.android.launcher3.LauncherAppState;
++import com.android.launcher3.LauncherSettings;
++import com.android.launcher3.Workspace;
++import com.android.launcher3.model.AllAppsList;
++import com.android.launcher3.model.BaseModelUpdateTask;
++import com.android.launcher3.model.BgDataModel;
++import com.android.launcher3.model.PredictionModel;
++import com.android.launcher3.model.data.ItemInfo;
++import com.android.launcher3.model.data.LauncherAppWidgetInfo;
++import com.android.launcher3.model.data.WorkspaceItemInfo;
++import com.android.launcher3.shortcuts.ShortcutKey;
++
++import java.util.ArrayList;
++import java.util.Locale;
++import java.util.function.Consumer;
++
++/**
++ * Model helper for app predictions in workspace
++ */
++public class HotseatPredictionModel extends PredictionModel {
++    private static final String APP_LOCATION_HOTSEAT = "hotseat";
++    private static final String APP_LOCATION_WORKSPACE = "workspace";
++
++    private static final String BUNDLE_KEY_PIN_EVENTS = "pin_events";
++    private static final String BUNDLE_KEY_CURRENT_ITEMS = "current_items";
++
++
++    public HotseatPredictionModel(Context context) { }
++
++    /**
++     * Creates and returns bundle using workspace items and cached items
++     */
++    public void createBundle(Consumer<Bundle> cb) {
++        LauncherAppState appState = LauncherAppState.getInstance(mContext);
++        appState.getModel().enqueueModelUpdateTask(new BaseModelUpdateTask() {
++            @Override
++            public void execute(LauncherAppState app, BgDataModel dataModel, AllAppsList apps) {
++                Bundle bundle = new Bundle();
++                ArrayList<AppTargetEvent> events = new ArrayList<>();
++                ArrayList<ItemInfo> workspaceItems = new ArrayList<>(dataModel.workspaceItems);
++                workspaceItems.addAll(dataModel.appWidgets);
++                for (ItemInfo item : workspaceItems) {
++                    AppTarget target = getAppTargetFromInfo(item);
++                    if (target != null && !isTrackedForPrediction(item)) continue;
++                    events.add(wrapAppTargetWithLocation(target, AppTargetEvent.ACTION_PIN, item));
++                }
++                ArrayList<AppTarget> currentTargets = new ArrayList<>();
++                for (ItemInfo itemInfo : dataModel.cachedPredictedItems) {
++                    AppTarget target = getAppTargetFromInfo(itemInfo);
++                    if (target != null) currentTargets.add(target);
++                }
++                bundle.putParcelableArrayList(BUNDLE_KEY_PIN_EVENTS, events);
++                bundle.putParcelableArrayList(BUNDLE_KEY_CURRENT_ITEMS, currentTargets);
++                MAIN_EXECUTOR.execute(() -> cb.accept(bundle));
++            }
++        });
++    }
++
++    /**
++     * Creates and returns for {@link AppTarget} object given an {@link ItemInfo}. Returns null
++     * if item is not supported prediction
++     */
++    public AppTarget getAppTargetFromInfo(ItemInfo info) {
++        if (info == null) return null;
++        if (info.itemType == LauncherSettings.Favorites.ITEM_TYPE_APPWIDGET
++                && info instanceof LauncherAppWidgetInfo
++                && ((LauncherAppWidgetInfo) info).providerName != null) {
++            ComponentName cn = ((LauncherAppWidgetInfo) info).providerName;
++            return new AppTarget.Builder(new AppTargetId("widget:" + cn.getPackageName()),
++                    cn.getPackageName(), info.user).setClassName(cn.getClassName()).build();
++        } else if (info.itemType == LauncherSettings.Favorites.ITEM_TYPE_APPLICATION
++                && info.getTargetComponent() != null) {
++            ComponentName cn = info.getTargetComponent();
++            return new AppTarget.Builder(new AppTargetId("app:" + cn.getPackageName()),
++                    cn.getPackageName(), info.user).setClassName(cn.getClassName()).build();
++        } else if (info.itemType == LauncherSettings.Favorites.ITEM_TYPE_DEEP_SHORTCUT
++                && info instanceof WorkspaceItemInfo) {
++            ShortcutKey shortcutKey = ShortcutKey.fromItemInfo(info);
++            //TODO: switch to using full shortcut info
++            return new AppTarget.Builder(new AppTargetId("shortcut:" + shortcutKey.getId()),
++                    shortcutKey.componentName.getPackageName(), shortcutKey.user).build();
++        } else if (info.itemType == LauncherSettings.Favorites.ITEM_TYPE_FOLDER) {
++            return new AppTarget.Builder(new AppTargetId("folder:" + info.id),
++                    mContext.getPackageName(), info.user).build();
++        }
++        return null;
++    }
++
++
++    /**
++     * Creates and returns {@link AppTargetEvent} from an {@link AppTarget}, action, and item
++     * location using {@link ItemInfo}
++     */
++    public AppTargetEvent wrapAppTargetWithLocation(AppTarget target, int action, ItemInfo info) {
++        String location = String.format(Locale.ENGLISH, "%s/%d/[%d,%d]/[%d,%d]",
++                info.container == LauncherSettings.Favorites.CONTAINER_HOTSEAT
++                        ? APP_LOCATION_HOTSEAT : APP_LOCATION_WORKSPACE,
++                info.screenId, info.cellX, info.cellY, info.spanX, info.spanY);
++        return new AppTargetEvent.Builder(target, action).setLaunchLocation(location).build();
++    }
++
++    /**
++     * Helper method to determine if {@link ItemInfo} should be tracked and reported to predictors
++     */
++    public static boolean isTrackedForPrediction(ItemInfo info) {
++        return info.container == LauncherSettings.Favorites.CONTAINER_HOTSEAT || (
++                info.container == LauncherSettings.Favorites.CONTAINER_DESKTOP
++                        && info.screenId == Workspace.FIRST_SCREEN_ID);
++    }
++}
+diff --git a/res/values/config.xml b/res/values/config.xml
+index 603dc9161..4cbc597f6 100644
+--- a/res/values/config.xml
++++ b/res/values/config.xml
+@@ -69,6 +69,7 @@
+     <string name="app_launch_tracker_class" translatable="false"></string>
+     <string name="test_information_handler_class" translatable="false"></string>
+     <string name="launcher_activity_logic_class" translatable="false"></string>
++    <string name="prediction_model_class" translatable="false"></string>
+ 
+     <!-- View ID to use for QSB widget -->
+     <item type="id" name="qsb_widget" />
+diff --git a/src/com/android/launcher3/DropTarget.java b/src/com/android/launcher3/DropTarget.java
+index 0b0983cbe..c1aed9812 100644
+--- a/src/com/android/launcher3/DropTarget.java
++++ b/src/com/android/launcher3/DropTarget.java
+@@ -110,6 +110,18 @@ public interface DropTarget {
+ 
+             return res;
+         }
++
++
++        /**
++         * This is used to determine if an object is dropped at a different location than it was
++         * dragged from
++         */
++        public boolean isMoved() {
++            return dragInfo.cellX != originalDragInfo.cellX
++                    || dragInfo.cellY != originalDragInfo.cellY
++                    || dragInfo.screenId != originalDragInfo.screenId
++                    || dragInfo.container != originalDragInfo.container;
++        }
+     }
+ 
+     /**
+diff --git a/src/com/android/launcher3/LauncherAppState.java b/src/com/android/launcher3/LauncherAppState.java
+index 14e604d9e..53e5274c0 100644
+--- a/src/com/android/launcher3/LauncherAppState.java
++++ b/src/com/android/launcher3/LauncherAppState.java
+@@ -129,7 +129,7 @@ public class LauncherAppState {
+         mIconCache = new IconCache(mContext, mInvariantDeviceProfile, iconCacheFileName);
+         mWidgetCache = new WidgetPreviewLoader(mContext, mIconCache);
+         mModel = new LauncherModel(this, mIconCache, AppFilter.newInstance(mContext));
+-        mPredictionModel = new PredictionModel(mContext);
++        mPredictionModel = PredictionModel.newInstance(mContext);
+     }
+ 
+     protected void onNotificationSettingsChanged(boolean areNotificationDotsEnabled) {
+diff --git a/src/com/android/launcher3/model/BaseLoaderResults.java b/src/com/android/launcher3/model/BaseLoaderResults.java
+index 1465100b8..ab921eaad 100644
+--- a/src/com/android/launcher3/model/BaseLoaderResults.java
++++ b/src/com/android/launcher3/model/BaseLoaderResults.java
+@@ -253,8 +253,8 @@ public abstract class BaseLoaderResults {
+         }
+ 
+         private void bindPredictedItems(IntArray ranks, final Executor executor) {
+-            executeCallbacksTask(
+-                    c -> c.bindPredictedItems(mBgDataModel.cachedPredictedItems, ranks), executor);
++            ArrayList<AppInfo> items = new ArrayList<>(mBgDataModel.cachedPredictedItems);
++            executeCallbacksTask(c -> c.bindPredictedItems(items, ranks), executor);
+         }
+ 
+         protected void executeCallbacksTask(CallbackTask task, Executor executor) {
+diff --git a/src/com/android/launcher3/model/LoaderTask.java b/src/com/android/launcher3/model/LoaderTask.java
+index 9e6282e27..d05d70b04 100644
+--- a/src/com/android/launcher3/model/LoaderTask.java
++++ b/src/com/android/launcher3/model/LoaderTask.java
+@@ -45,6 +45,8 @@ import android.util.LongSparseArray;
+ import android.util.MutableInt;
+ import android.util.TimingLogger;
+ 
++import androidx.annotation.WorkerThread;
++
+ import com.android.launcher3.InstallShortcutReceiver;
+ import com.android.launcher3.LauncherAppState;
+ import com.android.launcher3.LauncherModel;
+@@ -850,12 +852,11 @@ public class LoaderTask implements Runnable {
+         }
+     }
+ 
+-    private List<AppInfo> loadCachedPredictions() {
++    @WorkerThread
++    private void loadCachedPredictions() {
+         synchronized (mBgDataModel) {
+             List<ComponentKey> componentKeys =
+                     mApp.getPredictionModel().getPredictionComponentKeys();
+-            List<AppInfo> results = new ArrayList<>();
+-            if (componentKeys == null) return results;
+             List<LauncherActivityInfo> l;
+             mBgDataModel.cachedPredictedItems.clear();
+             for (ComponentKey key : componentKeys) {
+@@ -866,7 +867,6 @@ public class LoaderTask implements Runnable {
+                 mBgDataModel.cachedPredictedItems.add(info);
+                 mIconCache.getTitleAndIcon(info, false);
+             }
+-            return results;
+         }
+     }
+ 
+diff --git a/src/com/android/launcher3/model/PredictionModel.java b/src/com/android/launcher3/model/PredictionModel.java
+index 6aa41eb76..f8140eb87 100644
+--- a/src/com/android/launcher3/model/PredictionModel.java
++++ b/src/com/android/launcher3/model/PredictionModel.java
+@@ -14,60 +14,86 @@
+  * limitations under the License.
+  */
+ package com.android.launcher3.model;
++import static com.android.launcher3.util.Executors.MODEL_EXECUTOR;
+ 
++import android.content.ComponentName;
+ import android.content.Context;
+ import android.content.SharedPreferences;
+ import android.os.UserHandle;
+ 
++import androidx.annotation.AnyThread;
++import androidx.annotation.WorkerThread;
++
++import com.android.launcher3.R;
+ import com.android.launcher3.Utilities;
+-import com.android.launcher3.model.data.AppInfo;
++import com.android.launcher3.pm.UserCache;
+ import com.android.launcher3.util.ComponentKey;
++import com.android.launcher3.util.Preconditions;
++import com.android.launcher3.util.ResourceBasedOverride;
+ 
+ import java.util.ArrayList;
+ import java.util.List;
+-import java.util.stream.Collectors;
+ 
+ /**
+- * Model helper for app predictions in workspace
++ * Model Helper for app predictions
+  */
+-public class PredictionModel {
++public class PredictionModel implements ResourceBasedOverride {
++
+     private static final String CACHED_ITEMS_KEY = "predicted_item_keys";
+     private static final int MAX_CACHE_ITEMS = 5;
+ 
+-    private final Context mContext;
+-    private final SharedPreferences mDevicePrefs;
++    protected Context mContext;
+     private ArrayList<ComponentKey> mCachedComponentKeys;
++    private SharedPreferences mDevicePrefs;
++    private UserCache mUserCache;
++
++
++    /**
++     * Retrieve instance of this object that can be overridden in runtime based on the build
++     * variant of the application.
++     */
++    public static PredictionModel newInstance(Context context) {
++        PredictionModel model = Overrides.getObject(PredictionModel.class, context,
++                R.string.prediction_model_class);
++        model.init(context);
++        return model;
++    }
+ 
+-    public PredictionModel(Context context) {
++    protected void init(Context context) {
+         mContext = context;
+         mDevicePrefs = Utilities.getDevicePrefs(mContext);
+-    }
++        mUserCache = UserCache.INSTANCE.get(mContext);
+ 
++    }
+     /**
+      * Formats and stores a list of component key in device preferences.
+      */
++    @AnyThread
+     public void cachePredictionComponentKeys(List<ComponentKey> componentKeys) {
+-        StringBuilder builder = new StringBuilder();
+-        int count = Math.min(componentKeys.size(), MAX_CACHE_ITEMS);
+-        for (int i = 0; i < count; i++) {
+-            builder.append(componentKeys.get(i));
+-            builder.append("\n");
+-        }
+-        mDevicePrefs.edit().putString(CACHED_ITEMS_KEY, builder.toString()).apply();
+-        mCachedComponentKeys = null;
++        MODEL_EXECUTOR.execute(() -> {
++            StringBuilder builder = new StringBuilder();
++            int count = Math.min(componentKeys.size(), MAX_CACHE_ITEMS);
++            for (int i = 0; i < count; i++) {
++                builder.append(serializeComponentKeyToString(componentKeys.get(i)));
++                builder.append("\n");
++            }
++            mDevicePrefs.edit().putString(CACHED_ITEMS_KEY, builder.toString()).apply();
++            mCachedComponentKeys = null;
++        });
+     }
+ 
+     /**
+      * parses and returns ComponentKeys saved by
+      * {@link PredictionModel#cachePredictionComponentKeys(List)}
+      */
++    @WorkerThread
+     public List<ComponentKey> getPredictionComponentKeys() {
++        Preconditions.assertWorkerThread();
+         if (mCachedComponentKeys == null) {
+             mCachedComponentKeys = new ArrayList<>();
+-
+             String cachedBlob = mDevicePrefs.getString(CACHED_ITEMS_KEY, "");
+             for (String line : cachedBlob.split("\n")) {
+-                ComponentKey key = ComponentKey.fromString(line);
++                ComponentKey key = getComponentKeyFromSerializedString(line);
+                 if (key != null) {
+                     mCachedComponentKeys.add(key);
+                 }
+@@ -76,18 +102,26 @@ public class PredictionModel {
+         return mCachedComponentKeys;
+     }
+ 
+-    /**
+-     * Remove uninstalled applications from model
+-     */
+-    public void removePackage(String pkgName, UserHandle user, ArrayList<AppInfo> ids) {
+-        for (int i = ids.size() - 1; i >= 0; i--) {
+-            AppInfo info = ids.get(i);
+-            if (info.user.equals(user) && pkgName.equals(info.componentName.getPackageName())) {
+-                ids.remove(i);
+-            }
++    private String serializeComponentKeyToString(ComponentKey componentKey) {
++        long userSerialNumber = mUserCache.getSerialNumberForUser(componentKey.user);
++        return componentKey.componentName.flattenToString() + "#" + userSerialNumber;
++    }
++
++    private ComponentKey getComponentKeyFromSerializedString(String str) {
++        int sep = str.indexOf('#');
++        if (sep < 0 || (sep + 1) >= str.length()) {
++            return null;
++        }
++        ComponentName componentName = ComponentName.unflattenFromString(str.substring(0, sep));
++        if (componentName == null) {
++            return null;
++        }
++        try {
++            long serialNumber = Long.parseLong(str.substring(sep + 1));
++            UserHandle userHandle = mUserCache.getUserForSerialNumber(serialNumber);
++            return userHandle != null ? new ComponentKey(componentName, userHandle) : null;
++        } catch (NumberFormatException ex) {
++            return null;
+         }
+-        cachePredictionComponentKeys(getPredictionComponentKeys().stream()
+-                .filter(cn -> !(cn.user.equals(user) && cn.componentName.getPackageName().equals(
+-                        pkgName))).collect(Collectors.toList()));
+     }
+ }
+-- 
+2.35.1
+

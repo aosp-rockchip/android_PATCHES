@@ -1,0 +1,37 @@
+From 3ca71e54af7f32a2a36055d79112ccc0f78ccc86 Mon Sep 17 00:00:00 2001
+From: Tiger Huang <tigerhuang@google.com>
+Date: Tue, 7 Apr 2020 18:27:38 +0800
+Subject: [PATCH 142/297] Only use the IME target from IMMS to update the IME
+ control target
+
+DisplayContent.mInputMethodTarget is only used for deciding which window
+IME should attach to.
+
+Fix: 152698568
+Fix: 153287963
+Test: Steps in the bugs.
+Change-Id: Ife6b700436ffa6ce80af9c6c276c0fcf3a4e057a
+(cherry picked from commit 304db431533085708d376aa5d1e5292f9a6870b2)
+---
+ services/core/java/com/android/server/wm/DisplayContent.java | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/wm/DisplayContent.java b/services/core/java/com/android/server/wm/DisplayContent.java
+index 8111c0ef28c..09b9321ea10 100644
+--- a/services/core/java/com/android/server/wm/DisplayContent.java
++++ b/services/core/java/com/android/server/wm/DisplayContent.java
+@@ -3425,7 +3425,10 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
+ 
+     private void setInputMethodTarget(WindowState target, boolean targetWaitingAnim) {
+         // Always update control target. This is needed to handle rotation.
+-        updateImeControlTarget(target);
++        // We cannot set target as the control target, because mInputMethodTarget can only help
++        // decide the z-order of IME, but cannot control IME. Only the IME target reported from
++        // updateInputMethodTargetWindow can control IME.
++        updateImeControlTarget(mInputMethodControlTarget);
+         if (target == mInputMethodTarget && mInputMethodTargetWaitingAnim == targetWaitingAnim) {
+             return;
+         }
+-- 
+2.35.1
+

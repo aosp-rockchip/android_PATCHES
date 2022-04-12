@@ -1,0 +1,2929 @@
+From 3ce50f8b229b712140f1c701c3289a441edbe65c Mon Sep 17 00:00:00 2001
+From: aisx <aisx@rock-chips.com>
+Date: Mon, 28 Oct 2019 15:30:10 +0800
+Subject: [PATCH 221/297] Merge remote-tracking branch 'rk33/mid/9.0/develop'
+ for support display settings
+
+Change-Id: I39d26a023f2ca88ed4078606cb564652413db67b
+(cherry picked from commit b11c16e77b50b510f1c17ff3c08f61fc59199e68)
+Signed-off-by: wengtao <tao.weng@rock-chips.com>
+Signed-off-by: aisx <aisx@rock-chips.com>
+
+Change-Id: I6195c264d4c80ba239f1e64bd14833206119c207
+---
+ .../os/IRkDisplayDeviceManagementService.aidl | 149 ++++
+ .../android/os/RkDisplayOutputManager.java    | 735 +++++++++++++++++
+ core/jni/Android.bp                           |   4 +
+ libs/hwui/Android.bp                          |   4 +
+ .../RkDisplayDeviceManagementService.java     | 217 +++++
+ .../server/rkdisplay/HdmiReceiver.java        |  86 ++
+ .../server/rkdisplay/ResolutionParser.java    | 256 ++++++
+ .../server/rkdisplay/RkDisplayModes.java      | 740 ++++++++++++++++++
+ services/core/jni/Android.bp                  |   2 +
+ ...ndroid_server_rkdisplay_RkDisplayModes.cpp | 555 +++++++++++++
+ services/core/jni/onload.cpp                  |   2 +
+ .../java/com/android/server/SystemServer.java |   9 +
+ 12 files changed, 2759 insertions(+)
+ create mode 100644 core/java/android/os/IRkDisplayDeviceManagementService.aidl
+ create mode 100644 core/java/android/os/RkDisplayOutputManager.java
+ mode change 100644 => 100755 core/jni/Android.bp
+ mode change 100644 => 100755 libs/hwui/Android.bp
+ create mode 100644 services/core/java/com/android/server/RkDisplayDeviceManagementService.java
+ create mode 100644 services/core/java/com/android/server/rkdisplay/HdmiReceiver.java
+ create mode 100644 services/core/java/com/android/server/rkdisplay/ResolutionParser.java
+ create mode 100644 services/core/java/com/android/server/rkdisplay/RkDisplayModes.java
+ mode change 100644 => 100755 services/core/jni/Android.bp
+ create mode 100644 services/core/jni/com_android_server_rkdisplay_RkDisplayModes.cpp
+ mode change 100644 => 100755 services/core/jni/onload.cpp
+ mode change 100644 => 100755 services/java/com/android/server/SystemServer.java
+
+diff --git a/core/java/android/os/IRkDisplayDeviceManagementService.aidl b/core/java/android/os/IRkDisplayDeviceManagementService.aidl
+new file mode 100644
+index 00000000000..b6ff3671166
+--- /dev/null
++++ b/core/java/android/os/IRkDisplayDeviceManagementService.aidl
+@@ -0,0 +1,149 @@
++/* $_FOR_ROCKCHIP_RBOX_$ */
++//$_rbox_$_modify_$_zhengyang_20120220: AIDL file for rbox android display management service.
++
++/* //device/java/android/android/os/IDisplayDeviceManagementService.aidl
++**
++** Copyright 2007, The Android Open Source Project
++**
++** Licensed under the Apache License, Version 2.0 (the "License");
++** you may not use this file except in compliance with the License.
++** You may obtain a copy of the License at
++**
++**     http://www.apache.org/licenses/LICENSE-2.0
++**
++** Unless required by applicable law or agreed to in writing, software
++** distributed under the License is distributed on an "AS IS" BASIS,
++** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++** See the License for the specific language governing permissions and
++** limitations under the License.
++*/
++
++package android.os;
++
++/**
++ * @hide
++ */
++interface IRkDisplayDeviceManagementService
++{
++    /**
++     ** GENERAL
++     **/
++
++     /**
++     * Returns a list of currently known display interfaces
++     */
++    String[] listInterfaces(int display);
++
++     /**
++     * Returns current drm connectors
++     */
++    int getDisplayNumbers();
++
++    /**
++     * Returns the current enabled display interfaces
++     */
++    String getCurrentInterface(int display);
++
++    /**
++     * Returns a list of supported display modes
++     */
++    String[] getModelist(int display, String iface);
++
++    /**
++     * Returns current display mode
++     */
++    String getMode(int display, String iface);
++
++    /**
++     * Returns current display connection state
++     */
++    int getDpyConnState(int display);
++
++    /**
++     * Set display mode
++     */
++    void setMode(int display, String iface, String mode);
++
++    /**
++     * Set color mode format-depth
++     */
++    void setColorMode(int display, String iface, String format);
++
++    /**
++     * Returns a list of supported corlor modes
++     */
++    String[] getSupportCorlorList(int display, String iface);
++
++    /**
++     * Returns current color mode
++     */
++    String getCurColorMode(int display, String iface);
++
++    /**
++     * Set hdr mode
++     */
++    void setHdrMode(int display, String iface, int hdrMode);
++
++    /**
++     * Set display screen scale value
++     */
++    void setScreenScale(int display, int direction, int value);
++
++    /**
++     * Switch framebuffer
++     */
++    void setDisplaySize(int display, int width, int height);
++
++    /**
++     * Get Supported 3D Modes
++     */
++    int get3DModes(int display, String iface);
++
++    /**
++     * Get Current 3D Mode
++     */
++    int getCur3DMode(int display, String iface);
++
++    /**
++     * Set 3D Mode
++     */
++    void set3DMode(int display, String iface, int mode);
++    /**
++     * saveConfig
++     */
++    int saveConfig();
++
++    /**
++     * updateDisplayInfos
++     */
++    void updateDisplayInfos();
++
++    /**
++     * Set brightness
++     */
++    void setBrightness(int display, int brightness);
++    /**
++     * Set contrast
++     */
++    void setContrast(int display, int contrast);
++    /**
++     *Set saturation
++     */
++    void setSaturation(int display, int saturation);
++    /**
++      *Set Hue
++    */
++    void setHue(int display, int degree);
++    /**
++     *get Bcsh
++    */
++    int[] getBcsh(int display);
++    /**
++     *get Bcsh
++    */
++    int[] getOverscan(int display);
++    /**
++     *setGamma
++    */
++    int setGamma(int dpy,int size,in int[] red, in int[] green,in int[] blue);
++}
+diff --git a/core/java/android/os/RkDisplayOutputManager.java b/core/java/android/os/RkDisplayOutputManager.java
+new file mode 100644
+index 00000000000..d1216bd3b58
+--- /dev/null
++++ b/core/java/android/os/RkDisplayOutputManager.java
+@@ -0,0 +1,735 @@
++/* $_FOR_ROCKCHIP_RBOX_$ */
++//$_rbox_$_modify_$_zhengyang_20120220: Rbox android display manager class
++
++/*
++ * Copyright (C) 2007 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.os;
++
++import android.content.Context;
++import android.os.IBinder;
++import android.os.IRkDisplayDeviceManagementService;
++import android.os.ServiceManager;
++import android.os.SystemProperties;
++import android.util.Log;
++import android.view.IWindowManager;
++import android.view.Display;
++import android.graphics.Rect;
++
++/**
++ * @hide
++ */
++public class RkDisplayOutputManager {
++    private static final String TAG = "RkDisplayOutputManager";
++    private final boolean DBG = true;
++    public final int MAIN_DISPLAY = 0;
++    public final int AUX_DISPLAY = 1;
++
++    public final int DRM_MODE_CONNECTOR_Unknown = 0;
++    public final int DRM_MODE_CONNECTOR_VGA = 1;
++    public final int DRM_MODE_CONNECTOR_DVII = 2;
++    public final int DRM_MODE_CONNECTOR_DVID =	3;
++    public final int DRM_MODE_CONNECTOR_DVIA =	4;
++    public final int DRM_MODE_CONNECTOR_Composite =	5;
++    public final int DRM_MODE_CONNECTOR_SVIDEO =	6;
++    public final int DRM_MODE_CONNECTOR_LVDS = 7;
++    public final int DRM_MODE_CONNECTOR_Component = 8;
++    public final int DRM_MODE_CONNECTOR_9PinDIN	= 9;
++    public final int DRM_MODE_CONNECTOR_DisplayPort = 10;
++    public final int DRM_MODE_CONNECTOR_HDMIA = 11;
++    public final int DRM_MODE_CONNECTOR_HDMIB = 12;
++    public final int DRM_MODE_CONNECTOR_TV = 13;
++    public final int DRM_MODE_CONNECTOR_eDP = 14;
++    public final int DRM_MODE_CONNECTOR_VIRTUAL = 15;
++    public final int DRM_MODE_CONNECTOR_DSI = 16;
++
++    private final String DISPLAY_TYPE_UNKNOW = "UNKNOW";
++    private final String DISPLAY_TYPE_VGA = "VGA";
++    private final String DISPLAY_TYPE_DVII = "DVII";
++    private final String DISPLAY_TYPE_DVID = "DVID";
++    private final String DISPLAY_TYPE_DVIA = "DVIA";
++    private final String DISPLAY_TYPE_Composite = "Composite";
++    private final String DISPLAY_TYPE_LVDS = "LVDS";
++    private final String DISPLAY_TYPE_Component = "Component";
++    private final String DISPLAY_TYPE_9PinDIN = "9PinDIN";
++    //private final String DISPLAY_TYPE_YPbPr = "YPbPr";
++    private final String DISPLAY_TYPE_DP = "DP";
++    private final String DISPLAY_TYPE_HDMIA = "HDMIA";
++    private final String DISPLAY_TYPE_HDMIB = "HDMIB";
++    private final String DISPLAY_TYPE_TV = "TV";
++    private final String DISPLAY_TYPE_EDP = "EDP";
++    private final String DISPLAY_TYPE_VIRTUAL = "VIRTUAL";
++    private final String DISPLAY_TYPE_DSI = "DSI";
++    public final String COLOR_FORMAT_RGB = "RGB";
++
++    public final String DISPLAY_TYPE_HDMI = "HDMI";
++    public final int DISPLAY_OVERSCAN_X = 0;
++    public final int DISPLAY_OVERSCAN_Y = 1;
++    public final int DISPLAY_OVERSCAN_LEFT = 2;
++    public final int DISPLAY_OVERSCAN_RIGHT = 3;
++    public final int DISPLAY_OVERSCAN_TOP = 4;
++    public final int DISPLAY_OVERSCAN_BOTTOM = 5;
++    public final int DISPLAY_OVERSCAN_ALL = 6;
++
++    public final int DISPLAY_3D_NONE = -1;
++    public final int DISPLAY_3D_FRAME_PACKING = 0;
++    public final int DISPLAY_3D_TOP_BOTTOM = 6;
++    public final int DISPLAY_3D_SIDE_BY_SIDE_HALT = 8;
++
++    public final int DRM_MODE_CONNECTED         = 1;
++    public final int DRM_MODE_DISCONNECTED      = 2;
++    public final int DRM_MODE_UNKNOWNCONNECTION = 3;
++
++    public final int HDR_CLOSE = 0;
++    public final int HDR_OPEN = 1;
++    public final int HDR_AUTO = 2;
++
++    private int m_main_iface[] = null;
++    private int m_aux_iface[] = null;
++
++    private IRkDisplayDeviceManagementService mService;
++
++    /**
++    * @throws RemoteException
++    * @hide
++    */
++    public RkDisplayOutputManager() {
++        IBinder b = ServiceManager.getService("drm_device_management");
++        if(b == null) {
++            Log.e(TAG, "Unable to connect to display device management service! - is it running yet?");
++            return;
++        }
++        mService = IRkDisplayDeviceManagementService.Stub.asInterface(b);
++
++        int mMainState = getCurrentDpyConnState(MAIN_DISPLAY);
++        try {
++            // Get main display interface
++            String[] display_iface = mService.listInterfaces(MAIN_DISPLAY);
++            if(DBG) Log.d(TAG, "main display iface num is " + display_iface.length);
++            if(display_iface != null && display_iface.length > 0 &&  mMainState==DRM_MODE_CONNECTED) {
++                m_main_iface = new int[display_iface.length];
++                for(int i = 0; i < m_main_iface.length; i++) {
++                if(DBG) Log.d(TAG, display_iface[i]);
++                    m_main_iface[i] = ifacetotype(display_iface[i]);
++                }
++            }
++            else
++                m_main_iface = null;
++        } catch (Exception e) {
++            Log.e(TAG, "Error listing main interfaces :" + e);
++        }
++
++        int mAuxState = getCurrentDpyConnState(AUX_DISPLAY);
++        try {
++            // Get aux display interface
++            String[] display_iface = mService.listInterfaces(AUX_DISPLAY);
++            if(DBG) Log.d(TAG, "aux display iface num is " + display_iface.length);
++            if(display_iface != null && display_iface.length > 0 && mAuxState==DRM_MODE_CONNECTED) {
++                m_aux_iface = new int[display_iface.length];
++                for(int i = 0; i < m_aux_iface.length; i++) {
++                    if(DBG) Log.d(TAG, display_iface[i]);
++                    m_aux_iface[i] = ifacetotype(display_iface[i]);
++                }
++            }
++            else
++                m_aux_iface = null;
++        } catch (Exception e) {
++            Log.e(TAG, "Error listing aux interfaces :" + e);
++        }
++
++        if (m_main_iface == null && m_aux_iface == null)
++            Log.e(TAG, "There is no display interface.");
++
++    }
++
++    private int ifacetotype(String iface) {
++        int ifaceType;
++        if(iface.equals(DISPLAY_TYPE_UNKNOW)) {
++            ifaceType = DRM_MODE_CONNECTOR_Unknown;
++        } else if(iface.equals(DISPLAY_TYPE_DVII)) {
++            ifaceType = DRM_MODE_CONNECTOR_DVII;
++        } else if(iface.equals(DISPLAY_TYPE_DVID)) {
++            ifaceType = DRM_MODE_CONNECTOR_DVID;
++        }else if(iface.equals(DISPLAY_TYPE_DVIA)) {
++            ifaceType = DRM_MODE_CONNECTOR_DVIA;
++        } else if(iface.equals(DISPLAY_TYPE_Composite)) {
++            ifaceType = DRM_MODE_CONNECTOR_Composite;
++        }else if(iface.equals(DISPLAY_TYPE_VGA)) {
++            ifaceType = DRM_MODE_CONNECTOR_VGA;
++        } else if(iface.equals(DISPLAY_TYPE_LVDS)) {
++            ifaceType = DRM_MODE_CONNECTOR_LVDS;
++        } else if(iface.equals(DISPLAY_TYPE_Component)) {
++            ifaceType = DRM_MODE_CONNECTOR_Component;
++        } else if(iface.equals(DISPLAY_TYPE_9PinDIN)) {
++            ifaceType = DRM_MODE_CONNECTOR_9PinDIN;
++        } else if(iface.equals(DISPLAY_TYPE_DP)) {
++            ifaceType = DRM_MODE_CONNECTOR_DisplayPort;
++        } else if(iface.equals(DISPLAY_TYPE_HDMIA)) {
++            ifaceType = DRM_MODE_CONNECTOR_HDMIA;
++        } else if(iface.equals(DISPLAY_TYPE_HDMIB)) {
++            ifaceType = DRM_MODE_CONNECTOR_HDMIB;
++        } else if(iface.equals(DISPLAY_TYPE_TV)) {
++            ifaceType = DRM_MODE_CONNECTOR_TV;
++        } else if(iface.equals(DISPLAY_TYPE_EDP)) {
++            ifaceType = DRM_MODE_CONNECTOR_eDP;
++        } else if(iface.equals(DISPLAY_TYPE_VIRTUAL)) {
++            ifaceType = DRM_MODE_CONNECTOR_VIRTUAL;
++        } else if(iface.equals(DISPLAY_TYPE_DSI)) {
++            ifaceType = DRM_MODE_CONNECTOR_DSI;
++        } else {
++            ifaceType = 0;
++        }
++        return ifaceType;
++    }
++
++    public String typetoface(int type) {
++        String iface;
++
++        if(type == DRM_MODE_CONNECTOR_Unknown)
++            iface = DISPLAY_TYPE_UNKNOW;
++        else if(type == DRM_MODE_CONNECTOR_DVII)
++            iface = DISPLAY_TYPE_DVII;
++        else if(type == DRM_MODE_CONNECTOR_VGA)
++            iface = DISPLAY_TYPE_VGA;
++        else if(type == DRM_MODE_CONNECTOR_DVID)
++            iface = DISPLAY_TYPE_DVID;
++        else if(type == DRM_MODE_CONNECTOR_DVIA)
++            iface = DISPLAY_TYPE_DVIA;
++        else if(type == DRM_MODE_CONNECTOR_Composite)
++            iface = DISPLAY_TYPE_Composite;
++        else if(type == DRM_MODE_CONNECTOR_LVDS)
++            iface = DISPLAY_TYPE_LVDS;
++        else if(type == DRM_MODE_CONNECTOR_9PinDIN)
++            iface = DISPLAY_TYPE_9PinDIN;
++        else if(type == DRM_MODE_CONNECTOR_Component)
++            iface = DISPLAY_TYPE_Component;
++        else if(type == DRM_MODE_CONNECTOR_DisplayPort)
++            iface = DISPLAY_TYPE_DP;
++        else if(type == DRM_MODE_CONNECTOR_HDMIA)
++            iface = DISPLAY_TYPE_HDMI;//DISPLAY_TYPE_HDMIA
++        else if(type == DRM_MODE_CONNECTOR_HDMIB)
++            iface = DISPLAY_TYPE_HDMI;//DISPLAY_TYPE_HDMIB
++        else if(type == DRM_MODE_CONNECTOR_TV)
++            iface = DISPLAY_TYPE_TV;
++        else if(type == DRM_MODE_CONNECTOR_eDP)
++            iface = DISPLAY_TYPE_EDP;
++        else if(type == DRM_MODE_CONNECTOR_VIRTUAL)
++            iface = DISPLAY_TYPE_VIRTUAL;
++        else if(type == DRM_MODE_CONNECTOR_DSI)
++            iface = DISPLAY_TYPE_DSI;
++        else
++            return null;
++
++        return iface;
++
++    }
++
++    public int getCurrentDpyConnState(int display){
++        int state=2;
++        try {
++            state = mService.getDpyConnState(display);
++            return state;
++        } catch (Exception e) {
++            Log.e(TAG, "Error get getDisplayNumber :" + e);
++            return 2;
++        }
++    }
++
++    /**
++     *
++     * @return
++     * @hide
++     */
++    public int getDisplayNumber() {
++        int number = 0;
++
++        try {
++            number = mService.getDisplayNumbers();
++            return number;
++        } catch (Exception e) {
++            Log.e(TAG, "Error get getDisplayNumber :" + e);
++            return 0;
++        }
++    }
++
++    /**
++    *
++    * @param display
++    * @return
++    * @hide
++    */
++    public int[] getIfaceList(int display) {
++        if(display == MAIN_DISPLAY)
++            return m_main_iface;
++        else if(display == AUX_DISPLAY)
++            return m_aux_iface;
++        else
++            return null;
++    }
++
++    /**
++    *
++    * @param display
++    * @return
++    * @hide
++    */
++    public int getCurrentInterface(int display) {
++        try {
++            String iface = mService.getCurrentInterface(display);
++            return ifacetotype(iface);
++        } catch (Exception e) {
++            Log.e(TAG, "Error get current Interface :" + e);
++            return 0;
++        }
++    }
++
++    /**
++    *
++    * @param display
++    * @param type
++    * @return
++    * @hide
++    */
++    public String[] getModeList(int display, int type) {
++        String iface = typetoface(type);
++        try {
++            return mService.getModelist(display, iface);
++        } catch (Exception e) {
++            Log.e(TAG, "Error get list mode :" + e);
++            return null;
++        }
++    }
++
++    /**
++    *
++    * @param display
++    * @param type
++    * @return
++    * @hide
++    */
++    public String getCurrentMode(int display, int type) {
++        String iface = typetoface(type);
++        try {
++            return mService.getMode(display, iface);
++        } catch (Exception e) {
++            Log.e(TAG, "Error get current mode :" + e);
++            return null;
++        }
++    }
++
++    public String getCurrentColorMode(int display, int type) {
++        String iface = typetoface(type);
++        try {
++            return mService.getCurColorMode(display, iface);
++        } catch (Exception e) {
++            Log.e(TAG, "Error get current color mode :" + e);
++            return null;
++        }
++    }
++
++    public void setColorMode(int display, int type, String format) {
++        String iface = typetoface(type);
++        try {
++            mService.setColorMode(display, iface, format);
++        }catch (Exception e) {
++            Log.e(TAG, "Error set mode :" + e);
++            return;
++        }
++    }
++
++    /**
++    *
++    * @param display
++    * @param type
++    * @return
++    * @hide
++    */
++    public String[] getSupportCorlorList(int display, int type) {
++        String iface = typetoface(type);
++        try {
++            return mService.getSupportCorlorList(display, iface);
++        } catch (Exception e) {
++            Log.e(TAG, "Error get list mode :" + e);
++            return null;
++        }
++    }
++
++    public void setHdrMode(int display, int type, int hdrMode){
++        String iface = typetoface(type);
++        try {
++            mService.setHdrMode(display, iface, hdrMode);
++        }catch (Exception e) {
++            Log.e(TAG, "Error set mode :" + e);
++            return;
++        }
++    }
++
++    /**
++    *
++    * @param display
++    * @param type
++    * @param mode
++    * @hide
++    */
++    public void setMode(int display, int type, String mode) {
++        String iface = typetoface(type);
++
++        try {
++            mService.setMode(display, iface, mode);
++        }catch (Exception e) {
++            Log.e(TAG, "Error set mode :" + e);
++            return;
++        }
++    }
++
++    /**
++    *
++    * @param display
++    * @param direction
++    * @param value
++    * @hide
++    */
++    public void setOverScan(int display, int direction, int value) {
++        try {
++            mService.setScreenScale(display, direction, value);
++        }catch (Exception e) {
++            Log.e(TAG, "Error setScreenScale :" + e);
++            return;
++        }
++    }
++
++    /**
++    *
++    * @param display
++    * @return
++    * @hide
++    */
++    public Rect getOverScan(int display) {
++        int[] overscan = new int[4];
++        try {
++            overscan = mService.getOverscan(display);
++            Log.d(TAG, "getOverscan :" + overscan[0] +","+ overscan[1] +","+ overscan[2] + ","+overscan[3]);
++        }catch (RemoteException e) {
++            Log.e(TAG, "Error getOverScan :" + e);
++        }
++        if (overscan[0] != 0 && overscan[1]!=0 && overscan[2] != 0 && overscan[3] != 0)
++            return new Rect(overscan[0], overscan[1], overscan[2], overscan[3]);
++        return new Rect(100,100,100,100);
++    }
++
++    /**
++    *
++    * @param display
++    * @param width
++    * @param height
++    * @hide
++    */
++    public void setDisplaySize(int display, int width, int height)
++    {
++        String displaypolicy = SystemProperties.get("persist.sys.display.policy", "manual");
++        if(displaypolicy.equals("auto") == true) {
++            if (width >= 0 && height >= 0) {
++                try {
++                    Log.d(TAG, "setDisplaySize " + display + " " + width + " " + height);
++                    mService.setDisplaySize(display, width, height);
++                } catch (RemoteException e) {
++                    Log.e(TAG, "Error setFramebufferSize :" + e);
++                }
++            }
++        }
++    }
++
++    private int setWMDisplaySize(int display, int width, int height)
++    {
++        String displaypolicy = SystemProperties.get("persist.sys.display.policy", "manual");
++
++        if(displaypolicy.equals("manual") == true)
++            return -1;
++
++        return 0;
++    }
++
++    /**
++    *
++    * @param display
++    * @param type
++    * @return
++    * @hide
++    */
++    public int get3DModes(int display, int type)
++    {
++        String iface = typetoface(type);
++        if(iface.equals(null))
++            return 0;
++
++        try {
++            return mService.get3DModes(display, iface);
++        } catch (Exception e) {
++            Log.e(TAG, "Error get 3d modes :" + e);
++            return 0;
++        }
++    }
++
++    /**
++    *
++    * @param display
++    * @param type
++    * @return
++    * @hide
++    */
++    public int getCur3DMode(int display, int type)
++    {
++        String iface = typetoface(type);
++        if(iface.equals(null))
++            return -1;
++
++        try {
++            return mService.getCur3DMode(display, iface);
++        } catch (Exception e) {
++            Log.e(TAG, "Error get cur 3d mode :" + e);
++            return -1;
++        }
++    }
++
++    /**
++    *
++    * @param display
++    * @param type
++    * @param mode
++    * @hide
++    */
++    public void set3DMode(int display, int type, int mode)
++    {
++        String iface = typetoface(type);
++        if(iface.equals(null))
++            return;
++
++        try {
++            mService.set3DMode(display, iface, mode);
++        } catch (Exception e) {
++            Log.e(TAG, "Error set 3d modes :" + e);
++            return;
++        }
++    }
++
++    /**
++    *
++    * @return
++    * @hide
++    */
++    public int saveConfig()
++    {
++        try {
++            return mService.saveConfig();
++        } catch (Exception e) {
++            Log.e(TAG, "Error save :" + e);
++            return -1;
++        }
++    }
++
++    /**
++    *
++    * @return
++    * @hide
++    */
++    public int updateDisplayInfos()
++    {
++        try {
++            mService.updateDisplayInfos();
++        } catch (Exception e) {
++            Log.e(TAG, "Error save :" + e);
++            return -1;
++        }
++	return 0;
++    }
++
++    /*
++    * brightness: [0, 100], default 50
++    */
++    /**
++    *
++    * @param display
++    * @param brightness
++    * @return
++    * @hide
++    */
++    public int setBrightness(int display, int bright_percent)
++    {
++        if (bright_percent < 0 || bright_percent > 100) {
++            Log.e(TAG, "setBrightness out of range " + bright_percent);
++            return -1;
++        }
++        try {
++            mService.setBrightness(display, bright_percent);
++        } catch (Exception e) {
++            Log.e(TAG, "Error set brightness :" + e);
++            return -1;
++        }
++        return 0;
++    }
++
++    /*
++    * contrast: [0, 100], default 50;
++    */
++    /**
++    *
++    * @param display
++    * @param contrast
++    * @return
++    * @hide
++    */
++    public int setContrast(int display, int con_percent)
++    {
++        if (con_percent < 0 || con_percent > 100) {
++            Log.e(TAG, "setContrast out of range " + con_percent);
++            return -1;
++        }
++        try {
++            mService.setContrast(display, con_percent);
++        } catch (Exception e) {
++            Log.e(TAG, "Error set Contrast :" + e);
++            return -1;
++        }
++        return 0;
++    }
++
++    /*
++    * saturation: [0, 100], default 50;
++    */
++    /**
++    *
++    * @param display
++    * @param saturation
++    * @return
++    * @hide
++    */
++    public int setSaturation(int display, int sat_percent)
++    {
++        if (sat_percent < 0 || sat_percent > 100) {
++            Log.e(TAG, "setContrast out of range " + sat_percent);
++            return -1;
++        }
++        try {
++            mService.setSaturation(display, sat_percent);
++        } catch (Exception e) {
++            Log.e(TAG, "Error set sat_con :" + e);
++            return -1;
++        }
++        return 0;
++    }
++
++    /*
++    * degree: [0, 100], default 0
++    */
++    /**
++    *
++    * @param display
++    * @param degree
++    * @return
++    * @hide
++    */
++    public int setHue(int display, int degree_percent)
++    {
++        if (degree_percent < 0 || degree_percent > 100) {
++            Log.e(TAG, "Error set hue out of range " + degree_percent);
++            return -1;
++        }
++        try {
++            mService.setHue(display, degree_percent);
++        } catch (Exception e) {
++            Log.e(TAG, "Error set hue :" + e);
++            return -1;
++        }
++        return 0;
++    }
++
++    /**
++    *
++    * @param display
++    * @return brightness
++    * @hide
++    */
++    public int getBrightness(int display){
++        int[] bcsh = new int[4];
++        bcsh = getBcsh(display);
++        return bcsh[0];
++    }
++
++    /**
++    *
++    * @param display
++    * @return display
++    * @hide
++    */
++    public int getContrast(int display){
++        int[] bcsh = new int[4];
++        bcsh = getBcsh(display);
++        return bcsh[1];
++    }
++
++    /**
++    *
++    * @param display
++    * @return saturation
++    * @hide
++    */
++    public int getSaturation(int display){
++        int[] bcsh = new int[4];
++        bcsh = getBcsh(display);
++        return bcsh[2];
++    }
++
++    /**
++    *
++    * @param display
++    * @return Hue
++    * @hide
++    */
++    public int getHue(int display){
++        int[] bcsh = new int[4];
++        bcsh = getBcsh(display);
++        return bcsh[3];
++    }
++
++    /**
++    *
++    * @param display
++    * @return order:brightness, con, sat, hue
++    * @hide
++    */
++    public int[] getBcsh(int display)
++    {
++        try {
++            return mService.getBcsh(display);
++        } catch (Exception e) {
++            Log.e(TAG, "Error get brightness :" + e);
++            int[] bcsh = new int[4];
++			bcsh[0]=bcsh[1]=bcsh[2]=bcsh[3]=50;
++            return bcsh;
++        }
++    }
++
++    public int setGamma(int display, int size, int[] red, int[] green, int[] blue){
++        int ret;
++        try {
++            ret = mService.setGamma(display, size, red, green, blue);
++        } catch (Exception e) {
++            Log.e(TAG, "Error set setGamma :" + e);
++            return -1;
++        }
++        return ret;
++    }
++}
+diff --git a/core/jni/Android.bp b/core/jni/Android.bp
+old mode 100644
+new mode 100755
+index 0797b18f12d..6c58bd65653
+--- a/core/jni/Android.bp
++++ b/core/jni/Android.bp
+@@ -256,6 +256,7 @@ cc_library_shared {
+                 "libvintf",
+                 "libnativedisplay",
+                 "libnativewindow",
++                "libhwui",
+                 "libdl",
+                 "libdl_android",
+                 "libstatslog",
+@@ -270,6 +271,9 @@ cc_library_shared {
+ 
+                 // our headers include libnativewindow's public headers
+                 "libnativewindow",
++
++                // GraphicsJNI.h includes hwui headers
++                "libhwui",
+             ],
+             header_libs: [
+                 "bionic_libc_platform_headers",
+diff --git a/libs/hwui/Android.bp b/libs/hwui/Android.bp
+old mode 100644
+new mode 100755
+index aa842ff6a7b..4cb49fe34c1
+--- a/libs/hwui/Android.bp
++++ b/libs/hwui/Android.bp
+@@ -40,6 +40,10 @@ cc_defaults {
+         },
+     },
+ 
++    export_include_dirs: [
++        ".",
++    ],
++
+     target: {
+         android: {
+             include_dirs: [
+diff --git a/services/core/java/com/android/server/RkDisplayDeviceManagementService.java b/services/core/java/com/android/server/RkDisplayDeviceManagementService.java
+new file mode 100644
+index 00000000000..b5d3693f8d3
+--- /dev/null
++++ b/services/core/java/com/android/server/RkDisplayDeviceManagementService.java
+@@ -0,0 +1,217 @@
++/* $_FOR_ROCKCHIP_RBOX_$ */
++//$_rbox_$_modify_$_zhengyang_20120220: Rbox android display management service
++
++/*
++ * Copyright (C) 2011 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.server;
++
++
++import android.content.Context;
++import android.content.Intent;
++import android.os.IRkDisplayDeviceManagementService;
++import android.os.SystemProperties;
++import android.util.Slog;
++import android.util.Log;
++import java.util.ArrayList;
++import java.util.List;
++import android.graphics.Rect;
++import android.content.BroadcastReceiver;
++import android.content.IntentFilter;
++import android.os.SystemClock;
++
++import com.android.server.rkdisplay.RkDisplayModes;
++import com.android.server.rkdisplay.HdmiReceiver;
++
++/**
++ * @hide
++ */
++
++class RkDisplayDeviceManagementService extends IRkDisplayDeviceManagementService.Stub {
++    private static final String TAG = "RkDisplayDeviceManagementService";
++    private static final String ACTION_PLUGGED = "android.intent.action.HDMI_PLUGGED";
++    private static final boolean DBG = true;
++    private static final String DISPLAYD_TAG = "DisplaydConnector";
++    private final RkDisplayModes mdrmModes;
++    private final HdmiReceiver mHdmiReceiver;
++    private final int MAIN_DISPLAY = 0;
++    private final int AUX_DISPLAY = 1;
++
++    public final int DISPLAY_OVERSCAN_X = 0;
++    public final int DISPLAY_OVERSCAN_Y = 1;
++    public final int DISPLAY_OVERSCAN_LEFT = 2;
++    public final int DISPLAY_OVERSCAN_RIGHT = 3;
++    public final int DISPLAY_OVERSCAN_TOP = 4;
++    public final int DISPLAY_OVERSCAN_BOTTOM = 5;
++    public final int DISPLAY_OVERSCAN_ALL = 6;
++
++    private final int DEFAULT_BRIGHTNESS = 50;
++    private final int DEFAULT_CONTRAST = 50;
++    private final int DEFAULT_SATURATION = 50;
++    private final int DEFAULT_HUE = 50;
++
++    private int timeline=0;
++    /**
++     * Binder context for this service
++     */
++    private Context mContext;
++
++    private NativeDaemonConnector mConnector;
++
++    class DisplaydResponseCode {
++        public static final int InterfaceListResult        = 110;
++        public static final int ModeListResult            = 111;
++        public static final int CommandOkay                = 200;
++        public static final int OperationFailed         = 400;
++        public static final int InterfaceChange            = 600;
++    }
++
++    /**
++     * Constructs a new NetworkManagementService instance
++     *
++     * @param context  Binder context for this service
++     */
++    public RkDisplayDeviceManagementService(Context context) {
++        mContext = context;
++        mdrmModes = new RkDisplayModes();
++        mdrmModes.init();
++        IntentFilter hdmiFilter = new IntentFilter();
++        hdmiFilter.addAction(ACTION_PLUGGED);
++        mHdmiReceiver = new HdmiReceiver(mdrmModes);
++        mContext.registerReceiver(mHdmiReceiver,hdmiFilter);
++    }
++
++    public String[] listInterfaces(int display) {
++        String[] ifaces = new String[1];
++        ifaces[0] = mdrmModes.getbuild_in(display);
++        return ifaces;
++    }
++
++    public String getCurrentInterface(int display){
++        return mdrmModes.getbuild_in(display);
++    }
++
++    public int getDisplayNumbers(){
++        return mdrmModes.getNumConnectors();
++    }
++
++    public String[] getModelist(int display, String iface){
++        List<String> hdmiResoList = mdrmModes.getModeList(display);
++        if (hdmiResoList != null)
++            return hdmiResoList.toArray(new String[hdmiResoList.size()]);
++        else
++            return  null;
++    }
++
++    public String getMode(int display, String iface){
++        String mode = mdrmModes.getCurMode(display);
++        Log.d(TAG, "getMode: " + mode + " display " +display);
++        return mode;
++    }
++
++    public int getDpyConnState(int display){
++        return mdrmModes.getConnectionState(display);
++    }
++
++    public void setMode(int display, String iface, String mode) {
++        boolean isSameProperty = false;
++        String lastMode;
++
++        mdrmModes.setMode(display, iface, mode);
++    }
++
++    public String[] getSupportCorlorList(int display, String iface){
++        List<String> corlorList = mdrmModes.getSupportCorlorList(display);
++        if (corlorList != null)
++            return corlorList.toArray(new String[corlorList.size()]);
++        else
++            return null;
++    }
++
++    public String getCurColorMode(int display, String iface){
++        String colorMode = mdrmModes.getCurColorMode(display);
++        return colorMode;
++    }
++
++    public void setColorMode(int display, String iface, String format){
++        mdrmModes.setColorMode(display, format);
++    }
++
++    public void setHdrMode(int display, String iface, int hdrMode){
++        mdrmModes.setHdrMode(display, hdrMode);
++    }
++
++    public void setScreenScale(int display, int direction, int value){
++        mdrmModes.setScreenScale(display, direction, value);
++    }
++
++    public void setDisplaySize(int display, int width, int height){
++    }
++
++    public int get3DModes(int display, String iface){
++        return 0;
++    }
++
++    public int getCur3DMode(int display, String iface){
++        return 0;
++    }
++
++    public void set3DMode(int display, String iface, int mode) {
++    }
++
++    public void setBrightness(int display, int brightness) {
++        mdrmModes.setBrightness(display, brightness);
++    }
++
++    public void setContrast(int display, int contrast)  {
++        mdrmModes.setContrast(display, contrast);
++    }
++
++    public void setSaturation(int display, int saturation) {
++        mdrmModes.setSaturation(display, saturation);
++    }
++
++    public void setHue(int display, int degree){
++        mdrmModes.setHue(display, degree);
++    }
++
++    public int[] getBcsh(int display) {
++        int[] bcsh = new int[4];
++        bcsh = mdrmModes.getBcsh(display);
++        Log.d(TAG, "getBcsh: " +  bcsh[0] + " " + bcsh[1] + " " +  bcsh[2] + " " + bcsh[3]);
++        return bcsh;
++    }
++
++    public int[] getOverscan(int display) {
++        int[] mOverscan = new int[4];
++        mOverscan = mdrmModes.getOverscan(display);
++        Log.d(TAG, "getOverscan: " +  mOverscan[0] + " " + mOverscan[1] + " " +  mOverscan[2] + " " + mOverscan[3]);
++        return mOverscan;
++    }
++
++    public int setGamma(int dpy,int size,int[] red, int[] green, int[] blue){
++        return mdrmModes.setGamma(dpy, size, red, green, blue);
++    }
++    public void updateDisplayInfos(){
++        mdrmModes.updateDisplayInfos();
++    }
++
++    public int saveConfig() {
++        mdrmModes.saveConfig();
++        return 0;
++    }
++
++}
+diff --git a/services/core/java/com/android/server/rkdisplay/HdmiReceiver.java b/services/core/java/com/android/server/rkdisplay/HdmiReceiver.java
+new file mode 100644
+index 00000000000..56caf26bd16
+--- /dev/null
++++ b/services/core/java/com/android/server/rkdisplay/HdmiReceiver.java
+@@ -0,0 +1,86 @@
++/*
++ * Copyright (C) 2008 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.server.rkdisplay;
++
++import android.content.Context;
++import android.content.Intent;
++import android.content.BroadcastReceiver;
++import android.os.RemoteException;
++import android.os.ServiceManager;
++import android.util.Log;
++
++import java.io.*;
++import android.os.SystemProperties;
++import android.content.ContentResolver;
++import android.os.Handler;
++import android.view.View;
++import android.view.WindowManager;
++import java.util.Timer;
++import java.util.TimerTask;
++import java.util.Vector;
++
++public class HdmiReceiver extends BroadcastReceiver{
++    private static final String TAG = "HdmiReceiver";
++    private final String HDMI_ACTION = "android.intent.action.HDMI_PLUGGED";
++    private final String DP_ACTION = "android.intent.action.DP_PLUGGED";
++    private final String ACTION_CHANGE = "android.display.action.change";
++    private static Context mcontext;
++    private static Timer mHdmiUpdateTimer=null;
++    private RkDisplayModes mDisplayModes=null;
++    private Vector<MyTask> mTaskVector = null;
++    public boolean needWaitForTaskFinish = false;
++
++    public HdmiReceiver(RkDisplayModes displayModes){
++        mDisplayModes = displayModes;
++        mHdmiUpdateTimer = new Timer();
++        mTaskVector = new Vector<MyTask>();
++    }
++
++    @Override
++    public void onReceive(Context context, Intent intent){
++        mcontext = context;
++
++        Log.d(TAG,"action ="+intent.getAction());
++        boolean plugged = false;
++        if (intent.getAction().equals(HDMI_ACTION) || intent.getAction().equals(ACTION_CHANGE) || intent.getAction().equals(DP_ACTION)){
++            if (needWaitForTaskFinish == false) {
++                needWaitForTaskFinish = true;
++                mHdmiUpdateTimer.schedule(new MyTask(), 100);
++            } else
++                mTaskVector.add(new MyTask());
++                Log.d(TAG,"onReceive mTaskVector.size() = "+mTaskVector.size());
++        }
++    }
++
++    public void updateDisplayInfos(){
++        mDisplayModes.updateDisplayInfos();
++    }
++
++    private class MyTask extends TimerTask{
++        public void run(){
++            synchronized (this) {
++                updateDisplayInfos();
++                if (mTaskVector.size() > 0){
++                    Log.d(TAG,"run mTaskVector.size() = "+mTaskVector.size());
++                    updateDisplayInfos();
++                    mTaskVector.clear();
++                }
++                needWaitForTaskFinish = false;
++           }
++        }
++	}
++}
++
+diff --git a/services/core/java/com/android/server/rkdisplay/ResolutionParser.java b/services/core/java/com/android/server/rkdisplay/ResolutionParser.java
+new file mode 100644
+index 00000000000..ff7e6f9a076
+--- /dev/null
++++ b/services/core/java/com/android/server/rkdisplay/ResolutionParser.java
+@@ -0,0 +1,256 @@
++package com.android.server.rkdisplay;
++
++import java.io.InputStream;
++import java.io.StringWriter;
++import java.util.ArrayList;
++import java.util.List;
++
++import org.xmlpull.v1.XmlPullParser;
++import org.xmlpull.v1.XmlSerializer;
++import android.util.Log;
++import android.util.Xml;
++
++public class ResolutionParser {
++    private static final String TAG = "PullResolutionParser";
++    private static final int SYNC_FLAG = 0xF;
++    private static final int FLAG_INTERLACE = 1<<4;
++    private static final int FLAG_RADIO = 0xF<<19;
++
++    public ResolutionParser(){
++    }
++
++    public static final class RkResolutionInfo{
++        public int clock;
++        public int hdisplay;
++        public int hsync_start;
++        public int hsync_end;
++        public int htotal;
++        public int hskew;
++        public int vdisplay;
++        public int vsync_start;
++        public int vsync_end;
++        public int vtotal;
++        public int vscan;
++        public float vrefresh;
++        public int flags;
++
++        public RkResolutionInfo(){
++        }
++
++        public boolean hasMatchingMode(RkDisplayModes.RkPhysicalDisplayInfo info){
++            int checkFlags = SYNC_FLAG | FLAG_INTERLACE;
++
++            return hdisplay == info.width
++                && vdisplay == info.height
++                && clock == info.clock
++                && vtotal == info.vtotal
++                && htotal == info.htotal
++                && hsync_start == info.hsync_start
++                && hsync_end == info.hsync_end
++                && vsync_start == info.vsync_start
++                && vsync_end == info.vsync_end
++                && (flags&checkFlags)==(info.flags&checkFlags);
++        }
++
++        public void sethdisplay(int hdisplay){
++            this.hdisplay = hdisplay;
++        }
++
++        public void setvdisplay(int vdisplay){
++            this.vdisplay = vdisplay;
++        }
++
++        public void sethsync_start(int hsync_start){
++            this.hsync_start = hsync_start;
++        }
++
++        public void setvsync_end(int vsync_end){
++            this.vsync_end = vsync_end;
++        }
++
++        public void setvsync_start(int vsync_start){
++            this.vsync_start = vsync_start;
++        }
++
++        public void sethsync_end(int hsync_end){
++            this.hsync_end = hsync_end;
++        }
++
++        public void sethtotal(int htotal){
++            this.htotal = htotal;
++        }
++
++        public void setvtotal(int vtotal){
++            this.vtotal = vtotal;
++        }
++
++        public void setvscan(int vscan){
++            this.vscan = vscan;
++        }
++
++        public void sethskew(int hskew){
++            this.hskew = hskew;
++        }
++
++        public void setclock(int clock){
++            this.clock = clock;
++        }
++
++        public void setflags(int flags){
++            this.flags = flags;
++        }
++
++        public void setvrefresh(float vrefresh){
++            this.vrefresh = vrefresh;
++        }
++
++        public int gethdisplay(){
++            return hdisplay;
++        }
++
++        public int getvdisplay(){
++            return vdisplay;
++        }
++
++        public int gethsync_start(){
++            return hsync_start;
++        }
++
++        public int getvsync_start(){
++            return vsync_start;
++        }
++
++        public int gethsync_end(){
++            return hsync_end;
++        }
++
++        public int gethtotal(){
++            return htotal;
++        }
++
++        public int getvtotal(){
++            return vtotal;
++        }
++
++        public int getvscan(){
++            return vscan;
++        }
++
++        public int gethskew(){
++            return hskew;
++        }
++
++        public int getclock(){
++            return clock;
++        }
++
++        public int getflags(){
++            return flags;
++        }
++
++        public float getvrefresh(){
++            return vrefresh;
++        }
++    }
++
++    public static List<RkResolutionInfo> parse(InputStream is) throws Exception {
++        List<RkResolutionInfo> resolutions = null;
++        RkResolutionInfo reso = null;
++        XmlPullParser parser = Xml.newPullParser();
++
++        parser.setInput(is, "UTF-8");
++        int eventType = parser.getEventType();
++        while (eventType != XmlPullParser.END_DOCUMENT) {
++            switch (eventType) {
++                case XmlPullParser.START_DOCUMENT:
++                resolutions = new ArrayList<RkResolutionInfo>();
++                break;
++                case XmlPullParser.START_TAG:
++                    if (parser.getName().equals("resolution")) {
++                        reso = new RkResolutionInfo();
++                    } else if (parser.getName().equals("clock")) {
++                        eventType = parser.next();
++                        reso.setclock(Integer.parseInt(parser.getText()));
++                        Log.w(TAG, "parse resolution + clock " + reso.getclock() + " txt: " + parser.getText());
++                    } else if (parser.getName().equals("hdisplay")) {
++                        eventType = parser.next();
++                        reso.sethdisplay(Integer.parseInt(parser.getText()));
++                    } else if (parser.getName().equals("hsync_start")) {
++                        eventType = parser.next();
++                        reso.sethsync_start(Integer.parseInt(parser.getText()));
++                    } else if (parser.getName().equals("hsync_end")) {
++                        eventType = parser.next();
++                        reso.sethsync_end(Integer.parseInt(parser.getText()));
++                    } else if (parser.getName().equals("htotal")) {
++                        eventType = parser.next();
++                        reso.sethtotal(Integer.parseInt(parser.getText()));
++                    } else if (parser.getName().equals("hskew")) {
++                        eventType = parser.next();
++                        reso.sethskew(Integer.parseInt(parser.getText()));
++                    } else if (parser.getName().equals("vdisplay")) {
++                        eventType = parser.next();
++                        reso.setvdisplay(Integer.parseInt(parser.getText()));
++                    } else if (parser.getName().equals("vsync_start")) {
++                        eventType = parser.next();
++                        reso.setvsync_start(Integer.parseInt(parser.getText()));
++                    } else if (parser.getName().equals("vsync_end")) {
++                        eventType = parser.next();
++                        reso.setvsync_end(Integer.parseInt(parser.getText()));
++                    } else if (parser.getName().equals("vtotal")) {
++                        eventType = parser.next();
++                        reso.setvtotal(Integer.parseInt(parser.getText()));
++                    } else if (parser.getName().equals("vscan")) {
++                        eventType = parser.next();
++                        reso.setvscan(Integer.parseInt(parser.getText()));
++                    } else if (parser.getName().equals("flags")) {
++                        eventType = parser.next();
++                        reso.setflags(Integer.parseInt(parser.getText(),16));
++                        Log.w(TAG, "parse resolution flags:  " + reso.getflags() + "  txt: " + parser.getText());
++                    } else if (parser.getName().equals("vrefresh")) {
++                        eventType = parser.next();
++                        reso.setvrefresh(Float.parseFloat(parser.getText()));
++                    }
++                    break;
++                case XmlPullParser.END_TAG:
++                    if (parser.getName().equals("resolution")) {
++                        resolutions.add(reso);
++                        reso = null;
++                        break;
++                    }
++            }
++            eventType = parser.next();
++        }
++        return resolutions;
++    }
++
++    public String serialize(List<RkResolutionInfo> resolutions) throws Exception {
++        XmlSerializer serializer = Xml.newSerializer();
++        StringWriter writer = new StringWriter();
++
++        serializer.setOutput(writer);
++        serializer.startDocument("UTF-8", true);
++        serializer.startTag("", "resolutions");
++        for (RkResolutionInfo reso : resolutions) {
++            serializer.startTag("", "resolution");
++            //serializer.attribute("", "clock", reso.getclock() + "");
++            serializer.startTag("", "clock");
++            serializer.text(reso.getclock()+ "");
++            serializer.endTag("", "clock");
++            serializer.startTag("", "hdisplay");
++            serializer.text(reso.gethdisplay()+ "");
++            serializer.endTag("", "hdisplay");
++
++            serializer.startTag("", "hsync_start");
++            serializer.text(reso.gethsync_start() + "");
++            serializer.endTag("", "hsync_start");
++
++            serializer.endTag("", "resolution");
++        }
++        serializer.endTag("", "resolutions");
++        serializer.endDocument();
++
++        return writer.toString();
++    }
++}
++
++
+diff --git a/services/core/java/com/android/server/rkdisplay/RkDisplayModes.java b/services/core/java/com/android/server/rkdisplay/RkDisplayModes.java
+new file mode 100644
+index 00000000000..dde5ecf4d07
+--- /dev/null
++++ b/services/core/java/com/android/server/rkdisplay/RkDisplayModes.java
+@@ -0,0 +1,740 @@
++package com.android.server.rkdisplay;
++
++import dalvik.system.CloseGuard;
++import android.util.Log;
++import android.view.Surface.OutOfResourcesException;
++import java.util.ArrayList;
++import java.util.List;
++import java.io.InputStream;
++import java.io.File;
++import java.io.FileInputStream;
++import java.io.IOException;
++import java.io.InputStreamReader;
++import java.io.BufferedReader;
++import java.io.FileNotFoundException;
++import android.os.SystemProperties;
++import java.io.FileReader;
++import java.io.FileNotFoundException;
++
++public class RkDisplayModes {
++    private static final String TAG = "RkDisplayModes";
++    private static native RkDisplayModes.RkPhysicalDisplayInfo[] nativeGetDisplayConfigs(
++    int dpy);
++    private static native RkDisplayModes.RkColorCapacityInfo nativeGetCorlorModeConfigs(int dpy);
++    private static native void nativeInit();
++    private static native void nativeUpdateConnectors();
++    private static native void nativeSaveConfig();
++    private static native int nativeGetNumConnectors();
++    private static native void nativeSetMode(int dpy, int iface_type, String mode);
++    private static native String nativeGetCurMode(int dpy);
++    private static native String nativeGetCurCorlorMode(int dpy);
++    private static native int nativeGetBuiltIn(int dpy);
++    private static native int nativeGetConnectionState(int dpy);
++    private static native int[] nativeGetBcsh(int dpy);
++    private static native int[] nativeGetOverscan(int dpy);
++    private static native int nativeSetGamma(int dpy, int size, int[] r, int[] g, int[] b);
++    private static native int nativeSetHue(int display, int degree);
++    private static native int nativeSetSaturation(int display, int saturation);
++    private static native int nativeSetContrast(int display, int contrast);
++    private static native int nativeSetBrightness(int display, int brightness);
++    private static native int nativeSetScreenScale(int display, int direction, int value);
++    private static native int nativeSetHdrMode(int display, int hdrMode);
++    private static native int nativeSetColorMode(int display, String format);
++
++    private static RkDisplayModes.RkPhysicalDisplayInfo mDisplayInfos[];
++    private static RkDisplayModes.RkPhysicalDisplayInfo mMainDisplayInfos[];
++    private static RkDisplayModes.RkPhysicalDisplayInfo mAuxDisplayInfos[];
++    private static List<String> mWhiteList;
++    private static List<ResolutionParser.RkResolutionInfo> resolutions=null;
++    private static ResolutionParser mParser=null;
++    private static RkDisplayModes.RkColorCapacityInfo mMainColorInfos;
++    private static RkDisplayModes.RkColorCapacityInfo mAuxColorInfos;
++
++    public final int DRM_MODE_CONNECTOR_Unknown = 0;
++    public final int DRM_MODE_CONNECTOR_VGA = 1;
++    public final int DRM_MODE_CONNECTOR_DVII = 2;
++    public final int DRM_MODE_CONNECTOR_DVID = 3;
++    public final int DRM_MODE_CONNECTOR_DVIA = 4;
++    public final int DRM_MODE_CONNECTOR_Composite =    5;
++    public final int DRM_MODE_CONNECTOR_SVIDEO = 6;
++    public final int DRM_MODE_CONNECTOR_LVDS = 7;
++    public final int DRM_MODE_CONNECTOR_Component = 8;
++    public final int DRM_MODE_CONNECTOR_9PinDIN    = 9;
++    public final int DRM_MODE_CONNECTOR_DisplayPort = 10;
++    public final int DRM_MODE_CONNECTOR_HDMIA = 11;
++    public final int DRM_MODE_CONNECTOR_HDMIB = 12;
++    static final int DRM_MODE_CONNECTOR_TV = 13;
++    public final int DRM_MODE_CONNECTOR_eDP = 14;
++    public final int DRM_MODE_CONNECTOR_VIRTUAL = 15;
++    public final int DRM_MODE_CONNECTOR_DSI = 16;
++
++    private final int MAIN_DISPLAY = 0;
++    private final int AUX_DISPLAY = 1;
++
++    private final String DISPLAY_TYPE_UNKNOW = "UNKNOW";
++    private final String DISPLAY_TYPE_VGA = "VGA";
++    private final String DISPLAY_TYPE_DVII = "DVII";
++    private final String DISPLAY_TYPE_DVID = "DVID";
++    private final String DISPLAY_TYPE_DVIA = "DVIA";
++    private final String DISPLAY_TYPE_Composite = "Composite";
++    private final String DISPLAY_TYPE_SVideo = "SVideo";
++    private final String DISPLAY_TYPE_LVDS = "LVDS";
++    private final String DISPLAY_TYPE_Component = "Component";
++    private final String DISPLAY_TYPE_9PinDIN = "9PinDIN";
++    //private final String DISPLAY_TYPE_YPbPr = "YPbPr";
++    private final String DISPLAY_TYPE_DP = "DP";
++    private final String DISPLAY_TYPE_HDMIA = "HDMIA";
++    private final String DISPLAY_TYPE_HDMIB = "HDMIB";
++    private final String DISPLAY_TYPE_TV = "TV";
++    private final String DISPLAY_TYPE_EDP = "EDP";
++    private final String DISPLAY_TYPE_VIRTUAL = "VIRTUAL";
++    private final String DISPLAY_TYPE_DSI = "DSI";
++
++    private static final String MODE_TYPE_BUILTIN = "builtin";
++    private static final String MODE_TYPE_CLOCKC = "clock_c";
++    private static final String MODE_TYPE_CRTCC = "crtc_c";
++    private static final String MODE_TYPE_PREFER = "preferred";
++    private static final String MODE_TYPE_DEFAULT = "default";
++    private static final String MODE_TYPE_USERDEF = "userdef";
++    private static final String MODE_TYPE_DRIVER = "driver";
++
++    public static int DRM_HDMI_OUTPUT_DEFAULT_RGB = 1<<0; /* default RGB */
++    public static int DRM_HDMI_OUTPUT_YCBCR444 = 1<<1; /* YCBCR 444 */
++    public static int DRM_HDMI_OUTPUT_YCBCR422 = 1<<2; /* YCBCR 422 */
++    public static int DRM_HDMI_OUTPUT_YCBCR420 = 1<<3; /* YCBCR 420 */
++
++    public static int DEPTH_CAPA_BIT0_8BIT = 1<<0;
++    public static int DEPTH_CAPA_BIT1_10BIT = 1<<1;
++    public static int DEPTH_CAPA_BIT4_420_10BIT = 1<<4;
++
++    public static int ROCKCHIP_DEPTH_DEFAULT = 0;
++    public static int ROCKCHIP_HDMI_DEPTH_8 = 8;
++    public static int ROCKCHIP_HDMI_DEPTH_10 = 10;
++
++    private  static String STR_YCBCR444 = "YCBCR444";
++    private  static String STR_YCBCR422 = "YCBCR422";
++    private  static String STR_YCBCR420 = "YCBCR420";
++    private  static String STR_RGB = "RGB";
++    private  static String STR_DEPTH_8BIT = "8bit";
++    private  static String STR_DEPTH_10BIT = "10bit";
++
++    private static final  String RESOLUTION_XML_PATH = "/system/usr/share/resolution_white.xml";
++    private final  String HDMI_DBG_STATUS = "/d/dw-hdmi/status";
++
++    public RkDisplayModes(){
++        mWhiteList = new ArrayList<>();
++        //resolutions = new ArrayList<ResolutionParser.RkResolutionInfo>();
++        mParser = new ResolutionParser();
++        readModeWhiteList(RESOLUTION_XML_PATH);
++    }
++
++    private String readColorFormatFromNode(){
++        FileReader fr=null;
++        BufferedReader br=null;
++        String line="";
++
++        try {
++            fr = new FileReader(HDMI_DBG_STATUS);
++        } catch (FileNotFoundException e) {
++            Log.e(TAG, "Couldn't find or open  file "+HDMI_DBG_STATUS, e);
++            return null;
++        }
++        br=new BufferedReader(fr);
++        try {
++            while ((line=br.readLine())!=null) {
++                if (line.contains("Color Format:")) {
++                    StringBuilder builder = new StringBuilder();
++                    int start = line.indexOf("Format:");
++                    int end = line.indexOf(" ", start+8);
++                    int depthStart = line.indexOf("Depth:");
++                    int depthEnd = line.indexOf(" ", depthStart+7);
++                    String format = line.substring(start+7, end);
++                    String depth = line.substring(depthStart+7, depthEnd);
++                    if (format.contains("YUV444"))
++                        builder.append(STR_YCBCR444).append("-").append(depth).append("bit");
++                    else if (format.contains("YUV422"))
++                       builder.append(STR_YCBCR422).append("-").append(depth).append("bit");
++                    else if (format.contains("YUV420"))
++                       builder.append(STR_YCBCR420).append("-").append(depth).append("bit");
++                    else
++                       builder.append(format).append("-").append(depth).append("bit");
++                    Log.e(TAG, "readColorFormatFromNode :" + builder.toString());
++                    return builder.toString();
++                }
++            }
++            br.close();
++            fr.close();
++            return null;
++        } catch (IOException e) {
++            Log.e(TAG, "Couldn't read  data from /d/dw-hdmi/status", e);
++            return null;
++        }
++    }
++
++    private  static boolean readModeWhiteList(String pathname) {
++        InputStream is;
++        try {
++            is = new FileInputStream(RESOLUTION_XML_PATH);
++        } catch (FileNotFoundException e) {
++            Log.e(TAG, "Couldn't find " + RESOLUTION_XML_PATH + ".");
++            return false;
++        }
++        resolutions=null;
++        try {
++            resolutions = mParser.parse(is);
++            is.close();
++        } catch (Exception e) {
++            Log.e(TAG, "Couldn't get resolutions path  " + RESOLUTION_XML_PATH + ".");
++            return false;
++        }
++        //logd("readStrListFromFile - " + fileStrings.toString());
++        return true;
++    }
++
++    private boolean IsResolutionNeedFilter(int dpy) {
++        int type = nativeGetBuiltIn(dpy);
++        return type==DRM_MODE_CONNECTOR_Unknown || type==DRM_MODE_CONNECTOR_Composite ||
++               type==DRM_MODE_CONNECTOR_SVIDEO || type==DRM_MODE_CONNECTOR_LVDS ||
++               type==DRM_MODE_CONNECTOR_TV || type==DRM_MODE_CONNECTOR_VIRTUAL ||
++               type==DRM_MODE_CONNECTOR_DSI;
++    }
++
++    public  List<String> getModeList(int dpy){
++        List<String> modeList = new ArrayList<>();
++        Log.e(TAG, "getModeList =========== dpy " + dpy);
++        //readModeWhiteList(RESOLUTION_XML_PATH);
++        mDisplayInfos = getDisplayConfigs(dpy);
++        if (dpy == 0)
++            mMainDisplayInfos = mDisplayInfos;
++        else
++            mAuxDisplayInfos = mDisplayInfos;
++
++        if (mDisplayInfos != null) {
++            modeList.add("Auto");
++            for (int i = 0; i < mDisplayInfos.length; i++){
++                boolean found=false;
++                RkDisplayModes.RkPhysicalDisplayInfo info = mDisplayInfos[i];
++                StringBuilder builder = new StringBuilder();
++                builder.append(info.width).append("x").append(info.height);
++                if (info.interlaceFlag == true) {
++                    builder.append("i");
++                    builder.append(String.format("%.2f", info.refreshRate));
++                } else {
++                    builder.append("p");
++                    builder.append(String.format("%.2f", info.refreshRate));
++                }
++                //builder.append("@");
++                builder.append("-").append(info.idx);
++
++                boolean existingMode = false;
++                if (resolutions == null || IsResolutionNeedFilter(dpy)) {
++                    modeList.add(builder.toString());
++                } else {
++                    for (int j = 0; j < resolutions.size(); j++) {
++                        if (resolutions.get(j).hasMatchingMode(info)) {
++                            existingMode = true;
++                            break;
++                        }
++                    }
++                    if (existingMode) {
++                        modeList.add(builder.toString());
++                    }
++                }
++            }
++        } else {
++            modeList = null;
++        }
++
++        return modeList;
++    }
++
++    /**
++    * Describes the properties of a physical display known to surface flinger.
++    */
++    public static final class RkPhysicalDisplayInfo {
++        public int width;
++        public int height;
++        public float refreshRate;
++        public int clock;
++        public int flags;
++        public boolean interlaceFlag;
++        public boolean yuvFlag;
++        public int connectorId;
++        public int mode_type;
++        public int idx;
++        public int hsync_start;
++        public int hsync_end;
++        public int htotal;
++        public int hskew;
++        public int vsync_start;
++        public int vsync_end;
++        public int vtotal;
++        public int vscan;
++
++        public RkPhysicalDisplayInfo() {
++        }
++
++        public RkPhysicalDisplayInfo(RkPhysicalDisplayInfo other) {
++            copyFrom(other);
++        }
++
++        @Override
++        public boolean equals(Object o) {
++            return o instanceof RkPhysicalDisplayInfo && equals((RkPhysicalDisplayInfo)o);
++        }
++
++        public boolean equals(RkPhysicalDisplayInfo other) {
++            return other != null
++                && width == other.width
++                && height == other.height
++                && refreshRate == other.refreshRate
++                && clock == other.clock
++                && flags == other.flags;
++        }
++
++        @Override
++        public int hashCode() {
++            return 0; // don't care
++        }
++
++        public void copyFrom(RkPhysicalDisplayInfo other) {
++            width = other.width;
++            height = other.height;
++            refreshRate = other.refreshRate;
++            clock = other.clock;
++            flags = other.flags;
++        }
++
++        // For debugging purposes
++        @Override
++        public String toString() {
++            return "PhysicalDisplayInfo{" + width + " x " + height + ", " + refreshRate + " fps, "
++                + "clock " + clock + ", " + flags + " flags " + "}";
++        }
++    }
++
++
++    public static final class RkColorCapacityInfo {
++        public int color_capa;
++        public int depth_capa;
++
++        public RkColorCapacityInfo() {
++        }
++
++        public RkColorCapacityInfo(RkColorCapacityInfo other) {
++            copyFrom(other);
++        }
++
++        public List<String> getCorlorModeList(int builtIn){
++            boolean is420Support=false;
++            List<String> mCorlorFormatList = new ArrayList<>();
++            List<String> depthList = new ArrayList<>();
++            List<String> colorList = new ArrayList<>();
++
++            if (depth_capa != 0) {
++                if ((depth_capa&DEPTH_CAPA_BIT0_8BIT) >0)
++                    depthList.add(STR_DEPTH_8BIT);
++                if ((depth_capa & DEPTH_CAPA_BIT1_10BIT)>0)
++                    depthList.add(STR_DEPTH_10BIT);
++                if ((depth_capa & DEPTH_CAPA_BIT4_420_10BIT)>0)
++                    is420Support=true;
++            } else {
++                depthList.add(STR_DEPTH_8BIT);
++            }
++            if (color_capa != 0) {
++                if ((color_capa & DRM_HDMI_OUTPUT_DEFAULT_RGB)>0)
++                    colorList.add(STR_RGB);
++                if ((color_capa & DRM_HDMI_OUTPUT_YCBCR444)>0)
++                    colorList.add(STR_YCBCR444);
++                if ((color_capa & DRM_HDMI_OUTPUT_YCBCR422)>0)
++                    colorList.add(STR_YCBCR422);
++                if ((color_capa & DRM_HDMI_OUTPUT_YCBCR420)>0)
++                    colorList.add(STR_YCBCR420);
++            } else {
++                if (builtIn != DRM_MODE_CONNECTOR_TV)
++                    colorList.add(STR_RGB);
++            }
++
++            if (builtIn != DRM_MODE_CONNECTOR_TV)
++                mCorlorFormatList.add("Auto");
++            else
++                mCorlorFormatList.add("YUV");
++            for (String color : colorList) {
++                for (String depth : depthList){
++                    if (color.equals(STR_YCBCR420) && depth.equals(STR_DEPTH_10BIT))
++                        if (is420Support==false)
++                            continue;
++                    StringBuilder builder = new StringBuilder();
++                    builder.append(color);
++                    builder.append("-");
++                    builder.append(depth);
++                    mCorlorFormatList.add(builder.toString());
++                    Log.e(TAG, "getCorlorModeList :  " + builder.toString());
++                }
++            }
++            return mCorlorFormatList;
++        }
++
++        @Override
++        public boolean equals(Object o) {
++            return o instanceof RkColorCapacityInfo && equals((RkColorCapacityInfo)o);
++        }
++
++        public boolean equals(RkColorCapacityInfo other) {
++            return other != null
++                && color_capa == other.color_capa
++                && depth_capa == other.depth_capa;
++        }
++
++        @Override
++        public int hashCode() {
++            return 0; // don't care
++        }
++
++        public void copyFrom(RkColorCapacityInfo other) {
++            color_capa = other.color_capa;
++            depth_capa = other.depth_capa;
++        }
++
++        // For debugging purposes
++        @Override
++        public String toString() {
++            return "RkColorCapacityInfo{" + color_capa + " x " + depth_capa + "}";
++        }
++    }
++
++    public static RkDisplayModes.RkPhysicalDisplayInfo[] getDisplayConfigs(int dpy) {
++        if (dpy < 0) {
++            throw new IllegalArgumentException("dpy is ilegal");
++        }
++            return nativeGetDisplayConfigs(dpy);
++    }
++
++    public static int getNumConnectors() {
++        return nativeGetNumConnectors();
++    }
++
++    public static void init() {
++        nativeInit();
++    }
++
++    public  void updateDisplayInfos() {
++        nativeUpdateConnectors();
++    }
++
++    public void setMode(int display, String iface, String mode){
++        int ifaceType = ifacetotype(iface);
++        String[] mode_str;
++        int idx=0;
++        RkDisplayModes.RkPhysicalDisplayInfo info;
++        Log.w(TAG, "setMode " + mode + " display " + display);
++        if (mode.contains("Auto")) {
++            nativeSetMode(display, ifaceType, mode);
++        } else {
++            mode_str = mode.split("-");
++            for (String mval: mode_str){
++            Log.e(TAG, "setMode split:  " + mval);
++        }
++
++        if (mode_str.length != 2){
++            return;
++        }
++
++        idx = Integer.parseInt(mode_str[1]);
++        if (mMainDisplayInfos!=null && idx >= mMainDisplayInfos.length && display==0)
++            idx=0;
++        else if (mAuxDisplayInfos!=null && idx >= mAuxDisplayInfos.length && display==1)
++            idx=0;
++
++        if (display == 0)
++            info = mMainDisplayInfos[idx];
++        else
++            info = mAuxDisplayInfos[idx];
++
++        StringBuilder builder = new StringBuilder();
++        builder.append(info.width).append("x").append(info.height);
++/*
++        if (info.interlaceFlag == true)
++            builder.append("i");
++        else
++            builder.append("p");
++*/
++        builder.append("@");
++        builder.append(String.format("%.2f", info.refreshRate));
++        builder.append("-");
++        builder.append(info.hsync_start);
++        builder.append("-");
++        builder.append(info.hsync_end);
++        builder.append("-");
++        builder.append(info.htotal);
++        builder.append("-");
++        builder.append(info.vsync_start)
++        .append("-").append(info.vsync_end).append("-").append(info.vtotal).append("-").append(String.format("%x", info.flags));
++
++        nativeSetMode(display, ifaceType, builder.toString());
++    }
++    }
++
++    public String getCurMode(int display){
++        String mCurMode = null;
++        String mAutoMode = null;
++        boolean isAutoMode=false;
++        int foundIdx=-1;
++        StringBuilder builder = new StringBuilder();
++
++        mCurMode = nativeGetCurMode(display);
++        Log.e(TAG, "nativeGetCurMode:  " + mCurMode);
++        RkDisplayModes.RkPhysicalDisplayInfo mCurDisplayInfos[];
++        if (display == MAIN_DISPLAY) {
++            mCurDisplayInfos = getDisplayConfigs(display);
++            mAutoMode = SystemProperties.get("persist.vendor.resolution.main", "NULL");
++        } else {
++            mCurDisplayInfos = getDisplayConfigs(display);
++            mAutoMode = SystemProperties.get("persist.vendor.resolution.aux", "NULL");
++        }
++
++        if (mAutoMode.equals("Auto"))
++            isAutoMode = true;
++        if (mCurDisplayInfos != null && mCurMode != null
++            && (!isAutoMode && !mCurMode.contains("Auto"))) {
++            String[] mode_str = mCurMode.split("-");
++            String[] resos = mode_str[0].split("x");
++            String[] h_vfresh = resos[1].split("@");
++
++            if (mode_str.length != 8 || resos.length != 2 || h_vfresh.length != 2) {
++                for (String mval: mode_str) {
++                    Log.e(TAG, "getCurMode split -:  " + mval);
++                }
++                builder.append("Auto");
++                return builder.toString();
++            }
++
++            for (int i = 0; i < mCurDisplayInfos.length; i++) {
++                RkDisplayModes.RkPhysicalDisplayInfo info = mCurDisplayInfos[i];
++                String vfresh;
++                boolean isSameVfresh = false;
++
++                vfresh = String.format("%.2f", info.refreshRate);
++                if (h_vfresh.length == 2)
++                    isSameVfresh = vfresh.equals(h_vfresh[1]);
++
++                if (info.width == Integer.parseInt(resos[0]) &&
++                    info.height == Integer.parseInt(h_vfresh[0]) &&
++                    isSameVfresh &&
++                    info.hsync_start == Integer.parseInt(mode_str[1]) &&
++                    info.hsync_end == Integer.parseInt(mode_str[2]) &&
++                    info.htotal == Integer.parseInt(mode_str[3]) &&
++                    info.vsync_start == Integer.parseInt(mode_str[4]) &&
++                    info.vsync_end == Integer.parseInt(mode_str[5]) &&
++                    info.vtotal == Integer.parseInt(mode_str[6]) &&
++                    info.flags == Integer.parseInt(mode_str[7],16)) {
++                    foundIdx = i;
++                    builder.append(info.width).append("x").append(info.height);
++                    if (info.interlaceFlag == true) {
++                        builder.append("i");
++                        builder.append(String.format("%.2f", info.refreshRate));
++                    } else {
++                        builder.append("p");
++                        builder.append(String.format("%.2f", info.refreshRate));
++                    }
++                    builder.append("-").append(info.idx);
++                    break;
++                }
++            }
++        }
++
++        if (mCurMode.contains("Auto") || foundIdx == -1) {
++            builder.append("Auto");
++            Log.e(TAG, "getCurMode idx: "+ foundIdx + "   " + builder.toString());
++        }
++        return builder.toString();
++    }
++
++    public int getConnectionState(int display){
++        return nativeGetConnectionState(display);
++    }
++
++    public void saveConfig(){
++        nativeSaveConfig();
++    }
++
++    private int ifacetotype(String iface) {
++        int ifaceType;
++        if(iface.equals(DISPLAY_TYPE_UNKNOW)) {
++            ifaceType = DRM_MODE_CONNECTOR_Unknown;
++        } else if(iface.equals(DISPLAY_TYPE_DVII)) {
++            ifaceType = DRM_MODE_CONNECTOR_DVII;
++        } else if(iface.equals(DISPLAY_TYPE_DVID)) {
++            ifaceType = DRM_MODE_CONNECTOR_DVID;
++        }else if(iface.equals(DISPLAY_TYPE_DVIA)) {
++            ifaceType = DRM_MODE_CONNECTOR_DVIA;
++        } else if(iface.equals(DISPLAY_TYPE_Composite)) {
++            ifaceType = DRM_MODE_CONNECTOR_Composite;
++        }else if(iface.equals(DISPLAY_TYPE_VGA)) {
++            ifaceType = DRM_MODE_CONNECTOR_VGA;
++        } else if(iface.equals(DISPLAY_TYPE_LVDS)) {
++            ifaceType = DRM_MODE_CONNECTOR_LVDS;
++        } else if(iface.equals(DISPLAY_TYPE_Component)) {
++            ifaceType = DRM_MODE_CONNECTOR_Component;
++        } else if(iface.equals(DISPLAY_TYPE_9PinDIN)) {
++            ifaceType = DRM_MODE_CONNECTOR_9PinDIN;
++        } else if(iface.equals(DISPLAY_TYPE_DP)) {
++            ifaceType = DRM_MODE_CONNECTOR_DisplayPort;
++        } else if(iface.equals(DISPLAY_TYPE_HDMIA)) {
++            ifaceType = DRM_MODE_CONNECTOR_HDMIA;
++        } else if(iface.equals(DISPLAY_TYPE_HDMIB)) {
++            ifaceType = DRM_MODE_CONNECTOR_HDMIB;
++        } else if(iface.equals(DISPLAY_TYPE_TV)) {
++            ifaceType = DRM_MODE_CONNECTOR_TV;
++        } else if(iface.equals(DISPLAY_TYPE_EDP)) {
++            ifaceType = DRM_MODE_CONNECTOR_eDP;
++        } else if(iface.equals(DISPLAY_TYPE_VIRTUAL)) {
++            ifaceType = DRM_MODE_CONNECTOR_VIRTUAL;
++        } else if(iface.equals(DISPLAY_TYPE_DSI)) {
++            ifaceType = DRM_MODE_CONNECTOR_DSI;
++        } else {
++            ifaceType = 0;
++        }
++        return ifaceType;
++    }
++
++    public String getbuild_in(int display){
++        String iface;
++        int type = nativeGetBuiltIn(display);
++
++        if(type == DRM_MODE_CONNECTOR_Unknown)
++            iface = DISPLAY_TYPE_UNKNOW;
++        else if(type == DRM_MODE_CONNECTOR_DVII)
++            iface = DISPLAY_TYPE_DVII;
++        else if(type == DRM_MODE_CONNECTOR_VGA)
++            iface = DISPLAY_TYPE_VGA;
++        else if(type == DRM_MODE_CONNECTOR_DVID)
++            iface = DISPLAY_TYPE_DVID;
++        else if(type == DRM_MODE_CONNECTOR_DVIA)
++            iface = DISPLAY_TYPE_DVIA;
++        else if(type == DRM_MODE_CONNECTOR_Composite)
++            iface = DISPLAY_TYPE_Composite;
++        else if(type == DRM_MODE_CONNECTOR_LVDS)
++            iface = DISPLAY_TYPE_LVDS;
++        else if(type == DRM_MODE_CONNECTOR_9PinDIN)
++            iface = DISPLAY_TYPE_9PinDIN;
++        else if(type == DRM_MODE_CONNECTOR_Component)
++            iface = DISPLAY_TYPE_Component;
++        else if(type == DRM_MODE_CONNECTOR_DisplayPort)
++            iface = DISPLAY_TYPE_DP;
++        else if(type == DRM_MODE_CONNECTOR_HDMIA)
++            iface = DISPLAY_TYPE_HDMIA;
++        else if(type == DRM_MODE_CONNECTOR_HDMIB)
++            iface = DISPLAY_TYPE_HDMIB;
++        else if(type == DRM_MODE_CONNECTOR_TV)
++            iface = DISPLAY_TYPE_TV;
++        else if(type == DRM_MODE_CONNECTOR_eDP)
++            iface = DISPLAY_TYPE_EDP;
++        else if(type == DRM_MODE_CONNECTOR_VIRTUAL)
++            iface = DISPLAY_TYPE_VIRTUAL;
++        else if(type == DRM_MODE_CONNECTOR_DSI)
++            iface = DISPLAY_TYPE_DSI;
++        else
++            return null;
++
++        return iface;
++    }
++
++    public  List<String> getSupportCorlorList(int dpy){
++        List<String> colorList = new ArrayList<>();
++        int builtIn = nativeGetBuiltIn(dpy);
++
++        Log.e(TAG, "getSupportCorlorList =========== dpy " + dpy);
++        if (dpy == 0) {
++            mMainColorInfos = nativeGetCorlorModeConfigs(dpy);
++            if (mMainColorInfos != null)
++                return mMainColorInfos.getCorlorModeList(builtIn);
++        } else {
++            mAuxColorInfos = nativeGetCorlorModeConfigs(dpy);
++            if (mAuxColorInfos != null)
++                return mAuxColorInfos.getCorlorModeList(builtIn);
++        }
++
++        return null;
++    }
++
++    public String getCurColorMode(int dpy) {
++        String mCurColorMode = null;
++        int foundIdx=-1;
++        RkDisplayModes.RkColorCapacityInfo mCurColorInfos;
++
++        mCurColorMode = nativeGetCurCorlorMode(dpy);
++        if (dpy == MAIN_DISPLAY) {
++            mCurColorInfos = mMainColorInfos;
++        } else {
++            mCurColorInfos = mAuxColorInfos;
++        }
++        if (mCurColorInfos != null && mCurColorMode != null && !mCurColorMode.contains("Auto")) {
++            List<String> corlorList = getSupportCorlorList(dpy);
++            for (int i = 0; i < corlorList.size(); i++) {
++                if (corlorList.get(i).equals(mCurColorMode)) {
++                    return mCurColorMode;
++                }
++            }
++        } else if (mCurColorMode != null && mCurColorMode.contains("Auto")){
++            return mCurColorMode;
++        }
++
++        String mColorMode = readColorFormatFromNode();
++        if (mColorMode != null)
++            mCurColorMode = mColorMode;
++        if (mCurColorMode == null)
++           mCurColorMode = "RGB-8bit";
++        Log.d(TAG, "getCurColorMode ===========  " + mCurColorMode);
++        return mCurColorMode;
++    }
++
++    public int[] getBcsh(int dpy)
++    {
++        return nativeGetBcsh(dpy);
++    }
++
++    public int[] getOverscan(int dpy)
++    {
++        return nativeGetOverscan(dpy);
++    }
++
++    public int setGamma(int dpy, int size, int[] red, int[] green, int[] blue) {
++        return nativeSetGamma(dpy, size, red, green, blue);
++    }
++
++    public int setHue(int display, int degree)
++    {
++        return nativeSetHue(display, degree);
++    }
++
++    public int setSaturation(int display, int saturation)
++    {
++        return nativeSetSaturation(display, saturation);
++    }
++
++    public int setContrast(int display, int contrast)
++    {
++        return nativeSetContrast(display, contrast);
++    }
++
++    public int setBrightness(int display, int brightness)
++    {
++        return nativeSetBrightness(display, brightness);
++    }
++
++    public int setScreenScale(int display, int direction, int value)
++    {
++        return nativeSetScreenScale(display, direction, value);
++    }
++
++    public int setHdrMode(int display, int hdrMode)
++    {
++        return nativeSetHdrMode(display, hdrMode);
++    }
++
++    public int setColorMode(int display, String format)
++    {
++        return nativeSetColorMode(display, format);
++    }
++}
+diff --git a/services/core/jni/Android.bp b/services/core/jni/Android.bp
+old mode 100644
+new mode 100755
+index 925ad0f57f1..b7d3e9ad410
+--- a/services/core/jni/Android.bp
++++ b/services/core/jni/Android.bp
+@@ -59,6 +59,7 @@ cc_library_static {
+         "com_android_server_am_CachedAppOptimizer.cpp",
+         "com_android_server_am_LowMemDetector.cpp",
+         "com_android_server_pm_PackageManagerShellCommandDataLoader.cpp",
++        "com_android_server_rkdisplay_RkDisplayModes.cpp",
+         "onload.cpp",
+         ":lib_networkStatsFactory_native",
+     ],
+@@ -163,6 +164,7 @@ cc_defaults {
+         "android.frameworks.schedulerservice@1.0",
+         "android.frameworks.sensorservice@1.0",
+         "android.frameworks.stats@1.0",
++        "rockchip.hardware.outputmanager@1.0",
+         "android.system.suspend@1.0",
+         "service.incremental",
+         "suspend_control_aidl_interface-cpp",
+diff --git a/services/core/jni/com_android_server_rkdisplay_RkDisplayModes.cpp b/services/core/jni/com_android_server_rkdisplay_RkDisplayModes.cpp
+new file mode 100644
+index 00000000000..b288db83f87
+--- /dev/null
++++ b/services/core/jni/com_android_server_rkdisplay_RkDisplayModes.cpp
+@@ -0,0 +1,555 @@
++#define LOG_TAG "RkNativeDisplayManager"
++
++#include "android_os_Parcel.h"
++#include "android_util_Binder.h"
++#include "android/graphics/Bitmap.h"
++#include "android/graphics/GraphicsJNI.h"
++#include "core_jni_helpers.h"
++
++#include <nativehelper/JNIHelp.h>
++#include <nativehelper/ScopedUtfChars.h>
++#include <jni.h>
++#include <memory>
++#include <stdio.h>
++#include <errno.h>
++#include <fcntl.h>
++#include <stdint.h>
++
++#include <cutils/log.h>
++#include <cutils/properties.h>
++#include <string>
++#include <map>
++#include <vector>
++#include <iostream>
++#include <inttypes.h>
++#include <sstream>
++
++#include <linux/netlink.h>
++#include <sys/socket.h>
++
++#include <rockchip/hardware/outputmanager/1.0/IRkOutputManager.h>
++#include <unordered_map>
++
++namespace android{
++
++using namespace rockchip::hardware::outputmanager::V1_0;
++
++using ::rockchip::hardware::outputmanager::V1_0::IRkOutputManager;
++using ::rockchip::hardware::outputmanager::V1_0::Result;
++using ::rockchip::hardware::outputmanager::V1_0::RkDrmMode;
++using android::hardware::hidl_handle;
++using android::hardware::hidl_string;
++using android::hardware::hidl_vec;
++using android::hardware::Return;
++using android::hardware::Void;
++
++#define BASE_OFFSET 8*1024
++#define DEFAULT_BRIGHTNESS  50
++#define DEFAULT_CONTRAST  50
++#define DEFAULT_SATURATION  50
++#define DEFAULT_HUE  50
++#define DEFAULT_OVERSCAN_VALUE 100
++
++static struct {
++    jclass clazz;
++    jmethodID ctor;
++    jfieldID width;
++    jfieldID height;
++    jfieldID refreshRate;
++    jfieldID clock;
++    jfieldID flags;
++    jfieldID interlaceFlag;
++    jfieldID yuvFlag;
++    jfieldID connectorId;
++    jfieldID mode_type;
++    jfieldID idx;
++    jfieldID hsync_start;
++    jfieldID hsync_end;
++    jfieldID htotal;
++    jfieldID hskew;
++    jfieldID vsync_start;
++    jfieldID vsync_end;
++    jfieldID vtotal;
++    jfieldID vscan;
++} gRkPhysicalDisplayInfoClassInfo;
++
++static struct{
++    jclass clazz;
++    jmethodID ctor;
++    jfieldID color_capa;
++    jfieldID depth_capa;
++}gRkColorModeSupportInfo;
++
++sp<IRkOutputManager> mComposer = nullptr;
++
++///////////////////////////////////////////////////////////////////////////////////////////////
++
++static void nativeSaveConfig(JNIEnv* env, jobject obj)
++{
++    if (mComposer != nullptr)
++        mComposer->saveConfig();
++}
++
++static void nativeSetMode(JNIEnv* env, jobject obj, jint dpy, jint iface_type, jstring mode)
++{
++    const char* mMode = env->GetStringUTFChars(mode, NULL);
++
++    if (mComposer != nullptr)
++        mComposer->setMode(dpy, mMode);
++    env->ReleaseStringUTFChars(mode, mMode);
++}
++
++static int nativeSetHue(JNIEnv* env, jobject obj, jint dpy, jint degree)
++{
++    Result ret = Result::UNKNOWN;
++    if (mComposer != nullptr)
++        ret = mComposer->setHue(dpy, degree);
++    return 0;
++}
++
++static int nativeSetSaturation(JNIEnv* env, jobject obj, jint dpy, jint saturation)
++{
++    Result ret = Result::UNKNOWN;
++    if (mComposer != nullptr)
++        ret = mComposer->setSaturation(dpy, saturation);
++    return 0;
++}
++
++static int nativeSetContrast(JNIEnv* env, jobject obj, jint dpy, jint contrast)
++{
++    Result ret = Result::UNKNOWN;
++    if (mComposer != nullptr)
++        ret = mComposer->setContrast(dpy, contrast);
++    return 0;
++}
++
++static int nativeSetBrightness(JNIEnv* env, jobject obj, jint dpy, jint brightness)
++{
++    Result ret = Result::UNKNOWN;
++    if (mComposer != nullptr)
++        ret = mComposer->setBrightness(dpy, brightness);
++    return 0;
++}
++
++static int nativeSetScreenScale(JNIEnv* env, jobject obj, jint dpy, jint direction, jint value)
++{
++    Result ret = Result::UNKNOWN;
++    if (mComposer != nullptr)
++        ret = mComposer->setScreenScale(dpy, direction, value);
++    return 0;
++}
++
++static int nativeSetHdrMode(JNIEnv* env, jobject obj, jint dpy, jint hdrMode)
++{
++    Result ret = Result::UNKNOWN;
++    if (mComposer != nullptr)
++        ret = mComposer->setHdrMode(dpy, hdrMode);
++    return 0;
++}
++
++static int nativeSetColorMode(JNIEnv* env, jobject obj, jint dpy, jstring mode)
++{
++    const char* mMode = env->GetStringUTFChars(mode, NULL);
++    Result ret = Result::UNKNOWN;
++
++    if (mComposer != nullptr)
++        ret = mComposer->setColorMode(dpy, mMode);
++    env->ReleaseStringUTFChars(mode, mMode);
++    return 0;
++}
++
++static jstring nativeGetCurCorlorMode(JNIEnv* env, jobject obj, jint dpy)
++{
++    char colorMode[PROPERTY_VALUE_MAX];
++    std::string info;
++
++    if (mComposer != nullptr)
++    {
++        mComposer->getCurCorlorMode(dpy,
++                [&](const auto& tmpResult, const auto& tmpMode)
++                {
++                    if (tmpResult == Result::OK) {
++                        info = tmpMode.c_str();
++                        sprintf(colorMode, "%s", info.c_str());;
++                    }
++                });
++    }
++    return env->NewStringUTF(colorMode);
++}
++
++static jstring nativeGetCurMode(JNIEnv* env, jobject obj, jint dpy)
++{
++    char resolution[128];
++    std::string info;
++
++    if (mComposer != nullptr)
++    {
++        mComposer->getCurMode(dpy,
++                [&](const auto& tmpResult, const auto& tmpMode)
++                {
++                    if (tmpResult == Result::OK) {
++                        info = tmpMode.c_str();
++                        sprintf(resolution, "%s", info.c_str());;
++                    }
++                });
++    }
++    return env->NewStringUTF(resolution);
++}
++
++static jint nativeGetNumConnectors(JNIEnv* env, jobject obj)
++{
++    int numConnectors=0;
++
++    if (mComposer != nullptr)
++    {
++        mComposer->getNumConnectors(0,
++                [&](const auto& tmpResult, const auto& tmpCnt)
++                {
++                    if (tmpResult == Result::OK) {
++                        numConnectors = tmpCnt;
++                    }
++                });
++    }
++    ALOGV("%s:%d numConnectors = %d", __FUNCTION__, __LINE__, numConnectors);
++    return static_cast<jint>(numConnectors);
++}
++
++
++static jint nativeGetConnectionState(JNIEnv* env, jobject obj, jint dpy)
++{
++    int cur_state = 0;
++
++    if (mComposer != nullptr)
++    {
++        mComposer->getConnectState(dpy,
++                [&](const auto& tmpResult, const auto& tmpState)
++                {
++                    if (tmpResult == Result::OK) {
++                        cur_state = tmpState;
++                    }
++                });
++    }
++    ALOGV("%s:%d state = %d", __FUNCTION__, __LINE__, cur_state);
++    return static_cast<jint>(cur_state);
++}
++
++static jint nativeGetBuiltIn(JNIEnv* env, jobject obj, jint dpy)
++{
++    int built_in=0;
++
++    if (mComposer != nullptr)
++    {
++        mComposer->getBuiltIn(dpy,
++                [&](const auto& tmpResult, const auto& tmpBuildin)
++                {
++                    if (tmpResult == Result::OK) {
++                        built_in = tmpBuildin;
++                    }
++                });
++    }
++    return static_cast<jint>(built_in);
++}
++
++static jobject nativeGetCorlorModeConfigs(JNIEnv* env, jclass clazz,
++        jint dpy){
++    jobject infoObj = env->NewObject(gRkColorModeSupportInfo.clazz,
++            gRkColorModeSupportInfo.ctor);
++    hidl_vec<uint32_t> capaities;
++
++    if (mComposer != nullptr)
++    {
++        mComposer->getCorlorModeConfigs(dpy,
++                [&](const auto& tmpResult, const auto& tmpConfigs)
++                {
++                    if (tmpResult == Result::OK) {
++                        capaities = tmpConfigs;
++                    }
++                });
++    }
++
++    for (size_t i = 0; i < capaities.size(); ++i) {
++        if (i==0)
++            env->SetIntField(infoObj, gRkColorModeSupportInfo.color_capa, (int)capaities[i]);
++        else
++            env->SetIntField(infoObj, gRkColorModeSupportInfo.depth_capa, (int)capaities[i]);
++    }
++    return infoObj;
++}
++
++static jintArray nativeGetOverscan(JNIEnv* env, jobject obj, jint dpy)
++{
++    jintArray jOverscanArray = env->NewIntArray(4);
++    hidl_vec<uint32_t> overscan;
++    jint *mOverscan = new jint[4];
++
++    if (mComposer != nullptr)
++    {
++        mComposer->getOverscan(dpy,
++                [&](const auto& tmpResult, const auto& tmpOverscans)
++                {
++                    if (tmpResult == Result::OK) {
++                        overscan = tmpOverscans;
++                    }
++                });
++    }
++
++    if (overscan.size() != 4)
++    {
++        mOverscan[0] = DEFAULT_OVERSCAN_VALUE;
++        mOverscan[1] = DEFAULT_OVERSCAN_VALUE;
++        mOverscan[2] = DEFAULT_OVERSCAN_VALUE;
++        mOverscan[3] = DEFAULT_OVERSCAN_VALUE;
++    } else {
++        mOverscan[0] = overscan[0];
++        mOverscan[1] = overscan[1];
++        mOverscan[2] = overscan[2];
++        mOverscan[3] = overscan[3];
++    }
++
++    ALOGV("overscan: %d %d %d %d", overscan[0], overscan[1], overscan[2], overscan[3]);
++    env->SetIntArrayRegion(jOverscanArray, 0, 4, mOverscan);
++    return jOverscanArray;
++}
++
++static jintArray nativeGetBcsh(JNIEnv* env, jobject obj, jint dpy)
++{
++    jintArray jBcshArray = env->NewIntArray(4);
++    hidl_vec<uint32_t> hidlBcsh;
++    jint *mBcsh = new jint[4];
++
++    if (mComposer != nullptr)
++    {
++        mComposer->getBcsh(dpy,
++                [&](const auto& tmpResult, const auto& tmpBcshs)
++                {
++                    if (tmpResult == Result::OK) {
++                        hidlBcsh = tmpBcshs;
++                    }
++                });
++    }
++
++    if (hidlBcsh.size() != 4)
++    {
++        mBcsh[0] = DEFAULT_BRIGHTNESS;
++        mBcsh[1] = DEFAULT_CONTRAST;
++        mBcsh[2] = DEFAULT_SATURATION;
++        mBcsh[3] = DEFAULT_HUE;
++    } else {
++        mBcsh[0] = hidlBcsh[0];
++        mBcsh[1] = hidlBcsh[1];
++        mBcsh[2] = hidlBcsh[2];
++        mBcsh[3] = hidlBcsh[3];
++    }
++    ALOGV("bcsh %d %d %d %d", hidlBcsh[0], hidlBcsh[1], hidlBcsh[2], hidlBcsh[3]);
++    env->SetIntArrayRegion(jBcshArray, 0, 4, mBcsh);
++    return jBcshArray;
++}
++
++static jint nativeSetGamma(JNIEnv* env, jobject obj,
++        jint dpy, jint size, jintArray r, jintArray g, jintArray b){
++
++    std::vector<uint16_t> hidlRed;
++    std::vector<uint16_t> hidlGreen;
++    std::vector<uint16_t> hidlBlue;
++    jsize jrsize = env->GetArrayLength(r);
++    jsize jgsize = env->GetArrayLength(g);
++    jsize jbsize = env->GetArrayLength(b);
++
++    jint* jr_data = env->GetIntArrayElements(r, /* isCopy */ NULL);
++    jint* jg_data = env->GetIntArrayElements(g, /* isCopy */ NULL);
++    jint* jb_data = env->GetIntArrayElements(b, /* isCopy */ NULL);
++
++    for (int i=0;i<jrsize;i++) {
++        hidlRed.push_back((uint16_t)jr_data[i]);
++    }
++    for (int i=0;i<jgsize;i++) {
++        hidlGreen.push_back((uint16_t)jg_data[i]);
++    }
++    for (int i=0;i<jbsize;i++) {
++        hidlBlue.push_back((uint16_t)jb_data[i]);
++    }
++    if (mComposer != nullptr)
++    {
++        mComposer->setGamma(dpy, size, hidlRed, hidlGreen, hidlBlue);
++    }
++
++    env->ReleaseIntArrayElements(r, jr_data, 0);
++    env->ReleaseIntArrayElements(g, jg_data, 0);
++    env->ReleaseIntArrayElements(b, jb_data, 0);
++
++    return 0;
++}
++
++static jobjectArray nativeGetDisplayConfigs(JNIEnv* env, jclass clazz,
++        jint dpy) {
++    hidl_vec<RkDrmMode> mModes;
++    if (mComposer != nullptr)
++    {
++        mComposer->getDisplayModes(dpy,
++                [&](const auto& tmpResult, const auto& tmpModes)
++                {
++                    if (tmpResult == Result::OK) {
++                        mModes = tmpModes;
++                    }
++                });
++    }
++
++    jobjectArray configArray = env->NewObjectArray(mModes.size(),
++            gRkPhysicalDisplayInfoClassInfo.clazz, NULL);
++
++    for (size_t c=0;c<mModes.size();c++) {
++        RkDrmMode tmpMode = mModes[c];
++        jobject infoObj = env->NewObject(gRkPhysicalDisplayInfoClassInfo.clazz,
++                gRkPhysicalDisplayInfoClassInfo.ctor);
++        env->SetIntField(infoObj, gRkPhysicalDisplayInfoClassInfo.width, tmpMode.width);
++        env->SetIntField(infoObj, gRkPhysicalDisplayInfoClassInfo.height, tmpMode.height);
++        env->SetFloatField(infoObj, gRkPhysicalDisplayInfoClassInfo.refreshRate, tmpMode.refreshRate);//1000 * 1000 * 1000 /
++        env->SetIntField(infoObj, gRkPhysicalDisplayInfoClassInfo.clock, tmpMode.clock);
++        env->SetIntField(infoObj, gRkPhysicalDisplayInfoClassInfo.flags, tmpMode.flags);
++        env->SetBooleanField(infoObj, gRkPhysicalDisplayInfoClassInfo.interlaceFlag,
++                             tmpMode.interlaceFlag>0?1:0);
++        env->SetBooleanField(infoObj, gRkPhysicalDisplayInfoClassInfo.yuvFlag, tmpMode.yuvFlag>0?1:0);
++        env->SetIntField(infoObj, gRkPhysicalDisplayInfoClassInfo.connectorId, tmpMode.connectorId);//mode_type
++        env->SetIntField(infoObj, gRkPhysicalDisplayInfoClassInfo.mode_type, tmpMode.mode_type);
++        env->SetIntField(infoObj, gRkPhysicalDisplayInfoClassInfo.idx, tmpMode.idx);
++        env->SetIntField(infoObj, gRkPhysicalDisplayInfoClassInfo.hsync_start, tmpMode.hsync_start);
++        env->SetIntField(infoObj, gRkPhysicalDisplayInfoClassInfo.hsync_end, tmpMode.hsync_end);
++        env->SetIntField(infoObj, gRkPhysicalDisplayInfoClassInfo.htotal, tmpMode.htotal);
++        env->SetIntField(infoObj, gRkPhysicalDisplayInfoClassInfo.hskew, tmpMode.hskew);
++        env->SetIntField(infoObj, gRkPhysicalDisplayInfoClassInfo.vsync_start, tmpMode.vsync_start);
++        env->SetIntField(infoObj, gRkPhysicalDisplayInfoClassInfo.vsync_end, tmpMode.vsync_end);
++        env->SetIntField(infoObj, gRkPhysicalDisplayInfoClassInfo.vtotal, tmpMode.vtotal);
++        env->SetIntField(infoObj, gRkPhysicalDisplayInfoClassInfo.vscan, tmpMode.vscan);
++        ALOGV("dpy%d %dx%d info.fps %f clock %d hsync_start %d hsync_enc %d htotal %d hskew %d",
++                dpy, tmpMode.width, tmpMode.height, tmpMode.refreshRate,
++                tmpMode.clock, tmpMode.flags, tmpMode.hsync_start,
++                tmpMode.htotal, tmpMode.hskew);
++        ALOGV("vsync_start %d vsync_end %d vtotal %d vscan %d flags 0x%x",
++                tmpMode.vsync_start, tmpMode.vsync_end,
++                tmpMode.vtotal, tmpMode.vscan, tmpMode.flags);
++
++        env->SetObjectArrayElement(configArray, static_cast<jsize>(c), infoObj);
++        env->DeleteLocalRef(infoObj);
++    }
++    return configArray;
++}
++
++static void nativeUpdateConnectors(JNIEnv* env, jobject obj) {
++    ALOGD("nativeInit failed to get IRkOutputManager");
++    if (mComposer != nullptr)
++        mComposer->hotPlug();
++}
++
++static void nativeInit(JNIEnv* env, jobject obj) {
++        mComposer = IRkOutputManager::getService();
++        if (mComposer != nullptr) {
++            mComposer->initial();
++        } else {
++            ALOGD("nativeInit failed to get IRkOutputManager");
++        }
++}
++
++// ----------------------------------------------------------------------------
++//com.android.server.rkdisplay
++static const JNINativeMethod sRkDrmModeMethods[] = {
++    {"nativeInit", "()V",
++        (void*) nativeInit},
++    {"nativeUpdateConnectors", "()V",
++        (void*) nativeUpdateConnectors},
++    {"nativeSaveConfig", "()V",
++        (void*) nativeSaveConfig},
++    {"nativeGetDisplayConfigs", "(I)[Lcom/android/server/rkdisplay/RkDisplayModes$RkPhysicalDisplayInfo;",
++        (void*)nativeGetDisplayConfigs},
++    {"nativeGetNumConnectors", "()I",
++        (void*)nativeGetNumConnectors},
++    {"nativeSetMode", "(IILjava/lang/String;)V",
++        (void*)nativeSetMode},
++    {"nativeGetCurMode", "(I)Ljava/lang/String;",
++        (void*)nativeGetCurMode},
++    {"nativeGetCurCorlorMode", "(I)Ljava/lang/String;",
++        (void*)nativeGetCurCorlorMode},
++    {"nativeGetBuiltIn", "(I)I",
++        (void*)nativeGetBuiltIn},
++    {"nativeGetConnectionState", "(I)I",
++        (void*)nativeGetConnectionState},
++    {"nativeGetCorlorModeConfigs", "(I)Lcom/android/server/rkdisplay/RkDisplayModes$RkColorCapacityInfo;",
++        (void*)nativeGetCorlorModeConfigs},
++    {"nativeGetBcsh", "(I)[I",
++        (void*)nativeGetBcsh},
++    {"nativeGetOverscan", "(I)[I",
++        (void*)nativeGetOverscan},
++    {"nativeSetGamma", "(II[I[I[I)I",
++        (void*)nativeSetGamma},
++    {"nativeSetHue", "(II)I",
++        (void*)nativeSetHue},
++    {"nativeSetSaturation", "(II)I",
++        (void*)nativeSetSaturation},
++    {"nativeSetContrast", "(II)I",
++        (void*)nativeSetContrast},
++    {"nativeSetBrightness", "(II)I",
++        (void*)nativeSetBrightness},
++    {"nativeSetScreenScale", "(III)I",
++        (void*)nativeSetScreenScale},
++    {"nativeSetHdrMode", "(II)I",
++        (void*)nativeSetHdrMode},
++    {"nativeSetColorMode", "(ILjava/lang/String;)I",
++        (void*)nativeSetColorMode},
++
++};
++
++#define FIND_CLASS(var, className) \
++    var = env->FindClass(className); \
++    LOG_FATAL_IF(! var, "Unable to find class " className);
++
++#define GET_METHOD_ID(var, clazz, methodName, methodDescriptor) \
++    var = env->GetMethodID(clazz, methodName, methodDescriptor); \
++    LOG_FATAL_IF(! var, "Unable to find method " methodName);
++
++#define GET_FIELD_ID(var, clazz, fieldName, fieldDescriptor) \
++    var = env->GetFieldID(clazz, fieldName, fieldDescriptor); \
++    LOG_FATAL_IF(! var, "Unable to find field " fieldName);
++
++int register_com_android_server_rkdisplay_RkDisplayModes(JNIEnv* env)
++{
++    int res = jniRegisterNativeMethods(env, "com/android/server/rkdisplay/RkDisplayModes",
++            sRkDrmModeMethods, NELEM(sRkDrmModeMethods));
++    LOG_FATAL_IF(res < 0, "Unable to register native methods register_com_android_server_rkdisplay_RkDisplayModes");
++    (void)res; // Don't complain about unused variable in the LOG_NDEBUG case
++
++    jclass clazz;
++    FIND_CLASS(clazz, "com/android/server/rkdisplay/RkDisplayModes");
++
++    FIND_CLASS(gRkPhysicalDisplayInfoClassInfo.clazz, "com/android/server/rkdisplay/RkDisplayModes$RkPhysicalDisplayInfo");
++    gRkPhysicalDisplayInfoClassInfo.clazz = jclass(env->NewGlobalRef(gRkPhysicalDisplayInfoClassInfo.clazz));
++    GET_METHOD_ID(gRkPhysicalDisplayInfoClassInfo.ctor,
++            gRkPhysicalDisplayInfoClassInfo.clazz, "<init>", "()V");
++    GET_FIELD_ID(gRkPhysicalDisplayInfoClassInfo.width, gRkPhysicalDisplayInfoClassInfo.clazz, "width", "I");
++    GET_FIELD_ID(gRkPhysicalDisplayInfoClassInfo.height, gRkPhysicalDisplayInfoClassInfo.clazz, "height", "I");
++    GET_FIELD_ID(gRkPhysicalDisplayInfoClassInfo.refreshRate, gRkPhysicalDisplayInfoClassInfo.clazz, "refreshRate", "F");
++    GET_FIELD_ID(gRkPhysicalDisplayInfoClassInfo.clock, gRkPhysicalDisplayInfoClassInfo.clazz, "clock", "I");
++    GET_FIELD_ID(gRkPhysicalDisplayInfoClassInfo.flags, gRkPhysicalDisplayInfoClassInfo.clazz, "flags", "I");
++    GET_FIELD_ID(gRkPhysicalDisplayInfoClassInfo.interlaceFlag, gRkPhysicalDisplayInfoClassInfo.clazz, "interlaceFlag", "Z");
++    GET_FIELD_ID(gRkPhysicalDisplayInfoClassInfo.yuvFlag, gRkPhysicalDisplayInfoClassInfo.clazz, "yuvFlag", "Z");
++    GET_FIELD_ID(gRkPhysicalDisplayInfoClassInfo.connectorId, gRkPhysicalDisplayInfoClassInfo.clazz, "connectorId", "I");
++    GET_FIELD_ID(gRkPhysicalDisplayInfoClassInfo.mode_type, gRkPhysicalDisplayInfoClassInfo.clazz, "mode_type", "I");
++    GET_FIELD_ID(gRkPhysicalDisplayInfoClassInfo.idx, gRkPhysicalDisplayInfoClassInfo.clazz, "idx", "I");
++
++    GET_FIELD_ID(gRkPhysicalDisplayInfoClassInfo.hsync_start, gRkPhysicalDisplayInfoClassInfo.clazz, "hsync_start", "I");
++    GET_FIELD_ID(gRkPhysicalDisplayInfoClassInfo.hsync_end, gRkPhysicalDisplayInfoClassInfo.clazz, "hsync_end", "I");
++    GET_FIELD_ID(gRkPhysicalDisplayInfoClassInfo.htotal, gRkPhysicalDisplayInfoClassInfo.clazz, "htotal", "I");
++    GET_FIELD_ID(gRkPhysicalDisplayInfoClassInfo.hskew, gRkPhysicalDisplayInfoClassInfo.clazz, "hskew", "I");
++    GET_FIELD_ID(gRkPhysicalDisplayInfoClassInfo.vsync_start, gRkPhysicalDisplayInfoClassInfo.clazz, "vsync_start", "I");
++    GET_FIELD_ID(gRkPhysicalDisplayInfoClassInfo.vsync_end, gRkPhysicalDisplayInfoClassInfo.clazz, "vsync_end", "I");
++    GET_FIELD_ID(gRkPhysicalDisplayInfoClassInfo.vtotal, gRkPhysicalDisplayInfoClassInfo.clazz, "vtotal", "I");
++    GET_FIELD_ID(gRkPhysicalDisplayInfoClassInfo.vscan, gRkPhysicalDisplayInfoClassInfo.clazz, "vscan", "I");
++
++    FIND_CLASS(gRkColorModeSupportInfo.clazz, "com/android/server/rkdisplay/RkDisplayModes$RkColorCapacityInfo");
++    gRkColorModeSupportInfo.clazz = jclass(env->NewGlobalRef(gRkColorModeSupportInfo.clazz));
++    GET_METHOD_ID(gRkColorModeSupportInfo.ctor,
++            gRkColorModeSupportInfo.clazz, "<init>", "()V");
++    GET_FIELD_ID(gRkColorModeSupportInfo.color_capa, gRkColorModeSupportInfo.clazz, "color_capa", "I");
++    GET_FIELD_ID(gRkColorModeSupportInfo.depth_capa, gRkColorModeSupportInfo.clazz, "depth_capa", "I");
++    return 0;
++}
++};
++
+diff --git a/services/core/jni/onload.cpp b/services/core/jni/onload.cpp
+old mode 100644
+new mode 100755
+index e5d2a83479e..16e23fae7f1
+--- a/services/core/jni/onload.cpp
++++ b/services/core/jni/onload.cpp
+@@ -64,6 +64,7 @@ int register_android_server_com_android_server_pm_PackageManagerShellCommandData
+ int register_android_server_stats_pull_StatsPullAtomService(JNIEnv* env);
+ int register_android_server_AdbDebuggingManager(JNIEnv* env);
+ int register_android_server_GpuService(JNIEnv* env);
++int register_com_android_server_rkdisplay_RkDisplayModes(JNIEnv* env);
+ };
+ 
+ using namespace android;
+@@ -120,6 +121,7 @@ extern "C" jint JNI_OnLoad(JavaVM* vm, void* /* reserved */)
+     register_android_server_com_android_server_pm_PackageManagerShellCommandDataLoader(env);
+     register_android_server_stats_pull_StatsPullAtomService(env);
+     register_android_server_AdbDebuggingManager(env);
++    register_com_android_server_rkdisplay_RkDisplayModes(env);
+     register_android_server_GpuService(env);
+     return JNI_VERSION_1_4;
+ }
+diff --git a/services/java/com/android/server/SystemServer.java b/services/java/com/android/server/SystemServer.java
+old mode 100644
+new mode 100755
+index 2a200fb0ae2..179845a1d75
+--- a/services/java/com/android/server/SystemServer.java
++++ b/services/java/com/android/server/SystemServer.java
+@@ -1568,6 +1568,15 @@ public final class SystemServer {
+             }
+             t.traceEnd();
+ 
++             // $_rbox_$_modify_$_aisx: added 2017-06-27, add RkDisplayDeviceManagementService
++             try {
++                ServiceManager.addService(
++                    "drm_device_management",
++                    new RkDisplayDeviceManagementService(context));
++            } catch (Throwable e) {
++                Slog.e(TAG, "Failure starting kDisplayDeviceManagement Service", e);
++            }
++
+             t.traceBegin("StartNotificationManager");
+             mSystemServiceManager.startService(NotificationManagerService.class);
+             SystemNotificationChannels.removeDeprecated(context);
+-- 
+2.35.1
+

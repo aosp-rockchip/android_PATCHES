@@ -1,0 +1,26 @@
+From e07fb817055925b188c19bce4fdaabe13f525ff3 Mon Sep 17 00:00:00 2001
+From: Zhixiong Lin <zhixiong.lin@rock-chips.com>
+Date: Tue, 10 Nov 2020 19:23:02 +0800
+Subject: [PATCH 16/25] libstagefright: librenderengine rely on librga
+
+Change-Id: Id3a4327c84e91bba6b174ff0478796fb8a5b06ce
+Signed-off-by: Zhixiong Lin <zhixiong.lin@rock-chips.com>
+---
+ media/libstagefright/Android.bp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/media/libstagefright/Android.bp b/media/libstagefright/Android.bp
+index 640191d67d..34639b2c09 100644
+--- a/media/libstagefright/Android.bp
++++ b/media/libstagefright/Android.bp
+@@ -173,6 +173,7 @@ cc_library_shared {
+         "libsync",
+         "libui",
+         "libutils",
++        "librga",
+     ],
+ 
+     static_libs: [
+-- 
+2.35.1
+

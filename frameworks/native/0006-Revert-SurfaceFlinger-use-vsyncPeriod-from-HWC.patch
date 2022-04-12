@@ -1,0 +1,399 @@
+From 6db519dff9a4c4d8e84bcf34bdcbd41f36b111ef Mon Sep 17 00:00:00 2001
+From: Daniel Chapin <chapin@google.com>
+Date: Tue, 11 Feb 2020 23:28:24 +0000
+Subject: [PATCH 06/33] Revert "SurfaceFlinger: use vsyncPeriod from HWC"
+
+This reverts commit 5dee2f130ef20dd21e413bc97556e2284610cd7a.
+
+Reason for revert: b/149273033
+
+Change-Id: I8c8f4da27efc94d2b3b3f7f82201951612c3d525
+(cherry picked from commit 7a386fcc1cbbde753bd893c9fc95045f4a3ae079)
+---
+ .../DisplayHardware/HWComposer.cpp            |  1 +
+ .../surfaceflinger/Scheduler/DispSync.cpp     |  3 +-
+ services/surfaceflinger/Scheduler/DispSync.h  |  6 +-
+ .../surfaceflinger/Scheduler/Scheduler.cpp    |  6 +-
+ services/surfaceflinger/Scheduler/Scheduler.h |  3 +-
+ .../surfaceflinger/Scheduler/VSyncReactor.cpp | 19 ++----
+ .../surfaceflinger/Scheduler/VSyncReactor.h   |  6 +-
+ services/surfaceflinger/SurfaceFlinger.cpp    |  6 +-
+ .../tests/unittests/VSyncReactorTest.cpp      | 66 +++++++------------
+ .../tests/unittests/mock/MockDispSync.h       |  2 +-
+ 10 files changed, 43 insertions(+), 75 deletions(-)
+
+diff --git a/services/surfaceflinger/DisplayHardware/HWComposer.cpp b/services/surfaceflinger/DisplayHardware/HWComposer.cpp
+index f8d45c0e5..7124c6ae6 100644
+--- a/services/surfaceflinger/DisplayHardware/HWComposer.cpp
++++ b/services/surfaceflinger/DisplayHardware/HWComposer.cpp
+@@ -109,6 +109,7 @@ public:
+             android::Hwc2::Display display, int64_t timestamp,
+             android::Hwc2::VsyncPeriodNanos vsyncPeriodNanos) override {
+         if (mVsyncSwitchingSupported) {
++            // TODO(b/140201379): use vsyncPeriodNanos in the new DispSync
+             mCallback->onVsyncReceived(mSequenceId, display, timestamp,
+                                        std::make_optional(vsyncPeriodNanos));
+         } else {
+diff --git a/services/surfaceflinger/Scheduler/DispSync.cpp b/services/surfaceflinger/Scheduler/DispSync.cpp
+index 809a0e52f..ca41608c1 100644
+--- a/services/surfaceflinger/Scheduler/DispSync.cpp
++++ b/services/surfaceflinger/Scheduler/DispSync.cpp
+@@ -542,8 +542,7 @@ void DispSync::beginResync() {
+     resetLocked();
+ }
+ 
+-bool DispSync::addResyncSample(nsecs_t timestamp, std::optional<nsecs_t> /*hwcVsyncPeriod*/,
+-                               bool* periodFlushed) {
++bool DispSync::addResyncSample(nsecs_t timestamp, bool* periodFlushed) {
+     Mutex::Autolock lock(mMutex);
+ 
+     ALOGV("[%s] addResyncSample(%" PRId64 ")", mName, ns2us(timestamp));
+diff --git a/services/surfaceflinger/Scheduler/DispSync.h b/services/surfaceflinger/Scheduler/DispSync.h
+index 2d9afc954..c6aadbb92 100644
+--- a/services/surfaceflinger/Scheduler/DispSync.h
++++ b/services/surfaceflinger/Scheduler/DispSync.h
+@@ -49,8 +49,7 @@ public:
+     virtual void reset() = 0;
+     virtual bool addPresentFence(const std::shared_ptr<FenceTime>&) = 0;
+     virtual void beginResync() = 0;
+-    virtual bool addResyncSample(nsecs_t timestamp, std::optional<nsecs_t> hwcVsyncPeriod,
+-                                 bool* periodFlushed) = 0;
++    virtual bool addResyncSample(nsecs_t timestamp, bool* periodFlushed) = 0;
+     virtual void endResync() = 0;
+     virtual void setPeriod(nsecs_t period) = 0;
+     virtual nsecs_t getPeriod() = 0;
+@@ -126,8 +125,7 @@ public:
+     // down the DispSync model, and false otherwise.
+     // periodFlushed will be set to true if mPendingPeriod is flushed to
+     // mIntendedPeriod, and false otherwise.
+-    bool addResyncSample(nsecs_t timestamp, std::optional<nsecs_t> hwcVsyncPeriod,
+-                         bool* periodFlushed) override;
++    bool addResyncSample(nsecs_t timestamp, bool* periodFlushed) override;
+     void endResync() override;
+ 
+     // The setPeriod method sets the vsync event model's period to a specific
+diff --git a/services/surfaceflinger/Scheduler/Scheduler.cpp b/services/surfaceflinger/Scheduler/Scheduler.cpp
+index 331c8a8cc..2b70d6558 100644
+--- a/services/surfaceflinger/Scheduler/Scheduler.cpp
++++ b/services/surfaceflinger/Scheduler/Scheduler.cpp
+@@ -338,15 +338,13 @@ void Scheduler::setVsyncPeriod(nsecs_t period) {
+     }
+ }
+ 
+-void Scheduler::addResyncSample(nsecs_t timestamp, std::optional<nsecs_t> hwcVsyncPeriod,
+-                                bool* periodFlushed) {
++void Scheduler::addResyncSample(nsecs_t timestamp, bool* periodFlushed) {
+     bool needsHwVsync = false;
+     *periodFlushed = false;
+     { // Scope for the lock
+         std::lock_guard<std::mutex> lock(mHWVsyncLock);
+         if (mPrimaryHWVsyncEnabled) {
+-            needsHwVsync =
+-                    mPrimaryDispSync->addResyncSample(timestamp, hwcVsyncPeriod, periodFlushed);
++            needsHwVsync = mPrimaryDispSync->addResyncSample(timestamp, periodFlushed);
+         }
+     }
+ 
+diff --git a/services/surfaceflinger/Scheduler/Scheduler.h b/services/surfaceflinger/Scheduler/Scheduler.h
+index 82b78e320..c2345ccc1 100644
+--- a/services/surfaceflinger/Scheduler/Scheduler.h
++++ b/services/surfaceflinger/Scheduler/Scheduler.h
+@@ -109,8 +109,7 @@ public:
+ 
+     // Passes a vsync sample to DispSync. periodFlushed will be true if
+     // DispSync detected that the vsync period changed, and false otherwise.
+-    void addResyncSample(nsecs_t timestamp, std::optional<nsecs_t> hwcVsyncPeriod,
+-                         bool* periodFlushed);
++    void addResyncSample(nsecs_t timestamp, bool* periodFlushed);
+     void addPresentFence(const std::shared_ptr<FenceTime>&);
+     void setIgnorePresentFences(bool ignore);
+     nsecs_t getDispSyncExpectedPresentTime();
+diff --git a/services/surfaceflinger/Scheduler/VSyncReactor.cpp b/services/surfaceflinger/Scheduler/VSyncReactor.cpp
+index da73e4e19..70e476067 100644
+--- a/services/surfaceflinger/Scheduler/VSyncReactor.cpp
++++ b/services/surfaceflinger/Scheduler/VSyncReactor.cpp
+@@ -229,33 +229,24 @@ void VSyncReactor::beginResync() {
+ 
+ void VSyncReactor::endResync() {}
+ 
+-bool VSyncReactor::periodConfirmed(nsecs_t vsync_timestamp, std::optional<nsecs_t> HwcVsyncPeriod) {
+-    if (!mPeriodConfirmationInProgress) {
++bool VSyncReactor::periodConfirmed(nsecs_t vsync_timestamp) {
++    if (!mLastHwVsync || !mPeriodConfirmationInProgress) {
+         return false;
+     }
+-
+-    if (!mLastHwVsync && !HwcVsyncPeriod) {
+-        return false;
+-    }
+-
+     auto const period = mPeriodTransitioningTo ? *mPeriodTransitioningTo : getPeriod();
++
+     static constexpr int allowancePercent = 10;
+     static constexpr std::ratio<allowancePercent, 100> allowancePercentRatio;
+     auto const allowance = period * allowancePercentRatio.num / allowancePercentRatio.den;
+-    if (HwcVsyncPeriod) {
+-        return std::abs(*HwcVsyncPeriod - period) < allowance;
+-    }
+-
+     auto const distance = vsync_timestamp - *mLastHwVsync;
+     return std::abs(distance - period) < allowance;
+ }
+ 
+-bool VSyncReactor::addResyncSample(nsecs_t timestamp, std::optional<nsecs_t> hwcVsyncPeriod,
+-                                   bool* periodFlushed) {
++bool VSyncReactor::addResyncSample(nsecs_t timestamp, bool* periodFlushed) {
+     assert(periodFlushed);
+ 
+     std::lock_guard<std::mutex> lk(mMutex);
+-    if (periodConfirmed(timestamp, hwcVsyncPeriod)) {
++    if (periodConfirmed(timestamp)) {
+         if (mPeriodTransitioningTo) {
+             mTracker->setPeriod(*mPeriodTransitioningTo);
+             for (auto& entry : mCallbacks) {
+diff --git a/services/surfaceflinger/Scheduler/VSyncReactor.h b/services/surfaceflinger/Scheduler/VSyncReactor.h
+index aa8a38d87..5b79f35c2 100644
+--- a/services/surfaceflinger/Scheduler/VSyncReactor.h
++++ b/services/surfaceflinger/Scheduler/VSyncReactor.h
+@@ -49,8 +49,7 @@ public:
+ 
+     // TODO: (b/145626181) remove begin,endResync functions from DispSync i/f when possible.
+     void beginResync() final;
+-    bool addResyncSample(nsecs_t timestamp, std::optional<nsecs_t> hwcVsyncPeriod,
+-                         bool* periodFlushed) final;
++    bool addResyncSample(nsecs_t timestamp, bool* periodFlushed) final;
+     void endResync() final;
+ 
+     status_t addEventListener(const char* name, nsecs_t phase, DispSync::Callback* callback,
+@@ -66,8 +65,7 @@ private:
+     void updateIgnorePresentFencesInternal() REQUIRES(mMutex);
+     void startPeriodTransition(nsecs_t newPeriod) REQUIRES(mMutex);
+     void endPeriodTransition() REQUIRES(mMutex);
+-    bool periodConfirmed(nsecs_t vsync_timestamp, std::optional<nsecs_t> hwcVsyncPeriod)
+-            REQUIRES(mMutex);
++    bool periodConfirmed(nsecs_t vsync_timestamp) REQUIRES(mMutex);
+ 
+     std::unique_ptr<Clock> const mClock;
+     std::unique_ptr<VSyncTracker> const mTracker;
+diff --git a/services/surfaceflinger/SurfaceFlinger.cpp b/services/surfaceflinger/SurfaceFlinger.cpp
+index f81179a3e..1a4d316c5 100644
+--- a/services/surfaceflinger/SurfaceFlinger.cpp
++++ b/services/surfaceflinger/SurfaceFlinger.cpp
+@@ -1502,9 +1502,11 @@ nsecs_t SurfaceFlinger::getVsyncPeriod() const {
+ 
+ void SurfaceFlinger::onVsyncReceived(int32_t sequenceId, hwc2_display_t hwcDisplayId,
+                                      int64_t timestamp,
+-                                     std::optional<hwc2_vsync_period_t> vsyncPeriod) {
++                                     std::optional<hwc2_vsync_period_t> /*vsyncPeriod*/) {
+     ATRACE_NAME("SF onVsync");
+ 
++    // TODO(b/140201379): use vsyncPeriod in the new DispSync
++
+     Mutex::Autolock lock(mStateLock);
+     // Ignore any vsyncs from a previous hardware composer.
+     if (sequenceId != getBE().mComposerSequenceId) {
+@@ -1521,7 +1523,7 @@ void SurfaceFlinger::onVsyncReceived(int32_t sequenceId, hwc2_display_t hwcDispl
+     }
+ 
+     bool periodFlushed = false;
+-    mScheduler->addResyncSample(timestamp, vsyncPeriod, &periodFlushed);
++    mScheduler->addResyncSample(timestamp, &periodFlushed);
+     if (periodFlushed) {
+         mVSyncModulator->onRefreshRateChangeCompleted();
+     }
+diff --git a/services/surfaceflinger/tests/unittests/VSyncReactorTest.cpp b/services/surfaceflinger/tests/unittests/VSyncReactorTest.cpp
+index 2f36bb294..1de72b959 100644
+--- a/services/surfaceflinger/tests/unittests/VSyncReactorTest.cpp
++++ b/services/surfaceflinger/tests/unittests/VSyncReactorTest.cpp
+@@ -250,9 +250,9 @@ TEST_F(VSyncReactorTest, ignoresProperlyAfterAPeriodConfirmation) {
+     nsecs_t const newPeriod = 5000;
+     mReactor.setPeriod(newPeriod);
+ 
+-    EXPECT_TRUE(mReactor.addResyncSample(0, std::nullopt, &periodFlushed));
++    EXPECT_TRUE(mReactor.addResyncSample(0, &periodFlushed));
+     EXPECT_FALSE(periodFlushed);
+-    EXPECT_FALSE(mReactor.addResyncSample(newPeriod, std::nullopt, &periodFlushed));
++    EXPECT_FALSE(mReactor.addResyncSample(newPeriod, &periodFlushed));
+     EXPECT_TRUE(periodFlushed);
+ 
+     EXPECT_TRUE(mReactor.addPresentFence(generateSignalledFenceWithTime(0)));
+@@ -302,16 +302,16 @@ TEST_F(VSyncReactorTest, setPeriodCalledOnceConfirmedChange) {
+     mReactor.setPeriod(newPeriod);
+ 
+     bool periodFlushed = true;
+-    EXPECT_TRUE(mReactor.addResyncSample(10000, std::nullopt, &periodFlushed));
++    EXPECT_TRUE(mReactor.addResyncSample(10000, &periodFlushed));
+     EXPECT_FALSE(periodFlushed);
+ 
+-    EXPECT_TRUE(mReactor.addResyncSample(20000, std::nullopt, &periodFlushed));
++    EXPECT_TRUE(mReactor.addResyncSample(20000, &periodFlushed));
+     EXPECT_FALSE(periodFlushed);
+ 
+     Mock::VerifyAndClearExpectations(mMockTracker.get());
+     EXPECT_CALL(*mMockTracker, setPeriod(newPeriod)).Times(1);
+ 
+-    EXPECT_FALSE(mReactor.addResyncSample(25000, std::nullopt, &periodFlushed));
++    EXPECT_FALSE(mReactor.addResyncSample(25000, &periodFlushed));
+     EXPECT_TRUE(periodFlushed);
+ }
+ 
+@@ -320,14 +320,14 @@ TEST_F(VSyncReactorTest, changingPeriodBackAbortsConfirmationProcess) {
+     nsecs_t const newPeriod = 5000;
+     mReactor.setPeriod(newPeriod);
+     bool periodFlushed = true;
+-    EXPECT_TRUE(mReactor.addResyncSample(sampleTime += period, std::nullopt, &periodFlushed));
++    EXPECT_TRUE(mReactor.addResyncSample(sampleTime += period, &periodFlushed));
+     EXPECT_FALSE(periodFlushed);
+ 
+-    EXPECT_TRUE(mReactor.addResyncSample(sampleTime += period, std::nullopt, &periodFlushed));
++    EXPECT_TRUE(mReactor.addResyncSample(sampleTime += period, &periodFlushed));
+     EXPECT_FALSE(periodFlushed);
+ 
+     mReactor.setPeriod(period);
+-    EXPECT_FALSE(mReactor.addResyncSample(sampleTime += period, std::nullopt, &periodFlushed));
++    EXPECT_FALSE(mReactor.addResyncSample(sampleTime += period, &periodFlushed));
+     EXPECT_FALSE(periodFlushed);
+ }
+ 
+@@ -338,14 +338,14 @@ TEST_F(VSyncReactorTest, changingToAThirdPeriodWillWaitForLastPeriod) {
+ 
+     mReactor.setPeriod(secondPeriod);
+     bool periodFlushed = true;
+-    EXPECT_TRUE(mReactor.addResyncSample(sampleTime += period, std::nullopt, &periodFlushed));
++    EXPECT_TRUE(mReactor.addResyncSample(sampleTime += period, &periodFlushed));
+     EXPECT_FALSE(periodFlushed);
+-    EXPECT_TRUE(mReactor.addResyncSample(sampleTime += period, std::nullopt, &periodFlushed));
++    EXPECT_TRUE(mReactor.addResyncSample(sampleTime += period, &periodFlushed));
+     EXPECT_FALSE(periodFlushed);
+     mReactor.setPeriod(thirdPeriod);
+-    EXPECT_TRUE(mReactor.addResyncSample(sampleTime += secondPeriod, std::nullopt, &periodFlushed));
++    EXPECT_TRUE(mReactor.addResyncSample(sampleTime += secondPeriod, &periodFlushed));
+     EXPECT_FALSE(periodFlushed);
+-    EXPECT_FALSE(mReactor.addResyncSample(sampleTime += thirdPeriod, std::nullopt, &periodFlushed));
++    EXPECT_FALSE(mReactor.addResyncSample(sampleTime += thirdPeriod, &periodFlushed));
+     EXPECT_TRUE(periodFlushed);
+ }
+ 
+@@ -360,9 +360,9 @@ TEST_F(VSyncReactorTest, reportedBadTimestampFromPredictorWillReactivateHwVSync)
+     nsecs_t skewyPeriod = period >> 1;
+     bool periodFlushed = false;
+     nsecs_t sampleTime = 0;
+-    EXPECT_TRUE(mReactor.addResyncSample(sampleTime += skewyPeriod, std::nullopt, &periodFlushed));
++    EXPECT_TRUE(mReactor.addResyncSample(sampleTime += skewyPeriod, &periodFlushed));
+     EXPECT_FALSE(periodFlushed);
+-    EXPECT_FALSE(mReactor.addResyncSample(sampleTime += period, std::nullopt, &periodFlushed));
++    EXPECT_FALSE(mReactor.addResyncSample(sampleTime += period, &periodFlushed));
+     EXPECT_FALSE(periodFlushed);
+ }
+ 
+@@ -390,12 +390,12 @@ TEST_F(VSyncReactorTest, setPeriodCalledFirstTwoEventsNewPeriod) {
+     mReactor.setPeriod(newPeriod);
+ 
+     bool periodFlushed = true;
+-    EXPECT_TRUE(mReactor.addResyncSample(5000, std::nullopt, &periodFlushed));
++    EXPECT_TRUE(mReactor.addResyncSample(5000, &periodFlushed));
+     EXPECT_FALSE(periodFlushed);
+     Mock::VerifyAndClearExpectations(mMockTracker.get());
+ 
+     EXPECT_CALL(*mMockTracker, setPeriod(newPeriod)).Times(1);
+-    EXPECT_FALSE(mReactor.addResyncSample(10000, std::nullopt, &periodFlushed));
++    EXPECT_FALSE(mReactor.addResyncSample(10000, &periodFlushed));
+     EXPECT_TRUE(periodFlushed);
+ }
+ 
+@@ -404,7 +404,7 @@ TEST_F(VSyncReactorTest, addResyncSampleTypical) {
+     bool periodFlushed = false;
+ 
+     EXPECT_CALL(*mMockTracker, addVsyncTimestamp(fakeTimestamp));
+-    EXPECT_FALSE(mReactor.addResyncSample(fakeTimestamp, std::nullopt, &periodFlushed));
++    EXPECT_FALSE(mReactor.addResyncSample(fakeTimestamp, &periodFlushed));
+     EXPECT_FALSE(periodFlushed);
+ }
+ 
+@@ -418,17 +418,17 @@ TEST_F(VSyncReactorTest, addResyncSamplePeriodChanges) {
+     auto constexpr numTimestampSubmissions = 10;
+     for (auto i = 0; i < numTimestampSubmissions; i++) {
+         time += period;
+-        EXPECT_TRUE(mReactor.addResyncSample(time, std::nullopt, &periodFlushed));
++        EXPECT_TRUE(mReactor.addResyncSample(time, &periodFlushed));
+         EXPECT_FALSE(periodFlushed);
+     }
+ 
+     time += newPeriod;
+-    EXPECT_FALSE(mReactor.addResyncSample(time, std::nullopt, &periodFlushed));
++    EXPECT_FALSE(mReactor.addResyncSample(time, &periodFlushed));
+     EXPECT_TRUE(periodFlushed);
+ 
+     for (auto i = 0; i < numTimestampSubmissions; i++) {
+         time += newPeriod;
+-        EXPECT_FALSE(mReactor.addResyncSample(time, std::nullopt, &periodFlushed));
++        EXPECT_FALSE(mReactor.addResyncSample(time, &periodFlushed));
+         EXPECT_FALSE(periodFlushed);
+     }
+ }
+@@ -440,11 +440,11 @@ TEST_F(VSyncReactorTest, addPresentFenceWhileAwaitingPeriodConfirmationRequestsH
+     mReactor.setPeriod(newPeriod);
+ 
+     time += period;
+-    mReactor.addResyncSample(time, std::nullopt, &periodFlushed);
++    mReactor.addResyncSample(time, &periodFlushed);
+     EXPECT_TRUE(mReactor.addPresentFence(generateSignalledFenceWithTime(0)));
+ 
+     time += newPeriod;
+-    mReactor.addResyncSample(time, std::nullopt, &periodFlushed);
++    mReactor.addResyncSample(time, &periodFlushed);
+ 
+     EXPECT_FALSE(mReactor.addPresentFence(generateSignalledFenceWithTime(0)));
+ }
+@@ -568,8 +568,8 @@ TEST_F(VSyncReactorTest, changingPeriodChangesOffsetsOnNextCb) {
+ 
+     bool periodFlushed = false;
+     mReactor.setPeriod(anotherPeriod);
+-    EXPECT_TRUE(mReactor.addResyncSample(anotherPeriod, std::nullopt, &periodFlushed));
+-    EXPECT_FALSE(mReactor.addResyncSample(anotherPeriod * 2, std::nullopt, &periodFlushed));
++    EXPECT_TRUE(mReactor.addResyncSample(anotherPeriod, &periodFlushed));
++    EXPECT_FALSE(mReactor.addResyncSample(anotherPeriod * 2, &periodFlushed));
+ 
+     mReactor.addEventListener(mName, mPhase, &outerCb, lastCallbackTime);
+ }
+@@ -614,24 +614,6 @@ TEST_F(VSyncReactorTest, beginResyncResetsModel) {
+     mReactor.beginResync();
+ }
+ 
+-TEST_F(VSyncReactorTest, periodChangeWithGivenVsyncPeriod) {
+-    bool periodFlushed = true;
+-    EXPECT_CALL(*mMockTracker, addVsyncTimestamp(_)).Times(3);
+-    mReactor.setIgnorePresentFences(true);
+-
+-    nsecs_t const newPeriod = 5000;
+-    mReactor.setPeriod(newPeriod);
+-
+-    EXPECT_TRUE(mReactor.addResyncSample(0, 0, &periodFlushed));
+-    EXPECT_FALSE(periodFlushed);
+-    EXPECT_TRUE(mReactor.addResyncSample(newPeriod, 0, &periodFlushed));
+-    EXPECT_FALSE(periodFlushed);
+-    EXPECT_FALSE(mReactor.addResyncSample(newPeriod, newPeriod, &periodFlushed));
+-    EXPECT_TRUE(periodFlushed);
+-
+-    EXPECT_TRUE(mReactor.addPresentFence(generateSignalledFenceWithTime(0)));
+-}
+-
+ using VSyncReactorDeathTest = VSyncReactorTest;
+ TEST_F(VSyncReactorDeathTest, invalidRemoval) {
+     mReactor.addEventListener(mName, mPhase, &outerCb, lastCallbackTime);
+diff --git a/services/surfaceflinger/tests/unittests/mock/MockDispSync.h b/services/surfaceflinger/tests/unittests/mock/MockDispSync.h
+index a2ae6c9b8..9ca116d73 100644
+--- a/services/surfaceflinger/tests/unittests/mock/MockDispSync.h
++++ b/services/surfaceflinger/tests/unittests/mock/MockDispSync.h
+@@ -31,7 +31,7 @@ public:
+     MOCK_METHOD0(reset, void());
+     MOCK_METHOD1(addPresentFence, bool(const std::shared_ptr<FenceTime>&));
+     MOCK_METHOD0(beginResync, void());
+-    MOCK_METHOD3(addResyncSample, bool(nsecs_t, std::optional<nsecs_t>, bool*));
++    MOCK_METHOD2(addResyncSample, bool(nsecs_t, bool*));
+     MOCK_METHOD0(endResync, void());
+     MOCK_METHOD1(setPeriod, void(nsecs_t));
+     MOCK_METHOD0(getPeriod, nsecs_t());
+-- 
+2.35.1
+

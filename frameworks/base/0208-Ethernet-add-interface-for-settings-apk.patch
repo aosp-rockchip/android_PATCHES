@@ -1,0 +1,92 @@
+From 681bc96bf2c5dfef19ddc925e9cbe1c77b16fe6a Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Tue, 20 Oct 2020 09:45:28 +0800
+Subject: [PATCH 208/297] Ethernet: add interface for settings apk
+
+add interface: getIpAddress,getNetmask,getGateway,getDns from 10.0
+this commit need combine with another commit in frameworks/opt/net/ethernet
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: I0abcaf3343687701e69e9e31b8f507f41e2d6092
+---
+ core/java/android/net/EthernetManager.java  | 48 +++++++++++++++++++++
+ core/java/android/net/IEthernetManager.aidl |  4 ++
+ 2 files changed, 52 insertions(+)
+
+diff --git a/core/java/android/net/EthernetManager.java b/core/java/android/net/EthernetManager.java
+index d975017f9c8..6829a63f058 100644
+--- a/core/java/android/net/EthernetManager.java
++++ b/core/java/android/net/EthernetManager.java
+@@ -144,6 +144,54 @@ public class EthernetManager {
+         }
+     }
+ 
++    /**
++     * @hide
++     */
++    @UnsupportedAppUsage
++    public String getIpAddress(String iface) {
++        try {
++            return mService.getIpAddress(iface);
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++    }
++
++    /**
++     * @hide
++     */
++    @UnsupportedAppUsage
++    public String getNetmask(String iface) {
++        try {
++            return mService.getNetmask(iface);
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++    }
++
++    /**
++     * @hide
++     */
++    @UnsupportedAppUsage
++    public String getGateway(String iface) {
++        try {
++            return mService.getGateway(iface);
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++    }
++
++    /**
++     * @hide
++     */
++    @UnsupportedAppUsage
++    public String getDns(String iface) {
++        try {
++            return mService.getDns(iface);
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++    }
++
+     /**
+      * Adds a listener.
+      * @param listener A {@link Listener} to add.
+diff --git a/core/java/android/net/IEthernetManager.aidl b/core/java/android/net/IEthernetManager.aidl
+index e058e5a70c7..5a4632b7ade 100644
+--- a/core/java/android/net/IEthernetManager.aidl
++++ b/core/java/android/net/IEthernetManager.aidl
+@@ -31,6 +31,10 @@ interface IEthernetManager
+     IpConfiguration getConfiguration(String iface);
+     void setConfiguration(String iface, in IpConfiguration config);
+     boolean isAvailable(String iface);
++    String getIpAddress(String iface);
++    String getNetmask(String iface);
++    String getGateway(String iface);
++    String getDns(String iface);
+     void addListener(in IEthernetServiceListener listener);
+     void removeListener(in IEthernetServiceListener listener);
+     void setIncludeTestInterfaces(boolean include);
+-- 
+2.35.1
+

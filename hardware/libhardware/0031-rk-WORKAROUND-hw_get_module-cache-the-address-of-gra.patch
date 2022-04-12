@@ -1,0 +1,73 @@
+From a5433700f79ceed7ae509d23ab73bcfabf03424e Mon Sep 17 00:00:00 2001
+From: Zhen Chen <chenzhen@rock-chips.com>
+Date: Fri, 24 Apr 2020 10:12:57 +0800
+Subject: [PATCH 31/36] rk: WORKAROUND: hw_get_module(): cache the address of
+ gralloc_module, not to call dlsym() each time called.
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+rk_drm_gralloc 要求 gralloc_module 只有一个实例,
+这在通常情况下是成立的, 因为 gralloc.rk30board.so 被 load 之后,
+dlsym("HMI") 返回的全局静态 gralloc_module 实例的地址 应该总是相同的.
+
+对于 "int hw_get_module(const char *id, const struct hw_module_t **module);",
+原始实现 对相同的 'id' 比如 'GRALLOC_HARDWARE_MODULE_ID',
+在 first 'adb remount' 前后 返回的 hw_module_t 实例的地址是不同的.
+实际上是其内部调用的 dlsym() 返回 hw_module_t 实例的地址是不同的.
+具体原因尚不明确.
+
+上述行为 不满足 rk_drm_gralloc 的要求, 会导致 dmabufs leak 等异常.
+参见 https://redmine.rock-chips.com/issues/249217 .
+
+本修改就是为了规避上述问题.
+
+Change-Id: I72fea447b09a85da4bb343c5c03d4c1764a91ffb
+Signed-off-by: Zhen Chen <chenzhen@rock-chips.com>
+---
+ hardware.c | 22 +++++++++++++++++++++-
+ 1 file changed, 21 insertions(+), 1 deletion(-)
+
+diff --git a/hardware.c b/hardware.c
+index 6e72ce9f..d353a986 100644
+--- a/hardware.c
++++ b/hardware.c
+@@ -15,6 +15,7 @@
+  */
+ 
+ #include <hardware/hardware.h>
++#include <hardware/gralloc.h>
+ 
+ #include <cutils/properties.h>
+ 
+@@ -247,7 +248,26 @@ found:
+     return load(class_id, path, module);
+ }
+ 
++const static hw_module_t* s_gralloc_module = NULL;
+ int hw_get_module(const char *id, const struct hw_module_t **module)
+ {
+-    return hw_get_module_by_class(id, NULL, module);
++    int ret = 0;
++
++    if ( 0 == strcmp(id, GRALLOC_HARDWARE_MODULE_ID) )
++    {
++        if (NULL != s_gralloc_module )
++        {
++            *module = s_gralloc_module;
++            return 0;
++        }
++    }
++
++    ret = hw_get_module_by_class(id, NULL, module);
++
++    if ( 0 == strcmp(id, GRALLOC_HARDWARE_MODULE_ID) )
++    {
++        s_gralloc_module = *module;
++    }
++
++    return ret;
+ }
+-- 
+2.35.1
+

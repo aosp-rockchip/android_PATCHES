@@ -1,0 +1,131 @@
+From 8a130fb94fa68cbfb44ab2ce20a38875bf4cdd82 Mon Sep 17 00:00:00 2001
+From: Kevin Lau Fang <fangk@google.com>
+Date: Thu, 14 Nov 2019 20:07:11 +0000
+Subject: [PATCH 045/297] Revert submission
+
+Reason for revert: This causes a boot issue on Taimen (b/144480969). It wasn't caught by TreeHugger due to Taimen tests being disabled due to a different lab outage (b/144350336).
+
+Change-Id: Idc18b3531fda53257b85b81a869c00592eee83ce
+(cherry picked from commit 01e16a52340b4e482d7d4d5a69d9c3f5be6fe4c6)
+---
+ .../com/android/server/stats/StatsCompanionService.java    | 2 +-
+ api/current.txt                                            | 1 -
+ core/java/android/os/Build.java                            | 7 -------
+ core/java/com/android/internal/os/RuntimeInit.java         | 2 +-
+ core/tests/coretests/src/android/os/BuildTest.java         | 2 +-
+ .../SystemUI/src/com/android/systemui/qs/QSFooterImpl.java | 2 +-
+ .../src/com/android/systemui/tuner/DemoModeFragment.java   | 2 +-
+ .../com/android/server/policy/LegacyGlobalActions.java     | 2 +-
+ 8 files changed, 6 insertions(+), 14 deletions(-)
+
+diff --git a/apex/statsd/service/java/com/android/server/stats/StatsCompanionService.java b/apex/statsd/service/java/com/android/server/stats/StatsCompanionService.java
+index 5cb9834de13..a0615aac9a5 100644
+--- a/apex/statsd/service/java/com/android/server/stats/StatsCompanionService.java
++++ b/apex/statsd/service/java/com/android/server/stats/StatsCompanionService.java
+@@ -1802,7 +1802,7 @@ public class StatsCompanionService extends IStatsCompanionService.Stub {
+         e.writeString(Build.BRAND);
+         e.writeString(Build.PRODUCT);
+         e.writeString(Build.DEVICE);
+-        e.writeString(Build.VERSION.RELEASE_OR_CODENAME);
++        e.writeString(Build.VERSION.RELEASE);
+         e.writeString(Build.ID);
+         e.writeString(Build.VERSION.INCREMENTAL);
+         e.writeString(Build.TYPE);
+diff --git a/api/current.txt b/api/current.txt
+index d0a1bcdd269..75904178012 100644
+--- a/api/current.txt
++++ b/api/current.txt
+@@ -34392,7 +34392,6 @@ package android.os {
+     field public static final String INCREMENTAL;
+     field public static final int PREVIEW_SDK_INT;
+     field public static final String RELEASE;
+-    field @NonNull public static final String RELEASE_OR_CODENAME;
+     field @Deprecated public static final String SDK;
+     field public static final int SDK_INT;
+     field public static final String SECURITY_PATCH;
+diff --git a/core/java/android/os/Build.java b/core/java/android/os/Build.java
+index 733079691a1..400d98159a7 100755
+--- a/core/java/android/os/Build.java
++++ b/core/java/android/os/Build.java
+@@ -239,13 +239,6 @@ public class Build {
+          */
+         public static final String RELEASE = getString("ro.build.version.release");
+ 
+-        /**
+-         * The version string we show to the user; may be {@link #RELEASE} or
+-         * {@link #CODENAME} if not a final release build.
+-         */
+-        @NonNull public static final String RELEASE_OR_CODENAME = getString(
+-                "ro.build.version.release_or_codename");
+-
+         /**
+          * The base OS build the product is based on.
+          */
+diff --git a/core/java/com/android/internal/os/RuntimeInit.java b/core/java/com/android/internal/os/RuntimeInit.java
+index da43eddeb0b..fd3cd42b07a 100644
+--- a/core/java/com/android/internal/os/RuntimeInit.java
++++ b/core/java/com/android/internal/os/RuntimeInit.java
+@@ -277,7 +277,7 @@ public class RuntimeInit {
+         result.append(System.getProperty("java.vm.version")); // such as 1.1.0
+         result.append(" (Linux; U; Android ");
+ 
+-        String version = Build.VERSION.RELEASE_OR_CODENAME; // "1.0" or "3.4b5"
++        String version = Build.VERSION.RELEASE; // "1.0" or "3.4b5"
+         result.append(version.length() > 0 ? version : "1.0");
+ 
+         // add the model for the release build
+diff --git a/core/tests/coretests/src/android/os/BuildTest.java b/core/tests/coretests/src/android/os/BuildTest.java
+index 2295eb98910..decc76869a5 100644
+--- a/core/tests/coretests/src/android/os/BuildTest.java
++++ b/core/tests/coretests/src/android/os/BuildTest.java
+@@ -60,7 +60,7 @@ public class BuildTest extends TestCase {
+         assertNotEmpty("BRAND", Build.BRAND);
+         assertNotEmpty("MODEL", Build.MODEL);
+         assertNotEmpty("VERSION.INCREMENTAL", Build.VERSION.INCREMENTAL);
+-        assertNotEmpty("VERSION.RELEASE", Build.VERSION.RELEASE_OR_CODENAME);
++        assertNotEmpty("VERSION.RELEASE", Build.VERSION.RELEASE);
+         assertNotEmpty("TYPE", Build.TYPE);
+         Assert.assertNotNull("TAGS", Build.TAGS); // TAGS is allowed to be empty.
+         assertNotEmpty("FINGERPRINT", Build.FINGERPRINT);
+diff --git a/packages/SystemUI/src/com/android/systemui/qs/QSFooterImpl.java b/packages/SystemUI/src/com/android/systemui/qs/QSFooterImpl.java
+index 5de6d1c42b4..0134aa3a15d 100644
+--- a/packages/SystemUI/src/com/android/systemui/qs/QSFooterImpl.java
++++ b/packages/SystemUI/src/com/android/systemui/qs/QSFooterImpl.java
+@@ -169,7 +169,7 @@ public class QSFooterImpl extends FrameLayout implements QSFooter,
+         if (DevelopmentSettingsEnabler.isDevelopmentSettingsEnabled(mContext)) {
+             v.setText(mContext.getString(
+                     com.android.internal.R.string.bugreport_status,
+-                    Build.VERSION.RELEASE_OR_CODENAME,
++                    Build.VERSION.RELEASE,
+                     Build.ID));
+             v.setVisibility(View.VISIBLE);
+         } else {
+diff --git a/packages/SystemUI/src/com/android/systemui/tuner/DemoModeFragment.java b/packages/SystemUI/src/com/android/systemui/tuner/DemoModeFragment.java
+index 49ada1a5e41..a60ca620141 100644
+--- a/packages/SystemUI/src/com/android/systemui/tuner/DemoModeFragment.java
++++ b/packages/SystemUI/src/com/android/systemui/tuner/DemoModeFragment.java
+@@ -158,7 +158,7 @@ public class DemoModeFragment extends PreferenceFragment implements OnPreference
+ 
+         String demoTime = "1010"; // 10:10, a classic choice of horologists
+         try {
+-            String[] versionParts = android.os.Build.VERSION.RELEASE_OR_CODENAME.split("\\.");
++            String[] versionParts = android.os.Build.VERSION.RELEASE.split("\\.");
+             int majorVersion = Integer.valueOf(versionParts[0]);
+             demoTime = String.format("%02d00", majorVersion % 24);
+         } catch (IllegalArgumentException ex) {
+diff --git a/services/core/java/com/android/server/policy/LegacyGlobalActions.java b/services/core/java/com/android/server/policy/LegacyGlobalActions.java
+index 3aafd5e35dc..c779ebf4a99 100644
+--- a/services/core/java/com/android/server/policy/LegacyGlobalActions.java
++++ b/services/core/java/com/android/server/policy/LegacyGlobalActions.java
+@@ -403,7 +403,7 @@ class LegacyGlobalActions implements DialogInterface.OnDismissListener, DialogIn
+         public String getStatus() {
+             return mContext.getString(
+                     com.android.internal.R.string.bugreport_status,
+-                    Build.VERSION.RELEASE_OR_CODENAME,
++                    Build.VERSION.RELEASE,
+                     Build.ID);
+         }
+     }
+-- 
+2.35.1
+

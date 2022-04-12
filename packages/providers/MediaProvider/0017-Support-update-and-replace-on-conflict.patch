@@ -1,0 +1,95 @@
+From 21400263951a152219f4e44e429b45b3c11bf678 Mon Sep 17 00:00:00 2001
+From: Sahana Rao <sahanas@google.com>
+Date: Mon, 4 May 2020 02:02:37 +0100
+Subject: [PATCH 17/26] Support update and replace on conflict
+
+Apps sometimes insert a database row using ContentResolver#insert and
+try to update this row to an existing file. The update results in
+UNIQUE constraint error. Apps will not be aware of FuseDaemon
+inserting/updating the database row, in this scenario, app is not aware
+of FuseDaemon inserting a row for file create through file path. To be
+backward compatible, we shouldn't fail the update operation.
+
+Implemented update as updateAllowingReplace. On conflict, if app owns
+the conflicting row, we delete the conflicting row, and retry update.
+
+Test: MediaStore_Images_Test#testUpdateAndReplace
+Bug: 155120435
+Bug: 155320967
+Change-Id: I7ebe3cf4237755f9df0d1bc2ba8cdc2e50e70309
+(cherry picked from commit 34682a70bb2af9fdab090d584a7881720e6a6ffc)
+---
+ .../providers/media/MediaProvider.java        | 50 ++++++++++++++++++-
+ 1 file changed, 49 insertions(+), 1 deletion(-)
+
+diff --git a/src/com/android/providers/media/MediaProvider.java b/src/com/android/providers/media/MediaProvider.java
+index 19518d53..6b39ee41 100644
+--- a/src/com/android/providers/media/MediaProvider.java
++++ b/src/com/android/providers/media/MediaProvider.java
+@@ -4929,7 +4929,7 @@ public class MediaProvider extends ContentProvider {
+             }
+         }
+ 
+-        count = qb.update(helper, values, userWhere, userWhereArgs);
++        count = updateAllowingReplace(qb, helper, values, userWhere, userWhereArgs);
+ 
+         // If the caller tried (and failed) to update metadata, the file on disk
+         // might have changed, to scan it to collect the latest metadata.
+@@ -4962,6 +4962,54 @@ public class MediaProvider extends ContentProvider {
+         return count;
+     }
+ 
++    /**
++     * Update row(s) that match {@code userWhere} in MediaProvider database with {@code values}.
++     * Treats update as replace for updates with conflicts.
++     */
++    private int updateAllowingReplace(@NonNull SQLiteQueryBuilder qb,
++            @NonNull DatabaseHelper helper, @NonNull ContentValues values, String userWhere,
++            String[] userWhereArgs) throws SQLiteConstraintException {
++        return helper.runWithTransaction((db) -> {
++            try {
++                return qb.update(helper, values, userWhere, userWhereArgs);
++            } catch (SQLiteConstraintException e) {
++                // b/155320967 Apps sometimes create a file via file path and then update another
++                // explicitly inserted db row to this file. We have to resolve this update with a
++                // replace.
++
++                if (getCallingPackageTargetSdkVersion() >= Build.VERSION_CODES.R) {
++                    // We don't support replace for non-legacy apps. Non legacy apps should have
++                    // clearer interactions with MediaProvider.
++                    throw e;
++                }
++
++                final String path = values.getAsString(FileColumns.DATA);
++
++                // We will only handle UNIQUE constraint error for FileColumns.DATA. We will not try
++                // update and replace if no file exists for conflicting db row.
++                if (path == null || !new File(path).exists()) {
++                    throw e;
++                }
++
++                final Uri uri = Files.getContentUriForPath(path);
++                final boolean allowHidden = isCallingPackageAllowedHidden();
++                // The db row which caused UNIQUE constraint error may not match all column values
++                // of the given queryBuilder, hence using a generic queryBuilder with Files uri.
++                final SQLiteQueryBuilder qbForReplace = getQueryBuilder(TYPE_DELETE,
++                        matchUri(uri, allowHidden), uri, Bundle.EMPTY, null);
++                final long rowId = getIdIfPathExistsForCallingPackage(qbForReplace, helper, path);
++
++                if (rowId != -1 && qbForReplace.delete(helper, "_id=?",
++                        new String[] {Long.toString(rowId)}) == 1) {
++                    Log.i(TAG, "Retrying database update after deleting conflicting entry");
++                    return qb.update(helper, values, userWhere, userWhereArgs);
++                }
++                // Rethrow SQLiteConstraintException if app doesn't own the conflicting db row.
++                throw e;
++            }
++        });
++    }
++
+     /**
+      * Update the internal table of {@link MediaStore.Audio.Playlists.Members}
+      * by parsing the playlist file on disk and resolving it against scanned
+-- 
+2.35.1
+

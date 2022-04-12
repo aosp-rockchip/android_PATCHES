@@ -1,0 +1,33 @@
+From c42c7c1d7192859c9d839a00340106e7e0c13f63 Mon Sep 17 00:00:00 2001
+From: Martijn Coenen <maco@google.com>
+Date: Thu, 23 Jan 2020 16:56:10 +0100
+Subject: [PATCH 063/297] Fixup SDCARD_RW GID for multi-user.
+
+sdcardfs takes the user-id into account when synthesizing the GID for
+package-specific data/obb directories; so make sure we grant the GID
+based on user-id as well.
+
+Bug: 148094468
+Test: OBB installs as secondary users works
+Change-Id: Ibd73d8f2ef7dda14605a6095671a587c2316fc90
+(cherry picked from commit 8b3bbeeb3090db6c61747d7eb2d99cdf1ac1c6c0)
+---
+ services/core/java/com/android/server/am/ProcessList.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/am/ProcessList.java b/services/core/java/com/android/server/am/ProcessList.java
+index 954be20122b..73ca39b22de 100644
+--- a/services/core/java/com/android/server/am/ProcessList.java
++++ b/services/core/java/com/android/server/am/ProcessList.java
+@@ -1574,7 +1574,7 @@ public final class ProcessList {
+         }
+         if (mountExternal == Zygote.MOUNT_EXTERNAL_ANDROID_WRITABLE) {
+             // For DownloadProviders and MTP: To grant access to /sdcard/Android/
+-            gidList.add(Process.SDCARD_RW_GID);
++            gidList.add(UserHandle.getUid(UserHandle.getUserId(uid), Process.SDCARD_RW_GID));
+         }
+         if (mountExternal == Zygote.MOUNT_EXTERNAL_PASS_THROUGH) {
+             // For the FUSE daemon: To grant access to the lower filesystem.
+-- 
+2.35.1
+

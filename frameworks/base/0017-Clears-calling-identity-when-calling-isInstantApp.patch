@@ -1,0 +1,38 @@
+From e3c639620090e7404279342d16ca9da9d393f346 Mon Sep 17 00:00:00 2001
+From: Patrick Baumann <patb@google.com>
+Date: Fri, 20 Sep 2019 07:54:47 -0700
+Subject: [PATCH 017/297] Clears calling identity when calling isInstantApp
+
+Prior to this change, we were calling the public isInstantApp method
+without first clearing calling identity from grantEphemeralAccess. As a
+result, when interactions across user boundaries took place, approved or
+not, we would encounter this permission failure when simply setting a
+state in the background.
+
+Fixes: 141288362
+Test: Work profile setup
+Change-Id: I2cb8338c2a68bc9c4a61c075398d767980c504ed
+(cherry picked from commit aa152c4742e6642913293c4d591780e3b66ba1c7)
+---
+ .../java/com/android/server/pm/PackageManagerService.java    | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/pm/PackageManagerService.java b/services/core/java/com/android/server/pm/PackageManagerService.java
+index fe3d2c8fa98..65528895b7b 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -23391,7 +23391,10 @@ public class PackageManagerService extends IPackageManager.Stub
+                     return;
+                 }
+ 
+-                if (isInstantApp(callingPackage.packageName, userId)) {
++                final long caller = Binder.clearCallingIdentity();
++                final boolean instantApp = isInstantApp(callingPackage.packageName, userId);
++                Binder.restoreCallingIdentity(caller);
++                if (instantApp) {
+                     mInstantAppRegistry.grantInstantAccessLPw(userId, intent,
+                             callingAppId, targetAppId);
+                 } else {
+-- 
+2.35.1
+

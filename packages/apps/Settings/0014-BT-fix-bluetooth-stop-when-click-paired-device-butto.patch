@@ -1,0 +1,35 @@
+From 8e2b44a7985ba78e892516a0d40c9df144a10f78 Mon Sep 17 00:00:00 2001
+From: Longjian Lin <llj@rock-chips.com>
+Date: Mon, 21 Sep 2020 16:16:08 +0800
+Subject: [PATCH 14/25] BT: fix bluetooth stop when click paired device button
+ right
+
+Change-Id: I194a2e35e662b84aff27cb6d623c0600e509b64d
+---
+ .../settings/bluetooth/BluetoothDetailsProfilesController.java | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/com/android/settings/bluetooth/BluetoothDetailsProfilesController.java b/src/com/android/settings/bluetooth/BluetoothDetailsProfilesController.java
+index dcaeffe07d..73195adbb4 100644
+--- a/src/com/android/settings/bluetooth/BluetoothDetailsProfilesController.java
++++ b/src/com/android/settings/bluetooth/BluetoothDetailsProfilesController.java
+@@ -40,6 +40,7 @@ import com.android.settingslib.bluetooth.PbapServerProfile;
+ import com.android.settingslib.core.lifecycle.Lifecycle;
+ 
+ import java.util.List;
++import android.util.Log;
+ 
+ /**
+  * This class adds switches for toggling the individual profiles that a Bluetooth device
+@@ -270,6 +271,8 @@ public class BluetoothDetailsProfilesController extends BluetoothDetailsControll
+     @Override
+     protected void refresh() {
+         for (LocalBluetoothProfile profile : getProfiles()) {
++            Log.i("ProfilesController","refresh pofile :"+profile);
++            if(profile==null)break;
+             if (!profile.isProfileReady()) {
+                 continue;
+             }
+-- 
+2.35.1
+

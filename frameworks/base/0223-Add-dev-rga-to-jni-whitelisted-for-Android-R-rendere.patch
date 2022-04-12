@@ -1,0 +1,29 @@
+From 6c0d52b415e24d2dc2394b63b4a6956df725ad96 Mon Sep 17 00:00:00 2001
+From: Zhixiong Lin <zhixiong.lin@rock-chips.com>
+Date: Mon, 16 Nov 2020 15:33:34 +0800
+Subject: [PATCH 223/297] Add /dev/rga to jni whitelisted for Android R
+ renderengine use librga.so
+
+Abort message: 'JNI FatalError called: (system_server) Not whitelisted (3): /dev/rga'
+
+Signed-off-by: Zhixiong Lin <zhixiong.lin@rock-chips.com>
+Change-Id: I75650a387c04526dcf74d369bf63576b1a9e59c3
+---
+ core/jni/fd_utils.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/core/jni/fd_utils.cpp b/core/jni/fd_utils.cpp
+index c72668f84fb..a12dd1993c0 100644
+--- a/core/jni/fd_utils.cpp
++++ b/core/jni/fd_utils.cpp
+@@ -54,6 +54,7 @@ static const char* kPathWhitelist[] = {
+         "/system/framework/framework-res.apk",
+         "/dev/urandom",
+         "/dev/ion",
++        "/dev/rga",
+         "/dev/dri/renderD129", // Fixes b/31172436
+ };
+ 
+-- 
+2.35.1
+

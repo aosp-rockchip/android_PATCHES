@@ -1,0 +1,67 @@
+From 7ffeb601607bdaa570422362e049b668579a1642 Mon Sep 17 00:00:00 2001
+From: Kenny Root <kroot@google.com>
+Date: Mon, 25 Nov 2019 10:26:53 -0800
+Subject: [PATCH 050/297] RecoverySystem: do not check if socket is closed
+
+LocalSocket does not support checking whether the socket is closed explicitly.
+The write or read functions will still return IOException when the socket is
+closed, so just rely on that.
+
+Bug: 145102966
+Test: Factory reset from Home->Menu->Settings->System->Advanced->Reset options->Erase all Data
+Change-Id: I9094f07c2f709f4a270af06db8f02e72e1d7faf0
+(cherry picked from commit c6c2619ba228ce9e8d38d2d9a4685f9740321da2)
+---
+ .../recoverysystem/RecoverySystemService.java  | 18 +++---------------
+ 1 file changed, 3 insertions(+), 15 deletions(-)
+
+diff --git a/services/core/java/com/android/server/recoverysystem/RecoverySystemService.java b/services/core/java/com/android/server/recoverysystem/RecoverySystemService.java
+index fe18fbf2a78..fdb14be6b1a 100644
+--- a/services/core/java/com/android/server/recoverysystem/RecoverySystemService.java
++++ b/services/core/java/com/android/server/recoverysystem/RecoverySystemService.java
+@@ -400,13 +400,9 @@ public class RecoverySystemService extends IRecoverySystem.Stub {
+          * Sends a command to the uncrypt service.
+          *
+          * @param command command to send to the uncrypt service
+-         * @throws IOException if the socket is closed or there was an error writing to the socket
++         * @throws IOException if there was an error writing to the socket
+          */
+         public void sendCommand(String command) throws IOException {
+-            if (mLocalSocket.isClosed()) {
+-                throw new IOException("socket is closed");
+-            }
+-
+             byte[] cmdUtf8 = command.getBytes(StandardCharsets.UTF_8);
+             mOutputStream.writeInt(cmdUtf8.length);
+             mOutputStream.write(cmdUtf8, 0, cmdUtf8.length);
+@@ -415,25 +411,17 @@ public class RecoverySystemService extends IRecoverySystem.Stub {
+         /**
+          * Reads the status from the uncrypt service which is usually represented as a percentage.
+          * @return an integer representing the percentage completed
+-         * @throws IOException if the socket was closed or there was an error reading the socket
++         * @throws IOException if there was an error reading the socket
+          */
+         public int getPercentageUncrypted() throws IOException {
+-            if (mLocalSocket.isClosed()) {
+-                throw new IOException("socket is closed");
+-            }
+-
+             return mInputStream.readInt();
+         }
+ 
+         /**
+          * Sends a confirmation to the uncrypt service.
+-         * @throws IOException if the socket was closed or there was an error writing to the socket
++         * @throws IOException if there was an error writing to the socket
+          */
+         public void sendAck() throws IOException {
+-            if (mLocalSocket.isClosed()) {
+-                throw new IOException("socket is closed");
+-            }
+-
+             mOutputStream.writeInt(0);
+         }
+ 
+-- 
+2.35.1
+

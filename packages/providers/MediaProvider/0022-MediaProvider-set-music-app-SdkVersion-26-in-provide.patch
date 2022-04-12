@@ -1,0 +1,28 @@
+From d2e8d8ece44895ed639c8c1891d8ee8e6735f6f8 Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Tue, 13 Oct 2020 19:37:33 +0800
+Subject: [PATCH 22/26] MediaProvider: set music app SdkVersion 26 in provider
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: Ieb6a6bc9593e8d572602ed1135fc32520204188d
+---
+ src/com/android/providers/media/MediaProvider.java | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/com/android/providers/media/MediaProvider.java b/src/com/android/providers/media/MediaProvider.java
+index 35b38060..57a8d6ef 100644
+--- a/src/com/android/providers/media/MediaProvider.java
++++ b/src/com/android/providers/media/MediaProvider.java
+@@ -7663,6 +7663,9 @@ public class MediaProvider extends ContentProvider {
+     @Deprecated
+     @VisibleForTesting
+     public int getCallingPackageTargetSdkVersion() {
++        if ("com.android.music".equals(getCallingPackageOrSelf())) {
++            return 26;
++        }
+         return mCallingIdentity.get().getTargetSdkVersion();
+     }
+ 
+-- 
+2.35.1
+

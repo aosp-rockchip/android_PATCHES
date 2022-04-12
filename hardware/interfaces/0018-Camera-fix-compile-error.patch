@@ -1,0 +1,59 @@
+From efa4490671da4785207058b3e976caf915d61205 Mon Sep 17 00:00:00 2001
+From: Wang Panzhenzhuan <randy.wang@rock-chips.com>
+Date: Fri, 22 Jan 2021 17:17:17 +0800
+Subject: [PATCH 18/24] Camera: fix compile error
+
+Signed-off-by: Wang Panzhenzhuan <randy.wang@rock-chips.com>
+Change-Id: I6ad399c078f1761480fbedce8defa3511f4826f4
+---
+ camera/device/3.4/default/Android.bp                 |  1 +
+ .../ext_device_v3_4_impl/ExternalCameraGralloc4.h    | 12 ++++++------
+ 2 files changed, 7 insertions(+), 6 deletions(-)
+
+diff --git a/camera/device/3.4/default/Android.bp b/camera/device/3.4/default/Android.bp
+index 1f147d9d3..18c8cdd81 100755
+--- a/camera/device/3.4/default/Android.bp
++++ b/camera/device/3.4/default/Android.bp
+@@ -153,6 +153,7 @@ cc_library_shared {
+         "android.hardware.graphics.common@1.2",
+         "android.hardware.graphics.common-ndk_platform",
+         "android.hardware.graphics.mapper@4.0",
++        "android.hardware.graphics.allocator@4.0",
+         "libgralloctypes",
+     ],
+ 	min_sdk_version: "29",
+diff --git a/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraGralloc4.h b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraGralloc4.h
+index b4857b8ea..e79774ff9 100755
+--- a/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraGralloc4.h
++++ b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraGralloc4.h
+@@ -113,11 +113,11 @@ struct cam_mem_ops_des_s{
+  * ---------------------------------------------------------------------------------------------------------
+  */
+ namespace ExCamGralloc4 {
+-    static int get_width(buffer_handle_t handle, uint64_t* width);
+-    static int get_height(buffer_handle_t handle, uint64_t* height);
+-    static status_t validateBufferDescriptorInfo(
++    int get_width(buffer_handle_t handle, uint64_t* width);
++    int get_height(buffer_handle_t handle, uint64_t* height);
++    status_t validateBufferDescriptorInfo(
+         android::hardware::graphics::mapper::V4_0::IMapper::BufferDescriptorInfo* descriptorInfo);
+-    static status_t createDescriptor(void* bufferDescriptorInfo,
++    status_t createDescriptor(void* bufferDescriptorInfo,
+                                 void* outBufferDescriptor);
+     int lock(buffer_handle_t bufferHandle,
+ 							  uint32_t flags,
+@@ -131,9 +131,9 @@ namespace ExCamGralloc4 {
+     int get_allocation_size(buffer_handle_t handle, uint64_t* allocation_size);
+     int get_share_fd(buffer_handle_t handle, int* share_fd);
+ 
+-    static status_t importBuffer(buffer_handle_t rawHandle,
++    status_t importBuffer(buffer_handle_t rawHandle,
+ 								  buffer_handle_t* outBufferHandle);
+-    static status_t freeBuffer(buffer_handle_t bufferHandle);
++    status_t freeBuffer(buffer_handle_t bufferHandle);
+ } // namespace ExCamGralloc4
+ 
+ #ifdef __cplusplus
+-- 
+2.35.1
+

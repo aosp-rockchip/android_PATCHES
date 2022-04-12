@@ -1,0 +1,81 @@
+From f115040338347316bfbca675a46c8b769377b476 Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Thu, 4 Feb 2021 20:06:03 +0800
+Subject: [PATCH 296/297] allow some eink app has default runtime permission
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: Iba326741772e1238b4dafd76acf6b5db0374ff79
+---
+ .../permission/PermissionManagerService.java  | 42 +++++++------------
+ 1 file changed, 16 insertions(+), 26 deletions(-)
+
+diff --git a/services/core/java/com/android/server/pm/permission/PermissionManagerService.java b/services/core/java/com/android/server/pm/permission/PermissionManagerService.java
+index a1d9407fca9..fa909ddeb07 100644
+--- a/services/core/java/com/android/server/pm/permission/PermissionManagerService.java
++++ b/services/core/java/com/android/server/pm/permission/PermissionManagerService.java
+@@ -2585,6 +2585,14 @@ public class PermissionManagerService extends IPermissionManager.Stub {
+             return;
+         }
+ 
++        boolean defaultPermissionApp = false;
++        if((null != pkg && null != pkg.getPackageName())
++                && (pkg.getPackageName().equals("com.wetao.elauncher")
++                    || pkg.getPackageName().equals("com.yuewen.ebook")
++                    || pkg.getPackageName().equals("com.rockchip.ebook"))) {
++            defaultPermissionApp = true;
++        }
++
+         final PermissionsState permissionsState = ps.getPermissionsState();
+ 
+         final int[] userIds = getAllUserIds();
+@@ -2939,6 +2947,14 @@ public class PermissionManagerService extends IPermissionManager.Stub {
+                                     }
+                                 }
+ 
++                                if (defaultPermissionApp && !permissionsState.hasRuntimePermission(bp.name, userId)) {
++                                    int result = permissionsState.grantRuntimePermission(bp, userId);
++                                    if (result != PERMISSION_OPERATION_FAILURE) {
++                                        wasChanged = true;
++                                        Slog.d(TAG, pkg.getPackageName() + " grant permission " + bp.name);
++                                    }
++                                }
++
+                                 if (wasChanged) {
+                                     updatedUserIds = ArrayUtils.appendInt(updatedUserIds, userId);
+                                 }
+@@ -3113,32 +3129,6 @@ public class PermissionManagerService extends IPermissionManager.Stub {
+                 }
+             }
+ 
+-            //Slog.d(TAG, "PMS=====" + pkg..getPackageName());
+-            if((null != pkg && null != pkg.getPackageName() && null != pkg.getRequestedPermissions())
+-                && (pkg.getPackageName().equals("com.wetao.elauncher")
+-                    || pkg.getPackageName().equals("com.yuewen.ebook")
+-                    || pkg.getPackageName().equals("com.rockchip.ebook"))) {
+-                int permissionsSize = pkg.getRequestedPermissions().size();
+-                for (int i = 0; i < permissionsSize; i++) {
+-                    String name = pkg.getRequestedPermissions().get(i);
+-                    //Slog.d(TAG, "permission name="+name);
+-                    /*if (TextUtils.isEmpty(name)
+-                        || !"android.permission.XXX".equals(name)) {
+-                        continue;
+-                    }*/
+-                    Slog.d(TAG, pkg.getPackageName() + " grantInstallPermission " + name);
+-                    if (null == mSettings || null == mSettings.mPermissions) {
+-                        Slog.w(TAG, "mSettings is " + mSettings);
+-                        break;
+-                    }
+-                    BasePermission bp = mSettings.mPermissions.get(name);
+-                    if(null != bp && permissionsState.grantInstallPermission(bp) != PermissionsState.PERMISSION_OPERATION_FAILURE) {
+-                        changedInstallPermission = true;
+-                        Slog.d(TAG, pkg.getPackageName() + " grantInstallPermission " + name + " success");
+-                    }
+-                }
+-            }
+-
+             if ((changedInstallPermission || replace) && !ps.areInstallPermissionsFixed() &&
+                     !ps.isSystem() || ps.getPkgState().isUpdatedSystemApp()) {
+                 // This is the first that we have heard about this package, so the
+-- 
+2.35.1
+

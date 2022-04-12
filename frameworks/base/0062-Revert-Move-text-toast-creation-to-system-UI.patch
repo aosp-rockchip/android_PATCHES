@@ -1,0 +1,1500 @@
+From 46e8e3ceb4ef740645fcf1ae2c5eeb0dd49003f0 Mon Sep 17 00:00:00 2001
+From: Daniel Chapin <chapin@google.com>
+Date: Wed, 29 Jan 2020 02:32:21 +0000
+Subject: [PATCH 062/297] Revert "Move text toast creation to system UI"
+
+Revert "Add ToastUI component to ARC"
+
+Revert "Configure ToastUI in SystemUIGoogle for DI"
+
+Revert "Update toast tests for system UI move"
+
+Revert submission 10169253-custom-toast-2
+
+Reason for revert: b/148438364
+Reverted Changes:
+I8355c5c62: Disable feature-flag before CTS targeted at SDK 29...
+Id0021cdc6: Move text toast creation to system UI
+I586cdec1c: Update toast tests for system UI move
+I8516e6569: Add ToastUI component to ARC
+Id415df7d9: Configure ToastUI in SystemUIGoogle for DI
+Id0021cdc6: Move text toast creation to system UI
+
+Change-Id: Icc7f28be5508b946899b8bfbf2cd72da6c83e7e3
+(cherry picked from commit 3c7077444dd15f7aee81254737fa67f92f8b5765)
+---
+ .../android/app/INotificationManager.aidl     |   4 +-
+ .../app/ITransientNotificationCallback.aidl   |  27 ---
+ core/java/android/widget/Toast.java           | 212 ++++--------------
+ .../internal/statusbar/IStatusBar.aidl        |  12 -
+ packages/CarSystemUI/res/values/config.xml    |   1 -
+ .../SystemUI/res/values-television/config.xml |   1 -
+ packages/SystemUI/res/values/config.xml       |   1 -
+ .../systemui/dagger/SystemUIBinder.java       |   7 -
+ .../systemui/statusbar/CommandQueue.java      |  66 ------
+ .../com/android/systemui/toast/ToastUI.java   | 212 ------------------
+ .../NotificationManagerService.java           | 167 ++++++++------
+ .../notification/toast/CustomToastRecord.java |  83 -------
+ .../notification/toast/TextToastRecord.java   |  84 -------
+ .../notification/toast/ToastRecord.java       |  88 --------
+ .../statusbar/StatusBarManagerInternal.java   |  14 --
+ .../statusbar/StatusBarManagerService.java    |  21 --
+ 16 files changed, 147 insertions(+), 853 deletions(-)
+ delete mode 100644 core/java/android/app/ITransientNotificationCallback.aidl
+ delete mode 100644 packages/SystemUI/src/com/android/systemui/toast/ToastUI.java
+ delete mode 100644 services/core/java/com/android/server/notification/toast/CustomToastRecord.java
+ delete mode 100644 services/core/java/com/android/server/notification/toast/TextToastRecord.java
+ delete mode 100644 services/core/java/com/android/server/notification/toast/ToastRecord.java
+
+diff --git a/core/java/android/app/INotificationManager.aidl b/core/java/android/app/INotificationManager.aidl
+index 4b1ba027868..d665f336ec1 100644
+--- a/core/java/android/app/INotificationManager.aidl
++++ b/core/java/android/app/INotificationManager.aidl
+@@ -18,7 +18,6 @@
+ package android.app;
+ 
+ import android.app.ITransientNotification;
+-import android.app.ITransientNotificationCallback;
+ import android.app.Notification;
+ import android.app.NotificationChannel;
+ import android.app.NotificationChannelGroup;
+@@ -46,7 +45,8 @@ interface INotificationManager
+     void cancelAllNotifications(String pkg, int userId);
+ 
+     void clearData(String pkg, int uid, boolean fromApp);
+-    void enqueueTextToast(String pkg, IBinder token, CharSequence text, int duration, int displayId, @nullable ITransientNotificationCallback callback);
++    // TODO: Replace parameter (ITransientNotification callback) with (CharSequence text)
++    void enqueueTextToast(String pkg, IBinder token, ITransientNotification callback, int duration, int displayId);
+     void enqueueToast(String pkg, IBinder token, ITransientNotification callback, int duration, int displayId);
+     void cancelToast(String pkg, IBinder token);
+     void finishToken(String pkg, IBinder token);
+diff --git a/core/java/android/app/ITransientNotificationCallback.aidl b/core/java/android/app/ITransientNotificationCallback.aidl
+deleted file mode 100644
+index abe254f2d16..00000000000
+--- a/core/java/android/app/ITransientNotificationCallback.aidl
++++ /dev/null
+@@ -1,27 +0,0 @@
+-/*
+- * Copyright 2020, The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *     http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-package android.app;
+-
+-/**
+- * Callback object to be called when the associated toast is shown or hidden.
+- *
+- * @hide
+- */
+-oneway interface ITransientNotificationCallback {
+-    void onToastShown();
+-    void onToastHidden();
+-}
+diff --git a/core/java/android/widget/Toast.java b/core/java/android/widget/Toast.java
+index c8a7c079994..42d7892eeff 100644
+--- a/core/java/android/widget/Toast.java
++++ b/core/java/android/widget/Toast.java
+@@ -17,7 +17,6 @@
+ package android.widget;
+ 
+ import static com.android.internal.util.Preconditions.checkNotNull;
+-import static com.android.internal.util.Preconditions.checkState;
+ 
+ import android.annotation.IntDef;
+ import android.annotation.NonNull;
+@@ -25,9 +24,6 @@ import android.annotation.Nullable;
+ import android.annotation.StringRes;
+ import android.app.INotificationManager;
+ import android.app.ITransientNotification;
+-import android.app.ITransientNotificationCallback;
+-import android.compat.Compatibility;
+-import android.compat.annotation.ChangeId;
+ import android.compat.annotation.UnsupportedAppUsage;
+ import android.content.Context;
+ import android.content.res.Configuration;
+@@ -109,45 +105,15 @@ public class Toast {
+      */
+     public static final int LENGTH_LONG = 1;
+ 
+-    /**
+-     * Text toasts will be rendered by SystemUI instead of in-app, so apps can't circumvent
+-     * background custom toast restrictions.
+-     *
+-     * TODO(b/144152069): Add @EnabledAfter(Q) to target R+ after assessing impact on dogfood
+-     */
+-    @ChangeId
+-    // @EnabledAfter(targetSdkVersion = Build.VERSION_CODES.Q)
+-    private static final long CHANGE_TEXT_TOASTS_IN_THE_SYSTEM = 147798919L;
+-
+-
+     private final Binder mToken;
+     private final Context mContext;
+-    private final Handler mHandler;
+     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.P)
+     final TN mTN;
+     @UnsupportedAppUsage
+     int mDuration;
+-
+-    /**
+-     * This is also passed to {@link TN} object, where it's also accessed with itself as its own
+-     * lock.
+-     */
+-    @GuardedBy("mCallbacks")
+-    private final List<Callback> mCallbacks;
+-
+-    /**
+-     * View to be displayed, in case this is a custom toast (e.g. not created with {@link
+-     * #makeText(Context, int, int)} or its variants).
+-     */
+-    @Nullable
+-    private View mNextView;
+-
+-    /**
+-     * Text to be shown, in case this is NOT a custom toast (e.g. created with {@link
+-     * #makeText(Context, int, int)} or its variants).
+-     */
+-    @Nullable
+-    private CharSequence mText;
++    View mNextView;
++    // TODO(b/128611929): Remove this and check for null view when toast creation is in the system
++    boolean mIsCustomToast = false;
+ 
+     /**
+      * Construct an empty Toast object.  You must call {@link #setView} before you
+@@ -167,34 +133,19 @@ public class Toast {
+     public Toast(@NonNull Context context, @Nullable Looper looper) {
+         mContext = context;
+         mToken = new Binder();
+-        looper = getLooper(looper);
+-        mHandler = new Handler(looper);
+-        mCallbacks = new ArrayList<>();
+-        mTN = new TN(context.getPackageName(), mToken, mCallbacks, looper);
++        mTN = new TN(context.getPackageName(), mToken, looper);
+         mTN.mY = context.getResources().getDimensionPixelSize(
+                 com.android.internal.R.dimen.toast_y_offset);
+         mTN.mGravity = context.getResources().getInteger(
+                 com.android.internal.R.integer.config_toastDefaultGravity);
+     }
+ 
+-    private Looper getLooper(@Nullable Looper looper) {
+-        if (looper != null) {
+-            return looper;
+-        }
+-        return checkNotNull(Looper.myLooper(),
+-                "Can't toast on a thread that has not called Looper.prepare()");
+-    }
+-
+     /**
+      * Show the view for the specified duration.
+      */
+     public void show() {
+-        if (Compatibility.isChangeEnabled(CHANGE_TEXT_TOASTS_IN_THE_SYSTEM)) {
+-            checkState(mNextView != null || mText != null, "You must either set a text or a view");
+-        } else {
+-            if (mNextView == null) {
+-                throw new RuntimeException("setView must have been called");
+-            }
++        if (mNextView == null) {
++            throw new RuntimeException("setView must have been called");
+         }
+ 
+         INotificationManager service = getService();
+@@ -204,18 +155,10 @@ public class Toast {
+         final int displayId = mContext.getDisplayId();
+ 
+         try {
+-            if (Compatibility.isChangeEnabled(CHANGE_TEXT_TOASTS_IN_THE_SYSTEM)) {
+-                if (mNextView != null) {
+-                    // It's a custom toast
+-                    service.enqueueToast(pkg, mToken, tn, mDuration, displayId);
+-                } else {
+-                    // It's a text toast
+-                    ITransientNotificationCallback callback =
+-                            new CallbackBinder(mCallbacks, mHandler);
+-                    service.enqueueTextToast(pkg, mToken, mText, mDuration, displayId, callback);
+-                }
+-            } else {
++            if (mIsCustomToast) {
+                 service.enqueueToast(pkg, mToken, tn, mDuration, displayId);
++            } else {
++                service.enqueueTextToast(pkg, mToken, tn, mDuration, displayId);
+             }
+         } catch (RemoteException e) {
+             // Empty
+@@ -228,16 +171,7 @@ public class Toast {
+      * after the appropriate duration.
+      */
+     public void cancel() {
+-        if (Compatibility.isChangeEnabled(CHANGE_TEXT_TOASTS_IN_THE_SYSTEM)
+-                && mNextView == null) {
+-            try {
+-                getService().cancelToast(mContext.getOpPackageName(), mToken);
+-            } catch (RemoteException e) {
+-                // Empty
+-            }
+-        } else {
+-            mTN.cancel();
+-        }
++        mTN.cancel();
+     }
+ 
+     /**
+@@ -253,6 +187,7 @@ public class Toast {
+      */
+     @Deprecated
+     public void setView(View view) {
++        mIsCustomToast = true;
+         mNextView = view;
+     }
+ 
+@@ -268,6 +203,7 @@ public class Toast {
+      *      will not have custom toast views displayed.
+      */
+     public View getView() {
++        mIsCustomToast = true;
+         return mNextView;
+     }
+ 
+@@ -362,8 +298,8 @@ public class Toast {
+      */
+     public void addCallback(@NonNull Callback callback) {
+         checkNotNull(callback);
+-        synchronized (mCallbacks) {
+-            mCallbacks.add(callback);
++        synchronized (mTN.mCallbacks) {
++            mTN.mCallbacks.add(callback);
+         }
+     }
+ 
+@@ -371,8 +307,8 @@ public class Toast {
+      * Removes a callback previously added with {@link #addCallback(Callback)}.
+      */
+     public void removeCallback(@NonNull Callback callback) {
+-        synchronized (mCallbacks) {
+-            mCallbacks.remove(callback);
++        synchronized (mTN.mCallbacks) {
++            mTN.mCallbacks.remove(callback);
+         }
+     }
+ 
+@@ -402,30 +338,22 @@ public class Toast {
+     /**
+      * Make a standard toast to display using the specified looper.
+      * If looper is null, Looper.myLooper() is used.
+-     *
+      * @hide
+      */
+     public static Toast makeText(@NonNull Context context, @Nullable Looper looper,
+             @NonNull CharSequence text, @Duration int duration) {
+-        if (Compatibility.isChangeEnabled(CHANGE_TEXT_TOASTS_IN_THE_SYSTEM)) {
+-            Toast result = new Toast(context, looper);
+-            result.mText = text;
+-            result.mDuration = duration;
+-            return result;
+-        } else {
+-            Toast result = new Toast(context, looper);
+-
+-            LayoutInflater inflate = (LayoutInflater)
+-                    context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+-            View v = inflate.inflate(com.android.internal.R.layout.transient_notification, null);
+-            TextView tv = (TextView) v.findViewById(com.android.internal.R.id.message);
+-            tv.setText(text);
+-
+-            result.mNextView = v;
+-            result.mDuration = duration;
+-
+-            return result;
+-        }
++        Toast result = new Toast(context, looper);
++
++        LayoutInflater inflate = (LayoutInflater)
++                context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
++        View v = inflate.inflate(com.android.internal.R.layout.transient_notification, null);
++        TextView tv = (TextView)v.findViewById(com.android.internal.R.id.message);
++        tv.setText(text);
++
++        result.mNextView = v;
++        result.mDuration = duration;
++
++        return result;
+     }
+ 
+     /**
+@@ -457,23 +385,14 @@ public class Toast {
+      * @param s The new text for the Toast.
+      */
+     public void setText(CharSequence s) {
+-        if (Compatibility.isChangeEnabled(CHANGE_TEXT_TOASTS_IN_THE_SYSTEM)) {
+-            if (mNextView != null) {
+-                throw new IllegalStateException(
+-                        "Text provided for custom toast, remove previous setView() calls if you "
+-                                + "want a text toast instead.");
+-            }
+-            mText = s;
+-        } else {
+-            if (mNextView == null) {
+-                throw new RuntimeException("This Toast was not created with Toast.makeText()");
+-            }
+-            TextView tv = mNextView.findViewById(com.android.internal.R.id.message);
+-            if (tv == null) {
+-                throw new RuntimeException("This Toast was not created with Toast.makeText()");
+-            }
+-            tv.setText(s);
++        if (mNextView == null) {
++            throw new RuntimeException("This Toast was not created with Toast.makeText()");
+         }
++        TextView tv = mNextView.findViewById(com.android.internal.R.id.message);
++        if (tv == null) {
++            throw new RuntimeException("This Toast was not created with Toast.makeText()");
++        }
++        tv.setText(s);
+     }
+ 
+     // =======================================================================================
+@@ -523,18 +442,12 @@ public class Toast {
+         final Binder mToken;
+ 
+         @GuardedBy("mCallbacks")
+-        private final List<Callback> mCallbacks;
++        private final List<Callback> mCallbacks = new ArrayList<>();
+ 
+         static final long SHORT_DURATION_TIMEOUT = 4000;
+         static final long LONG_DURATION_TIMEOUT = 7000;
+ 
+-        /**
+-         * Creates a {@link ITransientNotification} object.
+-         *
+-         * The parameter {@code callbacks} is not copied and is accessed with itself as its own
+-         * lock.
+-         */
+-        TN(String packageName, Binder token, List<Callback> callbacks, @Nullable Looper looper) {
++        TN(String packageName, Binder token, @Nullable Looper looper) {
+             // XXX This should be changed to use a Dialog, with a Theme.Toast
+             // defined that sets up the layout params appropriately.
+             final WindowManager.LayoutParams params = mParams;
+@@ -551,8 +464,15 @@ public class Toast {
+ 
+             mPackageName = packageName;
+             mToken = token;
+-            mCallbacks = callbacks;
+ 
++            if (looper == null) {
++                // Use Looper.myLooper() if looper is not specified.
++                looper = Looper.myLooper();
++                if (looper == null) {
++                    throw new RuntimeException(
++                            "Can't toast on a thread that has not called Looper.prepare()");
++                }
++            }
+             mHandler = new Handler(looper, null) {
+                 @Override
+                 public void handleMessage(Message msg) {
+@@ -735,46 +655,4 @@ public class Toast {
+          */
+         public void onToastHidden() {}
+     }
+-
+-    private static class CallbackBinder extends ITransientNotificationCallback.Stub {
+-        private final Handler mHandler;
+-
+-        @GuardedBy("mCallbacks")
+-        private final List<Callback> mCallbacks;
+-
+-        /**
+-         * Creates a {@link ITransientNotificationCallback} object.
+-         *
+-         * The parameter {@code callbacks} is not copied and is accessed with itself as its own
+-         * lock.
+-         */
+-        private CallbackBinder(List<Callback> callbacks, Handler handler) {
+-            mCallbacks = callbacks;
+-            mHandler = handler;
+-        }
+-
+-        @Override
+-        public void onToastShown() {
+-            mHandler.post(() -> {
+-                for (Callback callback : getCallbacks()) {
+-                    callback.onToastShown();
+-                }
+-            });
+-        }
+-
+-        @Override
+-        public void onToastHidden() {
+-            mHandler.post(() -> {
+-                for (Callback callback : getCallbacks()) {
+-                    callback.onToastHidden();
+-                }
+-            });
+-        }
+-
+-        private List<Callback> getCallbacks() {
+-            synchronized (mCallbacks) {
+-                return new ArrayList<>(mCallbacks);
+-            }
+-        }
+-    }
+ }
+diff --git a/core/java/com/android/internal/statusbar/IStatusBar.aidl b/core/java/com/android/internal/statusbar/IStatusBar.aidl
+index a2736333383..aa0ac37b007 100644
+--- a/core/java/com/android/internal/statusbar/IStatusBar.aidl
++++ b/core/java/com/android/internal/statusbar/IStatusBar.aidl
+@@ -16,7 +16,6 @@
+ 
+ package com.android.internal.statusbar;
+ 
+-import android.app.ITransientNotificationCallback;
+ import android.content.ComponentName;
+ import android.graphics.Rect;
+ import android.hardware.biometrics.IBiometricServiceReceiverInternal;
+@@ -199,15 +198,4 @@ oneway interface IStatusBar
+      * Dismiss the warning that the device is about to go to sleep due to user inactivity.
+      */
+     void dismissInattentiveSleepWarning(boolean animated);
+-
+-    /**
+-     * Displays a text toast.
+-     */
+-    void showToast(String packageName, IBinder token, CharSequence text, IBinder windowToken,
+-            int duration, @nullable ITransientNotificationCallback callback);
+-
+-    /**
+-     * Cancels toast with token {@code token} in {@code packageName}.
+-     */
+-    void hideToast(String packageName, IBinder token);
+ }
+diff --git a/packages/CarSystemUI/res/values/config.xml b/packages/CarSystemUI/res/values/config.xml
+index e2297e44fdf..981c129a096 100644
+--- a/packages/CarSystemUI/res/values/config.xml
++++ b/packages/CarSystemUI/res/values/config.xml
+@@ -80,6 +80,5 @@
+         <item>com.android.systemui.statusbar.notification.InstantAppNotifier</item>
+         <item>com.android.systemui.theme.ThemeOverlayController</item>
+         <item>com.android.systemui.navigationbar.car.CarNavigationBar</item>
+-        <item>com.android.systemui.toast.ToastUI</item>
+     </string-array>
+ </resources>
+diff --git a/packages/SystemUI/res/values-television/config.xml b/packages/SystemUI/res/values-television/config.xml
+index dd4c3210922..4cc5a673110 100644
+--- a/packages/SystemUI/res/values-television/config.xml
++++ b/packages/SystemUI/res/values-television/config.xml
+@@ -36,6 +36,5 @@
+         <item>com.android.systemui.SliceBroadcastRelayHandler</item>
+         <item>com.android.systemui.SizeCompatModeActivityController</item>
+         <item>com.android.systemui.statusbar.notification.InstantAppNotifier</item>
+-        <item>com.android.systemui.toast.ToastUI</item>
+     </string-array>
+ </resources>
+diff --git a/packages/SystemUI/res/values/config.xml b/packages/SystemUI/res/values/config.xml
+index 2aa6d951289..edcd8012c82 100644
+--- a/packages/SystemUI/res/values/config.xml
++++ b/packages/SystemUI/res/values/config.xml
+@@ -297,7 +297,6 @@
+         <item>com.android.systemui.theme.ThemeOverlayController</item>
+         <item>com.android.systemui.accessibility.WindowMagnification</item>
+         <item>com.android.systemui.accessibility.SystemActions</item>
+-        <item>com.android.systemui.toast.ToastUI</item>
+     </string-array>
+ 
+     <!-- SystemUI vender service, used in config_systemUIServiceComponents. -->
+diff --git a/packages/SystemUI/src/com/android/systemui/dagger/SystemUIBinder.java b/packages/SystemUI/src/com/android/systemui/dagger/SystemUIBinder.java
+index 5de88e17d32..d4e47f69934 100644
+--- a/packages/SystemUI/src/com/android/systemui/dagger/SystemUIBinder.java
++++ b/packages/SystemUI/src/com/android/systemui/dagger/SystemUIBinder.java
+@@ -37,7 +37,6 @@ import com.android.systemui.statusbar.phone.StatusBar;
+ import com.android.systemui.statusbar.phone.StatusBarModule;
+ import com.android.systemui.statusbar.tv.TvStatusBar;
+ import com.android.systemui.theme.ThemeOverlayController;
+-import com.android.systemui.toast.ToastUI;
+ import com.android.systemui.util.leak.GarbageMonitor;
+ import com.android.systemui.volume.VolumeUI;
+ 
+@@ -154,12 +153,6 @@ public abstract class SystemUIBinder {
+     @ClassKey(ThemeOverlayController.class)
+     public abstract SystemUI bindThemeOverlayController(ThemeOverlayController sysui);
+ 
+-    /** Inject into ToastUI. */
+-    @Binds
+-    @IntoMap
+-    @ClassKey(ToastUI.class)
+-    public abstract SystemUI bindToastUI(ToastUI service);
+-
+     /** Inject into TvStatusBar. */
+     @Binds
+     @IntoMap
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/CommandQueue.java b/packages/SystemUI/src/com/android/systemui/statusbar/CommandQueue.java
+index 3af3701dff9..7c0f4f942bc 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/CommandQueue.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/CommandQueue.java
+@@ -25,8 +25,6 @@ import static android.view.Display.INVALID_DISPLAY;
+ 
+ import static com.android.systemui.statusbar.phone.StatusBar.ONLY_CORE_APPS;
+ 
+-import android.annotation.Nullable;
+-import android.app.ITransientNotificationCallback;
+ import android.app.StatusBarManager;
+ import android.app.StatusBarManager.Disable2Flags;
+ import android.app.StatusBarManager.DisableFlags;
+@@ -121,8 +119,6 @@ public class CommandQueue extends IStatusBar.Stub implements CallbackController<
+     private static final int MSG_TOP_APP_WINDOW_CHANGED            = 50 << MSG_SHIFT;
+     private static final int MSG_SHOW_INATTENTIVE_SLEEP_WARNING    = 51 << MSG_SHIFT;
+     private static final int MSG_DISMISS_INATTENTIVE_SLEEP_WARNING = 52 << MSG_SHIFT;
+-    private static final int MSG_SHOW_TOAST                        = 53 << MSG_SHIFT;
+-    private static final int MSG_HIDE_TOAST                        = 54 << MSG_SHIFT;
+ 
+     public static final int FLAG_EXCLUDE_NONE = 0;
+     public static final int FLAG_EXCLUDE_SEARCH_PANEL = 1 << 0;
+@@ -312,19 +308,6 @@ public class CommandQueue extends IStatusBar.Stub implements CallbackController<
+          * due to prolonged user inactivity should be dismissed.
+          */
+         default void dismissInattentiveSleepWarning(boolean animated) { }
+-
+-        /**
+-         * @see IStatusBar#showToast(String, IBinder, CharSequence, IBinder, int,
+-         * ITransientNotificationCallback)
+-         */
+-        default void showToast(String packageName, IBinder token, CharSequence text,
+-                IBinder windowToken, int duration,
+-                @Nullable ITransientNotificationCallback callback) { }
+-
+-        /**
+-         * @see IStatusBar#hideToast(String, IBinder) (String, IBinder)
+-         */
+-        default void hideToast(String packageName, IBinder token) { }
+     }
+ 
+     public CommandQueue(Context context) {
+@@ -777,31 +760,6 @@ public class CommandQueue extends IStatusBar.Stub implements CallbackController<
+         }
+     }
+ 
+-    @Override
+-    public void showToast(String packageName, IBinder token, CharSequence text,
+-            IBinder windowToken, int duration, @Nullable ITransientNotificationCallback callback) {
+-        synchronized (mLock) {
+-            SomeArgs args = SomeArgs.obtain();
+-            args.arg1 = packageName;
+-            args.arg2 = token;
+-            args.arg3 = text;
+-            args.arg4 = windowToken;
+-            args.arg5 = callback;
+-            args.argi1 = duration;
+-            mHandler.obtainMessage(MSG_SHOW_TOAST, args).sendToTarget();
+-        }
+-    }
+-
+-    @Override
+-    public void hideToast(String packageName, IBinder token) {
+-        synchronized (mLock) {
+-            SomeArgs args = SomeArgs.obtain();
+-            args.arg1 = packageName;
+-            args.arg2 = token;
+-            mHandler.obtainMessage(MSG_HIDE_TOAST, args).sendToTarget();
+-        }
+-    }
+-
+     @Override
+     public void onBiometricAuthenticated() {
+         synchronized (mLock) {
+@@ -1220,30 +1178,6 @@ public class CommandQueue extends IStatusBar.Stub implements CallbackController<
+                         mCallbacks.get(i).dismissInattentiveSleepWarning((Boolean) msg.obj);
+                     }
+                     break;
+-                case MSG_SHOW_TOAST: {
+-                    args = (SomeArgs) msg.obj;
+-                    String packageName = (String) args.arg1;
+-                    IBinder token = (IBinder) args.arg2;
+-                    CharSequence text = (CharSequence) args.arg3;
+-                    IBinder windowToken = (IBinder) args.arg4;
+-                    ITransientNotificationCallback callback =
+-                            (ITransientNotificationCallback) args.arg5;
+-                    int duration = args.argi1;
+-                    for (Callbacks callbacks : mCallbacks) {
+-                        callbacks.showToast(packageName, token, text, windowToken, duration,
+-                                callback);
+-                    }
+-                    break;
+-                }
+-                case MSG_HIDE_TOAST: {
+-                    args = (SomeArgs) msg.obj;
+-                    String packageName = (String) args.arg1;
+-                    IBinder token = (IBinder) args.arg2;
+-                    for (Callbacks callbacks : mCallbacks) {
+-                        callbacks.hideToast(packageName, token);
+-                    }
+-                    break;
+-                }
+             }
+         }
+     }
+diff --git a/packages/SystemUI/src/com/android/systemui/toast/ToastUI.java b/packages/SystemUI/src/com/android/systemui/toast/ToastUI.java
+deleted file mode 100644
+index dea8c5d49df..00000000000
+--- a/packages/SystemUI/src/com/android/systemui/toast/ToastUI.java
++++ /dev/null
+@@ -1,212 +0,0 @@
+-/*
+- * Copyright (C) 2020 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-package com.android.systemui.toast;
+-
+-import android.annotation.MainThread;
+-import android.annotation.Nullable;
+-import android.app.INotificationManager;
+-import android.app.ITransientNotificationCallback;
+-import android.content.Context;
+-import android.content.res.Configuration;
+-import android.graphics.PixelFormat;
+-import android.os.IBinder;
+-import android.os.RemoteException;
+-import android.os.ServiceManager;
+-import android.util.Log;
+-import android.view.Gravity;
+-import android.view.LayoutInflater;
+-import android.view.View;
+-import android.view.ViewGroup.LayoutParams;
+-import android.view.WindowManager;
+-import android.view.accessibility.AccessibilityEvent;
+-import android.view.accessibility.AccessibilityManager;
+-import android.widget.TextView;
+-import android.widget.Toast;
+-
+-import com.android.internal.R;
+-import com.android.systemui.SystemUI;
+-import com.android.systemui.statusbar.CommandQueue;
+-
+-import java.util.Objects;
+-
+-import javax.inject.Inject;
+-import javax.inject.Singleton;
+-
+-/**
+- * Controls display of text toasts.
+- */
+-@Singleton
+-public class ToastUI extends SystemUI implements CommandQueue.Callbacks {
+-    private static final String TAG = "ToastUI";
+-
+-    /**
+-     * Values taken from {@link Toast}.
+-     */
+-    private static final long DURATION_SHORT = 4000;
+-    private static final long DURATION_LONG = 7000;
+-
+-    private final CommandQueue mCommandQueue;
+-    private final WindowManager mWindowManager;
+-    private final INotificationManager mNotificationManager;
+-    private final AccessibilityManager mAccessibilityManager;
+-    private ToastEntry mCurrentToast;
+-
+-    @Inject
+-    public ToastUI(Context context, CommandQueue commandQueue) {
+-        super(context);
+-        mCommandQueue = commandQueue;
+-        mWindowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+-        mNotificationManager = INotificationManager.Stub.asInterface(
+-                ServiceManager.getService(Context.NOTIFICATION_SERVICE));
+-        mAccessibilityManager = AccessibilityManager.getInstance(context);
+-    }
+-
+-    @Override
+-    public void start() {
+-        mCommandQueue.addCallback(this);
+-    }
+-
+-    @Override
+-    @MainThread
+-    public void showToast(String packageName, IBinder token, CharSequence text,
+-            IBinder windowToken, int duration, @Nullable ITransientNotificationCallback callback) {
+-        if (mCurrentToast != null) {
+-            hideCurrentToast();
+-        }
+-        View view = getView(text);
+-        LayoutParams params = getLayoutParams(windowToken, duration);
+-        mCurrentToast = new ToastEntry(packageName, token, view, windowToken, callback);
+-        try {
+-            mWindowManager.addView(view, params);
+-        } catch (WindowManager.BadTokenException e) {
+-            Log.w(TAG, "Error while attempting to show toast from " + packageName, e);
+-            return;
+-        }
+-        trySendAccessibilityEvent(view, packageName);
+-        if (callback != null) {
+-            try {
+-                callback.onToastShown();
+-            } catch (RemoteException e) {
+-                Log.w(TAG, "Error calling back " + packageName + " to notify onToastShow()", e);
+-            }
+-        }
+-    }
+-
+-    @Override
+-    @MainThread
+-    public void hideToast(String packageName, IBinder token) {
+-        if (mCurrentToast == null || !Objects.equals(mCurrentToast.packageName, packageName)
+-                || !Objects.equals(mCurrentToast.token, token)) {
+-            Log.w(TAG, "Attempt to hide non-current toast from package " + packageName);
+-            return;
+-        }
+-        hideCurrentToast();
+-    }
+-
+-    @MainThread
+-    private void hideCurrentToast() {
+-        if (mCurrentToast.view.getParent() != null) {
+-            mWindowManager.removeViewImmediate(mCurrentToast.view);
+-        }
+-        String packageName = mCurrentToast.packageName;
+-        try {
+-            mNotificationManager.finishToken(packageName, mCurrentToast.windowToken);
+-        } catch (RemoteException e) {
+-            Log.w(TAG, "Error finishing toast window token from package " + packageName, e);
+-        }
+-        if (mCurrentToast.callback != null) {
+-            try {
+-                mCurrentToast.callback.onToastHidden();
+-            } catch (RemoteException e) {
+-                Log.w(TAG, "Error calling back " + packageName + " to notify onToastHide()", e);
+-            }
+-        }
+-        mCurrentToast = null;
+-    }
+-
+-    private void trySendAccessibilityEvent(View view, String packageName) {
+-        if (!mAccessibilityManager.isEnabled()) {
+-            return;
+-        }
+-        AccessibilityEvent event = AccessibilityEvent.obtain(
+-                AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED);
+-        event.setClassName(Toast.class.getName());
+-        event.setPackageName(packageName);
+-        view.dispatchPopulateAccessibilityEvent(event);
+-        mAccessibilityManager.sendAccessibilityEvent(event);
+-    }
+-
+-    private View getView(CharSequence text) {
+-        View view = LayoutInflater.from(mContext).inflate(
+-                R.layout.transient_notification, null);
+-        TextView textView = view.findViewById(com.android.internal.R.id.message);
+-        textView.setText(text);
+-        return view;
+-    }
+-
+-    private LayoutParams getLayoutParams(IBinder windowToken, int duration) {
+-        WindowManager.LayoutParams params = new WindowManager.LayoutParams();
+-        params.height = WindowManager.LayoutParams.WRAP_CONTENT;
+-        params.width = WindowManager.LayoutParams.WRAP_CONTENT;
+-        params.format = PixelFormat.TRANSLUCENT;
+-        params.windowAnimations = com.android.internal.R.style.Animation_Toast;
+-        params.type = WindowManager.LayoutParams.TYPE_TOAST;
+-        params.setTitle("Toast");
+-        params.flags = WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+-                | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+-                | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+-        Configuration config = mContext.getResources().getConfiguration();
+-        int specificGravity = mContext.getResources().getInteger(
+-                com.android.internal.R.integer.config_toastDefaultGravity);
+-        int gravity = Gravity.getAbsoluteGravity(specificGravity, config.getLayoutDirection());
+-        params.gravity = gravity;
+-        if ((gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.FILL_HORIZONTAL) {
+-            params.horizontalWeight = 1.0f;
+-        }
+-        if ((gravity & Gravity.VERTICAL_GRAVITY_MASK) == Gravity.FILL_VERTICAL) {
+-            params.verticalWeight = 1.0f;
+-        }
+-        params.x = 0;
+-        params.y = mContext.getResources().getDimensionPixelSize(R.dimen.toast_y_offset);
+-        params.verticalMargin = 0;
+-        params.horizontalMargin = 0;
+-        params.packageName = mContext.getPackageName();
+-        params.hideTimeoutMilliseconds =
+-                (duration == Toast.LENGTH_LONG) ? DURATION_LONG : DURATION_SHORT;
+-        params.token = windowToken;
+-        return params;
+-    }
+-
+-    private static class ToastEntry {
+-        public final String packageName;
+-        public final IBinder token;
+-        public final View view;
+-        public final IBinder windowToken;
+-
+-        @Nullable
+-        public final ITransientNotificationCallback callback;
+-
+-        private ToastEntry(String packageName, IBinder token, View view, IBinder windowToken,
+-                @Nullable ITransientNotificationCallback callback) {
+-            this.packageName = packageName;
+-            this.token = token;
+-            this.view = view;
+-            this.windowToken = windowToken;
+-            this.callback = callback;
+-        }
+-    }
+-}
+diff --git a/services/core/java/com/android/server/notification/NotificationManagerService.java b/services/core/java/com/android/server/notification/NotificationManagerService.java
+index eea59ca26f3..e92f3ec5a83 100755
+--- a/services/core/java/com/android/server/notification/NotificationManagerService.java
++++ b/services/core/java/com/android/server/notification/NotificationManagerService.java
+@@ -117,7 +117,6 @@ import android.app.AutomaticZenRule;
+ import android.app.IActivityManager;
+ import android.app.INotificationManager;
+ import android.app.ITransientNotification;
+-import android.app.ITransientNotificationCallback;
+ import android.app.IUriGrantsManager;
+ import android.app.Notification;
+ import android.app.NotificationChannel;
+@@ -256,9 +255,6 @@ import com.android.server.lights.LightsManager;
+ import com.android.server.lights.LogicalLight;
+ import com.android.server.notification.ManagedServices.ManagedServiceInfo;
+ import com.android.server.notification.ManagedServices.UserProfiles;
+-import com.android.server.notification.toast.CustomToastRecord;
+-import com.android.server.notification.toast.TextToastRecord;
+-import com.android.server.notification.toast.ToastRecord;
+ import com.android.server.pm.PackageManagerService;
+ import com.android.server.policy.PhoneWindowManager;
+ import com.android.server.statusbar.StatusBarManagerInternal;
+@@ -299,8 +295,8 @@ import java.util.function.BiConsumer;
+ 
+ /** {@hide} */
+ public class NotificationManagerService extends SystemService {
+-    public static final String TAG = "NotificationService";
+-    public static final boolean DBG = Log.isLoggable(TAG, Log.DEBUG);
++    static final String TAG = "NotificationService";
++    static final boolean DBG = Log.isLoggable(TAG, Log.DEBUG);
+     public static final boolean ENABLE_CHILD_NOTIFICATIONS
+             = SystemProperties.getBoolean("debug.child_notifs", true);
+ 
+@@ -397,7 +393,6 @@ public class NotificationManagerService extends SystemService {
+     private PackageManager mPackageManagerClient;
+     AudioManager mAudioManager;
+     AudioManagerInternal mAudioManagerInternal;
+-    // Can be null for wear
+     @Nullable StatusBarManagerInternal mStatusBar;
+     Vibrator mVibrator;
+     private WindowManagerInternal mWindowManagerInternal;
+@@ -855,6 +850,49 @@ public class NotificationManagerService extends SystemService {
+         out.endDocument();
+     }
+ 
++    private static final class ToastRecord
++    {
++        public final int pid;
++        public final String pkg;
++        public final IBinder token;
++        public final ITransientNotification callback;
++        public int duration;
++        public int displayId;
++        public Binder windowToken;
++
++        ToastRecord(int pid, String pkg, IBinder token, ITransientNotification callback,
++                int duration, Binder windowToken, int displayId) {
++            this.pid = pid;
++            this.pkg = pkg;
++            this.token = token;
++            this.callback = callback;
++            this.duration = duration;
++            this.windowToken = windowToken;
++            this.displayId = displayId;
++        }
++
++        void update(int duration) {
++            this.duration = duration;
++        }
++
++        void dump(PrintWriter pw, String prefix, DumpFilter filter) {
++            if (filter != null && !filter.matches(pkg)) return;
++            pw.println(prefix + this);
++        }
++
++        @Override
++        public final String toString()
++        {
++            return "ToastRecord{"
++                + Integer.toHexString(System.identityHashCode(this))
++                + " pkg=" + pkg
++                + " token=" + token
++                + " callback=" + callback
++                + " duration=" + duration
++                + "}";
++        }
++    }
++
+     @VisibleForTesting
+     final NotificationDelegate mNotificationDelegate = new NotificationDelegate() {
+ 
+@@ -2605,19 +2643,6 @@ public class NotificationManagerService extends SystemService {
+         return userId == UserHandle.USER_ALL ? UserHandle.USER_SYSTEM : userId;
+     }
+ 
+-    private ToastRecord getToastRecord(int pid, String packageName, IBinder token,
+-            @Nullable CharSequence text, @Nullable ITransientNotification callback, int duration,
+-            Binder windowToken, int displayId,
+-            @Nullable ITransientNotificationCallback textCallback) {
+-        if (callback == null) {
+-            return new TextToastRecord(this, mStatusBar, pid, packageName, token, text, duration,
+-                    windowToken, displayId, textCallback);
+-        } else {
+-            return new CustomToastRecord(this, pid, packageName, token, callback, duration,
+-                    windowToken, displayId);
+-        }
+-    }
+-
+     @VisibleForTesting
+     NotificationManagerInternal getInternalService() {
+         return mInternalService;
+@@ -2629,30 +2654,28 @@ public class NotificationManagerService extends SystemService {
+         // ============================================================================
+ 
+         @Override
+-        public void enqueueTextToast(String pkg, IBinder token, CharSequence text, int duration,
+-                int displayId, @Nullable ITransientNotificationCallback callback) {
+-            enqueueToast(pkg, token, text, null, duration, displayId, callback);
++        public void enqueueTextToast(String pkg, IBinder token, ITransientNotification callback,
++                int duration, int displayId) {
++            enqueueToast(pkg, token, callback, duration, displayId, false);
+         }
+ 
+         @Override
+         public void enqueueToast(String pkg, IBinder token, ITransientNotification callback,
+                 int duration, int displayId) {
+-            enqueueToast(pkg, token, null, callback, duration, displayId, null);
++            enqueueToast(pkg, token, callback, duration, displayId, true);
+         }
+ 
+-        private void enqueueToast(String pkg, IBinder token, @Nullable CharSequence text,
+-                @Nullable ITransientNotification callback, int duration, int displayId,
+-                @Nullable ITransientNotificationCallback textCallback) {
++        private void enqueueToast(String pkg, IBinder token, ITransientNotification callback,
++                int duration, int displayId, boolean isCustomToast) {
+             if (DBG) {
+-                Slog.i(TAG, "enqueueToast pkg=" + pkg + " token=" + token
++                Slog.i(TAG, "enqueueToast pkg=" + pkg + " callback=" + callback
+                         + " duration=" + duration + " displayId=" + displayId);
+             }
+ 
+-            if (pkg == null || (text == null && callback == null)
+-                    || (text != null && callback != null) || token == null) {
+-                Slog.e(TAG, "Not enqueuing toast. pkg=" + pkg + " text=" + text + " callback="
+-                        + " token=" + token);
+-                return;
++            if (pkg == null || callback == null || token == null) {
++                Slog.e(TAG, "Not enqueuing toast. pkg=" + pkg + " callback=" + callback + " token="
++                        + token);
++                return ;
+             }
+ 
+             final int callingUid = Binder.getCallingUid();
+@@ -2680,7 +2703,7 @@ public class NotificationManagerService extends SystemService {
+                 return;
+             }
+ 
+-            if (callback != null && !appIsForeground && !isSystemToast) {
++            if (isCustomToast && !appIsForeground && !isSystemToast) {
+                 boolean block;
+                 try {
+                     block = mPlatformCompat.isChangeEnabledByPackageName(
+@@ -2722,28 +2745,28 @@ public class NotificationManagerService extends SystemService {
+                             int count = 0;
+                             final int N = mToastQueue.size();
+                             for (int i=0; i<N; i++) {
+-                                final ToastRecord r = mToastQueue.get(i);
+-                                if (r.pkg.equals(pkg)) {
+-                                    count++;
+-                                    if (count >= MAX_PACKAGE_NOTIFICATIONS) {
+-                                        Slog.e(TAG, "Package has already posted " + count
++                                 final ToastRecord r = mToastQueue.get(i);
++                                 if (r.pkg.equals(pkg)) {
++                                     count++;
++                                     if (count >= MAX_PACKAGE_NOTIFICATIONS) {
++                                         Slog.e(TAG, "Package has already posted " + count
+                                                 + " toasts. Not showing more. Package=" + pkg);
+-                                        return;
+-                                    }
+-                                }
++                                         return;
++                                     }
++                                 }
+                             }
+                         }
+ 
+                         Binder windowToken = new Binder();
+                         mWindowManagerInternal.addWindowToken(windowToken, TYPE_TOAST, displayId);
+-                        record = getToastRecord(callingPid, pkg, token, text, callback, duration,
+-                                windowToken, displayId, textCallback);
++                        record = new ToastRecord(callingPid, pkg, token, callback, duration,
++                                windowToken, displayId);
+                         mToastQueue.add(record);
+                         index = mToastQueue.size() - 1;
+-                        keepProcessAliveForToastIfNeededLocked(callingPid);
++                        keepProcessAliveIfNeededLocked(callingPid);
+                     }
+                     // If it's at index 0, it's the current toast.  It doesn't matter if it's
+-                    // new or just been updated, show it.
++                    // new or just been updated.  Call back and tell it to show itself.
+                     // If the callback fails, this will remove it from the list, so don't
+                     // assume that it's valid after this.
+                     if (index == 0) {
+@@ -6912,22 +6935,40 @@ public class NotificationManagerService extends SystemService {
+     void showNextToastLocked() {
+         ToastRecord record = mToastQueue.get(0);
+         while (record != null) {
+-            if (record.show()) {
++            if (DBG) Slog.d(TAG, "Show pkg=" + record.pkg + " callback=" + record.callback);
++            try {
++                record.callback.show(record.windowToken);
+                 scheduleDurationReachedLocked(record);
+                 return;
++            } catch (RemoteException e) {
++                Slog.w(TAG, "Object died trying to show notification " + record.callback
++                        + " in package " + record.pkg);
++                // remove it from the list and let the process die
++                int index = mToastQueue.indexOf(record);
++                if (index >= 0) {
++                    mToastQueue.remove(index);
++                }
++                keepProcessAliveIfNeededLocked(record.pid);
++                if (mToastQueue.size() > 0) {
++                    record = mToastQueue.get(0);
++                } else {
++                    record = null;
++                }
+             }
+-            int index = mToastQueue.indexOf(record);
+-            if (index >= 0) {
+-                mToastQueue.remove(index);
+-            }
+-            record = (mToastQueue.size() > 0) ? mToastQueue.get(0) : null;
+         }
+     }
+ 
+     @GuardedBy("mToastQueue")
+     void cancelToastLocked(int index) {
+         ToastRecord record = mToastQueue.get(index);
+-        record.hide();
++        try {
++            record.callback.hide();
++        } catch (RemoteException e) {
++            Slog.w(TAG, "Object died trying to hide notification " + record.callback
++                    + " in package " + record.pkg);
++            // don't worry about this, we're about to remove it from
++            // the list anyway
++        }
+ 
+         ToastRecord lastToast = mToastQueue.remove(index);
+ 
+@@ -6940,7 +6981,7 @@ public class NotificationManagerService extends SystemService {
+         // one way or another.
+         scheduleKillTokenTimeout(lastToast);
+ 
+-        keepProcessAliveForToastIfNeededLocked(record.pid);
++        keepProcessAliveIfNeededLocked(record.pid);
+         if (mToastQueue.size() > 0) {
+             // Show the next one. If the callback fails, this will remove
+             // it from the list, so don't assume that the list hasn't changed
+@@ -6963,7 +7004,7 @@ public class NotificationManagerService extends SystemService {
+     {
+         mHandler.removeCallbacksAndMessages(r);
+         Message m = Message.obtain(mHandler, MESSAGE_DURATION_REACHED, r);
+-        int delay = r.getDuration() == Toast.LENGTH_LONG ? LONG_DELAY : SHORT_DELAY;
++        int delay = r.duration == Toast.LENGTH_LONG ? LONG_DELAY : SHORT_DELAY;
+         // Accessibility users may need longer timeout duration. This api compares original delay
+         // with user's preference and return longer one. It returns original delay if there's no
+         // preference.
+@@ -7012,21 +7053,13 @@ public class NotificationManagerService extends SystemService {
+         return -1;
+     }
+ 
+-    /**
+-     * Adjust process {@code pid} importance according to whether it has toasts in the queue or not.
+-     */
+-    public void keepProcessAliveForToastIfNeeded(int pid) {
+-        synchronized (mToastQueue) {
+-            keepProcessAliveForToastIfNeededLocked(pid);
+-        }
+-    }
+-
+     @GuardedBy("mToastQueue")
+-    private void keepProcessAliveForToastIfNeededLocked(int pid) {
++    void keepProcessAliveIfNeededLocked(int pid)
++    {
+         int toastCount = 0; // toasts from this pid
+         ArrayList<ToastRecord> list = mToastQueue;
+-        int n = list.size();
+-        for (int i = 0; i < n; i++) {
++        int N = list.size();
++        for (int i=0; i<N; i++) {
+             ToastRecord r = list.get(i);
+             if (r.pid == pid) {
+                 toastCount++;
+diff --git a/services/core/java/com/android/server/notification/toast/CustomToastRecord.java b/services/core/java/com/android/server/notification/toast/CustomToastRecord.java
+deleted file mode 100644
+index aca6f485359..00000000000
+--- a/services/core/java/com/android/server/notification/toast/CustomToastRecord.java
++++ /dev/null
+@@ -1,83 +0,0 @@
+-/*
+- * Copyright (C) 2020 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-package com.android.server.notification.toast;
+-
+-import static com.android.internal.util.Preconditions.checkNotNull;
+-import static com.android.server.notification.NotificationManagerService.DBG;
+-
+-import android.app.ITransientNotification;
+-import android.os.Binder;
+-import android.os.IBinder;
+-import android.os.RemoteException;
+-import android.util.Slog;
+-
+-import com.android.server.notification.NotificationManagerService;
+-
+-/**
+- * Represents a custom toast, a toast whose view is provided by the app.
+- */
+-public class CustomToastRecord extends ToastRecord {
+-    private static final String TAG = NotificationManagerService.TAG;
+-
+-    public final ITransientNotification callback;
+-
+-    public CustomToastRecord(
+-            NotificationManagerService notificationManager, int pid, String packageName,
+-            IBinder token, ITransientNotification callback, int duration, Binder windowToken,
+-            int displayId) {
+-        super(notificationManager, pid, packageName, token, duration, windowToken, displayId);
+-        this.callback = checkNotNull(callback);
+-    }
+-
+-    @Override
+-    public boolean show() {
+-        if (DBG) {
+-            Slog.d(TAG, "Show pkg=" + pkg + " callback=" + callback);
+-        }
+-        try {
+-            callback.show(windowToken);
+-            return true;
+-        } catch (RemoteException e) {
+-            Slog.w(TAG, "Object died trying to show custom toast " + token + " in package "
+-                    + pkg);
+-            mNotificationManager.keepProcessAliveForToastIfNeeded(pid);
+-            return false;
+-        }
+-    }
+-
+-    @Override
+-    public void hide() {
+-        try {
+-            callback.hide();
+-        } catch (RemoteException e) {
+-            Slog.w(TAG, "Object died trying to hide custom toast " + token + " in package "
+-                    + pkg);
+-
+-        }
+-    }
+-
+-    @Override
+-    public String toString() {
+-        return "CustomToastRecord{"
+-                + Integer.toHexString(System.identityHashCode(this))
+-                + " token=" + token
+-                + " packageName=" + pkg
+-                + " callback=" + callback
+-                + " duration=" + getDuration()
+-                + "}";
+-    }
+-}
+diff --git a/services/core/java/com/android/server/notification/toast/TextToastRecord.java b/services/core/java/com/android/server/notification/toast/TextToastRecord.java
+deleted file mode 100644
+index 3c231b445f6..00000000000
+--- a/services/core/java/com/android/server/notification/toast/TextToastRecord.java
++++ /dev/null
+@@ -1,84 +0,0 @@
+-/*
+- * Copyright (C) 2020 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-package com.android.server.notification.toast;
+-
+-import static com.android.internal.util.Preconditions.checkNotNull;
+-import static com.android.server.notification.NotificationManagerService.DBG;
+-
+-import android.annotation.Nullable;
+-import android.app.ITransientNotificationCallback;
+-import android.os.Binder;
+-import android.os.IBinder;
+-import android.util.Slog;
+-
+-import com.android.server.notification.NotificationManagerService;
+-import com.android.server.statusbar.StatusBarManagerInternal;
+-
+-/**
+- * Represents a text toast, a toast rendered by the system that contains only text.
+- */
+-public class TextToastRecord extends ToastRecord {
+-    private static final String TAG = NotificationManagerService.TAG;
+-
+-    public final CharSequence text;
+-    @Nullable
+-    private final StatusBarManagerInternal mStatusBar;
+-    @Nullable
+-    private final ITransientNotificationCallback mCallback;
+-
+-    public TextToastRecord(NotificationManagerService notificationManager,
+-            @Nullable StatusBarManagerInternal statusBarManager, int pid, String packageName,
+-            IBinder token, CharSequence text, int duration, Binder windowToken, int displayId,
+-            @Nullable ITransientNotificationCallback callback) {
+-        super(notificationManager, pid, packageName, token, duration, windowToken, displayId);
+-        mStatusBar = statusBarManager;
+-        mCallback = callback;
+-        this.text = checkNotNull(text);
+-    }
+-
+-    @Override
+-    public boolean show() {
+-        if (DBG) {
+-            Slog.d(TAG, "Show pkg=" + pkg + " text=" + text);
+-        }
+-        if (mStatusBar == null) {
+-            Slog.w(TAG, "StatusBar not available to show text toast for package " + pkg);
+-            return false;
+-        }
+-        mStatusBar.showToast(pkg, token, text, windowToken, getDuration(), mCallback);
+-        return true;
+-    }
+-
+-    @Override
+-    public void hide() {
+-        // If it's null, show() would have returned false
+-        checkNotNull(mStatusBar, "Cannot hide toast that wasn't shown");
+-
+-        mStatusBar.hideToast(pkg, token);
+-    }
+-
+-    @Override
+-    public String toString() {
+-        return "TextToastRecord{"
+-                + Integer.toHexString(System.identityHashCode(this))
+-                + " token=" + token
+-                + " packageName=" + pkg
+-                + " text=" + text
+-                + " duration=" + getDuration()
+-                + "}";
+-    }
+-}
+diff --git a/services/core/java/com/android/server/notification/toast/ToastRecord.java b/services/core/java/com/android/server/notification/toast/ToastRecord.java
+deleted file mode 100644
+index ef75a6f5dd7..00000000000
+--- a/services/core/java/com/android/server/notification/toast/ToastRecord.java
++++ /dev/null
+@@ -1,88 +0,0 @@
+-/*
+- * Copyright (C) 2020 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-package com.android.server.notification.toast;
+-
+-import android.os.Binder;
+-import android.os.IBinder;
+-
+-import com.android.server.notification.NotificationManagerService;
+-import com.android.server.notification.NotificationManagerService.DumpFilter;
+-
+-import java.io.PrintWriter;
+-
+-/**
+- * Represents a toast, a transient notification.
+- */
+-public abstract class ToastRecord {
+-    public final int pid;
+-    public final String pkg;
+-    public final IBinder token;
+-    public final int displayId;
+-    public final Binder windowToken;
+-    protected final NotificationManagerService mNotificationManager;
+-    private int mDuration;
+-
+-    protected ToastRecord(
+-            NotificationManagerService notificationManager,
+-            int pid, String pkg, IBinder token, int duration,
+-            Binder windowToken, int displayId) {
+-        this.mNotificationManager = notificationManager;
+-        this.pid = pid;
+-        this.pkg = pkg;
+-        this.token = token;
+-        this.windowToken = windowToken;
+-        this.displayId = displayId;
+-        mDuration = duration;
+-    }
+-
+-    /**
+-     * This method is responsible for showing the toast represented by this object.
+-     *
+-     * @return True if it was successfully shown.
+-     */
+-    public abstract boolean show();
+-
+-    /**
+-     * This method is responsible for hiding the toast represented by this object.
+-     */
+-    public abstract void hide();
+-
+-    /**
+-     * Returns the duration of this toast, which can be {@link android.widget.Toast#LENGTH_SHORT}
+-     * or {@link android.widget.Toast#LENGTH_LONG}.
+-     */
+-    public int getDuration() {
+-        return mDuration;
+-    }
+-
+-    /**
+-     * Updates toast duration.
+-     */
+-    public void update(int duration) {
+-        mDuration = duration;
+-    }
+-
+-    /**
+-     * Dumps a textual representation of this object.
+-     */
+-    public void dump(PrintWriter pw, String prefix, DumpFilter filter) {
+-        if (filter != null && !filter.matches(pkg)) {
+-            return;
+-        }
+-        pw.println(prefix + this);
+-    }
+-}
+diff --git a/services/core/java/com/android/server/statusbar/StatusBarManagerInternal.java b/services/core/java/com/android/server/statusbar/StatusBarManagerInternal.java
+index d88dccb9afe..95ffd8fe43d 100644
+--- a/services/core/java/com/android/server/statusbar/StatusBarManagerInternal.java
++++ b/services/core/java/com/android/server/statusbar/StatusBarManagerInternal.java
+@@ -16,10 +16,7 @@
+ 
+ package com.android.server.statusbar;
+ 
+-import android.annotation.Nullable;
+-import android.app.ITransientNotificationCallback;
+ import android.os.Bundle;
+-import android.os.IBinder;
+ import android.view.InsetsState.InternalInsetsType;
+ import android.view.WindowInsetsController.Appearance;
+ 
+@@ -126,15 +123,4 @@ public interface StatusBarManagerInternal {
+ 
+     /** @see com.android.internal.statusbar.IStatusBar#abortTransient */
+     void abortTransient(int displayId, @InternalInsetsType int[] types);
+-
+-    /**
+-     * @see com.android.internal.statusbar.IStatusBar#showToast(String, IBinder, CharSequence,
+-     * IBinder, int, ITransientNotificationCallback)
+-     */
+-    void showToast(String packageName, IBinder token, CharSequence text,
+-            IBinder windowToken, int duration,
+-            @Nullable ITransientNotificationCallback textCallback);
+-
+-    /** @see com.android.internal.statusbar.IStatusBar#hideToast(String, IBinder)  */
+-    void hideToast(String packageName, IBinder token);
+ }
+diff --git a/services/core/java/com/android/server/statusbar/StatusBarManagerService.java b/services/core/java/com/android/server/statusbar/StatusBarManagerService.java
+index 3f7d373c184..870c81fb5dc 100644
+--- a/services/core/java/com/android/server/statusbar/StatusBarManagerService.java
++++ b/services/core/java/com/android/server/statusbar/StatusBarManagerService.java
+@@ -21,7 +21,6 @@ import static android.view.Display.DEFAULT_DISPLAY;
+ 
+ import android.annotation.Nullable;
+ import android.app.ActivityThread;
+-import android.app.ITransientNotificationCallback;
+ import android.app.Notification;
+ import android.app.StatusBarManager;
+ import android.content.ComponentName;
+@@ -501,26 +500,6 @@ public class StatusBarManagerService extends IStatusBarService.Stub implements D
+                 } catch (RemoteException ex) { }
+             }
+         }
+-
+-        @Override
+-        public void showToast(String packageName, IBinder token, CharSequence text,
+-                IBinder windowToken, int duration,
+-                @Nullable ITransientNotificationCallback callback) {
+-            if (mBar != null) {
+-                try {
+-                    mBar.showToast(packageName, token, text, windowToken, duration, callback);
+-                } catch (RemoteException ex) { }
+-            }
+-        }
+-
+-        @Override
+-        public void hideToast(String packageName, IBinder token) {
+-            if (mBar != null) {
+-                try {
+-                    mBar.hideToast(packageName, token);
+-                } catch (RemoteException ex) { }
+-            }
+-        }
+     };
+ 
+     private final GlobalActionsProvider mGlobalActionsProvider = new GlobalActionsProvider() {
+-- 
+2.35.1
+

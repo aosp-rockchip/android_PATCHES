@@ -1,0 +1,128 @@
+From 47614e7914428711784a5bc31e4ddb3275beccaa Mon Sep 17 00:00:00 2001
+From: Zhixiong Lin <zhixiong.lin@rock-chips.com>
+Date: Thu, 12 Nov 2020 20:28:21 +0800
+Subject: [PATCH 19/33] SurfaceFlinger: Add RK_FPS for debug.
+
+Change-Id: I417bc24d79d75c7e2e306a5fa7b7838081f87132
+Signed-off-by: Zhixiong Lin <zhixiong.lin@rock-chips.com>
+---
+ services/surfaceflinger/SurfaceFlinger.cpp | 43 +++++++++++++++++++++-
+ services/surfaceflinger/SurfaceFlinger.h   | 12 ++++++
+ 2 files changed, 54 insertions(+), 1 deletion(-)
+
+diff --git a/services/surfaceflinger/SurfaceFlinger.cpp b/services/surfaceflinger/SurfaceFlinger.cpp
+index c8949f362..5629fa2d9 100755
+--- a/services/surfaceflinger/SurfaceFlinger.cpp
++++ b/services/surfaceflinger/SurfaceFlinger.cpp
+@@ -384,6 +384,11 @@ SurfaceFlinger::SurfaceFlinger(Factory& factory) : SurfaceFlinger(factory, SkipI
+     // debugging stuff...
+     char value[PROPERTY_VALUE_MAX];
+ 
++#if RK_FPS
++    property_get("debug.sf.fps", value, "0");
++    mDebugFPS = atoi(value);
++#endif
++
+     property_get("ro.bq.gpu_to_cpu_unsupported", value, "0");
+     mGpuToCpuSupported = !atoi(value);
+ 
+@@ -792,6 +797,26 @@ size_t SurfaceFlinger::getMaxViewportDims() const {
+     return getRenderEngine().getMaxViewportDims();
+ }
+ 
++#if RK_FPS
++void SurfaceFlinger::debugShowFPS() const
++{
++    static int mFrameCount;
++    static int mLastFrameCount = 0;
++    static nsecs_t mLastFpsTime = 0;
++    static float mFps = 0;
++
++    mFrameCount++;
++    nsecs_t now = systemTime();
++    nsecs_t diff = now - mLastFpsTime;
++    if (diff > ms2ns(500)) {
++        mFps =  ((mFrameCount - mLastFrameCount) * float(s2ns(1))) / diff;
++        mLastFpsTime = now;
++        mLastFrameCount = mFrameCount;
++        ALOGD("mFrameCount = %d mFps = %2.3f",mFrameCount, mFps);
++    }
++}
++#endif
++
+ // ----------------------------------------------------------------------------
+ 
+ bool SurfaceFlinger::authenticateSurfaceTexture(
+@@ -2043,6 +2068,10 @@ bool SurfaceFlinger::handleMessageTransaction() {
+     return runHandleTransaction;
+ }
+ 
++#if RK_FPS
++static int gsFrameCcount = 0;
++#endif
++
+ void SurfaceFlinger::onMessageRefresh() {
+     ATRACE_CALL();
+ 
+@@ -2133,8 +2162,20 @@ void SurfaceFlinger::onMessageRefresh() {
+     }
+ 
+     mVSyncModulator->onRefreshed(mHadClientComposition);
+-
+     mLayersWithQueuedFrames.clear();
++
++#if RK_FPS
++    if(gsFrameCcount++%300==0) {
++        gsFrameCcount = 1;
++        char value[PROPERTY_VALUE_MAX];
++        property_get("debug.sf.fps", value, "0");
++        mDebugFPS = atoi(value);
++    }
++
++    if (mDebugFPS > 0)
++        debugShowFPS();
++#endif
++
+     if (mVisibleRegionsDirty) {
+         mVisibleRegionsDirty = false;
+         if (mTracingEnabled && mAddCompositionStateToTrace) {
+diff --git a/services/surfaceflinger/SurfaceFlinger.h b/services/surfaceflinger/SurfaceFlinger.h
+index ccaeb2d85..3744c4028 100644
+--- a/services/surfaceflinger/SurfaceFlinger.h
++++ b/services/surfaceflinger/SurfaceFlinger.h
+@@ -82,6 +82,8 @@
+ #include <unordered_set>
+ #include <utility>
+ 
++#define RK_FPS                 (1)
++
+ using namespace android::surfaceflinger;
+ 
+ namespace android {
+@@ -308,6 +310,11 @@ public:
+     // TODO: this should be made accessible only to MessageQueue
+     void onMessageReceived(int32_t what, nsecs_t expectedVSyncTime);
+ 
++#if RK_FPS
++    //add by rk for fps
++    void debugShowFPS() const;
++#endif
++
+     renderengine::RenderEngine& getRenderEngine() const;
+ 
+     bool authenticateSurfaceTextureLocked(
+@@ -1162,6 +1169,11 @@ private:
+     // Static screen stats
+     bool mHasPoweredOff = false;
+ 
++#if RK_FPS
++    //add by rk for fps
++    int mDebugFPS;
++#endif
++
+     std::atomic<size_t> mNumLayers = 0;
+ 
+     // Verify that transaction is being called by an approved process:
+-- 
+2.35.1
+

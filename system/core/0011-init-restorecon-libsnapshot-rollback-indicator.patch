@@ -1,0 +1,98 @@
+From a49bc6167be19b8ce47598f4a453c67098e43f46 Mon Sep 17 00:00:00 2001
+From: Yifan Hong <elsk@google.com>
+Date: Thu, 20 Feb 2020 17:54:57 -0800
+Subject: [PATCH 11/21] init: restorecon libsnapshot rollback indicator
+
+The rollback indicator is created during first stage init and
+is unlabeled. Need to restorecon it properly so that it can
+be properly deleted by update_engine later.
+
+Bug: 149956852
+Bug: 150907679
+Test: apply OTA, reboot, look at serial console
+Change-Id: Ie954023b557865691fec2ae378145596bf1973a9
+(cherry picked from commit dd4e7ef6ce7e40d8922d0d6bdca0d59121c36759)
+---
+ fs_mgr/libsnapshot/include/libsnapshot/snapshot.h | 3 +++
+ fs_mgr/libsnapshot/snapshot.cpp                   | 7 ++++++-
+ init/selinux.cpp                                  | 4 ++++
+ 3 files changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/fs_mgr/libsnapshot/include/libsnapshot/snapshot.h b/fs_mgr/libsnapshot/include/libsnapshot/snapshot.h
+index 32345d26f..81f616ce6 100644
+--- a/fs_mgr/libsnapshot/include/libsnapshot/snapshot.h
++++ b/fs_mgr/libsnapshot/include/libsnapshot/snapshot.h
+@@ -125,6 +125,9 @@ class SnapshotManager final {
+     // might be needed to perform first-stage mounts.
+     static bool IsSnapshotManagerNeeded();
+ 
++    // Helper function for second stage init to restorecon on the rollback indicator.
++    static std::string GetGlobalRollbackIndicatorPath();
++
+     // Begin an update. This must be called before creating any snapshots. It
+     // will fail if GetUpdateState() != None.
+     bool BeginUpdate();
+diff --git a/fs_mgr/libsnapshot/snapshot.cpp b/fs_mgr/libsnapshot/snapshot.cpp
+index 61fc2dff6..154b5d755 100644
+--- a/fs_mgr/libsnapshot/snapshot.cpp
++++ b/fs_mgr/libsnapshot/snapshot.cpp
+@@ -81,6 +81,7 @@ using namespace std::chrono_literals;
+ using namespace std::string_literals;
+ 
+ static constexpr char kBootIndicatorPath[] = "/metadata/ota/snapshot-boot";
++static constexpr char kRollbackIndicatorPath[] = "/metadata/ota/rollback-indicator";
+ static constexpr auto kUpdateStateCheckInterval = 2s;
+ 
+ // Note: IImageManager is an incomplete type in the header, so the default
+@@ -1012,7 +1013,7 @@ std::string SnapshotManager::GetSnapshotBootIndicatorPath() {
+ }
+ 
+ std::string SnapshotManager::GetRollbackIndicatorPath() {
+-    return metadata_dir_ + "/rollback-indicator";
++    return metadata_dir_ + "/" + android::base::Basename(kRollbackIndicatorPath);
+ }
+ 
+ void SnapshotManager::AcknowledgeMergeSuccess(LockedFile* lock) {
+@@ -1469,6 +1470,10 @@ bool SnapshotManager::IsSnapshotManagerNeeded() {
+     return access(kBootIndicatorPath, F_OK) == 0;
+ }
+ 
++std::string SnapshotManager::GetGlobalRollbackIndicatorPath() {
++    return kRollbackIndicatorPath;
++}
++
+ bool SnapshotManager::NeedSnapshotsInFirstStageMount() {
+     // If we fail to read, we'll wind up using CreateLogicalPartitions, which
+     // will create devices that look like the old slot, except with extra
+diff --git a/init/selinux.cpp b/init/selinux.cpp
+index 2faa16720..acbcbd647 100644
+--- a/init/selinux.cpp
++++ b/init/selinux.cpp
+@@ -66,6 +66,7 @@
+ #include <android-base/unique_fd.h>
+ #include <fs_avb/fs_avb.h>
+ #include <libgsi/libgsi.h>
++#include <libsnapshot/snapshot.h>
+ #include <selinux/android.h>
+ 
+ #include "debug_ramdisk.h"
+@@ -78,6 +79,7 @@ using android::base::ParseInt;
+ using android::base::Timer;
+ using android::base::unique_fd;
+ using android::fs_mgr::AvbHandle;
++using android::snapshot::SnapshotManager;
+ 
+ namespace android {
+ namespace init {
+@@ -538,6 +540,8 @@ void SelinuxRestoreContext() {
+     // adb remount, snapshot-based updates, and DSUs all create files during
+     // first-stage init.
+     selinux_android_restorecon("/metadata", SELINUX_ANDROID_RESTORECON_RECURSE);
++
++    selinux_android_restorecon(SnapshotManager::GetGlobalRollbackIndicatorPath().c_str(), 0);
+ }
+ 
+ int SelinuxKlogCallback(int type, const char* fmt, ...) {
+-- 
+2.35.1
+

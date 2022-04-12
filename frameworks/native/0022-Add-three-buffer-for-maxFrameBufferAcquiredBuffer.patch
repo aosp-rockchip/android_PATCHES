@@ -1,0 +1,27 @@
+From e099c621ac8ff8e7a50ee395500c4067bfeb8010 Mon Sep 17 00:00:00 2001
+From: libin <bin.li@rock-chips.com>
+Date: Wed, 22 Apr 2020 17:08:28 +0800
+Subject: [PATCH 22/33] Add three buffer for maxFrameBufferAcquiredBuffer
+
+Signed-off-by: libin <bin.li@rock-chips.com>
+Change-Id: I0c69ca8e5ea11c06885ddb0db8881a5f78b18d49
+---
+ services/surfaceflinger/SurfaceFlinger.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/services/surfaceflinger/SurfaceFlinger.cpp b/services/surfaceflinger/SurfaceFlinger.cpp
+index 638591723..c339c3a6e 100755
+--- a/services/surfaceflinger/SurfaceFlinger.cpp
++++ b/services/surfaceflinger/SurfaceFlinger.cpp
+@@ -337,7 +337,7 @@ SurfaceFlinger::SurfaceFlinger(Factory& factory) : SurfaceFlinger(factory, SkipI
+     #if DYNAMIC_AFBC_TARGET
+     maxFrameBufferAcquiredBuffers = max_frame_buffer_acquired_buffers(6);
+     #else
+-    maxFrameBufferAcquiredBuffers = max_frame_buffer_acquired_buffers(2);
++    maxFrameBufferAcquiredBuffers = max_frame_buffer_acquired_buffers(3);
+     #endif
+ 
+     maxGraphicsWidth = std::max(max_graphics_width(0), 0);
+-- 
+2.35.1
+

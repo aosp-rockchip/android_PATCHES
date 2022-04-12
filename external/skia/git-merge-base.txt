@@ -1,0 +1,78 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit ea2e32f94ec19595fc722b1e1efcb0137c4f381c
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Thu Dec 31 15:42:43 2020 +0800
+
+    skia: add shard libs for eink hwc.
+    
+    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+    Change-Id: Iaeb3026e0648ed09b88ea62c6d97a3bc254a457c
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit ea2e32f94ec19595fc722b1e1efcb0137c4f381c
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Thu Dec 31 15:42:43 2020 +0800
+
+    skia: add shard libs for eink hwc.
+    
+    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+    Change-Id: Iaeb3026e0648ed09b88ea62c6d97a3bc254a457c
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit ea2e32f94ec19595fc722b1e1efcb0137c4f381c
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Thu Dec 31 15:42:43 2020 +0800
+
+    skia: add shard libs for eink hwc.
+    
+    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+    Change-Id: Iaeb3026e0648ed09b88ea62c6d97a3bc254a457c
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit ea2e32f94ec19595fc722b1e1efcb0137c4f381c
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Thu Dec 31 15:42:43 2020 +0800
+
+    skia: add shard libs for eink hwc.
+    
+    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+    Change-Id: Iaeb3026e0648ed09b88ea62c6d97a3bc254a457c
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit ea2e32f94ec19595fc722b1e1efcb0137c4f381c
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Thu Dec 31 15:42:43 2020 +0800
+
+    skia: add shard libs for eink hwc.
+    
+    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+    Change-Id: Iaeb3026e0648ed09b88ea62c6d97a3bc254a457c
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit ea2e32f94ec19595fc722b1e1efcb0137c4f381c
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Thu Dec 31 15:42:43 2020 +0800
+
+    skia: add shard libs for eink hwc.
+    
+    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+    Change-Id: Iaeb3026e0648ed09b88ea62c6d97a3bc254a457c

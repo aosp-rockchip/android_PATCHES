@@ -1,0 +1,287 @@
+From 1cd2d376b3111b57381405f6c0fe432a0b216f73 Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Fri, 20 Mar 2020 10:31:16 +0800
+Subject: [PATCH 07/11] Expand recovery to implement Rockchip PCBA Test.
+
+Change-Id: I0e3254a088b7a69d8cee97050b08ffad6617a07c
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+---
+ Android.bp                                  |  6 ++++
+ recovery.cpp                                |  6 ++--
+ recovery_ui/include/recovery_ui/screen_ui.h | 12 ++++++++
+ recovery_ui/include/recovery_ui/stub_ui.h   |  1 +
+ recovery_ui/include/recovery_ui/ui.h        | 17 +++++++----
+ recovery_ui/screen_ui.cpp                   | 32 +++++++++++++++++++--
+ recovery_ui/ui.cpp                          | 14 +++++++--
+ 7 files changed, 76 insertions(+), 12 deletions(-)
+
+diff --git a/Android.bp b/Android.bp
+index 7d861479..21de8bb3 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -100,6 +100,10 @@ cc_library_static {
+     shared_libs: [
+         "librecovery_ui",
+     ],
++
++    static_libs: [
++        "librkfactory_test",
++    ],
+ }
+ 
+ prebuilt_etc {
+@@ -138,6 +142,8 @@ cc_binary {
+         "libmtdutils",
+         "librkutility",
+         "librkupdate",
++        "librkwifi-ctrl-static",
++        "librkfactory_test",
+     ],
+ 
+     required: [
+diff --git a/recovery.cpp b/recovery.cpp
+index b2f821e9..4be71c67 100644
+--- a/recovery.cpp
++++ b/recovery.cpp
+@@ -64,6 +64,8 @@
+ #include "rkutility/rktools.h"
+ #include "rkutility/sdboot.h"
+ #include "rkupdate/Upgrade.h"
++#include "pcba_core/rkfactory_test.h"
++
+ static constexpr const char* COMMAND_FILE = "/cache/recovery/command";
+ static constexpr const char* LAST_KMSG_FILE = "/cache/recovery/last_kmsg";
+ static constexpr const char* LAST_LOG_FILE = "/cache/recovery/last_log";
+@@ -1068,7 +1070,7 @@ Device::BuiltinAction start_recovery(Device* device, const std::vector<std::stri
+   int retry_count = 0;
+   bool security_update = false;
+   std::string locale;
+-  char *rkloader_update_package = nullptr;
++  RKFactory rkfactory;
+ 
+   auto args_to_parse = StringVectorToNullTerminatedArray(args);
+ 
+@@ -1331,7 +1333,7 @@ Device::BuiltinAction start_recovery(Device* device, const std::vector<std::stri
+       WipeFrp();
+     }
+   }else if (factory_mode != nullptr){
+-    status = (InstallResult)prksdboot->do_rk_factory_mode();
++    status = rkfactory.StartFactorytest(device);
+ 	printf("do_factory_mode status=%d factory_mode=%s \n", status, factory_mode);
+ 	exit_from_factory = 1;
+   }else if (should_prompt_and_wipe_data) {
+diff --git a/recovery_ui/include/recovery_ui/screen_ui.h b/recovery_ui/include/recovery_ui/screen_ui.h
+index 6f24b76f..e4de0403 100644
+--- a/recovery_ui/include/recovery_ui/screen_ui.h
++++ b/recovery_ui/include/recovery_ui/screen_ui.h
+@@ -28,6 +28,15 @@
+ 
+ #include "ui.h"
+ 
++class Point {
++  public:
++    int x_ = 0;
++    int y_ = 0;
++    Point(int x, int y):
++    x_(x),y_(y){};
++    bool Valid();
++};
++
+ // From minui/minui.h.
+ class GRSurface;
+ 
+@@ -227,6 +236,7 @@ class ScreenRecoveryUI : public RecoveryUI, public DrawInterface {
+                   size_t initial_selection, bool menu_only,
+                   const std::function<int(int, bool)>& key_handler) override;
+   void SetTitle(const std::vector<std::string>& lines) override;
++  void SetTitleHighLight(const std::vector<bool>& lines) override;
+ 
+   void KeyLongPress(int) override;
+ 
+@@ -383,6 +393,8 @@ class ScreenRecoveryUI : public RecoveryUI, public DrawInterface {
+   bool show_text_ever;  // has show_text ever been true?
+ 
+   std::vector<std::string> title_lines_;
++  std::vector<bool> highlight_lines_;
++  std::vector<Point> points_;
+ 
+   bool scrollable_menu_;
+   std::unique_ptr<Menu> menu_;
+diff --git a/recovery_ui/include/recovery_ui/stub_ui.h b/recovery_ui/include/recovery_ui/stub_ui.h
+index 63132f1a..3fd65541 100644
+--- a/recovery_ui/include/recovery_ui/stub_ui.h
++++ b/recovery_ui/include/recovery_ui/stub_ui.h
+@@ -81,6 +81,7 @@ class StubRecoveryUI : public RecoveryUI {
+   }
+ 
+   void SetTitle(const std::vector<std::string>& /* lines */) override {}
++  void SetTitleHighLight(const std::vector<bool>& /* lines */) override {}
+ };
+ 
+ #endif  // RECOVERY_STUB_UI_H
+diff --git a/recovery_ui/include/recovery_ui/ui.h b/recovery_ui/include/recovery_ui/ui.h
+index d6310383..ef9e4795 100644
+--- a/recovery_ui/include/recovery_ui/ui.h
++++ b/recovery_ui/include/recovery_ui/ui.h
+@@ -149,6 +149,7 @@ class RecoveryUI {
+   // --- menu display ---
+ 
+   virtual void SetTitle(const std::vector<std::string>& lines) = 0;
++  virtual void SetTitleHighLight(const std::vector<bool>& lines) = 0;
+ 
+   // Displays a menu with the given 'headers' and 'items'. The supplied 'key_handler' callback,
+   // which is typically bound to Device::HandleMenuKey(), should return the expected action for the
+@@ -193,6 +194,9 @@ class RecoveryUI {
+     return key_interrupted_;
+   }
+ 
++  // Set Whether or not the touch event can be get.
++  void SetEnableTouchEvent(bool enable_touch, bool enable_swipe);
++
+  protected:
+   void EnqueueKey(int key_code);
+ 
+@@ -206,6 +210,14 @@ class RecoveryUI {
+ 
+   // Whether we should listen for touch inputs (default: false).
+   bool touch_screen_allowed_;
++  bool swipe_screen_allowed_;
++
++  // Move these data here, allow child class to use.
++  int touch_X_;
++  int touch_Y_;
++  int touch_start_X_;
++  int touch_start_Y_;
++  bool touch_finger_down_;
+ 
+   bool fastbootd_logo_enabled_;
+ 
+@@ -256,11 +268,6 @@ class RecoveryUI {
+ 
+   // Touch event related variables. See the comments in RecoveryUI::OnInputEvent().
+   int touch_slot_;
+-  int touch_X_;
+-  int touch_Y_;
+-  int touch_start_X_;
+-  int touch_start_Y_;
+-  bool touch_finger_down_;
+   bool touch_swiping_;
+   bool is_bootreason_recovery_ui_;
+ 
+diff --git a/recovery_ui/screen_ui.cpp b/recovery_ui/screen_ui.cpp
+index 087fc0e8..0efe4e7d 100644
+--- a/recovery_ui/screen_ui.cpp
++++ b/recovery_ui/screen_ui.cpp
+@@ -54,6 +54,11 @@ static double now() {
+   return tv.tv_sec + tv.tv_usec / 1000000.0;
+ }
+ 
++bool Point::Valid() {
++  return (x_ > 0 && x_ < gr_fb_width() &&
++          y_ > 0 && y_ < gr_fb_height());
++}
++
+ Menu::Menu(size_t initial_selection, const DrawInterface& draw_func)
+     : selection_(initial_selection), draw_funcs_(draw_func) {}
+ 
+@@ -686,6 +691,10 @@ std::vector<std::string> ScreenRecoveryUI::GetMenuHelpMessage() const {
+   return HasThreeButtons() ? REGULAR_HELP : LONG_PRESS_HELP;
+ }
+ 
++void ScreenRecoveryUI::SetTitleHighLight(const std::vector<bool>& lines) {
++  highlight_lines_ = lines;
++}
++
+ // Redraws everything on the screen. Does not flip pages. Should only be called with updateMutex
+ // locked.
+ void ScreenRecoveryUI::draw_screen_locked() {
+@@ -715,12 +724,31 @@ void ScreenRecoveryUI::draw_menu_and_text_buffer_locked(
+     y += height;
+   }
+ 
++  // Draw all of the Point.
++  if (!swipe_screen_allowed_) {
++    Point cur_point(touch_X_, touch_Y_);
++    if (touch_finger_down_ && cur_point.Valid()) {
++      points_.push_back(cur_point);
++    } else {
++      points_.clear();
++    }
++    if (points_.size() > 0) {
++      SetColor(UIElement::HEADER);
++      for (size_t i = 0; i < points_.size(); i++) {
++        DrawFill(points_[i].x_, points_[i].y_, points_[i].x_ + 3, points_[i].y_ + 3);
++      }
++    }
++  }
++
+   if (menu_) {
+     int x = margin_width_ + kMenuIndent;
+ 
+-    SetColor(UIElement::INFO);
+-
+     for (size_t i = 0; i < title_lines_.size(); i++) {
++      if (highlight_lines_[i]) {
++        SetColor(UIElement::HEADER);
++      } else {
++        SetColor(UIElement::INFO);
++      }
+       y += DrawTextLine(x, y, title_lines_[i], i == 0);
+     }
+ 
+diff --git a/recovery_ui/ui.cpp b/recovery_ui/ui.cpp
+index 33072177..04ab1260 100644
+--- a/recovery_ui/ui.cpp
++++ b/recovery_ui/ui.cpp
+@@ -245,7 +245,6 @@ int RecoveryUI::OnInputEvent(int fd, uint32_t epevents) {
+   // ABS_MT_TRACKING_ID being -1.
+   //
+   // Touch input events will only be available if touch_screen_allowed_ is set.
+-
+   if (ev.type == EV_SYN) {
+     if (touch_screen_allowed_ && ev.code == SYN_REPORT) {
+       // There might be multiple SYN_REPORT events. We should only detect a swipe after lifting the
+@@ -254,7 +253,7 @@ int RecoveryUI::OnInputEvent(int fd, uint32_t epevents) {
+         touch_start_X_ = touch_X_;
+         touch_start_Y_ = touch_Y_;
+         touch_swiping_ = true;
+-      } else if (!touch_finger_down_ && touch_swiping_) {
++      } else if (!touch_finger_down_ && touch_swiping_ && swipe_screen_allowed_) {
+         touch_swiping_ = false;
+         OnTouchDetected(touch_X_ - touch_start_X_, touch_Y_ - touch_start_Y_);
+       }
+@@ -286,6 +285,8 @@ int RecoveryUI::OnInputEvent(int fd, uint32_t epevents) {
+   if (touch_screen_allowed_ && ev.type == EV_ABS) {
+     if (ev.code == ABS_MT_SLOT) {
+       touch_slot_ = ev.value;
++    } else {
++      touch_slot_ = 0;
+     }
+     // Ignore other fingers.
+     if (touch_slot_ > 0) return 0;
+@@ -327,7 +328,6 @@ int RecoveryUI::OnInputEvent(int fd, uint32_t epevents) {
+ 
+     ProcessKey(ev.code, ev.value);
+   }
+-
+   return 0;
+ }
+ 
+@@ -406,6 +406,14 @@ void RecoveryUI::EnqueueKey(int key_code) {
+   }
+ }
+ 
++void RecoveryUI::SetEnableTouchEvent(bool enable_touch, bool enable_swipe) {
++  touch_screen_allowed_ = enable_touch;
++  swipe_screen_allowed_ = enable_swipe;
++  has_touch_screen = enable_touch;
++  ev_init(std::bind(&RecoveryUI::OnInputEvent, this, std::placeholders::_1, std::placeholders::_2),
++          touch_screen_allowed_);
++}
++
+ void RecoveryUI::SetScreensaverState(ScreensaverState state) {
+   switch (state) {
+     case ScreensaverState::NORMAL:
+-- 
+2.35.1
+

@@ -1,0 +1,35 @@
+From 7b97f98197544cb2aa74a758cea980c2bbe6a72a Mon Sep 17 00:00:00 2001
+From: Alex Zhao <zzc@rock-chips.com>
+Date: Fri, 20 Nov 2020 20:11:55 +0800
+Subject: [PATCH 07/24] Load wifi driver when Wifi hal is boot up
+
+Signed-off-by: Alex Zhao <zzc@rock-chips.com>
+Change-Id: I3fbd558fe31c23fd09bf28f079cdeda4a4eaa0e6
+---
+ wifi/1.4/default/service.cpp | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/wifi/1.4/default/service.cpp b/wifi/1.4/default/service.cpp
+index 3f7f6094f..64476f812 100644
+--- a/wifi/1.4/default/service.cpp
++++ b/wifi/1.4/default/service.cpp
+@@ -25,6 +25,8 @@
+ #include "wifi_legacy_hal.h"
+ #include "wifi_mode_controller.h"
+ 
++extern "C" int wifi_load_driver();
++
+ using android::hardware::configureRpcThreadpool;
+ using android::hardware::joinRpcThreadpool;
+ using android::hardware::LazyServiceRegistrar;
+@@ -46,6 +48,7 @@ int main(int /*argc*/, char** argv) {
+         argv, android::base::LogdLogger(android::base::SYSTEM));
+     LOG(INFO) << "Wifi Hal is booting up...";
+ 
++    wifi_load_driver();
+     configureRpcThreadpool(1, true /* callerWillJoin */);
+ 
+     const auto iface_tool =
+-- 
+2.35.1
+

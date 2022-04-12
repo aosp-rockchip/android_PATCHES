@@ -1,0 +1,57 @@
+From 88ae1392d8266c04bed9ff1e7dce7b7f894e1655 Mon Sep 17 00:00:00 2001
+From: "alex.lin" <alex.lin@rock-chips.com>
+Date: Wed, 16 Dec 2020 15:14:53 +0800
+Subject: [PATCH 269/297] SystemUI: fix anr when clicking screenshot button
+ frequently
+
+Signed-off-by: alex.lin <alex.lin@rock-chips.com>
+Change-Id: I136f24cfc3124873e33800ba87ad2c6134cbb3d0
+---
+ .../systemui/statusbar/phone/NavigationBarFragment.java   | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
+index 1c6d23a1d9b..f3bfc7901da 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
+@@ -70,6 +70,7 @@ import android.os.Handler;
+ import android.os.IBinder;
+ import android.os.Looper;
+ import android.os.RemoteException;
++import android.os.SystemClock;
+ import android.os.SystemProperties;
+ import android.os.UserHandle;
+ import android.provider.DeviceConfig;
+@@ -159,6 +160,7 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+     /** Allow some time inbetween the long press for back and recents. */
+     private static final int LOCK_TO_APP_GESTURE_TOLERENCE = 200;
+     private static final long AUTODIM_TIMEOUT_MS = 2250;
++    private static final long SCREENSHOT_TIME_INTERVAL = 600;
+ 
+     private final AccessibilityManagerWrapper mAccessibilityManagerWrapper;
+     protected final AssistManager mAssistManager;
+@@ -231,6 +233,7 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+     private UiEventLogger mUiEventLogger;
+     private boolean mShowOrientedHandleForImmersiveMode;
+     private static EinkManager mEinkManager;
++    private long mLastClickScreenshotTime = 0;
+ 
+     @com.android.internal.annotations.VisibleForTesting
+     public enum NavBarActionEvent implements UiEventLogger.UiEventEnum {
+@@ -1267,8 +1270,13 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+     }
+ 
+     private void screenshotClick(View v) {
++        long nowTime = SystemClock.elapsedRealtime();
++        if (nowTime - mLastClickScreenshotTime < SCREENSHOT_TIME_INTERVAL) {
++            return;
++        }
+         Intent intent=new Intent("android.intent.action.SCREENSHOT");
+         getContext().sendBroadcast(intent);
++        mLastClickScreenshotTime = nowTime;
+     }
+ 
+     private void onAccessibilityClick(View v) {
+-- 
+2.35.1
+

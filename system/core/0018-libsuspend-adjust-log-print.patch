@@ -1,0 +1,33 @@
+From c3b88fbd5739e2eaf183a962f2cbd0afe3d8ca17 Mon Sep 17 00:00:00 2001
+From: Zorro Liu <lyx@rock-chips.com>
+Date: Mon, 11 Jan 2021 20:55:07 +0800
+Subject: [PATCH 18/21] libsuspend: adjust log print
+
+Signed-off-by: Zorro Liu <lyx@rock-chips.com>
+Change-Id: I6e64a57ba080eaa862b304a4e8aa066a8c67c461
+---
+ libsuspend/autosuspend_wakeup_count.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/libsuspend/autosuspend_wakeup_count.cpp b/libsuspend/autosuspend_wakeup_count.cpp
+index eb819ea51..24ad5c405 100644
+--- a/libsuspend/autosuspend_wakeup_count.cpp
++++ b/libsuspend/autosuspend_wakeup_count.cpp
+@@ -364,12 +364,12 @@ static int autosuspend_wakeup_count_idle(int screen_on)
+     if (screen_on) {
+         ret = WriteStringToFd(idle_state, state_fd);
+         if (ret)
+-            LOG(ERROR) << "Error writing" << idle_state << "to" << sys_power_state << ":" << strerror(ret);
++            LOG(ERROR) << "Error writing " << idle_state << " to " << sys_power_state << ":" << strerror(ret);
+     }
+     //else {
+      //   ret = WriteStringToFd(sleep_state, state_fd);
+      //   if (ret)
+-     //       LOG(ERROR) << "Error writing" << sleep_state << "to" << sys_power_state << ":" << strerror(ret);
++     //       LOG(ERROR) << "Error writing " << sleep_state << " to " << sys_power_state << ":" << strerror(ret);
+     //}
+     return ret;
+ }
+-- 
+2.35.1
+

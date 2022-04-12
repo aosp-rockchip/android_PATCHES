@@ -1,0 +1,1006 @@
+From 02bffd0cb3b245c33eff5a1db54a12e1d26e0915 Mon Sep 17 00:00:00 2001
+From: Kostya Kortchinsky <kostyak@google.com>
+Date: Mon, 27 Jul 2020 09:13:42 -0700
+Subject: [PATCH 2/2] mallopt runtime configuration options
+
+Summary:
+Partners have requested the ability to configure more parts of Scudo
+at runtime, notably the Secondary cache options (maximum number of
+blocks cached, maximum size) as well as the TSD registry options
+(the maximum number of TSDs in use).
+
+This CL adds a few more Scudo specific `mallopt` parameters that are
+passed down to the various subcomponents of the Combined allocator.
+
+- `M_CACHE_COUNT_MAX`: sets the maximum number of Secondary cached items
+- `M_CACHE_SIZE_MAX`: sets the maximum size of a cacheable item in the Secondary
+- `M_TSDS_COUNT_MAX`: sets the maximum number of TSDs that can be used (Shared Registry only)
+
+Regarding the TSDs maximum count, this is a one way option, only
+allowing to increase the count.
+
+In order to allow for this, I rearranged the code to have some `setOption`
+member function to the relevant classes, using the `scudo::Option` class
+enum to determine what is to be set.
+
+This also fixes an issue where a static variable (`Ready`) was used in
+templated functions without being set back to `false` every time.
+
+Reviewers: pcc, eugenis, hctim, cferris
+
+Subscribers: jfb, llvm-commits, #sanitizers
+
+Tags: #sanitizers
+
+Differential Revision: https://reviews.llvm.org/D84667
+
+GitOrigin-RevId: 6f00f3b56e5a13286142facd929be15ab7b17aa3
+
+Bug: 162092537
+
+Test: Booted flame and ran bionic and scudo unit tests.
+Change-Id: I2b69262441f0e65cc824a3c123bc03dd7963d6b2
+Merged-In: I2b69262441f0e65cc824a3c123bc03dd7963d6b2
+(cherry picked from commit c72ca5643e7025c3de5b0292473b8d9e0515efa2)
+---
+ standalone/allocator_config.h          |  11 +--
+ standalone/combined.h                  |  26 +++---
+ standalone/common.h                    |   8 ++
+ standalone/primary32.h                 |  24 +++---
+ standalone/primary64.h                 |  24 +++---
+ standalone/secondary.h                 |  89 +++++++++++++--------
+ standalone/tests/combined_test.cpp     |   5 +-
+ standalone/tests/primary_test.cpp      |   3 +-
+ standalone/tests/secondary_test.cpp    |  40 ++++++++--
+ standalone/tests/tsd_test.cpp          |  78 +++++++++++++++++-
+ standalone/tests/wrappers_c_test.cpp   |   1 +
+ standalone/tests/wrappers_cpp_test.cpp |   3 +-
+ standalone/tsd_exclusive.h             |   6 ++
+ standalone/tsd_shared.h                | 105 ++++++++++++++++---------
+ 14 files changed, 297 insertions(+), 126 deletions(-)
+
+diff --git a/standalone/allocator_config.h b/standalone/allocator_config.h
+index ad2a17e..cf362da 100644
+--- a/standalone/allocator_config.h
++++ b/standalone/allocator_config.h
+@@ -48,9 +48,10 @@ struct AndroidConfig {
+   typedef SizeClassAllocator32<SizeClassMap, 18U, 1000, 1000> Primary;
+ #endif
+   // Cache blocks up to 2MB
+-  typedef MapAllocator<MapAllocatorCache<32U, 2UL << 20, 0, 1000>> Secondary;
++  typedef MapAllocator<MapAllocatorCache<256U, 32U, 2UL << 20, 0, 1000>>
++      Secondary;
+   template <class A>
+-  using TSDRegistryT = TSDRegistrySharedT<A, 2U>; // Shared, max 2 TSDs.
++  using TSDRegistryT = TSDRegistrySharedT<A, 8U, 2U>; // Shared, max 8 TSDs.
+ };
+ 
+ struct AndroidSvelteConfig {
+@@ -62,9 +63,9 @@ struct AndroidSvelteConfig {
+   // 64KB regions
+   typedef SizeClassAllocator32<SizeClassMap, 16U, 1000, 1000> Primary;
+ #endif
+-  typedef MapAllocator<MapAllocatorCache<4U, 1UL << 18, 0, 0>> Secondary;
++  typedef MapAllocator<MapAllocatorCache<16U, 4U, 1UL << 18, 0, 0>> Secondary;
+   template <class A>
+-  using TSDRegistryT = TSDRegistrySharedT<A, 1U>; // Shared, only 1 TSD.
++  using TSDRegistryT = TSDRegistrySharedT<A, 2U, 1U>; // Shared, max 2 TSDs.
+ };
+ 
+ #if SCUDO_CAN_USE_PRIMARY64
+@@ -73,7 +74,7 @@ struct FuchsiaConfig {
+   typedef SizeClassAllocator64<DefaultSizeClassMap, 30U> Primary;
+   typedef MapAllocator<MapAllocatorNoCache> Secondary;
+   template <class A>
+-  using TSDRegistryT = TSDRegistrySharedT<A, 8U>; // Shared, max 8 TSDs.
++  using TSDRegistryT = TSDRegistrySharedT<A, 8U, 4U>; // Shared, max 8 TSDs.
+ };
+ #endif
+ 
+diff --git a/standalone/combined.h b/standalone/combined.h
+index 3ed34c2..395e8f3 100644
+--- a/standalone/combined.h
++++ b/standalone/combined.h
+@@ -32,8 +32,6 @@ extern "C" inline void EmptyCallback() {}
+ 
+ namespace scudo {
+ 
+-enum class Option { ReleaseInterval };
+-
+ template <class Params, void (*PostInitCallback)(void) = EmptyCallback>
+ class Allocator {
+ public:
+@@ -239,7 +237,7 @@ public:
+         return nullptr;
+       reportAlignmentTooBig(Alignment, MaxAlignment);
+     }
+-    if (Alignment < MinAlignment)
++    if (UNLIKELY(Alignment < MinAlignment))
+       Alignment = MinAlignment;
+ 
+     // If the requested size happens to be 0 (more common than you might think),
+@@ -276,13 +274,11 @@ public:
+       if (UNLIKELY(!Block)) {
+         while (ClassId < SizeClassMap::LargestClassId) {
+           Block = TSD->Cache.allocate(++ClassId);
+-          if (LIKELY(Block)) {
++          if (LIKELY(Block))
+             break;
+-          }
+         }
+-        if (UNLIKELY(!Block)) {
++        if (UNLIKELY(!Block))
+           ClassId = 0;
+-        }
+       }
+       if (UnlockRequired)
+         TSD->unlock();
+@@ -303,7 +299,7 @@ public:
+ 
+     void *Ptr = reinterpret_cast<void *>(UserPtr);
+     void *TaggedPtr = Ptr;
+-    if (ClassId) {
++    if (LIKELY(ClassId)) {
+       // We only need to zero or tag the contents for Primary backed
+       // allocations. We only set tags for primary allocations in order to avoid
+       // faulting potentially large numbers of pages for large secondary
+@@ -634,12 +630,14 @@ public:
+   }
+ 
+   bool setOption(Option O, sptr Value) {
+-    if (O == Option::ReleaseInterval) {
+-      Primary.setReleaseToOsIntervalMs(static_cast<s32>(Value));
+-      Secondary.setReleaseToOsIntervalMs(static_cast<s32>(Value));
+-      return true;
+-    }
+-    return false;
++    initThreadMaybe();
++    // We leave it to the various sub-components to decide whether or not they
++    // want to handle the option, but we do not want to short-circuit
++    // execution if one of the setOption was to return false.
++    const bool PrimaryResult = Primary.setOption(O, Value);
++    const bool SecondaryResult = Secondary.setOption(O, Value);
++    const bool RegistryResult = TSDRegistry.setOption(O, Value);
++    return PrimaryResult && SecondaryResult && RegistryResult;
+   }
+ 
+   // Return the usable size for a given chunk. Technically we lie, as we just
+diff --git a/standalone/common.h b/standalone/common.h
+index e026e34..7da4800 100644
+--- a/standalone/common.h
++++ b/standalone/common.h
+@@ -173,6 +173,14 @@ void NORETURN dieOnMapUnmapError(bool OutOfMemory = false);
+ 
+ void setAbortMessage(const char *Message);
+ 
++enum class Option : u8 {
++  ReleaseInterval,      // Release to OS interval in milliseconds.
++  MemtagTuning,         // Whether to tune tagging for UAF or overflow.
++  MaxCacheEntriesCount, // Maximum number of blocks that can be cached.
++  MaxCacheEntrySize,    // Maximum size of a block that can be cached.
++  MaxTSDsCount,         // Number of usable TSDs for the shared registry.
++};
++
+ } // namespace scudo
+ 
+ #endif // SCUDO_COMMON_H_
+diff --git a/standalone/primary32.h b/standalone/primary32.h
+index 7d061e2..61752e1 100644
+--- a/standalone/primary32.h
++++ b/standalone/primary32.h
+@@ -86,7 +86,7 @@ public:
+       if (Sci->CanRelease)
+         Sci->ReleaseInfo.LastReleaseAtNs = Time;
+     }
+-    setReleaseToOsIntervalMs(ReleaseToOsInterval);
++    setOption(Option::ReleaseInterval, static_cast<sptr>(ReleaseToOsInterval));
+   }
+   void init(s32 ReleaseToOsInterval) {
+     memset(this, 0, sizeof(*this));
+@@ -184,13 +184,16 @@ public:
+       getStats(Str, I, 0);
+   }
+ 
+-  void setReleaseToOsIntervalMs(s32 Interval) {
+-    if (Interval >= MaxReleaseToOsIntervalMs) {
+-      Interval = MaxReleaseToOsIntervalMs;
+-    } else if (Interval <= MinReleaseToOsIntervalMs) {
+-      Interval = MinReleaseToOsIntervalMs;
++  bool setOption(Option O, sptr Value) {
++    if (O == Option::ReleaseInterval) {
++      const s32 Interval =
++          Max(Min(static_cast<s32>(Value), MaxReleaseToOsIntervalMs),
++              MinReleaseToOsIntervalMs);
++      atomic_store(&ReleaseToOsIntervalMs, Interval, memory_order_relaxed);
++      return true;
+     }
+-    atomic_store(&ReleaseToOsIntervalMs, Interval, memory_order_relaxed);
++    // Not supported by the Primary, but not an error either.
++    return true;
+   }
+ 
+   uptr releaseToOS() {
+@@ -414,10 +417,6 @@ private:
+                 AvailableChunks, Rss >> 10, Sci->ReleaseInfo.RangesReleased);
+   }
+ 
+-  s32 getReleaseToOsIntervalMs() {
+-    return atomic_load(&ReleaseToOsIntervalMs, memory_order_relaxed);
+-  }
+-
+   NOINLINE uptr releaseToOSMaybe(SizeClassInfo *Sci, uptr ClassId,
+                                  bool Force = false) {
+     const uptr BlockSize = getSizeByClassId(ClassId);
+@@ -448,7 +447,8 @@ private:
+     }
+ 
+     if (!Force) {
+-      const s32 IntervalMs = getReleaseToOsIntervalMs();
++      const s32 IntervalMs =
++          atomic_load(&ReleaseToOsIntervalMs, memory_order_relaxed);
+       if (IntervalMs < 0)
+         return 0;
+       if (Sci->ReleaseInfo.LastReleaseAtNs +
+diff --git a/standalone/primary64.h b/standalone/primary64.h
+index 7bdb7ae..2e28ed6 100644
+--- a/standalone/primary64.h
++++ b/standalone/primary64.h
+@@ -91,7 +91,7 @@ public:
+       if (Region->CanRelease)
+         Region->ReleaseInfo.LastReleaseAtNs = Time;
+     }
+-    setReleaseToOsIntervalMs(ReleaseToOsInterval);
++    setOption(Option::ReleaseInterval, static_cast<sptr>(ReleaseToOsInterval));
+ 
+     if (SupportsMemoryTagging)
+       UseMemoryTagging = systemSupportsMemoryTagging();
+@@ -185,13 +185,16 @@ public:
+       getStats(Str, I, 0);
+   }
+ 
+-  void setReleaseToOsIntervalMs(s32 Interval) {
+-    if (Interval >= MaxReleaseToOsIntervalMs) {
+-      Interval = MaxReleaseToOsIntervalMs;
+-    } else if (Interval <= MinReleaseToOsIntervalMs) {
+-      Interval = MinReleaseToOsIntervalMs;
++  bool setOption(Option O, sptr Value) {
++    if (O == Option::ReleaseInterval) {
++      const s32 Interval =
++          Max(Min(static_cast<s32>(Value), MaxReleaseToOsIntervalMs),
++              MinReleaseToOsIntervalMs);
++      atomic_store(&ReleaseToOsIntervalMs, Interval, memory_order_relaxed);
++      return true;
+     }
+-    atomic_store(&ReleaseToOsIntervalMs, Interval, memory_order_relaxed);
++    // Not supported by the Primary, but not an error either.
++    return true;
+   }
+ 
+   uptr releaseToOS() {
+@@ -381,10 +384,6 @@ private:
+                 getRegionBaseByClassId(ClassId));
+   }
+ 
+-  s32 getReleaseToOsIntervalMs() {
+-    return atomic_load(&ReleaseToOsIntervalMs, memory_order_relaxed);
+-  }
+-
+   NOINLINE uptr releaseToOSMaybe(RegionInfo *Region, uptr ClassId,
+                                  bool Force = false) {
+     const uptr BlockSize = getSizeByClassId(ClassId);
+@@ -415,7 +414,8 @@ private:
+     }
+ 
+     if (!Force) {
+-      const s32 IntervalMs = getReleaseToOsIntervalMs();
++      const s32 IntervalMs =
++          atomic_load(&ReleaseToOsIntervalMs, memory_order_relaxed);
+       if (IntervalMs < 0)
+         return 0;
+       if (Region->ReleaseInfo.LastReleaseAtNs +
+diff --git a/standalone/secondary.h b/standalone/secondary.h
+index 9d5f130..01a9a01 100644
+--- a/standalone/secondary.h
++++ b/standalone/secondary.h
+@@ -56,14 +56,21 @@ public:
+     return false;
+   }
+   bool store(UNUSED LargeBlock::Header *H) { return false; }
+-  static bool canCache(UNUSED uptr Size) { return false; }
++  bool canCache(UNUSED uptr Size) { return false; }
+   void disable() {}
+   void enable() {}
+   void releaseToOS() {}
+-  void setReleaseToOsIntervalMs(UNUSED s32 Interval) {}
++  bool setOption(Option O, UNUSED sptr Value) {
++    if (O == Option::ReleaseInterval || O == Option::MaxCacheEntriesCount ||
++        O == Option::MaxCacheEntrySize)
++      return false;
++    // Not supported by the Secondary Cache, but not an error either.
++    return true;
++  }
+ };
+ 
+-template <uptr MaxEntriesCount = 32U, uptr MaxEntrySize = 1UL << 19,
++template <u32 EntriesArraySize = 32U, u32 DefaultMaxEntriesCount = 32U,
++          uptr DefaultMaxEntrySize = 1UL << 19,
+           s32 MinReleaseToOsIntervalMs = INT32_MIN,
+           s32 MaxReleaseToOsIntervalMs = INT32_MAX>
+ class MapAllocatorCache {
+@@ -71,10 +78,17 @@ public:
+   // Fuchsia doesn't allow releasing Secondary blocks yet. Note that 0 length
+   // arrays are an extension for some compilers.
+   // FIXME(kostyak): support (partially) the cache on Fuchsia.
+-  static_assert(!SCUDO_FUCHSIA || MaxEntriesCount == 0U, "");
++  static_assert(!SCUDO_FUCHSIA || EntriesArraySize == 0U, "");
++
++  // Ensure the default maximum specified fits the array.
++  static_assert(DefaultMaxEntriesCount <= EntriesArraySize, "");
+ 
+   void initLinkerInitialized(s32 ReleaseToOsInterval) {
+-    setReleaseToOsIntervalMs(ReleaseToOsInterval);
++    setOption(Option::MaxCacheEntriesCount,
++              static_cast<sptr>(DefaultMaxEntriesCount));
++    setOption(Option::MaxCacheEntrySize,
++              static_cast<sptr>(DefaultMaxEntrySize));
++    setOption(Option::ReleaseInterval, static_cast<sptr>(ReleaseToOsInterval));
+   }
+   void init(s32 ReleaseToOsInterval) {
+     memset(this, 0, sizeof(*this));
+@@ -85,13 +99,14 @@ public:
+     bool EntryCached = false;
+     bool EmptyCache = false;
+     const u64 Time = getMonotonicTime();
++    const u32 MaxCount = atomic_load(&MaxEntriesCount, memory_order_relaxed);
+     {
+       ScopedLock L(Mutex);
+-      if (EntriesCount == MaxEntriesCount) {
++      if (EntriesCount >= MaxCount) {
+         if (IsFullEvents++ == 4U)
+           EmptyCache = true;
+       } else {
+-        for (uptr I = 0; I < MaxEntriesCount; I++) {
++        for (u32 I = 0; I < MaxCount; I++) {
+           if (Entries[I].Block)
+             continue;
+           if (I != 0)
+@@ -111,17 +126,19 @@ public:
+     s32 Interval;
+     if (EmptyCache)
+       empty();
+-    else if ((Interval = getReleaseToOsIntervalMs()) >= 0)
++    else if ((Interval = atomic_load(&ReleaseToOsIntervalMs,
++                                     memory_order_relaxed)) >= 0)
+       releaseOlderThan(Time - static_cast<u64>(Interval) * 1000000);
+     return EntryCached;
+   }
+ 
+   bool retrieve(uptr Size, LargeBlock::Header **H) {
+     const uptr PageSize = getPageSizeCached();
++    const u32 MaxCount = atomic_load(&MaxEntriesCount, memory_order_relaxed);
+     ScopedLock L(Mutex);
+     if (EntriesCount == 0)
+       return false;
+-    for (uptr I = 0; I < MaxEntriesCount; I++) {
++    for (u32 I = 0; I < MaxCount; I++) {
+       if (!Entries[I].Block)
+         continue;
+       const uptr BlockSize = Entries[I].BlockEnd - Entries[I].Block;
+@@ -141,17 +158,31 @@ public:
+     return false;
+   }
+ 
+-  static bool canCache(uptr Size) {
+-    return MaxEntriesCount != 0U && Size <= MaxEntrySize;
++  bool canCache(uptr Size) {
++    return atomic_load(&MaxEntriesCount, memory_order_relaxed) != 0U &&
++           Size <= atomic_load(&MaxEntrySize, memory_order_relaxed);
+   }
+ 
+-  void setReleaseToOsIntervalMs(s32 Interval) {
+-    if (Interval >= MaxReleaseToOsIntervalMs) {
+-      Interval = MaxReleaseToOsIntervalMs;
+-    } else if (Interval <= MinReleaseToOsIntervalMs) {
+-      Interval = MinReleaseToOsIntervalMs;
++  bool setOption(Option O, sptr Value) {
++    if (O == Option::ReleaseInterval) {
++      const s32 Interval =
++          Max(Min(static_cast<s32>(Value), MaxReleaseToOsIntervalMs),
++              MinReleaseToOsIntervalMs);
++      atomic_store(&ReleaseToOsIntervalMs, Interval, memory_order_relaxed);
++      return true;
++    } else if (O == Option::MaxCacheEntriesCount) {
++      const u32 MaxCount = static_cast<u32>(Value);
++      if (MaxCount > EntriesArraySize)
++        return false;
++      atomic_store(&MaxEntriesCount, MaxCount, memory_order_relaxed);
++      return true;
++    } else if (O == Option::MaxCacheEntrySize) {
++      atomic_store(&MaxEntrySize, static_cast<uptr>(Value),
++                   memory_order_relaxed);
++      return true;
+     }
+-    atomic_store(&ReleaseToOsIntervalMs, Interval, memory_order_relaxed);
++    // Not supported by the Secondary Cache, but not an error either.
++    return true;
+   }
+ 
+   void releaseToOS() { releaseOlderThan(UINT64_MAX); }
+@@ -166,11 +197,11 @@ private:
+       void *MapBase;
+       uptr MapSize;
+       MapPlatformData Data;
+-    } MapInfo[MaxEntriesCount];
++    } MapInfo[EntriesArraySize];
+     uptr N = 0;
+     {
+       ScopedLock L(Mutex);
+-      for (uptr I = 0; I < MaxEntriesCount; I++) {
++      for (uptr I = 0; I < EntriesArraySize; I++) {
+         if (!Entries[I].Block)
+           continue;
+         MapInfo[N].MapBase = reinterpret_cast<void *>(Entries[I].MapBase);
+@@ -191,7 +222,7 @@ private:
+     ScopedLock L(Mutex);
+     if (!EntriesCount)
+       return;
+-    for (uptr I = 0; I < MaxEntriesCount; I++) {
++    for (uptr I = 0; I < EntriesArraySize; I++) {
+       if (!Entries[I].Block || !Entries[I].Time || Entries[I].Time > Time)
+         continue;
+       releasePagesToOS(Entries[I].Block, 0,
+@@ -201,10 +232,6 @@ private:
+     }
+   }
+ 
+-  s32 getReleaseToOsIntervalMs() {
+-    return atomic_load(&ReleaseToOsIntervalMs, memory_order_relaxed);
+-  }
+-
+   struct CachedBlock {
+     uptr Block;
+     uptr BlockEnd;
+@@ -215,8 +242,10 @@ private:
+   };
+ 
+   HybridMutex Mutex;
+-  CachedBlock Entries[MaxEntriesCount];
++  CachedBlock Entries[EntriesArraySize];
+   u32 EntriesCount;
++  atomic_u32 MaxEntriesCount;
++  atomic_uptr MaxEntrySize;
+   uptr LargestSize;
+   u32 IsFullEvents;
+   atomic_s32 ReleaseToOsIntervalMs;
+@@ -265,11 +294,9 @@ public:
+       Callback(reinterpret_cast<uptr>(&H) + LargeBlock::getHeaderSize());
+   }
+ 
+-  static uptr canCache(uptr Size) { return CacheT::canCache(Size); }
++  uptr canCache(uptr Size) { return Cache.canCache(Size); }
+ 
+-  void setReleaseToOsIntervalMs(s32 Interval) {
+-    Cache.setReleaseToOsIntervalMs(Interval);
+-  }
++  bool setOption(Option O, sptr Value) { return Cache.setOption(O, Value); }
+ 
+   void releaseToOS() { Cache.releaseToOS(); }
+ 
+@@ -305,7 +332,7 @@ void *MapAllocator<CacheT>::allocate(uptr Size, uptr AlignmentHint,
+   const uptr RoundedSize =
+       roundUpTo(Size + LargeBlock::getHeaderSize(), PageSize);
+ 
+-  if (AlignmentHint < PageSize && CacheT::canCache(RoundedSize)) {
++  if (AlignmentHint < PageSize && Cache.canCache(RoundedSize)) {
+     LargeBlock::Header *H;
+     if (Cache.retrieve(RoundedSize, &H)) {
+       if (BlockEnd)
+@@ -398,7 +425,7 @@ template <class CacheT> void MapAllocator<CacheT>::deallocate(void *Ptr) {
+     Stats.sub(StatAllocated, CommitSize);
+     Stats.sub(StatMapped, H->MapSize);
+   }
+-  if (CacheT::canCache(CommitSize) && Cache.store(H))
++  if (Cache.canCache(CommitSize) && Cache.store(H))
+     return;
+   void *Addr = reinterpret_cast<void *>(H->MapBase);
+   const uptr Size = H->MapSize;
+diff --git a/standalone/tests/combined_test.cpp b/standalone/tests/combined_test.cpp
+index a2c0618..9bdbea9 100644
+--- a/standalone/tests/combined_test.cpp
++++ b/standalone/tests/combined_test.cpp
+@@ -18,7 +18,7 @@
+ 
+ static std::mutex Mutex;
+ static std::condition_variable Cv;
+-static bool Ready = false;
++static bool Ready;
+ 
+ static constexpr scudo::Chunk::Origin Origin = scudo::Chunk::Origin::Malloc;
+ 
+@@ -311,6 +311,7 @@ template <typename AllocatorT> static void stressAllocator(AllocatorT *A) {
+ }
+ 
+ template <class Config> static void testAllocatorThreaded() {
++  Ready = false;
+   using AllocatorT = scudo::Allocator<Config>;
+   auto Deleter = [](AllocatorT *A) {
+     A->unmapTestOnly();
+@@ -360,7 +361,7 @@ struct DeathConfig {
+   typedef scudo::SizeClassAllocator64<DeathSizeClassMap, DeathRegionSizeLog>
+       Primary;
+   typedef scudo::MapAllocator<scudo::MapAllocatorNoCache> Secondary;
+-  template <class A> using TSDRegistryT = scudo::TSDRegistrySharedT<A, 1U>;
++  template <class A> using TSDRegistryT = scudo::TSDRegistrySharedT<A, 1U, 1U>;
+ };
+ 
+ TEST(ScudoCombinedTest, DeathCombined) {
+diff --git a/standalone/tests/primary_test.cpp b/standalone/tests/primary_test.cpp
+index 010bf84..a7a2b31 100644
+--- a/standalone/tests/primary_test.cpp
++++ b/standalone/tests/primary_test.cpp
+@@ -149,7 +149,7 @@ TEST(ScudoPrimaryTest, PrimaryIterate) {
+ 
+ static std::mutex Mutex;
+ static std::condition_variable Cv;
+-static bool Ready = false;
++static bool Ready;
+ 
+ template <typename Primary> static void performAllocations(Primary *Allocator) {
+   static THREADLOCAL typename Primary::CacheT Cache;
+@@ -176,6 +176,7 @@ template <typename Primary> static void performAllocations(Primary *Allocator) {
+ }
+ 
+ template <typename Primary> static void testPrimaryThreaded() {
++  Ready = false;
+   auto Deleter = [](Primary *P) {
+     P->unmapTestOnly();
+     delete P;
+diff --git a/standalone/tests/secondary_test.cpp b/standalone/tests/secondary_test.cpp
+index d2260b9..29efdb3 100644
+--- a/standalone/tests/secondary_test.cpp
++++ b/standalone/tests/secondary_test.cpp
+@@ -21,7 +21,7 @@
+ template <class SecondaryT> static void testSecondaryBasic(void) {
+   scudo::GlobalStats S;
+   S.init();
+-  SecondaryT *L = new SecondaryT;
++  std::unique_ptr<SecondaryT> L(new SecondaryT);
+   L->init(&S);
+   const scudo::uptr Size = 1U << 16;
+   void *P = L->allocate(Size);
+@@ -30,7 +30,7 @@ template <class SecondaryT> static void testSecondaryBasic(void) {
+   EXPECT_GE(SecondaryT::getBlockSize(P), Size);
+   L->deallocate(P);
+   // If the Secondary can't cache that pointer, it will be unmapped.
+-  if (!SecondaryT::canCache(Size))
++  if (!L->canCache(Size))
+     EXPECT_DEATH(memset(P, 'A', Size), "");
+ 
+   const scudo::uptr Align = 1U << 16;
+@@ -59,7 +59,7 @@ TEST(ScudoSecondaryTest, SecondaryBasic) {
+ #if !SCUDO_FUCHSIA
+   testSecondaryBasic<scudo::MapAllocator<scudo::MapAllocatorCache<>>>();
+   testSecondaryBasic<
+-      scudo::MapAllocator<scudo::MapAllocatorCache<64U, 1UL << 20>>>();
++      scudo::MapAllocator<scudo::MapAllocatorCache<128U, 64U, 1UL << 20>>>();
+ #endif
+ }
+ 
+@@ -75,7 +75,7 @@ using LargeAllocator = scudo::MapAllocator<scudo::MapAllocatorCache<>>;
+ TEST(ScudoSecondaryTest, SecondaryCombinations) {
+   constexpr scudo::uptr MinAlign = FIRST_32_SECOND_64(8, 16);
+   constexpr scudo::uptr HeaderSize = scudo::roundUpTo(8, MinAlign);
+-  LargeAllocator *L = new LargeAllocator;
++  std::unique_ptr<LargeAllocator> L(new LargeAllocator);
+   L->init(nullptr);
+   for (scudo::uptr SizeLog = 0; SizeLog <= 20; SizeLog++) {
+     for (scudo::uptr AlignLog = FIRST_32_SECOND_64(3, 4); AlignLog <= 16;
+@@ -103,7 +103,7 @@ TEST(ScudoSecondaryTest, SecondaryCombinations) {
+ }
+ 
+ TEST(ScudoSecondaryTest, SecondaryIterate) {
+-  LargeAllocator *L = new LargeAllocator;
++  std::unique_ptr<LargeAllocator> L(new LargeAllocator);
+   L->init(nullptr);
+   std::vector<void *> V;
+   const scudo::uptr PageSize = scudo::getPageSizeCached();
+@@ -125,9 +125,32 @@ TEST(ScudoSecondaryTest, SecondaryIterate) {
+   Str.output();
+ }
+ 
++TEST(ScudoSecondaryTest, SecondaryOptions) {
++  std::unique_ptr<LargeAllocator> L(new LargeAllocator);
++  L->init(nullptr);
++  // Attempt to set a maximum number of entries higher than the array size.
++  EXPECT_FALSE(L->setOption(scudo::Option::MaxCacheEntriesCount, 4096U));
++  // A negative number will be cast to a scudo::u32, and fail.
++  EXPECT_FALSE(L->setOption(scudo::Option::MaxCacheEntriesCount, -1));
++  if (L->canCache(0U)) {
++    // Various valid combinations.
++    EXPECT_TRUE(L->setOption(scudo::Option::MaxCacheEntriesCount, 4U));
++    EXPECT_TRUE(L->setOption(scudo::Option::MaxCacheEntrySize, 1UL << 20));
++    EXPECT_TRUE(L->canCache(1UL << 18));
++    EXPECT_TRUE(L->setOption(scudo::Option::MaxCacheEntrySize, 1UL << 17));
++    EXPECT_FALSE(L->canCache(1UL << 18));
++    EXPECT_TRUE(L->canCache(1UL << 16));
++    EXPECT_TRUE(L->setOption(scudo::Option::MaxCacheEntriesCount, 0U));
++    EXPECT_FALSE(L->canCache(1UL << 16));
++    EXPECT_TRUE(L->setOption(scudo::Option::MaxCacheEntriesCount, 4U));
++    EXPECT_TRUE(L->setOption(scudo::Option::MaxCacheEntrySize, 1UL << 20));
++    EXPECT_TRUE(L->canCache(1UL << 16));
++  }
++}
++
+ static std::mutex Mutex;
+ static std::condition_variable Cv;
+-static bool Ready = false;
++static bool Ready;
+ 
+ static void performAllocations(LargeAllocator *L) {
+   std::vector<void *> V;
+@@ -153,11 +176,12 @@ static void performAllocations(LargeAllocator *L) {
+ }
+ 
+ TEST(ScudoSecondaryTest, SecondaryThreadsRace) {
+-  LargeAllocator *L = new LargeAllocator;
++  Ready = false;
++  std::unique_ptr<LargeAllocator> L(new LargeAllocator);
+   L->init(nullptr, /*ReleaseToOsInterval=*/0);
+   std::thread Threads[16];
+   for (scudo::uptr I = 0; I < ARRAY_SIZE(Threads); I++)
+-    Threads[I] = std::thread(performAllocations, L);
++    Threads[I] = std::thread(performAllocations, L.get());
+   {
+     std::unique_lock<std::mutex> Lock(Mutex);
+     Ready = true;
+diff --git a/standalone/tests/tsd_test.cpp b/standalone/tests/tsd_test.cpp
+index 4a3cf1c..561bda4 100644
+--- a/standalone/tests/tsd_test.cpp
++++ b/standalone/tests/tsd_test.cpp
+@@ -13,6 +13,7 @@
+ 
+ #include <condition_variable>
+ #include <mutex>
++#include <set>
+ #include <thread>
+ 
+ // We mock out an allocator with a TSD registry, mostly using empty stubs. The
+@@ -47,12 +48,12 @@ private:
+ 
+ struct OneCache {
+   template <class Allocator>
+-  using TSDRegistryT = scudo::TSDRegistrySharedT<Allocator, 1U>;
++  using TSDRegistryT = scudo::TSDRegistrySharedT<Allocator, 1U, 1U>;
+ };
+ 
+ struct SharedCaches {
+   template <class Allocator>
+-  using TSDRegistryT = scudo::TSDRegistrySharedT<Allocator, 16U>;
++  using TSDRegistryT = scudo::TSDRegistrySharedT<Allocator, 16U, 8U>;
+ };
+ 
+ struct ExclusiveCaches {
+@@ -116,7 +117,7 @@ TEST(ScudoTSDTest, TSDRegistryBasic) {
+ 
+ static std::mutex Mutex;
+ static std::condition_variable Cv;
+-static bool Ready = false;
++static bool Ready;
+ 
+ template <typename AllocatorT> static void stressCache(AllocatorT *Allocator) {
+   auto Registry = Allocator->getTSDRegistry();
+@@ -145,6 +146,7 @@ template <typename AllocatorT> static void stressCache(AllocatorT *Allocator) {
+ }
+ 
+ template <class AllocatorT> static void testRegistryThreaded() {
++  Ready = false;
+   auto Deleter = [](AllocatorT *A) {
+     A->unmapTestOnly();
+     delete A;
+@@ -171,3 +173,73 @@ TEST(ScudoTSDTest, TSDRegistryThreaded) {
+   testRegistryThreaded<MockAllocator<ExclusiveCaches>>();
+ #endif
+ }
++
++static std::set<void *> Pointers;
++
++static void stressSharedRegistry(MockAllocator<SharedCaches> *Allocator) {
++  std::set<void *> Set;
++  auto Registry = Allocator->getTSDRegistry();
++  {
++    std::unique_lock<std::mutex> Lock(Mutex);
++    while (!Ready)
++      Cv.wait(Lock);
++  }
++  Registry->initThreadMaybe(Allocator, /*MinimalInit=*/false);
++  bool UnlockRequired;
++  for (scudo::uptr I = 0; I < 4096U; I++) {
++    auto TSD = Registry->getTSDAndLock(&UnlockRequired);
++    EXPECT_NE(TSD, nullptr);
++    Set.insert(reinterpret_cast<void *>(TSD));
++    if (UnlockRequired)
++      TSD->unlock();
++  }
++  {
++    std::unique_lock<std::mutex> Lock(Mutex);
++    Pointers.insert(Set.begin(), Set.end());
++  }
++}
++
++TEST(ScudoTSDTest, TSDRegistryTSDsCount) {
++  Ready = false;
++  using AllocatorT = MockAllocator<SharedCaches>;
++  auto Deleter = [](AllocatorT *A) {
++    A->unmapTestOnly();
++    delete A;
++  };
++  std::unique_ptr<AllocatorT, decltype(Deleter)> Allocator(new AllocatorT,
++                                                           Deleter);
++  Allocator->reset();
++  // We attempt to use as many TSDs as the shared cache offers by creating a
++  // decent amount of threads that will be run concurrently and attempt to get
++  // and lock TSDs. We put them all in a set and count the number of entries
++  // after we are done.
++  std::thread Threads[32];
++  for (scudo::uptr I = 0; I < ARRAY_SIZE(Threads); I++)
++    Threads[I] = std::thread(stressSharedRegistry, Allocator.get());
++  {
++    std::unique_lock<std::mutex> Lock(Mutex);
++    Ready = true;
++    Cv.notify_all();
++  }
++  for (auto &T : Threads)
++    T.join();
++  // The initial number of TSDs we get will be the minimum of the default count
++  // and the number of CPUs.
++  EXPECT_LE(Pointers.size(), 8U);
++  Pointers.clear();
++  auto Registry = Allocator->getTSDRegistry();
++  // Increase the number of TSDs to 16.
++  Registry->setOption(scudo::Option::MaxTSDsCount, 16);
++  Ready = false;
++  for (scudo::uptr I = 0; I < ARRAY_SIZE(Threads); I++)
++    Threads[I] = std::thread(stressSharedRegistry, Allocator.get());
++  {
++    std::unique_lock<std::mutex> Lock(Mutex);
++    Ready = true;
++    Cv.notify_all();
++  }
++  for (auto &T : Threads)
++    T.join();
++  // We should get 16 distinct TSDs back.
++  EXPECT_EQ(Pointers.size(), 16U);
++}
+diff --git a/standalone/tests/wrappers_c_test.cpp b/standalone/tests/wrappers_c_test.cpp
+index 1913c61..45b3e4f 100644
+--- a/standalone/tests/wrappers_c_test.cpp
++++ b/standalone/tests/wrappers_c_test.cpp
+@@ -400,6 +400,7 @@ static void *enableMalloc(void *Unused) {
+ 
+ TEST(ScudoWrappersCTest, DisableForkEnable) {
+   pthread_t ThreadId;
++  Ready = false;
+   EXPECT_EQ(pthread_create(&ThreadId, nullptr, &enableMalloc, nullptr), 0);
+ 
+   // Wait for the thread to be warmed up.
+diff --git a/standalone/tests/wrappers_cpp_test.cpp b/standalone/tests/wrappers_cpp_test.cpp
+index 4ccef5b..d24b665 100644
+--- a/standalone/tests/wrappers_cpp_test.cpp
++++ b/standalone/tests/wrappers_cpp_test.cpp
+@@ -79,7 +79,7 @@ TEST(ScudoWrappersCppTest, New) {
+ 
+ static std::mutex Mutex;
+ static std::condition_variable Cv;
+-static bool Ready = false;
++static bool Ready;
+ 
+ static void stressNew() {
+   std::vector<uintptr_t *> V;
+@@ -103,6 +103,7 @@ static void stressNew() {
+ }
+ 
+ TEST(ScudoWrappersCppTest, ThreadedNew) {
++  Ready = false;
+   std::thread Threads[32];
+   for (size_t I = 0U; I < sizeof(Threads) / sizeof(Threads[0]); I++)
+     Threads[I] = std::thread(stressNew);
+diff --git a/standalone/tsd_exclusive.h b/standalone/tsd_exclusive.h
+index 3492509..ac5a22c 100644
+--- a/standalone/tsd_exclusive.h
++++ b/standalone/tsd_exclusive.h
+@@ -66,6 +66,12 @@ template <class Allocator> struct TSDRegistryExT {
+     Mutex.unlock();
+   }
+ 
++  bool setOption(Option O, UNUSED sptr Value) {
++    if (O == Option::MaxTSDsCount)
++      return false;
++    return true;
++  }
++
+ private:
+   void initOnceMaybe(Allocator *Instance) {
+     ScopedLock L(Mutex);
+diff --git a/standalone/tsd_shared.h b/standalone/tsd_shared.h
+index 038a590..25ba191 100644
+--- a/standalone/tsd_shared.h
++++ b/standalone/tsd_shared.h
+@@ -14,31 +14,16 @@
+ 
+ namespace scudo {
+ 
+-template <class Allocator, u32 MaxTSDCount> struct TSDRegistrySharedT {
++template <class Allocator, u32 TSDsArraySize, u32 DefaultTSDCount>
++struct TSDRegistrySharedT {
+   void initLinkerInitialized(Allocator *Instance) {
+     Instance->initLinkerInitialized();
+     CHECK_EQ(pthread_key_create(&PThreadKey, nullptr), 0); // For non-TLS
+-    const u32 NumberOfCPUs = getNumberOfCPUs();
+-    NumberOfTSDs = (SCUDO_ANDROID || NumberOfCPUs == 0)
+-                       ? MaxTSDCount
+-                       : Min(NumberOfCPUs, MaxTSDCount);
+-    for (u32 I = 0; I < NumberOfTSDs; I++)
++    for (u32 I = 0; I < TSDsArraySize; I++)
+       TSDs[I].initLinkerInitialized(Instance);
+-    // Compute all the coprimes of NumberOfTSDs. This will be used to walk the
+-    // array of TSDs in a random order. For details, see:
+-    // https://lemire.me/blog/2017/09/18/visiting-all-values-in-an-array-exactly-once-in-random-order/
+-    for (u32 I = 0; I < NumberOfTSDs; I++) {
+-      u32 A = I + 1;
+-      u32 B = NumberOfTSDs;
+-      // Find the GCD between I + 1 and NumberOfTSDs. If 1, they are coprimes.
+-      while (B != 0) {
+-        const u32 T = A;
+-        A = B;
+-        B = T % B;
+-      }
+-      if (A == 1)
+-        CoPrimes[NumberOfCoPrimes++] = I + 1;
+-    }
++    const u32 NumberOfCPUs = getNumberOfCPUs();
++    setNumberOfTSDs((NumberOfCPUs == 0) ? DefaultTSDCount
++                                        : Min(NumberOfCPUs, DefaultTSDCount));
+     Initialized = true;
+   }
+   void init(Allocator *Instance) {
+@@ -66,21 +51,34 @@ template <class Allocator, u32 MaxTSDCount> struct TSDRegistrySharedT {
+     if (TSD->tryLock())
+       return TSD;
+     // If that fails, go down the slow path.
++    if (TSDsArraySize == 1U) {
++      // Only 1 TSD, not need to go any further.
++      // The compiler will optimize this one way or the other.
++      TSD->lock();
++      return TSD;
++    }
+     return getTSDAndLockSlow(TSD);
+   }
+ 
+   void disable() {
+     Mutex.lock();
+-    for (u32 I = 0; I < NumberOfTSDs; I++)
++    for (u32 I = 0; I < TSDsArraySize; I++)
+       TSDs[I].lock();
+   }
+ 
+   void enable() {
+-    for (s32 I = static_cast<s32>(NumberOfTSDs - 1); I >= 0; I--)
++    for (s32 I = static_cast<s32>(TSDsArraySize - 1); I >= 0; I--)
+       TSDs[I].unlock();
+     Mutex.unlock();
+   }
+ 
++  bool setOption(Option O, sptr Value) {
++    if (O == Option::MaxTSDsCount)
++      return setNumberOfTSDs(static_cast<u32>(Value));
++    // Not supported by the TSD Registry, but not an error either.
++    return true;
++  }
++
+ private:
+   ALWAYS_INLINE void setCurrentTSD(TSD<Allocator> *CurrentTSD) {
+ #if _BIONIC
+@@ -104,6 +102,32 @@ private:
+ #endif
+   }
+ 
++  bool setNumberOfTSDs(u32 N) {
++    ScopedLock L(MutexTSDs);
++    if (N < NumberOfTSDs)
++      return false;
++    if (N > TSDsArraySize)
++      N = TSDsArraySize;
++    NumberOfTSDs = N;
++    NumberOfCoPrimes = 0;
++    // Compute all the coprimes of NumberOfTSDs. This will be used to walk the
++    // array of TSDs in a random order. For details, see:
++    // https://lemire.me/blog/2017/09/18/visiting-all-values-in-an-array-exactly-once-in-random-order/
++    for (u32 I = 0; I < N; I++) {
++      u32 A = I + 1;
++      u32 B = N;
++      // Find the GCD between I + 1 and N. If 1, they are coprimes.
++      while (B != 0) {
++        const u32 T = A;
++        A = B;
++        B = T % B;
++      }
++      if (A == 1)
++        CoPrimes[NumberOfCoPrimes++] = I + 1;
++    }
++    return true;
++  }
++
+   void initOnceMaybe(Allocator *Instance) {
+     ScopedLock L(Mutex);
+     if (LIKELY(Initialized))
+@@ -120,17 +144,23 @@ private:
+   }
+ 
+   NOINLINE TSD<Allocator> *getTSDAndLockSlow(TSD<Allocator> *CurrentTSD) {
+-    if (MaxTSDCount > 1U && NumberOfTSDs > 1U) {
+-      // Use the Precedence of the current TSD as our random seed. Since we are
+-      // in the slow path, it means that tryLock failed, and as a result it's
+-      // very likely that said Precedence is non-zero.
+-      const u32 R = static_cast<u32>(CurrentTSD->getPrecedence());
+-      const u32 Inc = CoPrimes[R % NumberOfCoPrimes];
+-      u32 Index = R % NumberOfTSDs;
++    // Use the Precedence of the current TSD as our random seed. Since we are
++    // in the slow path, it means that tryLock failed, and as a result it's
++    // very likely that said Precedence is non-zero.
++    const u32 R = static_cast<u32>(CurrentTSD->getPrecedence());
++    u32 N, Inc;
++    {
++      ScopedLock L(MutexTSDs);
++      N = NumberOfTSDs;
++      DCHECK_NE(NumberOfCoPrimes, 0U);
++      Inc = CoPrimes[R % NumberOfCoPrimes];
++    }
++    if (N > 1U) {
++      u32 Index = R % N;
+       uptr LowestPrecedence = UINTPTR_MAX;
+       TSD<Allocator> *CandidateTSD = nullptr;
+       // Go randomly through at most 4 contexts and find a candidate.
+-      for (u32 I = 0; I < Min(4U, NumberOfTSDs); I++) {
++      for (u32 I = 0; I < Min(4U, N); I++) {
+         if (TSDs[Index].tryLock()) {
+           setCurrentTSD(&TSDs[Index]);
+           return &TSDs[Index];
+@@ -142,8 +172,8 @@ private:
+           LowestPrecedence = Precedence;
+         }
+         Index += Inc;
+-        if (Index >= NumberOfTSDs)
+-          Index -= NumberOfTSDs;
++        if (Index >= N)
++          Index -= N;
+       }
+       if (CandidateTSD) {
+         CandidateTSD->lock();
+@@ -160,19 +190,20 @@ private:
+   atomic_u32 CurrentIndex;
+   u32 NumberOfTSDs;
+   u32 NumberOfCoPrimes;
+-  u32 CoPrimes[MaxTSDCount];
++  u32 CoPrimes[TSDsArraySize];
+   bool Initialized;
+   HybridMutex Mutex;
+-  TSD<Allocator> TSDs[MaxTSDCount];
++  HybridMutex MutexTSDs;
++  TSD<Allocator> TSDs[TSDsArraySize];
+ #if SCUDO_LINUX && !_BIONIC
+   static THREADLOCAL TSD<Allocator> *ThreadTSD;
+ #endif
+ };
+ 
+ #if SCUDO_LINUX && !_BIONIC
+-template <class Allocator, u32 MaxTSDCount>
++template <class Allocator, u32 TSDsArraySize, u32 DefaultTSDCount>
+ THREADLOCAL TSD<Allocator>
+-    *TSDRegistrySharedT<Allocator, MaxTSDCount>::ThreadTSD;
++    *TSDRegistrySharedT<Allocator, TSDsArraySize, DefaultTSDCount>::ThreadTSD;
+ #endif
+ 
+ } // namespace scudo
+-- 
+2.35.1
+

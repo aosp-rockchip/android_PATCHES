@@ -1,0 +1,80 @@
+From 7964d61e4aadd4fd50c61fe2ad2fce35c652237d Mon Sep 17 00:00:00 2001
+From: Hongwei Wang <hwwang@google.com>
+Date: Wed, 26 Feb 2020 12:11:53 -0800
+Subject: [PATCH 089/297] Ensures display rotation triggers PiP re-position
+
+Fixed in this CL, upon rotation change
+- Updates display bounds in PipTaskOrganizer
+- Issues PiP offset from PipTouchHandler (-> PipMotionHelper)
+
+Bug: 150300422
+Bug: 150275283
+Test: manually rotating screen
+Change-Id: I4262df6ddc306732693150f27ca0da6e294df5ab
+(cherry picked from commit bede2c10498cae5a810f4185c10b19c39e8ae669)
+---
+ .../src/com/android/systemui/pip/phone/PipManager.java      | 5 ++++-
+ .../src/com/android/systemui/pip/phone/PipMotionHelper.java | 4 +---
+ .../src/com/android/systemui/pip/phone/PipTouchHandler.java | 6 +++++-
+ 3 files changed, 10 insertions(+), 5 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/pip/phone/PipManager.java b/packages/SystemUI/src/com/android/systemui/pip/phone/PipManager.java
+index e98dec0835b..767064deec6 100644
+--- a/packages/SystemUI/src/com/android/systemui/pip/phone/PipManager.java
++++ b/packages/SystemUI/src/com/android/systemui/pip/phone/PipManager.java
+@@ -339,7 +339,10 @@ public class PipManager implements BasePipManager, PipTaskOrganizer.PipTransitio
+ 
+     private void updateMovementBounds(Rect animatingBounds, boolean fromImeAdjustment,
+             boolean fromShelfAdjustment) {
+-        // Populate inset / normal bounds and DisplayInfo from mPipBoundsHandler first.
++        mPipTaskOrganizer.onDisplayInfoChanged(mTmpDisplayInfo);
++        // Populate inset / normal bounds and DisplayInfo from mPipBoundsHandler before
++        // passing to mTouchHandler, mTouchHandler would rely on the bounds calculated by
++        // mPipBoundsHandler with up-to-dated information
+         mPipBoundsHandler.onMovementBoundsChanged(mTmpInsetBounds, mTmpNormalBounds,
+                 animatingBounds, mTmpDisplayInfo);
+         mTouchHandler.onMovementBoundsChanged(mTmpInsetBounds, mTmpNormalBounds,
+diff --git a/packages/SystemUI/src/com/android/systemui/pip/phone/PipMotionHelper.java b/packages/SystemUI/src/com/android/systemui/pip/phone/PipMotionHelper.java
+index 91f539c3a13..980d18b6a7e 100644
+--- a/packages/SystemUI/src/com/android/systemui/pip/phone/PipMotionHelper.java
++++ b/packages/SystemUI/src/com/android/systemui/pip/phone/PipMotionHelper.java
+@@ -411,11 +411,9 @@ public class PipMotionHelper implements Handler.Callback, PipAppOpsListener.Call
+     }
+ 
+     private void adjustAndAnimatePipOffset(Rect originalBounds, int offset, int duration) {
+-        if (offset == 0) {
+-            return;
+-        }
+         SomeArgs args = SomeArgs.obtain();
+         args.arg1 = originalBounds;
++        // offset would be zero if triggered from screen rotation.
+         args.argi1 = offset;
+         args.argi2 = duration;
+         mHandler.sendMessage(mHandler.obtainMessage(MSG_OFFSET_ANIMATE, args));
+diff --git a/packages/SystemUI/src/com/android/systemui/pip/phone/PipTouchHandler.java b/packages/SystemUI/src/com/android/systemui/pip/phone/PipTouchHandler.java
+index 3b855db6e32..57b90c02884 100644
+--- a/packages/SystemUI/src/com/android/systemui/pip/phone/PipTouchHandler.java
++++ b/packages/SystemUI/src/com/android/systemui/pip/phone/PipTouchHandler.java
+@@ -266,6 +266,10 @@ public class PipTouchHandler {
+     public void onMovementBoundsChanged(Rect insetBounds, Rect normalBounds, Rect curBounds,
+             boolean fromImeAdjustment, boolean fromShelfAdjustment, int displayRotation) {
+         final int bottomOffset = mIsImeShowing ? mImeHeight : 0;
++        final boolean fromDisplayRotationChanged = (mDisplayRotation != displayRotation);
++        if (fromDisplayRotationChanged) {
++            mTouchState.reset();
++        }
+ 
+         // Re-calculate the expanded bounds
+         mNormalBounds = normalBounds;
+@@ -293,7 +297,7 @@ public class PipTouchHandler {
+ 
+         // If this is from an IME or shelf adjustment, then we should move the PiP so that it is not
+         // occluded by the IME or shelf.
+-        if (fromImeAdjustment || fromShelfAdjustment) {
++        if (fromImeAdjustment || fromShelfAdjustment || fromDisplayRotationChanged) {
+             if (mTouchState.isUserInteracting()) {
+                 // Defer the update of the current movement bounds until after the user finishes
+                 // touching the screen
+-- 
+2.35.1
+

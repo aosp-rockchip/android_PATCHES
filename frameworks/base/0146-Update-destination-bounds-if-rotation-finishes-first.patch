@@ -1,0 +1,98 @@
+From 99b8d33cbcded1c19b4ee0add68eb50c5e8a5ec3 Mon Sep 17 00:00:00 2001
+From: Hongwei Wang <hwwang@google.com>
+Date: Mon, 13 Apr 2020 18:27:25 -0700
+Subject: [PATCH 146/297] Update destination bounds if rotation finishes first
+
+When the entering pip transition is on-going and rotation finishes
+first, simply schedule a resize on the PiP window
+
+Bug: 153827966
+Test: repeatedly enter/exit PiP with Play Movies
+Change-Id: Ie9bf7fbc44970d4fe03b7febde5d69c7348e5bb9
+(cherry picked from commit e0412d1fdb0a09f6b1e77960dd4788c898311fa9)
+---
+ .../com/android/systemui/pip/PipTaskOrganizer.java  | 10 ++++++++--
+ .../com/android/systemui/pip/phone/PipManager.java  | 13 +++++++------
+ 2 files changed, 15 insertions(+), 8 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/pip/PipTaskOrganizer.java b/packages/SystemUI/src/com/android/systemui/pip/PipTaskOrganizer.java
+index f89a01e0c73..0125153542c 100644
+--- a/packages/SystemUI/src/com/android/systemui/pip/PipTaskOrganizer.java
++++ b/packages/SystemUI/src/com/android/systemui/pip/PipTaskOrganizer.java
+@@ -322,13 +322,19 @@ public class PipTaskOrganizer extends TaskOrganizer {
+      * @param destinationBoundsOut the current destination bounds will be populated to this param
+      */
+     @SuppressWarnings("unchecked")
+-    public void onMovementBoundsChanged(Rect destinationBoundsOut,
++    public void onMovementBoundsChanged(Rect destinationBoundsOut, boolean fromRotation,
+             boolean fromImeAdjustment, boolean fromShelfAdjustment) {
+         final PipAnimationController.PipTransitionAnimator animator =
+                 mPipAnimationController.getCurrentAnimator();
+-        destinationBoundsOut.set(mLastReportedBounds);
+         if (animator == null || !animator.isRunning()
+                 || animator.getTransitionDirection() != TRANSITION_DIRECTION_TO_PIP) {
++            if (mInPip && fromRotation) {
++                // this could happen if rotation finishes before the animation
++                mLastReportedBounds.set(destinationBoundsOut);
++                scheduleFinishResizePip(mLastReportedBounds);
++            } else if (!mLastReportedBounds.isEmpty()) {
++                destinationBoundsOut.set(mLastReportedBounds);
++            }
+             return;
+         }
+ 
+diff --git a/packages/SystemUI/src/com/android/systemui/pip/phone/PipManager.java b/packages/SystemUI/src/com/android/systemui/pip/phone/PipManager.java
+index a2667d9a4c7..c3779efcf4b 100644
+--- a/packages/SystemUI/src/com/android/systemui/pip/phone/PipManager.java
++++ b/packages/SystemUI/src/com/android/systemui/pip/phone/PipManager.java
+@@ -97,8 +97,8 @@ public class PipManager implements BasePipManager, PipTaskOrganizer.PipTransitio
+         final boolean changed = mPipBoundsHandler.onDisplayRotationChanged(mTmpNormalBounds,
+                 displayId, fromRotation, toRotation, t);
+         if (changed) {
+-            updateMovementBounds(mTmpNormalBounds, false /* fromImeAdjustment */,
+-                    false /* fromShelfAdjustment */);
++            updateMovementBounds(mTmpNormalBounds, true /* fromRotation */,
++                    false /* fromImeAdjustment */, false /* fromShelfAdjustment */);
+         }
+     };
+ 
+@@ -163,7 +163,7 @@ public class PipManager implements BasePipManager, PipTaskOrganizer.PipTransitio
+         @Override
+         public void onMovementBoundsChanged(boolean fromImeAdjustment) {
+             mHandler.post(() -> updateMovementBounds(null /* toBounds */,
+-                    fromImeAdjustment, false /* fromShelfAdjustment */));
++                    false /* fromRotation */, fromImeAdjustment, false /* fromShelfAdjustment */));
+         }
+ 
+         @Override
+@@ -294,7 +294,8 @@ public class PipManager implements BasePipManager, PipTaskOrganizer.PipTransitio
+             if (changed) {
+                 mTouchHandler.onShelfVisibilityChanged(visible, height);
+                 updateMovementBounds(mPipBoundsHandler.getLastDestinationBounds(),
+-                        false /* fromImeAdjustment */, true /* fromShelfAdjustment */);
++                        false /* fromRotation */, false /* fromImeAdjustment */,
++                        true /* fromShelfAdjustment */);
+             }
+         });
+     }
+@@ -353,7 +354,7 @@ public class PipManager implements BasePipManager, PipTaskOrganizer.PipTransitio
+         mMenuController.onPinnedStackAnimationEnded();
+     }
+ 
+-    private void updateMovementBounds(@Nullable Rect toBounds,
++    private void updateMovementBounds(@Nullable Rect toBounds, boolean fromRotation,
+             boolean fromImeAdjustment, boolean fromShelfAdjustment) {
+         // Populate inset / normal bounds and DisplayInfo from mPipBoundsHandler before
+         // passing to mTouchHandler/mPipTaskOrganizer
+@@ -361,7 +362,7 @@ public class PipManager implements BasePipManager, PipTaskOrganizer.PipTransitio
+         mPipBoundsHandler.onMovementBoundsChanged(mTmpInsetBounds, mTmpNormalBounds,
+                 outBounds, mTmpDisplayInfo);
+         // mTouchHandler would rely on the bounds populated from mPipTaskOrganizer
+-        mPipTaskOrganizer.onMovementBoundsChanged(outBounds,
++        mPipTaskOrganizer.onMovementBoundsChanged(outBounds, fromRotation,
+                 fromImeAdjustment, fromShelfAdjustment);
+         mTouchHandler.onMovementBoundsChanged(mTmpInsetBounds, mTmpNormalBounds,
+                 outBounds, fromImeAdjustment, fromShelfAdjustment,
+-- 
+2.35.1
+

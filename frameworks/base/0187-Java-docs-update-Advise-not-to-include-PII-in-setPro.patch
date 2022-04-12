@@ -1,0 +1,31 @@
+From ed2c898865272fecf90a53ab5cbfaf81b1b5b5e5 Mon Sep 17 00:00:00 2001
+From: Jing Ji <jji@google.com>
+Date: Tue, 21 Jul 2020 11:52:07 -0700
+Subject: [PATCH 187/297] Java docs update: Advise not to include PII in
+ setProcessStateSummary
+
+Bug: 161812603
+Test: m -j offline-sdk-docs & manual verify the javadoc
+Change-Id: I741bbf7b83badcd7f1610f31bbd41a49b8b975fb
+(cherry picked from commit 3bda3bf8c6e06b910df1f219d983c803bcf49da6)
+---
+ core/java/android/app/ActivityManager.java | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/core/java/android/app/ActivityManager.java b/core/java/android/app/ActivityManager.java
+index acf6315ddc5..1059a6f2e86 100644
+--- a/core/java/android/app/ActivityManager.java
++++ b/core/java/android/app/ActivityManager.java
+@@ -3728,7 +3728,8 @@ public class ActivityManager {
+      * manner, excessive calls to this API could result a {@link java.lang.RuntimeException}.
+      * </p>
+      *
+-     * @param state The state data
++     * @param state The state data. To be advised, <b>DO NOT</b> include sensitive information/data
++     * (PII, SPII, or other sensitive user data) here. Maximum length is 128 bytes.
+      */
+     public void setProcessStateSummary(@Nullable byte[] state) {
+         try {
+-- 
+2.35.1
+

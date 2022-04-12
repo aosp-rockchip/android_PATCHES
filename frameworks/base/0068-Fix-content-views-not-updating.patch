@@ -1,0 +1,107 @@
+From 8677b515accd56feae7252272471ff3a577b8135 Mon Sep 17 00:00:00 2001
+From: Kevin Han <kevhan@google.com>
+Date: Thu, 6 Feb 2020 16:54:50 -0800
+Subject: [PATCH 068/297] Fix content views not updating
+
+Content views weren't getting marked dirty inherently on notification
+updates from the app, so the inflater wouldn't bother binding the
+content view again, even if the layout actually changed. This fixes
+that by providing the ability to mark all the active content views as
+dirty and needing to be rebound and calling it on add/update.
+
+Bug: 149002542
+Test: repro from bug
+Test: atest RowContentBindStageTest
+Change-Id: I59d7f86e43763c3c03329a60a052e6c51cdc845a
+(cherry picked from commit 2745336f8f8d0a10451c9da4c4ce2cfe9795c358)
+---
+ .../inflation/NotificationRowBinderImpl.java  |  1 +
+ .../row/RowContentBindParams.java             |  8 ++++++
+ .../row/RowContentBindStageTest.java          | 26 +++++++++++++++++--
+ 3 files changed, 33 insertions(+), 2 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotificationRowBinderImpl.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotificationRowBinderImpl.java
+index 59d82a1bc5c..ecf62db4680 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotificationRowBinderImpl.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotificationRowBinderImpl.java
+@@ -295,6 +295,7 @@ public class NotificationRowBinderImpl implements NotificationRowBinder {
+         }
+         //TODO: Replace this API with RowContentBindParams directly
+         row.setNeedsRedaction(mNotificationLockscreenUserManager.needsRedaction(entry));
++        params.rebindAllContentViews();
+         mRowContentBindStage.requestRebind(entry, en -> {
+             row.setUsesIncreasedCollapsedHeight(useIncreasedCollapsedHeight);
+             row.setUsesIncreasedHeadsUpHeight(useIncreasedHeadsUp);
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/RowContentBindParams.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/RowContentBindParams.java
+index 8280a63dedd..5170d0b85b1 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/RowContentBindParams.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/RowContentBindParams.java
+@@ -122,6 +122,14 @@ public final class RowContentBindParams {
+         return mContentViews;
+     }
+ 
++    /**
++     * Request that all content views be rebound. This may happen if, for example, the underlying
++     * layout has changed.
++     */
++    public void rebindAllContentViews() {
++        mDirtyContentViews = mContentViews;
++    }
++
+     /**
+      * Clears all dirty content views so that they no longer need to be rebound.
+      */
+diff --git a/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/row/RowContentBindStageTest.java b/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/row/RowContentBindStageTest.java
+index 66aa5e18d0c..775f722b13f 100644
+--- a/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/row/RowContentBindStageTest.java
++++ b/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/row/RowContentBindStageTest.java
+@@ -67,7 +67,7 @@ public class RowContentBindStageTest extends SysuiTestCase {
+     }
+ 
+     @Test
+-    public void testSetShouldContentViewsBeBound_bindsContent() {
++    public void testRequireContentViews() {
+         // WHEN inflation flags are set and pipeline is invalidated.
+         final int flags = FLAG_CONTENT_VIEW_CONTRACTED | FLAG_CONTENT_VIEW_EXPANDED;
+         RowContentBindParams params = mRowContentBindStage.getStageParams(mEntry);
+@@ -85,7 +85,7 @@ public class RowContentBindStageTest extends SysuiTestCase {
+     }
+ 
+     @Test
+-    public void testSetShouldContentViewsBeBound_unbindsContent() {
++    public void testFreeContentViews() {
+         // GIVEN a view with all content bound.
+         RowContentBindParams params = mRowContentBindStage.getStageParams(mEntry);
+         params.requireContentViews(FLAG_CONTENT_VIEW_ALL);
+@@ -99,6 +99,28 @@ public class RowContentBindStageTest extends SysuiTestCase {
+         verify(mBinder).unbindContent(eq(mEntry), any(), eq(flags));
+     }
+ 
++    @Test
++    public void testRebindAllContentViews() {
++        // GIVEN a view with content bound.
++        RowContentBindParams params = mRowContentBindStage.getStageParams(mEntry);
++        final int flags = FLAG_CONTENT_VIEW_CONTRACTED | FLAG_CONTENT_VIEW_EXPANDED;
++        params.requireContentViews(flags);
++        params.clearDirtyContentViews();
++
++        // WHEN we request rebind and stage executed.
++        params.rebindAllContentViews();
++        mRowContentBindStage.executeStage(mEntry, mRow, (en) -> { });
++
++        // THEN binder binds inflation flags.
++        verify(mBinder).bindContent(
++                eq(mEntry),
++                any(),
++                eq(flags),
++                any(),
++                anyBoolean(),
++                any());
++    }
++
+     @Test
+     public void testSetUseLowPriority() {
+         // GIVEN a view with all content bound.
+-- 
+2.35.1
+

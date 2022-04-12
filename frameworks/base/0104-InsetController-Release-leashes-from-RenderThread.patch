@@ -1,0 +1,84 @@
+From 0eeb8686fa3e3097cc60ab50b61ca58c74e54203 Mon Sep 17 00:00:00 2001
+From: Rob Carr <racarr@google.com>
+Date: Mon, 9 Mar 2020 11:22:30 -0700
+Subject: [PATCH 104/297] InsetController: Release leashes from RenderThread
+
+We handle changes to the leashes from the UI thread, but use
+the same SurfaceControl wrapper object from the RenderThread with
+SyncRtSurfaceTransactionApplier. This means that at the time
+we release a SurfaceControl from the UI thread we might have already
+scheduled a SyncRtSurfaceTransactionApplier to use it, and actually
+that could be in the process of running, leading to racy access and
+crashes. To fix this we release the SurfaceControl from the RenderThread
+so that it happens behind all existing operations.
+
+Bug: 151086678
+Test: Existing tests pass.
+Change-Id: I2308d1c64f3f368c32587f99ddfb9e05955f821f
+(cherry picked from commit 521e363a0ff5b90bec8f1fb6d5e10156af713a76)
+---
+ core/java/android/view/InsetsController.java  | 19 +++++++++++++++++++
+ .../android/view/InsetsSourceConsumer.java    |  2 +-
+ .../android/view/InsetsSourceControl.java     |  4 ++--
+ 3 files changed, 22 insertions(+), 3 deletions(-)
+
+diff --git a/core/java/android/view/InsetsController.java b/core/java/android/view/InsetsController.java
+index 573d8fc65c8..f52960c5c3e 100644
+--- a/core/java/android/view/InsetsController.java
++++ b/core/java/android/view/InsetsController.java
+@@ -992,4 +992,23 @@ public class InsetsController implements WindowInsetsController, InsetsAnimation
+         }
+         return mViewRoot.mWindowAttributes.insetsFlags.behavior;
+     }
++
++    /**
++     * At the time we receive new leashes (e.g. InsetsSourceConsumer is processing
++     * setControl) we need to release the old leash. But we may have already scheduled
++     * a SyncRtSurfaceTransaction applier to use it from the RenderThread. To avoid
++     * synchronization issues we also release from the RenderThread so this release
++     * happens after any existing items on the work queue.
++     */
++    public void releaseSurfaceControlFromRt(SurfaceControl sc) {
++        if (mViewRoot.mView != null && mViewRoot.mView.isHardwareAccelerated()) {
++            mViewRoot.registerRtFrameCallback(frame -> {
++                  sc.release();
++            });
++            // Make sure a frame gets scheduled.
++            mViewRoot.mView.invalidate();
++        } else {
++              sc.release();
++        }
++    }
+ }
+diff --git a/core/java/android/view/InsetsSourceConsumer.java b/core/java/android/view/InsetsSourceConsumer.java
+index f07f1ce186f..252fc0c82cf 100644
+--- a/core/java/android/view/InsetsSourceConsumer.java
++++ b/core/java/android/view/InsetsSourceConsumer.java
+@@ -117,7 +117,7 @@ public class InsetsSourceConsumer {
+             }
+         }
+         if (lastControl != null) {
+-            lastControl.release();
++            lastControl.release(mController);
+         }
+     }
+ 
+diff --git a/core/java/android/view/InsetsSourceControl.java b/core/java/android/view/InsetsSourceControl.java
+index 29ba56a5fbb..75f6eab798c 100644
+--- a/core/java/android/view/InsetsSourceControl.java
++++ b/core/java/android/view/InsetsSourceControl.java
+@@ -94,9 +94,9 @@ public class InsetsSourceControl implements Parcelable {
+         dest.writeParcelable(mSurfacePosition, 0 /* flags*/);
+     }
+ 
+-    public void release() {
++    public void release(InsetsController controller) {
+         if (mLeash != null) {
+-            mLeash.release();
++            controller.releaseSurfaceControlFromRt(mLeash);
+         }
+     }
+ 
+-- 
+2.35.1
+

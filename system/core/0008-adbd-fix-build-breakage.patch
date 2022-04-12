@@ -1,0 +1,45 @@
+From 8cc8d32b1bd96da4cd49d6b4d2928164c85e51b6 Mon Sep 17 00:00:00 2001
+From: Josh Gao <jmgao@google.com>
+Date: Fri, 21 Feb 2020 16:38:29 -0800
+Subject: [PATCH 08/21] adbd: fix build breakage.
+
+This broke because two CLs touching the Android.bp file both
+independently passed presubmit, but failed when combined.
+
+Clean up a misindentation while we're at it.
+
+Bug: http://b/150032044
+Bug: http://b/150032367
+Test: mma in system/core/adb
+Change-Id: I091ef9dec806c767ffb21a5fd73b2bb37ab29ff9
+Merged-In: I091ef9dec806c767ffb21a5fd73b2bb37ab29ff9
+(cherry picked from commit 6d949e89a47e4876b835fe95d3299699da0bba92)
+(cherry picked from commit 3467ef46d436985408c7b126a0e746cd5bb8b2be)
+---
+ adb/Android.bp | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/adb/Android.bp b/adb/Android.bp
+index 2f1fe3ca0..fea8c7807 100644
+--- a/adb/Android.bp
++++ b/adb/Android.bp
+@@ -375,7 +375,7 @@ cc_library_static {
+     srcs: libadb_srcs + libadb_linux_srcs + libadb_posix_srcs + [
+         "daemon/auth.cpp",
+         "daemon/jdwp_service.cpp",
+-	"daemon/adb_wifi.cpp",
++        "daemon/adb_wifi.cpp",
+     ],
+ 
+     local_include_dirs: [
+@@ -516,6 +516,7 @@ cc_library {
+         "libadbd_services",
+         "libcutils_sockets",
+         "libdiagnose_usb",
++        "libmdnssd",
+     ],
+ 
+     export_include_dirs: [
+-- 
+2.35.1
+

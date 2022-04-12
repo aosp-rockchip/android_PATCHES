@@ -1,0 +1,30 @@
+From 07d41118513955622be8d7f1efb00546f3005f0f Mon Sep 17 00:00:00 2001
+From: Wu Liangqing <wlq@rock-chips.com>
+Date: Fri, 21 Feb 2020 17:19:59 +0800
+Subject: [PATCH 1/2] add tempdir path "/data/local/tmp"
+
+Change-Id: Iedf4c700ce49f2fcf1e2c4375610ce6dea46f977
+---
+ src/iperf_api.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/iperf_api.c b/src/iperf_api.c
+index 999c8e1..4644587 100755
+--- a/src/iperf_api.c
++++ b/src/iperf_api.c
+@@ -3532,7 +3532,11 @@ iperf_new_stream(struct iperf_test *test, int s, int sender)
+             tempdir = getenv("TMP");
+         }
+         if (tempdir == 0){
+-            tempdir = "/tmp";
++            if (!access("/tmp", 0)) {
++                tempdir = "/tmp";
++            } else {
++                tempdir = "/data/local/tmp";
++            }
+         }
+         snprintf(template, sizeof(template) / sizeof(char), "%s/iperf3.XXXXXX", tempdir);
+     }
+-- 
+2.35.1
+

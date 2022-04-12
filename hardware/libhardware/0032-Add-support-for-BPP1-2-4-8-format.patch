@@ -1,0 +1,29 @@
+From 46a3720a36776e36a097ecdbd9023061410a6c57 Mon Sep 17 00:00:00 2001
+From: Yu Qiaowei <cerf.yu@rock-chips.com>
+Date: Thu, 10 Sep 2020 11:13:47 +0800
+Subject: [PATCH 32/36] Add support for BPP1/2/4/8 format.
+
+Signed-off-by: Yu Qiaowei <cerf.yu@rock-chips.com>
+Change-Id: Ia63403cfa8b8cf1c7bfd21875df7156bb57b0bd7
+---
+ include/hardware/hardware.h | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/include/hardware/hardware.h b/include/hardware/hardware.h
+index 308cb736..a1a230bf 100755
+--- a/include/hardware/hardware.h
++++ b/include/hardware/hardware.h
+@@ -230,6 +230,10 @@ typedef enum {
+     HAL_PIXEL_FORMAT_YCrCb_NV12_10      = 0x17, // YUY2_1obit
+     HAL_PIXEL_FORMAT_YCbCr_422_SP_10    = 0x18, //
+     HAL_PIXEL_FORMAT_YCrCb_420_SP_10    = 0x19, //
++    HAL_PIXEL_FORMAT_BPP_1              = 0x30,
++    HAL_PIXEL_FORMAT_BPP_2              = 0x31,
++    HAL_PIXEL_FORMAT_BPP_4              = 0x32,
++    HAL_PIXEL_FORMAT_BPP_8              = 0x33,
+ }rk_pixel_format_t;
+ 
+ #ifdef __cplusplus
+-- 
+2.35.1
+

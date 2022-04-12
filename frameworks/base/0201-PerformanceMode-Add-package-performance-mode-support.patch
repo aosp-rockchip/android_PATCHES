@@ -1,0 +1,433 @@
+From f226bf094c86326f8cd0ce61ed71617bd387d624 Mon Sep 17 00:00:00 2001
+From: Wu Jingchen <oven.wu@rock-chips.com>
+Date: Fri, 18 Sep 2020 15:06:46 +0800
+Subject: [PATCH 201/297] PerformanceMode: Add package performance mode
+ support.
+
+Signed-off-by: Wu Jingchen <oven.wu@rock-chips.com>
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+Change-Id: Ic163bb168b7d4912ac3f7f90b7d7c957b820483c
+---
+ .../app/ApplicationPackageManager.java        |  11 ++
+ .../android/content/pm/IPackageManager.aidl   |   2 +
+ .../android/content/pm/PackageManager.java    |   5 +
+ core/java/android/os/PowerManager.java        |   5 +
+ .../java/com/android/server/pm/DumpState.java |   1 +
+ .../server/pm/PackageManagerService.java      |  19 ++++
+ .../server/pm/PackagePerformanceSetting.java  |  34 ++++++
+ .../java/com/android/server/pm/Settings.java  | 101 ++++++++++++++++++
+ .../server/wm/ActivityTaskManagerService.java |  15 +++
+ .../server/wm/RootWindowContainer.java        |   4 +
+ .../backup/testutils/PackageManagerStub.java  |   5 +
+ .../android/test/mock/MockPackageManager.java |   8 ++
+ 12 files changed, 210 insertions(+)
+ create mode 100644 services/core/java/com/android/server/pm/PackagePerformanceSetting.java
+
+diff --git a/core/java/android/app/ApplicationPackageManager.java b/core/java/android/app/ApplicationPackageManager.java
+index c9031b71165..ebc5ff21925 100644
+--- a/core/java/android/app/ApplicationPackageManager.java
++++ b/core/java/android/app/ApplicationPackageManager.java
+@@ -74,6 +74,7 @@ import android.os.Handler;
+ import android.os.Looper;
+ import android.os.Message;
+ import android.os.PersistableBundle;
++import android.os.PowerManager;
+ import android.os.Process;
+ import android.os.RemoteException;
+ import android.os.StrictMode;
+@@ -167,6 +168,16 @@ public class ApplicationPackageManager extends PackageManager {
+         }
+     }
+ 
++    @Override
++    public int getPackagePerformanceMode(String pkgName) {
++        try {
++            return mPM.getPackagePerformanceMode(pkgName);
++        } catch (RemoteException e) {
++            // Should never happen!
++        }
++        return PowerManager.PERFORMANCE_MODE_NORMAL;
++    }
++
+     @Override
+     public int getUserId() {
+         return mContext.getUserId();
+diff --git a/core/java/android/content/pm/IPackageManager.aidl b/core/java/android/content/pm/IPackageManager.aidl
+index f257326904f..a6056e2bd1f 100644
+--- a/core/java/android/content/pm/IPackageManager.aidl
++++ b/core/java/android/content/pm/IPackageManager.aidl
+@@ -731,6 +731,8 @@ interface IPackageManager {
+ 
+     boolean isPackageStateProtected(String packageName, int userId);
+ 
++    int getPackagePerformanceMode(String pkgName);
++
+     void sendDeviceCustomizationReadyBroadcast();
+ 
+     List<ModuleInfo> getInstalledModules(int flags);
+diff --git a/core/java/android/content/pm/PackageManager.java b/core/java/android/content/pm/PackageManager.java
+index c6bc26847a8..5d9e5c3ccec 100644
+--- a/core/java/android/content/pm/PackageManager.java
++++ b/core/java/android/content/pm/PackageManager.java
+@@ -7945,6 +7945,11 @@ public abstract class PackageManager {
+             "isPackageStateProtected not implemented in subclass");
+     }
+ 
++    /**
++     * @hide
++     */
++    public abstract int getPackagePerformanceMode(String pkgName);
++
+     /**
+      * Notify to the rest of the system that a new device configuration has
+      * been prepared and that it is time to refresh caches.
+diff --git a/core/java/android/os/PowerManager.java b/core/java/android/os/PowerManager.java
+index be2de0edda2..fdafecbc902 100644
+--- a/core/java/android/os/PowerManager.java
++++ b/core/java/android/os/PowerManager.java
+@@ -652,6 +652,11 @@ public final class PowerManager {
+      */
+     public static final String REBOOT_REQUESTED_BY_DEVICE_OWNER = "deviceowner";
+ 
++    /**
++     * @hide
++     */
++    public static final int PERFORMANCE_MODE_NORMAL = 0;
++
+     /**
+      * The 'reason' value used when rebooting in safe mode
+      * @hide
+diff --git a/services/core/java/com/android/server/pm/DumpState.java b/services/core/java/com/android/server/pm/DumpState.java
+index 99a109367af..d5e169e1f7d 100644
+--- a/services/core/java/com/android/server/pm/DumpState.java
++++ b/services/core/java/com/android/server/pm/DumpState.java
+@@ -43,6 +43,7 @@ public final class DumpState {
+     public static final int DUMP_SERVICE_PERMISSIONS = 1 << 24;
+     public static final int DUMP_APEX = 1 << 25;
+     public static final int DUMP_QUERIES = 1 << 26;
++    public static final int DUMP_PERF_MODE = 1 << 27;
+ 
+     public static final int OPTION_SHOW_FILTERS = 1 << 0;
+     public static final int OPTION_DUMP_ALL_COMPONENTS = 1 << 1;
+diff --git a/services/core/java/com/android/server/pm/PackageManagerService.java b/services/core/java/com/android/server/pm/PackageManagerService.java
+index 5849151d287..eea0611ac0e 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -260,6 +260,7 @@ import android.os.Message;
+ import android.os.Parcel;
+ import android.os.PatternMatcher;
+ import android.os.PersistableBundle;
++import android.os.PowerManager;
+ import android.os.Process;
+ import android.os.RemoteCallbackList;
+ import android.os.RemoteException;
+@@ -21924,6 +21925,8 @@ public class PackageManagerService extends IPackageManager.Stub
+                     pw.println("Settings written.");
+                     return;
+                 }
++            } else if ("perf".equals(cmd)) {
++                dumpState.setDump(DumpState.DUMP_PERF_MODE);
+             }
+         }
+ 
+@@ -22217,6 +22220,10 @@ public class PackageManagerService extends IPackageManager.Stub
+                 }
+             }
+ 
++            if (dumpState.isDumping(DumpState.DUMP_PERF_MODE) && packageName == null) {
++                mSettings.dumpPackagePerformanceMode(pw, dumpState);
++            }
++
+             if (!checkin && dumpState.isDumping(DumpState.DUMP_FROZEN) && packageName == null) {
+                 // XXX should handle packageName != null by dumping only install data that
+                 // the given package is involved with.
+@@ -25646,6 +25653,18 @@ public class PackageManagerService extends IPackageManager.Stub
+         return mProtectedPackages.isPackageStateProtected(userId, packageName);
+     }
+ 
++    /**
++     * @hide
++     */
++    public int getPackagePerformanceMode(String pkgName) {
++        for (int i = 0; i < mSettings.mPerformancePackages.size(); i++) {
++            if (pkgName.toLowerCase().contains(mSettings.mPerformancePackages.get(i).name.toLowerCase())) {
++                return mSettings.mPerformancePackages.get(i).mode;
++            }
++        }
++        return PowerManager.PERFORMANCE_MODE_NORMAL;
++    }
++
+     @Override
+     public void sendDeviceCustomizationReadyBroadcast() {
+         mContext.enforceCallingPermission(Manifest.permission.SEND_DEVICE_CUSTOMIZATION_READY,
+diff --git a/services/core/java/com/android/server/pm/PackagePerformanceSetting.java b/services/core/java/com/android/server/pm/PackagePerformanceSetting.java
+new file mode 100644
+index 00000000000..7090a00fff8
+--- /dev/null
++++ b/services/core/java/com/android/server/pm/PackagePerformanceSetting.java
+@@ -0,0 +1,34 @@
++/*
++ * Copyright (c) 2020 Rockchip Electronics Co., Ltd
++ */
++
++package com.android.server.pm;
++
++import java.util.HashSet;
++
++/**
++ * Settings data for a particular shared user ID we know about.
++ */
++public class PackagePerformanceSetting {
++    String name;
++    int mode;
++
++    PackagePerformanceSetting(String _name, int _mode) {
++        name = _name;
++        mode = _mode;
++    }
++
++    public void add(String _name) {
++        name = _name;
++    }
++
++    public void setMode(int _mode) {
++        mode = _mode;
++    }
++
++    @Override
++    public String toString() {
++        return "PackagePerformanceSetting{" + Integer.toHexString(System.identityHashCode(this)) + " "
++            + name + "/" + mode + "}";
++    }
++}
+diff --git a/services/core/java/com/android/server/pm/Settings.java b/services/core/java/com/android/server/pm/Settings.java
+index 2133cd651ce..7fd39aec1ce 100644
+--- a/services/core/java/com/android/server/pm/Settings.java
++++ b/services/core/java/com/android/server/pm/Settings.java
+@@ -409,6 +409,9 @@ public final class Settings {
+     // App-link priority tracking, per-user
+     final SparseIntArray mNextAppLinkGeneration = new SparseIntArray();
+ 
++    // Packages that define hardware accelerate mode.
++    final ArrayList<PackagePerformanceSetting>  mPerformancePackages = new ArrayList<PackagePerformanceSetting>();
++
+     final StringBuilder mReadMessages = new StringBuilder();
+ 
+     /**
+@@ -449,6 +452,7 @@ public final class Settings {
+         mRuntimePermissionsPersistence = new RuntimePermissionPersistence(mLock);
+ 
+         mSystemDir = new File(dataDir, "system");
++        File configureDir = Environment.getRootDirectory();
+         mSystemDir.mkdirs();
+         FileUtils.setPermissions(mSystemDir.toString(),
+                 FileUtils.S_IRWXU|FileUtils.S_IRWXG
+@@ -456,6 +460,53 @@ public final class Settings {
+                 -1, -1);
+         mSettingsFilename = new File(mSystemDir, "packages.xml");
+         mBackupSettingsFilename = new File(mSystemDir, "packages-backup.xml");
++        File packagePerformanceInfoFile = new File("/odm/etc/package_performance.xml");
++        // Read packages defined in configure file
++        if (!mSettingsFilename.exists()) {
++            if (packagePerformanceInfoFile.exists()) {
++                FileInputStream stream=null;
++                try {
++                    stream = new FileInputStream(packagePerformanceInfoFile);
++                    XmlPullParser parser = Xml.newPullParser();
++                    parser.setInput(stream, null);
++                    int type;
++                    do {
++                        type = parser.next();
++                        if (type == XmlPullParser.START_TAG) {
++                            String tag = parser.getName();
++                            if ("app".equals(tag)) {
++                                String pkgName = parser.getAttributeValue(null, "package");
++                                String pkgMode = parser.getAttributeValue(null, "mode");
++                                PackagePerformanceSetting setting = new PackagePerformanceSetting(pkgName, Integer.valueOf(pkgMode));
++                                mPerformancePackages.add(setting);
++                            }
++                        }
++                    } while (type != XmlPullParser.END_DOCUMENT);
++                } catch (NullPointerException e) {
++                    Slog.w(TAG, "failed parsing " + packagePerformanceInfoFile, e);
++                } catch (NumberFormatException e) {
++                    Slog.w(TAG, "failed parsing " + packagePerformanceInfoFile, e);
++                } catch (XmlPullParserException e) {
++                    Slog.w(TAG, "failed parsing " + packagePerformanceInfoFile, e);
++                } catch (IOException e) {
++                    Slog.w(TAG, "failed parsing " + packagePerformanceInfoFile, e);
++                } catch (IndexOutOfBoundsException e) {
++                    Slog.w(TAG, "failed parsing " + packagePerformanceInfoFile, e);
++                }finally {
++                    if(stream!=null){
++                        try{
++                            stream.close();
++                        }catch(Exception e){
++                            Slog.e(TAG,"close exception"+e);
++                        }
++                    }
++                }
++            }else {
++                Log.w(TAG, "packagePerformanceInfoFile not exist!Closed performance mode!"+packagePerformanceInfoFile.toString());
++            }
++        }else {
++            Log.w(TAG, "mSettingsFilename exist! Closed performance mode!"+packagePerformanceInfoFile.toString());
++        }
+         mPackageListFilename = new File(mSystemDir, "packages.list");
+         FileUtils.setPermissions(mPackageListFilename, 0640, SYSTEM_UID, PACKAGE_INFO_GID);
+         mPrebundledPackagesFilename = new File(mSystemDir, "prebundled-packages.list");
+@@ -2530,6 +2581,17 @@ public final class Settings {
+                 serializer.endTag(null, "shared-user");
+             }
+ 
++            if (mPerformancePackages.size() > 0) {
++                serializer.startTag(null, "performance-package");
++                for (int j = 0; j < mPerformancePackages.size(); j++) {
++                    serializer.startTag(null, "app");
++                    serializer.attribute(null, "package", mPerformancePackages.get(j).name);
++                    serializer.attribute(null, "mode", String.valueOf(mPerformancePackages.get(j).mode));
++                    serializer.endTag(null, "app");
++                }
++                serializer.endTag(null, "performance-package");
++            }
++
+             if (mRenamedPackages.size() > 0) {
+                 for (Map.Entry<String, String> e : mRenamedPackages.entrySet()) {
+                     serializer.startTag(null, "renamed-package");
+@@ -3133,6 +3195,8 @@ public final class Settings {
+                     }
+                 } else if (tagName.equals("restored-ivi")) {
+                     readRestoredIntentFilterVerifications(parser);
++                } else if (tagName.equals("performance-package")) {
++                    readPerformancePackageLP(parser);
+                 } else if (tagName.equals("last-platform-version")) {
+                     // Upgrade from older XML schema
+                     final VersionInfo internal = findOrCreateVersion(
+@@ -4298,6 +4362,30 @@ public final class Settings {
+         t.traceEnd(); // createNewUser
+     }
+ 
++    private void readPerformancePackageLP(XmlPullParser parser) throws XmlPullParserException,
++            IOException {
++        int outerDepth = parser.getDepth();
++        int type;
++        while ((type = parser.next()) != XmlPullParser.END_DOCUMENT
++                && (type != XmlPullParser.END_TAG || parser.getDepth() > outerDepth)) {
++            if (type == XmlPullParser.END_TAG || type == XmlPullParser.TEXT) {
++                continue;
++            }
++
++            String tagName = parser.getName();
++            if (tagName.equals("app")) {
++                String pkgName = parser.getAttributeValue(null, "package");
++                String pkgMode = parser.getAttributeValue(null, "mode");
++                PackagePerformanceSetting setting = new PackagePerformanceSetting(pkgName,
++                        Integer.valueOf(pkgMode));
++
++                if (pkgName != null) {
++                    mPerformancePackages.add(setting);
++                }
++            }
++        }
++    }
++
+     void removeUserLPw(int userId) {
+         Set<Entry<String, PackageSetting>> entries = mPackages.entrySet();
+         for (Entry<String, PackageSetting> entry : entries) {
+@@ -5207,6 +5295,19 @@ public final class Settings {
+         }
+     }
+ 
++    void dumpPackagePerformanceMode(PrintWriter pw, DumpState dumpState) {
++        pw.println(" ");
++        pw.println("Package performance messages:");
++        if (!mPerformancePackages.isEmpty()) {
++            for (PackagePerformanceSetting c : mPerformancePackages) {
++                pw.print("      ");
++                pw.print(c.name);
++                pw.print(" -> ");
++                pw.println(c.mode);
++            }
++        }
++    }
++
+     void dumpReadMessagesLPr(PrintWriter pw, DumpState dumpState) {
+         pw.println("Settings parse messages:");
+         pw.print(mReadMessages.toString());
+diff --git a/services/core/java/com/android/server/wm/ActivityTaskManagerService.java b/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
+index 205523b2a11..7f88b33705f 100644
+--- a/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
++++ b/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
+@@ -3262,6 +3262,21 @@ public class ActivityTaskManagerService extends IActivityTaskManager.Stub {
+         }
+     }
+ 
++    public int getFrontActivityPerformanceModeLocked() {
++        int mode = PowerManager.PERFORMANCE_MODE_NORMAL;
++        final ActivityStack mainStack = mRootWindowContainer.getTopDisplayFocusedStack();
++        ActivityRecord r = mainStack.topRunningActivityLocked();
++        if (r != null) {
++            try {
++                Log.v(TAG,"getPackageFerformanceMode--"+r.mActivityComponent.toString()+"----"+r.packageName);
++                mode = AppGlobals.getPackageManager().getPackagePerformanceMode(
++                        r.mActivityComponent.toString());
++            } catch (RemoteException e) {
++            }
++        }
++        return mode;
++    }
++
+     @Override
+     public int addAppTask(IBinder activityToken, Intent intent,
+             ActivityManager.TaskDescription description, Bitmap thumbnail) throws RemoteException {
+diff --git a/services/core/java/com/android/server/wm/RootWindowContainer.java b/services/core/java/com/android/server/wm/RootWindowContainer.java
+index 4700864c03b..206560770cb 100644
+--- a/services/core/java/com/android/server/wm/RootWindowContainer.java
++++ b/services/core/java/com/android/server/wm/RootWindowContainer.java
+@@ -3541,6 +3541,10 @@ class RootWindowContainer extends WindowContainer<DisplayContent>
+     void sendPowerHintForLaunchEndIfNeeded() {
+         // Trigger launch power hint if activity is launched
+         if (mPowerHintSent && mService.mPowerManagerInternal != null) {
++            if (mService.getFrontActivityPerformanceModeLocked() == 1){
++                mPowerHintSent = false;
++                return;
++            }
+             mService.mPowerManagerInternal.powerHint(PowerHint.LAUNCH, 0);
+             mPowerHintSent = false;
+         }
+diff --git a/services/tests/servicestests/src/com/android/server/backup/testutils/PackageManagerStub.java b/services/tests/servicestests/src/com/android/server/backup/testutils/PackageManagerStub.java
+index 5fb9c435a31..ada220f1187 100644
+--- a/services/tests/servicestests/src/com/android/server/backup/testutils/PackageManagerStub.java
++++ b/services/tests/servicestests/src/com/android/server/backup/testutils/PackageManagerStub.java
+@@ -72,6 +72,11 @@ public class PackageManagerStub extends PackageManager {
+         return new String[0];
+     }
+ 
++    @Override
++    public int getPackagePerformanceMode(String pkgName) {
++        throw new UnsupportedOperationException();
++    }
++
+     @Override
+     public String[] canonicalToCurrentPackageNames(String[] names) {
+         return new String[0];
+diff --git a/test-mock/src/android/test/mock/MockPackageManager.java b/test-mock/src/android/test/mock/MockPackageManager.java
+index 5f95bc124de..ddc20fb48f8 100644
+--- a/test-mock/src/android/test/mock/MockPackageManager.java
++++ b/test-mock/src/android/test/mock/MockPackageManager.java
+@@ -1249,4 +1249,12 @@ public class MockPackageManager extends PackageManager {
+             int uid, byte[] certificate, @PackageManager.CertificateInputType int type) {
+         throw new UnsupportedOperationException();
+     }
++
++    /**
++     * @hide
++     */
++    @Override
++    public int getPackagePerformanceMode(String pkgName) {
++        throw new UnsupportedOperationException();
++    }
+ }
+-- 
+2.35.1
+

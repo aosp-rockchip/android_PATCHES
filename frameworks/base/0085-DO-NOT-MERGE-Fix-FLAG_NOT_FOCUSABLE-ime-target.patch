@@ -1,0 +1,59 @@
+From d160de80b6ccdfd08625a37a4567cf6ac41b8faa Mon Sep 17 00:00:00 2001
+From: Tarandeep Singh <tarandeep@google.com>
+Date: Mon, 24 Feb 2020 18:35:43 -0800
+Subject: [PATCH 085/297] DO NOT MERGE: Fix FLAG_NOT_FOCUSABLE ime target
+
+Windows with FLAG_NOT_FOCUSABLE can not be IME target unless alpha is
+zero (i.e. app is using transparent window to detect IME for legacy
+reasons).
+Going forward we can improve this with the todo already mentioned in the
+code block.
+
+Bug: 145812508
+Fix: 149899590
+Test: Manually verified using steps in bug.
+
+Change-Id: I0e7db484dd4f9b584998b9f922fd46030fb6fb72
+(cherry picked from commit f3a2b52e16a6a4e91ade996a713cbb1d2b51172b)
+(cherry picked from commit b17e22cd7676c0cb820bd91969e492044e1822f4)
+---
+ services/core/java/com/android/server/wm/WindowState.java   | 6 +++---
+ .../wmtests/src/com/android/server/wm/WindowStateTests.java | 2 ++
+ 2 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/services/core/java/com/android/server/wm/WindowState.java b/services/core/java/com/android/server/wm/WindowState.java
+index b25008373a7..8613e2887f7 100644
+--- a/services/core/java/com/android/server/wm/WindowState.java
++++ b/services/core/java/com/android/server/wm/WindowState.java
+@@ -2275,9 +2275,9 @@ class WindowState extends WindowContainer<WindowState> implements WindowManagerP
+             return false;
+         }
+ 
+-        if (PixelFormat.formatHasAlpha(mAttrs.format)) {
+-            // Support legacy use cases where transparent windows can still be ime target with
+-            // FLAG_NOT_FOCUSABLE and ALT_FOCUSABLE_IM set.
++        if (PixelFormat.formatHasAlpha(mAttrs.format) && mAttrs.alpha == 0) {
++            // Support legacy use cases where completely transparent windows can still be ime target
++            // with FLAG_NOT_FOCUSABLE and ALT_FOCUSABLE_IM set.
+             // Certain apps listen for IME insets using transparent windows and ADJUST_NOTHING to
+             // manually synchronize app content to IME animation b/144619551.
+             // TODO(b/145812508): remove this once new focus management is complete b/141738570
+diff --git a/services/tests/wmtests/src/com/android/server/wm/WindowStateTests.java b/services/tests/wmtests/src/com/android/server/wm/WindowStateTests.java
+index 2c68cc7a19b..b35d38bf17e 100644
+--- a/services/tests/wmtests/src/com/android/server/wm/WindowStateTests.java
++++ b/services/tests/wmtests/src/com/android/server/wm/WindowStateTests.java
+@@ -251,9 +251,11 @@ public class WindowStateTests extends WindowTestsBase {
+ 
+         // b/145812508: special legacy use-case for transparent/translucent windows.
+         appWindow.mAttrs.format = PixelFormat.TRANSPARENT;
++        appWindow.mAttrs.alpha = 0;
+         assertTrue(appWindow.canBeImeTarget());
+ 
+         appWindow.mAttrs.format = PixelFormat.OPAQUE;
++        appWindow.mAttrs.alpha = 1;
+         appWindow.mAttrs.flags &= ~FLAG_ALT_FOCUSABLE_IM;
+         assertFalse(appWindow.canBeImeTarget());
+         appWindow.mAttrs.flags &= ~FLAG_NOT_FOCUSABLE;
+-- 
+2.35.1
+

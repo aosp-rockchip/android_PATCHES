@@ -1,0 +1,36 @@
+From 6a9464c08061aa4fa5f8a073c45bb30667fb4577 Mon Sep 17 00:00:00 2001
+From: Patrick Baumann <patb@google.com>
+Date: Wed, 17 Jun 2020 10:21:55 -0700
+Subject: [PATCH 181/297] Remove incorrect optimization in visibility cache
+
+During review when introducing the visibility cache, a suggested
+optimization when iterating over users turned out to prevent populating
+of the cache for certain multi-user cases.
+
+This change ensures that we pass over all users in both directions,
+making for a complete cache.
+
+Test: atest AppEnumerationTests AppsFilterTest
+Fixes: 159193336
+Change-Id: Ic9ae27f1e1402b42a60a333c3ae99373f4829101
+(cherry picked from commit 8132b22315e634cb5972e2b5f1b6782128b638de)
+---
+ services/core/java/com/android/server/pm/AppsFilter.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/pm/AppsFilter.java b/services/core/java/com/android/server/pm/AppsFilter.java
+index e7e6fe9d6b9..178f6491d4f 100644
+--- a/services/core/java/com/android/server/pm/AppsFilter.java
++++ b/services/core/java/com/android/server/pm/AppsFilter.java
+@@ -646,7 +646,7 @@ public class AppsFilter {
+             final int appxUidCount = userCount * allSettings.size();
+             for (int su = 0; su < userCount; su++) {
+                 int subjectUser = allUsers[su].id;
+-                for (int ou = su; ou < userCount; ou++) {
++                for (int ou = 0; ou < userCount; ou++) {
+                     int otherUser = allUsers[ou].id;
+                     int subjectUid = UserHandle.getUid(subjectUser, subjectSetting.appId);
+                     if (!mShouldFilterCache.contains(subjectUid)) {
+-- 
+2.35.1
+

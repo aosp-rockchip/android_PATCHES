@@ -1,0 +1,66 @@
+From 20fee56ea288331a6faab7f19c65ea6809a2930b Mon Sep 17 00:00:00 2001
+From: Gopalakrishnan Nallasamy <gokrishnan@google.com>
+Date: Thu, 26 Mar 2020 15:21:01 -0700
+Subject: [PATCH 06/25] MPEG4Extractor:don't set delay and padding from 2nd
+ edit list entry
+
+media time and segment duration entries from 1st edit list entry only is
+used for gapless playback, hence don't process the same from second edit
+list entry.
+
+Bug: 152372048
+
+Test: atest android.media.cts.MediaMetadataRetrieverTest
+      atest android.media.cts.MediaMuxerTest
+      atest android.media.cts.MediaExtractorTest
+      Gapless playback files played as expected.
+Change-Id: I79ce7c69c65f71440e0ba6552e150586fab64aac
+(cherry picked from commit 6932d7dd13d071f06767c15c14de80daae45cb0b)
+---
+ media/extractors/mp4/MPEG4Extractor.cpp | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
+
+diff --git a/media/extractors/mp4/MPEG4Extractor.cpp b/media/extractors/mp4/MPEG4Extractor.cpp
+index c493594895..cb5d910fc6 100755
+--- a/media/extractors/mp4/MPEG4Extractor.cpp
++++ b/media/extractors/mp4/MPEG4Extractor.cpp
+@@ -1260,7 +1260,7 @@ status_t MPEG4Extractor::parseChunk(off64_t *offset, int depth) {
+                          */
+                         mLastTrack->elst_initial_empty_edit_ticks = segment_duration;
+                     } else if (media_time >= 0 && i == 0) {
+-                        ALOGV("first edit list entry");
++                        ALOGV("first edit list entry - from gapless playback files");
+                         mLastTrack->elst_media_time = media_time;
+                         mLastTrack->elst_segment_duration = segment_duration;
+                         ALOGV("segment_duration: %" PRIu64 " media_time: %" PRId64,
+@@ -1270,10 +1270,6 @@ status_t MPEG4Extractor::parseChunk(off64_t *offset, int depth) {
+                     } else if (empty_edit_present && i == 1) {
+                         // Process second entry only when the first entry was an empty edit entry.
+                         ALOGV("second edit list entry");
+-                        mLastTrack->elst_media_time = media_time;
+-                        mLastTrack->elst_segment_duration = segment_duration;
+-                        ALOGV("segment_duration: %" PRIu64 " media_time: %" PRId64,
+-                              segment_duration, media_time);
+                         mLastTrack->elst_shift_start_ticks = media_time;
+                     } else {
+                         ALOGW("for now, unsupported entry in edit list %" PRIu32, entry_count);
+@@ -5863,7 +5859,7 @@ media_status_t MPEG4Source::read(
+     ReadOptions::SeekMode mode;
+ 
+     if (options && options->getSeekTo(&seekTimeUs, &mode)) {
+-
++        ALOGV("seekTimeUs:%" PRId64, seekTimeUs);
+         if (mIsHeif) {
+             CHECK(mSampleTable == NULL);
+             CHECK(mItemTable != NULL);
+@@ -6296,6 +6292,7 @@ media_status_t MPEG4Source::fragmentedRead(
+     int64_t seekTimeUs;
+     ReadOptions::SeekMode mode;
+     if (options && options->getSeekTo(&seekTimeUs, &mode)) {
++        ALOGV("seekTimeUs:%" PRId64, seekTimeUs);
+         int64_t elstInitialEmptyEditUs = 0, elstShiftStartUs = 0;
+         if (mElstInitialEmptyEditTicks > 0) {
+             elstInitialEmptyEditUs = ((long double)mElstInitialEmptyEditTicks * 1000000) /
+-- 
+2.35.1
+

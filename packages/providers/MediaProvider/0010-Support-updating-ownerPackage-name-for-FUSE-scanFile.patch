@@ -1,0 +1,398 @@
+From 796eebe73620434056c7de6070cc0090a6c0a65f Mon Sep 17 00:00:00 2001
+From: Sahana Rao <sahanas@google.com>
+Date: Mon, 17 Feb 2020 10:34:42 +0000
+Subject: [PATCH 10/26] Support updating ownerPackage name for FUSE scanFile
+
+Previously, MediaScanner.scanFile wouldn't update owner package name for
+a file. Added new MediaScanner.scanFile method to support updating owner
+package name for new insertions.
+
+To support inserting the file to database for files created by by
+legacy apps, file is scanned and inserted to database on close().
+New scanFile allows legacy apps to update their package name for newly
+created files.
+
+Test: atest ModernMediaScannerTest#testScanFileAndUpdateOwnerPackageName
+Test: atest FuseDaemonHostTest
+Bug: 145737191
+Merged-In: I71d7f9904650d317f601dc27747cf8a9d9dc48f0
+Change-Id: I71d7f9904650d317f601dc27747cf8a9d9dc48f0
+(cherry picked from commit 73c358cd2587497f7833e8d33192cddf7c255741)
+(cherry picked from commit 0ccfdd8d806db4c6825a092b9266ac1d7aa15bc6)
+---
+ .../providers/media/MediaProvider.java        |  8 +++-
+ .../media/scan/LegacyMediaScanner.java        |  7 ++++
+ .../providers/media/scan/MediaScanner.java    |  3 ++
+ .../media/scan/ModernMediaScanner.java        | 20 +++++++--
+ .../media/scan/NullMediaScanner.java          |  8 ++++
+ .../fused/host/LegacyAccessHostTest.java      |  5 +++
+ .../fused/legacy/LegacyFileAccessTest.java    | 41 ++++++++++++++++++-
+ .../android/tests/fused/lib/TestUtils.java    | 18 ++++++++
+ .../media/scan/LegacyMediaScannerTest.java    |  5 +++
+ .../media/scan/ModernMediaScannerTest.java    | 18 ++++++++
+ .../media/scan/NullMediaScannerTest.java      |  2 +
+ 11 files changed, 129 insertions(+), 6 deletions(-)
+
+diff --git a/src/com/android/providers/media/MediaProvider.java b/src/com/android/providers/media/MediaProvider.java
+index eabe3a43..a2cad246 100644
+--- a/src/com/android/providers/media/MediaProvider.java
++++ b/src/com/android/providers/media/MediaProvider.java
+@@ -865,6 +865,10 @@ public class MediaProvider extends ContentProvider {
+         return mMediaScanner.scanFile(file, reason);
+     }
+ 
++    public Uri scanFile(File file, int reason, String ownerPackage) {
++        return mMediaScanner.scanFile(file, reason, ownerPackage);
++    }
++
+     /**
+      * Makes MediaScanner scan the given file.
+      * @param file path of the file to be scanned
+@@ -875,7 +879,9 @@ public class MediaProvider extends ContentProvider {
+      */
+     @Keep
+     public void scanFileForFuse(String file, int uid) {
+-        scanFile(new File(file), REASON_DEMAND);
++        final String callingPackage =
++                LocalCallingIdentity.fromExternal(getContext(), uid).getPackageName();
++        scanFile(new File(file), REASON_DEMAND, callingPackage);
+     }
+ 
+     /**
+diff --git a/src/com/android/providers/media/scan/LegacyMediaScanner.java b/src/com/android/providers/media/scan/LegacyMediaScanner.java
+index 082ff6c2..8d84569a 100644
+--- a/src/com/android/providers/media/scan/LegacyMediaScanner.java
++++ b/src/com/android/providers/media/scan/LegacyMediaScanner.java
+@@ -19,6 +19,8 @@ package com.android.providers.media.scan;
+ import android.content.Context;
+ import android.net.Uri;
+ 
++import androidx.annotation.Nullable;
++
+ import java.io.File;
+ 
+ @Deprecated
+@@ -44,6 +46,11 @@ public class LegacyMediaScanner implements MediaScanner {
+         throw new UnsupportedOperationException();
+     }
+ 
++    @Override
++    public Uri scanFile(File file, int reason, @Nullable String ownerPackage) {
++        throw new UnsupportedOperationException();
++    }
++
+     @Override
+     public void onDetachVolume(String volumeName) {
+         throw new UnsupportedOperationException();
+diff --git a/src/com/android/providers/media/scan/MediaScanner.java b/src/com/android/providers/media/scan/MediaScanner.java
+index a02b77b0..6034ca20 100644
+--- a/src/com/android/providers/media/scan/MediaScanner.java
++++ b/src/com/android/providers/media/scan/MediaScanner.java
+@@ -24,6 +24,8 @@ import static com.android.providers.media.MediaProviderStatsLog.MEDIA_PROVIDER_S
+ import android.content.Context;
+ import android.net.Uri;
+ 
++import androidx.annotation.Nullable;
++
+ import java.io.File;
+ 
+ public interface MediaScanner {
+@@ -35,5 +37,6 @@ public interface MediaScanner {
+     public Context getContext();
+     public void scanDirectory(File file, int reason);
+     public Uri scanFile(File file, int reason);
++    public Uri scanFile(File file, int reason, @Nullable String ownerPackage);
+     public void onDetachVolume(String volumeName);
+ }
+diff --git a/src/com/android/providers/media/scan/ModernMediaScanner.java b/src/com/android/providers/media/scan/ModernMediaScanner.java
+index 4e8318f5..a2333cb4 100644
+--- a/src/com/android/providers/media/scan/ModernMediaScanner.java
++++ b/src/com/android/providers/media/scan/ModernMediaScanner.java
+@@ -213,15 +213,19 @@ public class ModernMediaScanner implements MediaScanner {
+ 
+     @Override
+     public void scanDirectory(File file, int reason) {
+-        try (Scan scan = new Scan(file, reason)) {
++        try (Scan scan = new Scan(file, reason, /*ownerPackage*/ null)) {
+             scan.run();
+         } catch (OperationCanceledException ignored) {
+         }
+     }
+-
+     @Override
+     public Uri scanFile(File file, int reason) {
+-        try (Scan scan = new Scan(file, reason)) {
++       return scanFile(file, reason, /*ownerPackage*/ null);
++    }
++
++    @Override
++    public Uri scanFile(File file, int reason, @Nullable String ownerPackage) {
++        try (Scan scan = new Scan(file, reason, ownerPackage)) {
+             scan.run();
+             return scan.mFirstResult;
+         } catch (OperationCanceledException ignored) {
+@@ -264,6 +268,7 @@ public class ModernMediaScanner implements MediaScanner {
+         private final String mVolumeName;
+         private final Uri mFilesUri;
+         private final CancellationSignal mSignal;
++        private final String mOwnerPackage;
+ 
+         private final long mStartGeneration;
+         private final boolean mSingleFile;
+@@ -280,7 +285,9 @@ public class ModernMediaScanner implements MediaScanner {
+         private int mUpdateCount;
+         private int mDeleteCount;
+ 
+-        public Scan(File root, int reason) {
++
++        public Scan(File root, int reason, @Nullable String ownerPackage) {
++
+             Trace.beginSection("ctor");
+ 
+             mClient = mContext.getContentResolver()
+@@ -295,6 +302,7 @@ public class ModernMediaScanner implements MediaScanner {
+ 
+             mStartGeneration = MediaStore.getGeneration(mResolver, mVolumeName);
+             mSingleFile = mRoot.isFile();
++            mOwnerPackage = ownerPackage;
+ 
+             Trace.endSection();
+         }
+@@ -575,6 +583,10 @@ public class ModernMediaScanner implements MediaScanner {
+                 Trace.endSection();
+             }
+             if (op != null) {
++                // Add owner package name to new insertions when package name is provided.
++                if (op.build().isInsert() && !attrs.isDirectory() && mOwnerPackage != null) {
++                    op.withValue(MediaColumns.OWNER_PACKAGE_NAME, mOwnerPackage);
++                }
+                 // Force DRM files to be marked as DRM, since the lower level
+                 // stack may not set this correctly
+                 if (isDrm) {
+diff --git a/src/com/android/providers/media/scan/NullMediaScanner.java b/src/com/android/providers/media/scan/NullMediaScanner.java
+index fa00b51a..3dfe4a24 100644
+--- a/src/com/android/providers/media/scan/NullMediaScanner.java
++++ b/src/com/android/providers/media/scan/NullMediaScanner.java
+@@ -21,6 +21,8 @@ import android.net.Uri;
+ import android.provider.MediaStore;
+ import android.util.Log;
+ 
++import androidx.annotation.Nullable;
++
+ import java.io.File;
+ 
+ /**
+@@ -52,6 +54,12 @@ public class NullMediaScanner implements MediaScanner {
+         return null;
+     }
+ 
++    @Override
++    public Uri scanFile(File file, int reason, @Nullable String ownerPackage) {
++        Log.w(TAG, "Ignoring scan request for " + file);
++        return null;
++    }
++
+     @Override
+     public void onDetachVolume(String volumeName) {
+         // Ignored
+diff --git a/tests/jni/FuseDaemonTest/host/src/com/android/tests/fused/host/LegacyAccessHostTest.java b/tests/jni/FuseDaemonTest/host/src/com/android/tests/fused/host/LegacyAccessHostTest.java
+index 78283f76..1f1b8c75 100644
+--- a/tests/jni/FuseDaemonTest/host/src/com/android/tests/fused/host/LegacyAccessHostTest.java
++++ b/tests/jni/FuseDaemonTest/host/src/com/android/tests/fused/host/LegacyAccessHostTest.java
+@@ -181,4 +181,9 @@ public class LegacyAccessHostTest extends BaseHostJUnit4Test {
+     public void testCanDeleteAllFiles_hasRW() throws Exception {
+         runDeviceTest("testCanDeleteAllFiles_hasRW");
+     }
++
++    @Test
++    public void testLegacyAppCanOwnAFile_hasW() throws Exception {
++        runDeviceTest("testLegacyAppCanOwnAFile_hasW");
++    }
+ }
+diff --git a/tests/jni/FuseDaemonTest/legacy/src/com/android/tests/fused/legacy/LegacyFileAccessTest.java b/tests/jni/FuseDaemonTest/legacy/src/com/android/tests/fused/legacy/LegacyFileAccessTest.java
+index 64f67f53..49609d29 100644
+--- a/tests/jni/FuseDaemonTest/legacy/src/com/android/tests/fused/legacy/LegacyFileAccessTest.java
++++ b/tests/jni/FuseDaemonTest/legacy/src/com/android/tests/fused/legacy/LegacyFileAccessTest.java
+@@ -17,9 +17,13 @@
+ package com.android.tests.fused.legacy;
+ 
+ import static com.android.tests.fused.lib.TestUtils.createFileAs;
++
++
+ import static com.android.tests.fused.lib.TestUtils.deleteFileAsNoThrow;
++import static com.android.tests.fused.lib.TestUtils.getFileOwnerPackageFromDatabase;
+ import static com.android.tests.fused.lib.TestUtils.getFileRowIdFromDatabase;
+ import static com.android.tests.fused.lib.TestUtils.installApp;
++import static com.android.tests.fused.lib.TestUtils.listAs;
+ import static com.android.tests.fused.lib.TestUtils.pollForExternalStorageState;
+ import static com.android.tests.fused.lib.TestUtils.uninstallApp;
+ 
+@@ -27,6 +31,9 @@ import static com.android.tests.fused.lib.TestUtils.pollForPermission;
+ 
+ import static com.google.common.truth.Truth.assertThat;
+ 
++import static org.junit.Assert.assertEquals;
++import static org.junit.Assert.assertNotEquals;
++import static org.junit.Assert.assertTrue;
+ import static org.junit.Assert.fail;
+ 
+ import android.Manifest;
+@@ -50,7 +57,6 @@ import java.io.File;
+ import java.io.FileDescriptor;
+ import java.io.IOException;
+ import java.util.Arrays;
+-import java.util.concurrent.TimeUnit;
+ 
+ /**
+  * Test app targeting Q and requesting legacy storage - tests legacy file path access.
+@@ -64,6 +70,7 @@ import java.util.concurrent.TimeUnit;
+ public class LegacyFileAccessTest {
+ 
+     private static final String TAG = "LegacyFileAccessTest";
++    static final String THIS_PACKAGE_NAME = InstrumentationRegistry.getContext().getPackageName();
+ 
+     static final String VIDEO_FILE_NAME = "LegacyAccessTest_file.mp4";
+     static final String NONMEDIA_FILE_NAME = "LegacyAccessTest_file.pdf";
+@@ -412,6 +419,38 @@ public class LegacyFileAccessTest {
+         }
+     }
+ 
++    /**
++     * Test that file created by legacy app is inserted to MediaProvider database. And,
++     * MediaColumns.OWNER_PACKAGE_NAME is updated with calling package's name.
++     */
++    @Test
++    public void testLegacyAppCanOwnAFile_hasW() throws Exception {
++        pollForPermission(Manifest.permission.READ_EXTERNAL_STORAGE, /*granted*/ true);
++        pollForPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, /*granted*/ true);
++
++        final File EXTERNAL_STORAGE_DIR = Environment.getExternalStorageDirectory();
++        final File videoFile = new File(EXTERNAL_STORAGE_DIR, VIDEO_FILE_NAME);
++        try {
++            assertThat(videoFile.createNewFile()).isTrue();
++
++            installApp(TEST_APP_A, true);
++            // videoFile is inserted to database, non-legacy app can see this videoFile on 'ls'.
++            assertThat(listAs(TEST_APP_A, EXTERNAL_STORAGE_DIR.getAbsolutePath()))
++                    .contains(VIDEO_FILE_NAME);
++
++            // videoFile is in database, row ID for videoFile can not be -1.
++            assertNotEquals(-1, getFileRowIdFromDatabase(videoFile));
++            assertEquals(THIS_PACKAGE_NAME, getFileOwnerPackageFromDatabase(videoFile));
++
++            assertTrue(videoFile.delete());
++            // videoFile is removed from database on delete, hence row ID is -1.
++            assertEquals(-1, getFileRowIdFromDatabase(videoFile));
++        } finally {
++            videoFile.delete();
++            uninstallApp(TEST_APP_A);
++        }
++    }
++
+     private static void assertCanCreateFile(File file) throws IOException {
+         if (file.exists()) {
+             file.delete();
+diff --git a/tests/jni/FuseDaemonTest/libs/FuseDaemonTestLib/src/com/android/tests/fused/lib/TestUtils.java b/tests/jni/FuseDaemonTest/libs/FuseDaemonTestLib/src/com/android/tests/fused/lib/TestUtils.java
+index d451ecef..eb34939b 100644
+--- a/tests/jni/FuseDaemonTest/libs/FuseDaemonTestLib/src/com/android/tests/fused/lib/TestUtils.java
++++ b/tests/jni/FuseDaemonTest/libs/FuseDaemonTestLib/src/com/android/tests/fused/lib/TestUtils.java
+@@ -41,6 +41,7 @@ import android.database.Cursor;
+ import android.net.Uri;
+ import android.os.Environment;
+ import android.os.ParcelFileDescriptor;
++import android.os.SystemClock;
+ import android.provider.MediaStore;
+ import android.system.Os;
+ import android.util.Log;
+@@ -89,6 +90,8 @@ public class TestUtils {
+         try {
+             sUiAutomation.grantRuntimePermission(packageName,
+                     Manifest.permission.READ_EXTERNAL_STORAGE);
++            // Wait for OP_READ_EXTERNAL_STORAGE to get updated.
++            SystemClock.sleep(1000);
+         } finally {
+             sUiAutomation.dropShellPermissionIdentity();
+         }
+@@ -254,6 +257,21 @@ public class TestUtils {
+         return id;
+     }
+ 
++    /**
++     * Queries {@link ContentResolver} for a file and returns the corresponding owner package name
++     * for its entry in the database.
++     */
++    @Nullable
++    public static String getFileOwnerPackageFromDatabase(@NonNull File file) {
++        String ownerPackage = null;
++        try (Cursor c = queryFile(file, MediaStore.MediaColumns.OWNER_PACKAGE_NAME)) {
++            if (c.moveToFirst()) {
++                ownerPackage = c.getString(0);
++            }
++        }
++        return ownerPackage;
++    }
++
+     /**
+      * Queries {@link ContentResolver} for a file and returns the corresponding mime type for its
+      * entry in the database.
+diff --git a/tests/src/com/android/providers/media/scan/LegacyMediaScannerTest.java b/tests/src/com/android/providers/media/scan/LegacyMediaScannerTest.java
+index 1c24b2e7..9ecc6fcf 100644
+--- a/tests/src/com/android/providers/media/scan/LegacyMediaScannerTest.java
++++ b/tests/src/com/android/providers/media/scan/LegacyMediaScannerTest.java
+@@ -44,6 +44,11 @@ public class LegacyMediaScannerTest {
+             scanner.scanFile(new File("/dev/null"), MediaScanner.REASON_UNKNOWN);
+         } catch (UnsupportedOperationException expected) {
+         }
++        try {
++            scanner.scanFile(new File("/dev/null"), MediaScanner.REASON_UNKNOWN,
++                    InstrumentationRegistry.getContext().getPackageName());
++        } catch (UnsupportedOperationException expected) {
++        }
+         try {
+             scanner.onDetachVolume(MediaStore.VOLUME_EXTERNAL_PRIMARY);
+         } catch (UnsupportedOperationException expected) {
+diff --git a/tests/src/com/android/providers/media/scan/ModernMediaScannerTest.java b/tests/src/com/android/providers/media/scan/ModernMediaScannerTest.java
+index 1bbcb45a..c7adcd11 100644
+--- a/tests/src/com/android/providers/media/scan/ModernMediaScannerTest.java
++++ b/tests/src/com/android/providers/media/scan/ModernMediaScannerTest.java
+@@ -435,6 +435,24 @@ public class ModernMediaScannerTest {
+         assertQueryCount(0, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+     }
+ 
++    @Test
++    public void testScanFileAndUpdateOwnerPackageName() throws Exception {
++        final File image = new File(mDir, "image.jpg");
++        final String thisPackageName = InstrumentationRegistry.getContext().getPackageName();
++        stage(R.raw.test_image, image);
++
++        assertQueryCount(0, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
++        // scanning the image file inserts new database entry with OWNER_PACKAGE_NAME as
++        // thisPackageName.
++        assertNotNull(mModern.scanFile(image, REASON_UNKNOWN, thisPackageName));
++        try (Cursor cursor = mIsolatedResolver.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
++                new String[] {MediaColumns.OWNER_PACKAGE_NAME}, null, null, null)) {
++            assertEquals(1, cursor.getCount());
++            cursor.moveToNext();
++            assertEquals(thisPackageName, cursor.getString(0));
++        }
++    }
++
+     /**
+      * Verify fix for obscure bug which would cause us to delete files outside a
+      * directory that share a common prefix.
+diff --git a/tests/src/com/android/providers/media/scan/NullMediaScannerTest.java b/tests/src/com/android/providers/media/scan/NullMediaScannerTest.java
+index 06f5ce81..44528bab 100644
+--- a/tests/src/com/android/providers/media/scan/NullMediaScannerTest.java
++++ b/tests/src/com/android/providers/media/scan/NullMediaScannerTest.java
+@@ -38,6 +38,8 @@ public class NullMediaScannerTest {
+ 
+         scanner.scanDirectory(new File("/dev/null"), MediaScanner.REASON_UNKNOWN);
+         scanner.scanFile(new File("/dev/null"), MediaScanner.REASON_UNKNOWN);
++        scanner.scanFile(new File("/dev/null"), MediaScanner.REASON_UNKNOWN,
++                    InstrumentationRegistry.getContext().getPackageName());
+ 
+         scanner.onDetachVolume(MediaStore.VOLUME_EXTERNAL_PRIMARY);
+     }
+-- 
+2.35.1
+

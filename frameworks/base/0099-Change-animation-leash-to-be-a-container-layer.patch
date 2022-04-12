@@ -1,0 +1,34 @@
+From c649d9d8ca574885f87e34f277af53567787b3ac Mon Sep 17 00:00:00 2001
+From: Vishnu Nair <vishnun@google.com>
+Date: Thu, 5 Mar 2020 14:40:27 -0800
+Subject: [PATCH 099/297] Change animation-leash to be a container layer
+
+Temporary revert to fix flicker issues.
+
+Bug: b/149792636, b/150829791
+Test: go/wm-smoke
+Change-Id: I016dfd937ea844f0687195d1670471dfdcbd8cdd
+(cherry picked from commit 10a09f5eaff9f7e75879e8be952b1fc80635ce57)
+---
+ services/core/java/com/android/server/wm/SurfaceAnimator.java | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/services/core/java/com/android/server/wm/SurfaceAnimator.java b/services/core/java/com/android/server/wm/SurfaceAnimator.java
+index 3b3234a4bec..19f8ca91244 100644
+--- a/services/core/java/com/android/server/wm/SurfaceAnimator.java
++++ b/services/core/java/com/android/server/wm/SurfaceAnimator.java
+@@ -379,10 +379,8 @@ class SurfaceAnimator {
+         final SurfaceControl.Builder builder = animatable.makeAnimationLeash()
+                 .setParent(animatable.getAnimationLeashParent())
+                 .setHidden(hidden)
+-                .setName(surface + " - animation-leash")
+-                .setColorLayer();
++                .setName(surface + " - animation-leash");
+         final SurfaceControl leash = builder.build();
+-        t.unsetColor(leash);
+         t.setWindowCrop(leash, width, height);
+         t.setPosition(leash, x, y);
+         t.show(leash);
+-- 
+2.35.1
+

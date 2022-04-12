@@ -1,0 +1,26 @@
+From 6753d421f1483cc3066ef0cc530799dc63cd6751 Mon Sep 17 00:00:00 2001
+From: Wu Liangqing <wlq@rock-chips.com>
+Date: Thu, 5 Mar 2020 15:07:38 +0800
+Subject: [PATCH 2/2] rename iperf to iperf3
+
+Change-Id: Ic4da53261271e68a202b65b538ea9b56f139ae59
+---
+ Android.bp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Android.bp b/Android.bp
+index 46d7cc2..8c67c9b 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -13,7 +13,7 @@
+ // limitations under the License.
+ 
+ cc_binary {
+-    name: "iperf",
++    name: "iperf3",
+     srcs: [
+         "src/*.c",
+     ],
+-- 
+2.35.1
+

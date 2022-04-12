@@ -1,0 +1,1357 @@
+From fa5cc51c8d27706c1bf025d01a9939acc632321f Mon Sep 17 00:00:00 2001
+From: Kenny Root <kroot@google.com>
+Date: Fri, 17 Jul 2020 11:45:09 -0700
+Subject: [PATCH 183/297] Resume-on-Reboot: remove special string
+
+User feedback shows that this string causes confusion that the
+update is going to start immediately.
+
+Bug: 161179448
+Test: Fake OTA test
+Change-Id: I9590ebf76c81ef104f490ba31ada7c482cd70d56
+(cherry picked from commit 3750b50e76e484e956e1d721a4e09ea1b0f94480)
+---
+ packages/SystemUI/res-keyguard/values-af/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-am/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-ar/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-as/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-az/strings.xml     | 3 ---
+ .../SystemUI/res-keyguard/values-b+sr+Latn/strings.xml   | 3 ---
+ packages/SystemUI/res-keyguard/values-be/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-bg/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-bn/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-bs/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-ca/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-cs/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-da/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-de/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-el/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-en-rAU/strings.xml | 3 ---
+ packages/SystemUI/res-keyguard/values-en-rCA/strings.xml | 3 ---
+ packages/SystemUI/res-keyguard/values-en-rGB/strings.xml | 3 ---
+ packages/SystemUI/res-keyguard/values-en-rIN/strings.xml | 3 ---
+ packages/SystemUI/res-keyguard/values-en-rXC/strings.xml | 3 ---
+ packages/SystemUI/res-keyguard/values-es-rUS/strings.xml | 3 ---
+ packages/SystemUI/res-keyguard/values-es/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-et/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-eu/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-fa/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-fi/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-fr-rCA/strings.xml | 3 ---
+ packages/SystemUI/res-keyguard/values-fr/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-gl/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-gu/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-hi/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-hr/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-hu/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-hy/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-in/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-is/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-it/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-iw/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-ja/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-ka/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-kk/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-km/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-kn/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-ko/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-ky/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-lo/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-lt/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-lv/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-mk/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-ml/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-mn/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-mr/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-ms/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-my/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-nb/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-ne/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-nl/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-or/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-pa/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-pl/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-pt-rBR/strings.xml | 3 ---
+ packages/SystemUI/res-keyguard/values-pt-rPT/strings.xml | 3 ---
+ packages/SystemUI/res-keyguard/values-pt/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-ro/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-ru/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-si/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-sk/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-sl/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-sq/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-sr/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-sv/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-sw/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-ta/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-te/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-th/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-tl/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-tr/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-uk/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-ur/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-uz/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-vi/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values-zh-rCN/strings.xml | 3 ---
+ packages/SystemUI/res-keyguard/values-zh-rHK/strings.xml | 3 ---
+ packages/SystemUI/res-keyguard/values-zh-rTW/strings.xml | 3 ---
+ packages/SystemUI/res-keyguard/values-zu/strings.xml     | 3 ---
+ packages/SystemUI/res-keyguard/values/strings.xml        | 9 ---------
+ .../src/com/android/keyguard/KeyguardPasswordView.java   | 2 +-
+ .../src/com/android/keyguard/KeyguardPatternView.java    | 3 +--
+ .../com/android/keyguard/KeyguardPinBasedInputView.java  | 2 +-
+ 89 files changed, 3 insertions(+), 268 deletions(-)
+
+diff --git a/packages/SystemUI/res-keyguard/values-af/strings.xml b/packages/SystemUI/res-keyguard/values-af/strings.xml
+index 8a1f6de432f..92dd9fd9611 100644
+--- a/packages/SystemUI/res-keyguard/values-af/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-af/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Geen diens nie."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Wissel invoermetode"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Vliegtuigmodus"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"PIN word vereis om vir opdatering voor te berei"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Patroon word vereis om vir opdatering voor te berei"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Wagwoord word vereis om vir opdatering voor te berei"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Patroon word vereis nadat toestel herbegin het"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"PIN word vereis nadat toestel herbegin het"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Wagwoord word vereis nadat toestel herbegin het"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-am/strings.xml b/packages/SystemUI/res-keyguard/values-am/strings.xml
+index 0a4aee53b7b..f94c20f9ad0 100644
+--- a/packages/SystemUI/res-keyguard/values-am/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-am/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"ከአገልግሎት መስጫ ክልል ውጪ።"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"የግቤት ስልት ቀይር"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"የአውሮፕላን ሁነታ"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"ለዝማኔ ለማዘጋጀት ፒን ያስፈልጋል"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"ለዝማኔ ለማዘጋጀት ሥርዓተ ጥለት ያስፈልጋል"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"ለዝማኔ ለማዘጋጀት የይለፍ ቃል ያስፈልጋል"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"መሣሪያ ዳግም ከጀመረ በኋላ ሥርዓተ ጥለት ያስፈልጋል"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"መሣሪያ ዳግም ከተነሳ በኋላ ፒን ያስፈልጋል"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"መሣሪያ ዳግም ከጀመረ በኋላ የይለፍ ቃል ያስፈልጋል"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-ar/strings.xml b/packages/SystemUI/res-keyguard/values-ar/strings.xml
+index 491dc39aa08..6d86a78360d 100644
+--- a/packages/SystemUI/res-keyguard/values-ar/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-ar/strings.xml
+@@ -113,9 +113,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"لا تتوفر خدمة."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"تبديل أسلوب الإدخال"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"وضع الطائرة"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"يجب إدخال رقم التعريف الشخصي للتحضير للتحديث."</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"يجب رسم النقش للتحضير للتحديث."</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"يجب إدخال كلمة المرور للتحضير للتحديث."</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"يجب رسم النقش بعد إعادة تشغيل الجهاز"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"يجب إدخال رقم التعريف الشخصي بعد إعادة تشغيل الجهاز"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"يجب إدخال كلمة المرور بعد إعادة تشغيل الجهاز"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-as/strings.xml b/packages/SystemUI/res-keyguard/values-as/strings.xml
+index 4367efb8c67..3b51e480b7d 100644
+--- a/packages/SystemUI/res-keyguard/values-as/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-as/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"কোনো সেৱা নাই।"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"ইনপুট পদ্ধতি সলনি কৰক"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"এয়াৰপ্লেন ম\'ড"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"আপডে\'টৰ বাবে সাজু হ\'বলৈ পিনৰ আৱশ্যক"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"আপডে\'টৰ বাবে সাজু হ\'বলৈ আর্হিৰ আৱশ্যক"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"আপডে\'টৰ বাবে সাজু হ\'বলৈ পাছৱৰ্ডৰ আৱশ্যক"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"ডিভাইচ ৰিষ্টাৰ্ট হোৱাৰ পিছত আৰ্হি দিয়াটো বাধ্যতামূলক"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"ডিভাইচ ৰিষ্টাৰ্ট হোৱাৰ পিছত পিন দিয়াটো বাধ্যতামূলক"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"ডিভাইচ ৰিষ্টাৰ্ট হোৱাৰ পিছত পাছৱৰ্ড দিয়াটো বাধ্যতামূলক"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-az/strings.xml b/packages/SystemUI/res-keyguard/values-az/strings.xml
+index d89bf6a8c0a..ea07c3db435 100644
+--- a/packages/SystemUI/res-keyguard/values-az/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-az/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Xidmət yoxdur."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Daxiletmə metoduna keçin"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Təyyarə rejimi"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Güncəlləməyə hazırlıq üçün PIN kod tələb olunur"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Güncəlləməyə hazırlıq üçün model tələb olunur"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Güncəlləməyə hazırlıq üçün parol tələb olunur"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Cihaz yenidən başladıqdan sonra model tələb olunur"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Cihaz yeniden başladıqdan sonra PIN tələb olunur"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Cihaz yeniden başladıqdan sonra parol tələb olunur"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-b+sr+Latn/strings.xml b/packages/SystemUI/res-keyguard/values-b+sr+Latn/strings.xml
+index 656e3230115..e206958d1e9 100644
+--- a/packages/SystemUI/res-keyguard/values-b+sr+Latn/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-b+sr+Latn/strings.xml
+@@ -104,9 +104,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Mreža nije dostupna."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Promeni metod unosa"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Režim rada u avionu"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"PIN je obavezan radi pripreme za ažuriranje"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Šablon je obavezan radi pripreme za ažuriranje"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Lozinka je obavezna radi pripreme za ažuriranje"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Treba da unesete šablon kada se uređaj ponovo pokrene"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Treba da unesete PIN kada se uređaj ponovo pokrene"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Treba da unesete lozinku kada se uređaj ponovo pokrene"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-be/strings.xml b/packages/SystemUI/res-keyguard/values-be/strings.xml
+index 07b6f358dcf..569e705fbcc 100644
+--- a/packages/SystemUI/res-keyguard/values-be/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-be/strings.xml
+@@ -107,9 +107,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Не абслугоўваецца."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Пераключэнне рэжыму ўводу"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Рэжым палёту"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Для падрыхтоўкі да абнаўлення неабходна ўвесці PIN-код"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Для падрыхтоўкі да абнаўлення неабходна ўвесці ўзор разблакіроўкі"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Для падрыхтоўкі да абнаўлення неабходна ўвесці пароль"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Пасля перазапуску прылады патрабуецца ўзор"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Пасля перазапуску прылады патрабуецца PIN-код"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Пасля перазапуску прылады патрабуецца пароль"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-bg/strings.xml b/packages/SystemUI/res-keyguard/values-bg/strings.xml
+index a8c64f5d955..d015be320e2 100644
+--- a/packages/SystemUI/res-keyguard/values-bg/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-bg/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Няма покритие."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Превключване на метода на въвеждане"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Самолетен режим"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"За подготовката за актуализация се изисква ПИН код"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"За подготовката за актуализация се изисква фигура"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"За подготовката за актуализация се изисква парола"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"След рестартиране на устройството се изисква фигура"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"След рестартиране на устройството се изисква ПИН код"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"След рестартиране на устройството се изисква парола"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-bn/strings.xml b/packages/SystemUI/res-keyguard/values-bn/strings.xml
+index 479e83ab395..8eae6e6e2e1 100644
+--- a/packages/SystemUI/res-keyguard/values-bn/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-bn/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"কোনো পরিষেবা নেই।"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"ইনপুট পদ্ধতি পরিবর্তন করুন"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"বিমান মোড"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"আপডেট প্রস্তুত করতে পিন দরকার"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"আপডেট প্রস্তুত করতে প্যাটার্ন দরকার"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"আপডেট প্রস্তুত করতে পাসওয়ার্ড দরকার"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"ডিভাইসটি পুনরায় চালু হওয়ার পর প্যাটার্নের প্রয়োজন হবে"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"ডিভাইসটি পুনরায় চালু হওয়ার পর পিন প্রয়োজন হবে"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"ডিভাইসটি পুনরায় চালু হওয়ার পর পাসওয়ার্ডের প্রয়োজন হবে"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-bs/strings.xml b/packages/SystemUI/res-keyguard/values-bs/strings.xml
+index ada4c134fce..286b08be1c5 100644
+--- a/packages/SystemUI/res-keyguard/values-bs/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-bs/strings.xml
+@@ -104,9 +104,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Nema mreže."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Promjena načina unosa"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Način rada u avionu"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Za pripremu ažuriranja potreban je PIN"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Za pripremu ažuriranja potreban je uzorak"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Za pripremu ažuriranja potrebna je lozinka"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Potreban je uzorak nakon što se uređaj ponovo pokrene"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Potreban je PIN nakon što se uređaj ponovo pokrene"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Potrebna je lozinka nakon što se uređaj ponovo pokrene"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-ca/strings.xml b/packages/SystemUI/res-keyguard/values-ca/strings.xml
+index 6f5b6829c3e..cb7fa37b281 100644
+--- a/packages/SystemUI/res-keyguard/values-ca/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-ca/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Sense servei"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Canvia el mètode d\'introducció"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Mode d\'avió"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Cal introduir el PIN per preparar l\'actualització"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Cal introduir el patró per preparar l\'actualització"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Cal introduir la contrasenya per preparar l\'actualització"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Cal introduir el patró quan es reinicia el dispositiu"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Cal introduir el PIN quan es reinicia el dispositiu"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Cal introduir la contrasenya quan es reinicia el dispositiu"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-cs/strings.xml b/packages/SystemUI/res-keyguard/values-cs/strings.xml
+index a2f79adff1d..4f0c0ffa496 100644
+--- a/packages/SystemUI/res-keyguard/values-cs/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-cs/strings.xml
+@@ -107,9 +107,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Žádný signál"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Přepnout metodu zadávání"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Režim Letadlo"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Příprava na aktualizaci vyžaduje PIN"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Příprava na aktualizaci vyžaduje gesto"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Příprava na aktualizaci vyžaduje heslo"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Po restartování zařízení je vyžadováno gesto"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Po restartování zařízení je vyžadován kód PIN"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Po restartování zařízení je vyžadováno heslo"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-da/strings.xml b/packages/SystemUI/res-keyguard/values-da/strings.xml
+index ef06269b563..e486fc62569 100644
+--- a/packages/SystemUI/res-keyguard/values-da/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-da/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Ingen dækning."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Skift indtastningsmetode"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Flytilstand"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Du skal angive din pinkode for at forberede opdateringen"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Du skal angive dit mønster for at forberede opdateringen"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Du skal angive din adgangskode for at forberede opdateringen"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Du skal angive et mønster, når du har genstartet enheden"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Der skal angives en pinkode efter genstart af enheden"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Der skal angives en adgangskode efter genstart af enheden"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-de/strings.xml b/packages/SystemUI/res-keyguard/values-de/strings.xml
+index fdfce1ffb33..06d012f4e84 100644
+--- a/packages/SystemUI/res-keyguard/values-de/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-de/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Dienst nicht verfügbar"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Eingabemethode wechseln"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Flugmodus"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Zur Vorbereitung auf das Update ist eine PIN erforderlich"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Zur Vorbereitung auf das Update ist ein Muster erforderlich"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Zur Vorbereitung auf das Update ist ein Passwort erforderlich"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Nach dem Neustart des Geräts ist die Eingabe des Musters erforderlich"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Nach dem Neustart des Geräts ist die Eingabe der PIN erforderlich"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Nach dem Neustart des Geräts ist die Eingabe des Passworts erforderlich"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-el/strings.xml b/packages/SystemUI/res-keyguard/values-el/strings.xml
+index 8e4578f8445..17642842147 100644
+--- a/packages/SystemUI/res-keyguard/values-el/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-el/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Καμία υπηρεσία."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Εναλλαγή μεθόδου εισαγωγής"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Λειτουργία πτήσης"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Απαιτείται PIN για την προετοιμασία για ενημέρωση"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Απαιτείται μοτίβο για την προετοιμασία για ενημέρωση"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Απαιτείται κωδικός πρόσβασης για την προετοιμασία για ενημέρωση"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Απαιτείται μοτίβο μετά από την επανεκκίνηση της συσκευής"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Απαιτείται PIN μετά από την επανεκκίνηση της συσκευής"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Απαιτείται κωδικός πρόσβασης μετά από την επανεκκίνηση της συσκευής"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-en-rAU/strings.xml b/packages/SystemUI/res-keyguard/values-en-rAU/strings.xml
+index 21cfe48689a..92a15949a8a 100644
+--- a/packages/SystemUI/res-keyguard/values-en-rAU/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-en-rAU/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"No service"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Switch input method"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Aeroplane mode"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"PIN required to prepare for update"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Pattern required to prepare for update"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Password required to prepare for update"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Pattern required after device restarts"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"PIN required after device restarts"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Password required after device restarts"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-en-rCA/strings.xml b/packages/SystemUI/res-keyguard/values-en-rCA/strings.xml
+index 921ba6b59af..719f1a18a74 100644
+--- a/packages/SystemUI/res-keyguard/values-en-rCA/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-en-rCA/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"No service"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Switch input method"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Airplane mode"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"PIN required to prepare for update"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Pattern required to prepare for update"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Password required to prepare for update"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Pattern required after device restarts"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"PIN required after device restarts"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Password required after device restarts"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-en-rGB/strings.xml b/packages/SystemUI/res-keyguard/values-en-rGB/strings.xml
+index 21cfe48689a..92a15949a8a 100644
+--- a/packages/SystemUI/res-keyguard/values-en-rGB/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-en-rGB/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"No service"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Switch input method"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Aeroplane mode"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"PIN required to prepare for update"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Pattern required to prepare for update"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Password required to prepare for update"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Pattern required after device restarts"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"PIN required after device restarts"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Password required after device restarts"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-en-rIN/strings.xml b/packages/SystemUI/res-keyguard/values-en-rIN/strings.xml
+index 21cfe48689a..92a15949a8a 100644
+--- a/packages/SystemUI/res-keyguard/values-en-rIN/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-en-rIN/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"No service"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Switch input method"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Aeroplane mode"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"PIN required to prepare for update"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Pattern required to prepare for update"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Password required to prepare for update"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Pattern required after device restarts"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"PIN required after device restarts"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Password required after device restarts"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-en-rXC/strings.xml b/packages/SystemUI/res-keyguard/values-en-rXC/strings.xml
+index fc59d0dfcdc..975b1f644ef 100644
+--- a/packages/SystemUI/res-keyguard/values-en-rXC/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-en-rXC/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"‎‏‎‎‎‎‎‏‎‏‏‏‎‎‎‎‎‎‏‎‎‏‎‎‎‎‏‏‏‏‏‏‏‏‎‏‏‎‎‎‎‏‎‎‎‎‏‎‏‎‎‏‎‏‎‎‎‎‎‏‏‎‏‏‏‎‎‎‎‎‎‎‎‏‎‎‎‎‎‏‏‏‎‏‏‎‎‏‎‎‏‎‏‎‏‎‎No service.‎‏‎‎‏‎"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"‎‏‎‎‎‎‎‏‎‏‏‏‎‎‎‎‎‎‏‎‎‏‎‎‎‎‏‏‏‏‏‏‏‏‏‏‏‏‏‎‎‎‎‎‏‎‏‏‎‎‎‎‎‏‎‎‏‏‎‎‎‎‏‏‎‏‎‎‎‎‎‏‏‏‏‏‏‎‏‏‎‏‎‏‎‏‎‏‎‎‎‏‎‎‎‏‎Switch input method‎‏‎‎‏‎"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"‎‏‎‎‎‎‎‏‎‏‏‏‎‎‎‎‎‎‏‎‎‏‎‎‎‎‏‏‏‏‏‏‎‏‎‎‎‏‏‎‎‎‏‎‏‎‏‎‏‎‎‎‏‏‏‎‏‏‏‎‏‏‏‎‏‏‎‎‎‏‏‏‎‏‏‏‏‏‎‎‏‎‎‏‏‎‏‎‏‎‎‏‎‏‎‎Airplane mode‎‏‎‎‏‎"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"‎‏‎‎‎‎‎‏‎‏‏‏‎‎‎‎‎‎‏‎‎‏‎‎‎‎‏‏‏‏‏‏‏‏‏‏‏‎‏‏‎‎‏‏‎‏‏‏‏‎‎‏‎‎‎‎‏‎‎‏‎‎‎‏‏‎‎‏‎‏‏‎‎‎‎‏‏‏‎‎‎‎‎‎‎‎‎‏‎‎‏‎‎‏‏‏‎PIN required to prepare for update‎‏‎‎‏‎"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"‎‏‎‎‎‎‎‏‎‏‏‏‎‎‎‎‎‎‏‎‎‏‎‎‎‎‏‏‏‏‏‏‏‏‎‎‎‎‏‏‏‎‏‎‎‎‎‏‏‏‎‎‎‏‏‎‎‏‎‏‎‏‏‎‎‎‎‏‏‎‎‏‎‎‏‎‏‎‏‎‎‎‏‏‎‏‏‏‎‏‎‏‏‏‏‏‎Pattern required to prepare for update‎‏‎‎‏‎"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"‎‏‎‎‎‎‎‏‎‏‏‏‎‎‎‎‎‎‏‎‎‏‎‎‎‎‏‏‏‏‏‏‏‏‎‎‏‏‏‎‎‎‎‏‎‎‎‏‏‎‎‏‏‎‏‎‎‎‎‏‎‎‎‎‎‎‏‎‏‏‏‏‎‏‎‎‎‎‏‏‏‏‏‏‏‎‎‏‏‎‎‎‎‎‎‏‎Password required to prepare for update‎‏‎‎‏‎"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"‎‏‎‎‎‎‎‏‎‏‏‏‎‎‎‎‎‎‏‎‎‏‎‎‎‎‏‏‏‏‏‏‏‏‎‎‎‎‎‏‏‎‎‎‎‎‏‎‏‏‎‎‎‏‏‏‎‎‏‎‏‎‎‏‏‏‏‏‏‏‏‏‏‎‎‏‏‏‏‎‎‏‎‎‏‏‎‎‏‎‏‎‎‎‏‎‎Pattern required after device restarts‎‏‎‎‏‎"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"‎‏‎‎‎‎‎‏‎‏‏‏‎‎‎‎‎‎‏‎‎‏‎‎‎‎‏‏‏‏‏‎‏‏‎‏‏‎‎‎‎‎‏‎‎‎‏‎‎‎‏‎‏‎‏‏‏‎‎‎‎‎‏‎‏‏‏‏‎‏‎‎‎‏‏‎‏‎‏‏‎‎‏‏‎‏‏‎‏‏‏‎‎‎‎PIN required after device restarts‎‏‎‎‏‎"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"‎‏‎‎‎‎‎‏‎‏‏‏‎‎‎‎‎‎‏‎‎‏‎‎‎‎‏‏‏‏‏‏‏‏‏‎‏‏‏‏‏‏‎‏‏‏‏‏‎‏‏‎‏‎‏‎‏‎‎‏‏‏‏‎‏‎‎‎‏‏‏‎‎‏‎‎‏‎‎‎‎‎‏‏‏‎‎‎‏‏‎‎‎‎‏‎‎Password required after device restarts‎‏‎‎‏‎"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-es-rUS/strings.xml b/packages/SystemUI/res-keyguard/values-es-rUS/strings.xml
+index ab0c8f35156..25ab6159998 100644
+--- a/packages/SystemUI/res-keyguard/values-es-rUS/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-es-rUS/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Sin servicio"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Cambiar método de entrada"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Modo de avión"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Se requiere el PIN para actualizar el sistema"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Se requiere el patrón para actualizar el sistema"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Se requiere la contraseña para actualizar el sistema"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Se requiere el patrón después de reiniciar el dispositivo"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Se requiere el PIN después de reiniciar el dispositivo"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Se requiere la contraseña después de reiniciar el dispositivo"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-es/strings.xml b/packages/SystemUI/res-keyguard/values-es/strings.xml
+index 38451c7cfba..0754681215c 100644
+--- a/packages/SystemUI/res-keyguard/values-es/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-es/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Sin servicio"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Cambiar método de introducción"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Modo avión"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Debes introducir el PIN para prepararte para la actualización"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Debes dibujar el patrón para prepararte para la actualización"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Debes introducir la contraseña para prepararte para la actualización"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Debes introducir el patrón después de reiniciar el dispositivo"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Debes introducir el PIN después de reiniciar el dispositivo"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Debes introducir la contraseña después de reiniciar el dispositivo"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-et/strings.xml b/packages/SystemUI/res-keyguard/values-et/strings.xml
+index f8ad18bba2f..331a95c73c5 100644
+--- a/packages/SystemUI/res-keyguard/values-et/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-et/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Teenus puudub."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Vaheta sisestusmeetodit"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Lennukirežiim"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Värskendamiseks ettevalmistuste tegemiseks tuleb sisestada PIN-kood"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Värskendamiseks ettevalmistuste tegemiseks tuleb sisestada muster"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Värskendamiseks ettevalmistuste tegemiseks tuleb sisestada parool"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Pärast seadme taaskäivitamist tuleb sisestada muster"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Pärast seadme taaskäivitamist tuleb sisestada PIN-kood"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Pärast seadme taaskäivitamist tuleb sisestada parool"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-eu/strings.xml b/packages/SystemUI/res-keyguard/values-eu/strings.xml
+index 8510bee0711..3ff224b9e55 100644
+--- a/packages/SystemUI/res-keyguard/values-eu/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-eu/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Ez dago konektatuta inongo saretara."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Aldatu idazketa-metodoa"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Hegaldi modua"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"PIN kodea behar da eguneratzea prestatzeko"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Eredua behar da eguneratzea prestatzeko"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Pasahitza behar da eguneratzea prestatzeko"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Eredua marraztu beharko duzu gailua berrabiarazten denean"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"PIN kodea idatzi beharko duzu gailua berrabiarazten denean"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Pasahitza idatzi beharko duzu gailua berrabiarazten denean"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-fa/strings.xml b/packages/SystemUI/res-keyguard/values-fa/strings.xml
+index 43d32140b15..5e696369634 100644
+--- a/packages/SystemUI/res-keyguard/values-fa/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-fa/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"سرویسی وجود ندارد."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"تغییر روش ورودی"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"حالت هواپیما"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"آماده‌سازی برای به‌روزرسانی به پین نیاز دارد"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"آماده‌سازی برای به‌روزرسانی به الگو نیاز دارد"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"آماده‌سازی برای به‌روزرسانی به گذرواژه نیاز دارد"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"بعد از بازنشانی دستگاه باید الگو وارد شود"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"بعد از بازنشانی دستگاه باید پین وارد شود"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"بعد از بازنشانی دستگاه باید گذرواژه وارد شود"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-fi/strings.xml b/packages/SystemUI/res-keyguard/values-fi/strings.xml
+index 7dc12c93e45..54bc4d8cba5 100644
+--- a/packages/SystemUI/res-keyguard/values-fi/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-fi/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Ei yhteyttä"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Vaihda syöttötapaa."</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Lentokonetila"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Päivitykseen valmistautuminen edellyttää PIN-koodia"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Päivitykseen valmistautuminen edellyttää kuviota"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Päivitykseen valmistautuminen edellyttää salasanaa"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Kuvio vaaditaan laitteen uudelleenkäynnistyksen jälkeen."</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"PIN-koodi vaaditaan laitteen uudelleenkäynnistyksen jälkeen."</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Salasana vaaditaan laitteen uudelleenkäynnistyksen jälkeen."</string>
+diff --git a/packages/SystemUI/res-keyguard/values-fr-rCA/strings.xml b/packages/SystemUI/res-keyguard/values-fr-rCA/strings.xml
+index f093c1745e7..3e858c2ecf1 100644
+--- a/packages/SystemUI/res-keyguard/values-fr-rCA/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-fr-rCA/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Aucun service"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Changer de méthode d\'entrée"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Mode Avion"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Le NIP est nécessaire pour préparer la mise à jour"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Le schéma est nécessaire pour préparer la mise à jour"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Le mot de passe est nécessaire pour préparer la mise à jour"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Le schéma est exigé après le redémarrage de l\'appareil"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Le NIP est exigé après le redémarrage de l\'appareil"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Le mot de passe est exigé après le redémarrage de l\'appareil"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-fr/strings.xml b/packages/SystemUI/res-keyguard/values-fr/strings.xml
+index d6d5a32874c..8551fab7281 100644
+--- a/packages/SystemUI/res-keyguard/values-fr/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-fr/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Aucun service."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Changer le mode de saisie"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Mode Avion"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Veuillez saisir le code pour lancer la préparation de la mise à jour"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Veuillez saisir le schéma pour lancer la préparation de la mise à jour"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Veuillez saisir le mot de passe pour lancer la préparation de la mise à jour"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Veuillez dessiner le schéma après le redémarrage de l\'appareil"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Veuillez saisir le code après le redémarrage de l\'appareil"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Veuillez saisir le mot de passe après le redémarrage de l\'appareil"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-gl/strings.xml b/packages/SystemUI/res-keyguard/values-gl/strings.xml
+index f5d5bb4d13d..46079810aee 100644
+--- a/packages/SystemUI/res-keyguard/values-gl/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-gl/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Non hai servizo."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Cambia o método de introdución"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Modo avión"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Necesítase o PIN para preparar o dispositivo co fin de actualizalo"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Necesítase o padrón para preparar o dispositivo co fin de actualizalo"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Necesítase o contrasinal para preparar o dispositivo co fin de actualizalo"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"É necesario o padrón despois do reinicio do dispositivo"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"É necesario o PIN despois do reinicio do dispositivo"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"É necesario o contrasinal despois do reinicio do dispositivo"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-gu/strings.xml b/packages/SystemUI/res-keyguard/values-gu/strings.xml
+index 29e2fe04008..b02d3d97b39 100644
+--- a/packages/SystemUI/res-keyguard/values-gu/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-gu/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"કોઈ સેવા નથી."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"ઇનપુટ પદ્ધતિ સ્વિચ કરો"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"એરપ્લેન મોડ"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"અપડેટ માટે તૈયાર કરવા માટે પિન જરુરી છે"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"અપડેટ માટે તૈયાર કરવા માટે પૅટર્ન જરુરી છે"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"અપડેટ માટે તૈયાર કરવા માટે પાસવર્ડ જરુરી છે"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"ઉપકરણનો પુનઃપ્રારંભ થાય તે પછી પૅટર્ન જરૂરી છે"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"ઉપકરણનો પુનઃપ્રારંભ થાય તે પછી પિન જરૂરી છે"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"ઉપકરણનો પુનઃપ્રારંભ થાય તે પછી પાસવર્ડ જરૂરી છે"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-hi/strings.xml b/packages/SystemUI/res-keyguard/values-hi/strings.xml
+index d26c79f9c42..f6b15de0e97 100644
+--- a/packages/SystemUI/res-keyguard/values-hi/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-hi/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"कोई सेवा नहीं."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"इनपुट का तरीका बदलें"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"हवाई जहाज़ मोड"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"अपडेट के लिए पिन डालना ज़रूरी है"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"अपडेट के लिए पैटर्न डालना ज़रूरी है"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"अपडेट के लिए पासवर्ड डालना ज़रूरी है"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"डिवाइस फिर से चालू होने के बाद पैटर्न ज़रूरी है"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"डिवाइस फिर से चालू होने के बाद पिन ज़रूरी है"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"डिवाइस फिर से चालू होने के बाद पासवर्ड ज़रूरी है"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-hr/strings.xml b/packages/SystemUI/res-keyguard/values-hr/strings.xml
+index c8dd9b0a093..49db3f88669 100644
+--- a/packages/SystemUI/res-keyguard/values-hr/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-hr/strings.xml
+@@ -104,9 +104,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Nema usluge."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Promjena načina unosa"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Način rada u zrakoplovu"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Za pripremu ažuriranja potreban je PIN"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Za pripremu ažuriranja potreban je uzorak"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Za pripremu ažuriranja potrebna je zaporka"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Nakon ponovnog pokretanja uređaja morate unijeti uzorak"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Nakon ponovnog pokretanja uređaja morate unijeti PIN"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Nakon ponovnog pokretanja uređaja morate unijeti zaporku"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-hu/strings.xml b/packages/SystemUI/res-keyguard/values-hu/strings.xml
+index f0023d20e6b..c26998f01ff 100644
+--- a/packages/SystemUI/res-keyguard/values-hu/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-hu/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Nincs szolgáltatás."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Beviteli módszer váltása"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Repülős üzemmód"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"A frissítésre való felkészüléshez meg kell adni a PIN-kódot"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"A frissítésre való felkészüléshez meg kell adni a mintát"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"A frissítésre való felkészüléshez meg kell adni a jelszót"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Az eszköz újraindítását követően meg kell adni a mintát"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Az eszköz újraindítását követően meg kell adni a PIN-kódot"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Az eszköz újraindítását követően meg kell adni a jelszót"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-hy/strings.xml b/packages/SystemUI/res-keyguard/values-hy/strings.xml
+index 42247052014..ad949d48fe0 100644
+--- a/packages/SystemUI/res-keyguard/values-hy/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-hy/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Ծառայությունն անհասանելի է։"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Փոխել ներածման եղանակը"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Ավիառեժիմ"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Թարմացմանը պատրաստվելու համար անհրաժեշտ է մուտքագրել PIN-ը"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Թարմացմանը պատրաստվելու համար անհրաժեշտ է մուտքագրել նախշը"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Թարմացմանը պատրաստվելու համար անհրաժեշտ է մուտքագրել գաղտնաբառը"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Սարքը վերագործարկելուց հետո անհրաժեշտ է մուտքագրել նախշը"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Սարքը վերագործարկելուց հետո անհրաժեշտ է մուտքագրել PIN կոդը"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Սարքը վերագործարկելուց հետո անհրաժեշտ է մուտքագրել գաղտնաբառը"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-in/strings.xml b/packages/SystemUI/res-keyguard/values-in/strings.xml
+index d62795ba1b1..85b2a4726fa 100644
+--- a/packages/SystemUI/res-keyguard/values-in/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-in/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Tidak ada layanan."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Beralih metode masukan"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Mode pesawat"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"PIN diwajibkan untuk menyiapkan update"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Pola diwajibkan untuk menyiapkan update"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Sandi diwajibkan untuk menyiapkan update"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Pola diperlukan setelah perangkat dimulai ulang"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"PIN diperlukan setelah perangkat dimulai ulang"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Sandi diperlukan setelah perangkat dimulai ulang"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-is/strings.xml b/packages/SystemUI/res-keyguard/values-is/strings.xml
+index 5e3765571c0..e40cdca3303 100644
+--- a/packages/SystemUI/res-keyguard/values-is/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-is/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Ekkert símasamband."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Skipta um innsláttaraðferð"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Flugstilling"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Slá þarf inn PIN-númer til að undirbúa uppfærsluna"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Teikna þarf mynstur til að undirbúa uppfærsluna"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Gefa þarf upp aðgangsorð til að undirbúa uppfærsluna"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Mynsturs er krafist þegar tækið er endurræst"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"PIN-númers er krafist þegar tækið er endurræst"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Aðgangsorðs er krafist þegar tækið er endurræst"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-it/strings.xml b/packages/SystemUI/res-keyguard/values-it/strings.xml
+index fe460e38dc0..e1c9ee8b7d3 100644
+--- a/packages/SystemUI/res-keyguard/values-it/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-it/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Nessun servizio."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Cambia metodo di immissione"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Modalità aereo"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"PIN obbligatorio per la preparazione all\'aggiornamento"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Sequenza obbligatoria per la preparazione all\'aggiornamento"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Password obbligatoria per la preparazione all\'aggiornamento"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Sequenza obbligatoria dopo il riavvio del dispositivo"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"PIN obbligatorio dopo il riavvio del dispositivo"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Password obbligatoria dopo il riavvio del dispositivo"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-iw/strings.xml b/packages/SystemUI/res-keyguard/values-iw/strings.xml
+index 71f3048ba11..e054f629836 100644
+--- a/packages/SystemUI/res-keyguard/values-iw/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-iw/strings.xml
+@@ -107,9 +107,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"אין שירות."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"החלפת שיטת קלט"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"מצב טיסה"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"נדרש קוד אימות להכנת העדכון"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"נדרש קו ביטול נעילה להכנת העדכון"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"נדרשת סיסמה להכנת העדכון"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"יש להזין את קו ביטול הנעילה לאחר הפעלה מחדש של המכשיר"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"יש להזין קוד גישה לאחר הפעלה מחדש של המכשיר"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"יש להזין סיסמה לאחר הפעלה מחדש של המכשיר"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-ja/strings.xml b/packages/SystemUI/res-keyguard/values-ja/strings.xml
+index 23ff82c6f2a..957d78a8b44 100644
+--- a/packages/SystemUI/res-keyguard/values-ja/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-ja/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"通信サービスはありません。"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"入力方法の切り替え"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"機内モード"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"更新の準備には PIN の入力が必要です"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"更新の準備にはパターンの入力が必要です"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"更新の準備にはパスワードが必要です"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"デバイスの再起動後はパターンの入力が必要となります"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"デバイスの再起動後は PIN の入力が必要となります"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"デバイスの再起動後はパスワードの入力が必要となります"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-ka/strings.xml b/packages/SystemUI/res-keyguard/values-ka/strings.xml
+index 25b9b1b22c1..d0d15fec717 100644
+--- a/packages/SystemUI/res-keyguard/values-ka/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-ka/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"სერვისი არ არის."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"შეყვანის მეთოდის გადართვა"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"თვითმფრინავის რეჟიმი"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"განახლების მოსამზადებლად საჭიროა PIN-კოდი"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"განახლების მოსამზადებლად საჭიროა ნიმუში"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"განახლების მოსამზადებლად საჭიროა პაროლი"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"მოწყობილობის გადატვირთვის შემდეგ საჭიროა ნიმუშის დახატვა"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"მოწყობილობის გადატვირთვის შემდეგ საჭიროა PIN-კოდის შეყვანა"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"მოწყობილობის გადატვირთვის შემდეგ საჭიროა პაროლის შეყვანა"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-kk/strings.xml b/packages/SystemUI/res-keyguard/values-kk/strings.xml
+index 456088181d7..62afd1e45df 100644
+--- a/packages/SystemUI/res-keyguard/values-kk/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-kk/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Қызмет көрсетілмейді."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Енгізу әдісін ауыстыру"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Ұшақ режимі"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Жаңа нұсқа орнатуға дайындау үшін PIN кодын енгізу қажет."</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Жаңа нұсқа орнатуға дайындау үшін өрнек енгізу қажет."</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Жаңа нұсқа орнатуға дайындау үшін құпия сөз енгізу қажет."</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Құрылғы қайта іске қосылғаннан кейін, өрнекті енгізу қажет"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Құрылғы қайта іске қосылғаннан кейін, PIN кодын енгізу қажет"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Құрылғы қайта іске қосылғаннан кейін, құпия сөзді енгізу қажет"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-km/strings.xml b/packages/SystemUI/res-keyguard/values-km/strings.xml
+index e5ea9ea105d..24b5c23a673 100644
+--- a/packages/SystemUI/res-keyguard/values-km/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-km/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"គ្មាន​សេវា​ទេ។"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"ប្ដូរ​វិធី​បញ្ចូល"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"មុខងារ​ពេល​ជិះ​យន្តហោះ"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"តម្រូវ​ឱ្យ​មាន​កូដ PIN ដើម្បី​រៀបចំ​ធ្វើបច្ចុប្បន្នភាព"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"តម្រូវ​ឱ្យ​មាន​លំនាំ ដើម្បី​រៀបចំ​ធ្វើបច្ចុប្បន្នភាព"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"តម្រូវ​ឱ្យ​មាន​ពាក្យ​សម្ងាត់ ដើម្បី​រៀបចំ​ធ្វើបច្ចុប្បន្នភាព"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"តម្រូវឲ្យប្រើលំនាំ បន្ទាប់ពីឧបករណ៍ចាប់ផ្តើមឡើងវិញ"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"តម្រូវឲ្យបញ្ចូលកូដ PIN បន្ទាប់ពីឧបករណ៍ចាប់ផ្តើមឡើងវិញ"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"តម្រូវឲ្យបញ្ចូលពាក្យសម្ងាត់ បន្ទាប់ពីឧបករណ៍ចាប់ផ្តើមឡើងវិញ"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-kn/strings.xml b/packages/SystemUI/res-keyguard/values-kn/strings.xml
+index 8173ca047fe..785ca433832 100644
+--- a/packages/SystemUI/res-keyguard/values-kn/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-kn/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"ಸೇವೆ ಇಲ್ಲ."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"ಇನ್‌ಪುಟ್‌‌ ವಿಧಾನ ಬದಲಿಸಿ"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"ಏರ್‌ಪ್ಲೇನ್ ಮೋಡ್"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"ಅಪ್‌ಡೇಟ್‌ಗಾಗಿ ಸಿದ್ಧಗೊಳಿಸಲು, ಪಿನ್‌‌ ಅಗತ್ಯವಿದೆ"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"ಅಪ್‌ಡೇಟ್‌ಗಾಗಿ ಸಿದ್ಧಗೊಳಿಸಲು, ಪ್ಯಾಟರ್ನ್ ಅಗತ್ಯವಿದೆ"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"ಅಪ್‌ಡೇಟ್‌ಗಾಗಿ ಸಿದ್ಧಗೊಳಿಸಲು, ಪಾಸ್‌ವರ್ಡ್ ಅಗತ್ಯವಿದೆ"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"ಸಾಧನ ಮರುಪ್ರಾರಂಭಗೊಂಡ ನಂತರ ಪ್ಯಾಟರ್ನ್ ಅಗತ್ಯವಿರುತ್ತದೆ"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"ಸಾಧನ ಮರುಪ್ರಾರಂಭಗೊಂಡ ನಂತರ ಪಿನ್ ಅಗತ್ಯವಿರುತ್ತದೆ"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"ಸಾಧನ ಮರುಪ್ರಾರಂಭಗೊಂಡ ನಂತರ ಪಾಸ್‌ವರ್ಡ್ ಅಗತ್ಯವಿರುತ್ತದೆ"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-ko/strings.xml b/packages/SystemUI/res-keyguard/values-ko/strings.xml
+index 606bb504724..848490ebb9b 100644
+--- a/packages/SystemUI/res-keyguard/values-ko/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-ko/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"서비스 불가"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"입력 방법 전환"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"비행기 모드"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"업데이트를 준비하려면 PIN이 필요합니다."</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"업데이트를 준비하려면 패턴이 필요합니다."</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"업데이트를 준비하려면 비밀번호가 필요합니다."</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"기기가 다시 시작되면 패턴이 필요합니다."</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"기기가 다시 시작되면 PIN이 필요합니다."</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"기기가 다시 시작되면 비밀번호가 필요합니다."</string>
+diff --git a/packages/SystemUI/res-keyguard/values-ky/strings.xml b/packages/SystemUI/res-keyguard/values-ky/strings.xml
+index 72f95dbfa59..d868788a3ec 100644
+--- a/packages/SystemUI/res-keyguard/values-ky/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-ky/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Интернет жок."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Киргизүү ыкмасын өзгөртүү"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Учак режими"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Жаңыртууга даярдоо үчүн PIN код талап кылынат"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Жаңыртууга даярдоо үчүн графикалык ачкыч талап кылынат"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Жаңыртууга даярдоо үчүн сырсөз талап кылынат"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Түзмөк кайра күйгүзүлгөндөн кийин графикалык ачкычты тартуу талап кылынат"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Түзмөк кайра күйгүзүлгөндөн кийин PIN-кодду киргизүү талап кылынат"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Түзмөк кайра күйгүзүлгөндөн кийин сырсөздү киргизүү талап кылынат"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-lo/strings.xml b/packages/SystemUI/res-keyguard/values-lo/strings.xml
+index 25e36c1b311..ebaffb13d5b 100644
+--- a/packages/SystemUI/res-keyguard/values-lo/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-lo/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"ບໍ່ມີບໍລິການ"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"ສະລັບຮູບແບບການປ້ອນຂໍ້ມູນ"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"ໂໝດໃນຍົນ"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"ຕ້ອງໃຊ້ PIN ເພື່ອກະກຽມອັບເດດ"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"ຕ້ອງໃຊ້ຮູບແບບເພື່ອກະກຽມອັບເດດ"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"ຕ້ອງໃຊ້ລະຫັດຜ່ານເພື່ອກະກຽມອັບເດດ"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"ຈຳເປັນຕ້ອງມີແບບຮູບປົດລັອກຫຼັງຈາກອຸປະກອນເລີ່ມລະບົບໃໝ່"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"ຈຳເປັນຕ້ອງມີ PIN ຫຼັງຈາກອຸປະກອນເລີ່ມລະບົບໃໝ່"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"ຈຳເປັນຕ້ອງມີລະຫັດຜ່ານຫຼັງຈາກອຸປະກອນເລີ່ມລະບົບໃໝ່"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-lt/strings.xml b/packages/SystemUI/res-keyguard/values-lt/strings.xml
+index 158efe2feab..4d598f6bfb6 100644
+--- a/packages/SystemUI/res-keyguard/values-lt/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-lt/strings.xml
+@@ -107,9 +107,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Nėra paslaugos."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Perjungti įvesties metodą"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Lėktuvo režimas"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Kad būtų pasiruošta atnaujinti, reikia įvesti PIN kodą"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Kad būtų pasiruošta atnaujinti, reikia įvesti atrakinimo piešinį"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Kad būtų pasiruošta atnaujinti, reikia įvesti slaptažodį"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Iš naujo paleidus įrenginį būtinas atrakinimo piešinys"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Iš naujo paleidus įrenginį būtinas PIN kodas"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Iš naujo paleidus įrenginį būtinas slaptažodis"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-lv/strings.xml b/packages/SystemUI/res-keyguard/values-lv/strings.xml
+index c4a4e7f45b3..fad67d536e5 100644
+--- a/packages/SystemUI/res-keyguard/values-lv/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-lv/strings.xml
+@@ -104,9 +104,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Nav pakalpojuma."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Pārslēgt ievades metodi"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Lidojuma režīms"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Lai sagatavotos atjauninājumam, nepieciešams PIN."</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Lai sagatavotos atjauninājumam, nepieciešama kombinācija."</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Lai sagatavotos atjauninājumam, nepieciešama parole."</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Pēc ierīces restartēšanas ir jāievada atbloķēšanas kombinācija."</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Pēc ierīces restartēšanas ir jāievada PIN kods."</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Pēc ierīces restartēšanas ir jāievada parole."</string>
+diff --git a/packages/SystemUI/res-keyguard/values-mk/strings.xml b/packages/SystemUI/res-keyguard/values-mk/strings.xml
+index de4a83b9702..1397f467e11 100644
+--- a/packages/SystemUI/res-keyguard/values-mk/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-mk/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Нема услуга."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Префрли метод за внесување"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Авионски режим"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Потребен е PIN за да се подготви за ажурирање"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Потребна е шема за да се подготви за ажурирање"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Потребна е лозинка за да се подготви за ажурирање"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Потребна е шема по рестартирање на уредот"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Потребен е PIN-код по рестартирање на уредот"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Потребна е лозинка по рестартирање на уредот"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-ml/strings.xml b/packages/SystemUI/res-keyguard/values-ml/strings.xml
+index da26ba78893..f82f822ca26 100644
+--- a/packages/SystemUI/res-keyguard/values-ml/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-ml/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"സേവനമില്ല"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"ഇൻപുട്ട് രീതി മാറുക"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"ഫ്ലൈറ്റ് മോഡ്"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"അപ്‌ഡേറ്റിനായി തയ്യാറെടുക്കാൻ പിൻ ആവശ്യമാണ്"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"അപ്‌ഡേറ്റിനായി തയ്യാറെടുക്കാൻ പാറ്റേൺ ആവശ്യമാണ്"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"അപ്‌ഡേറ്റിനായി തയ്യാറെടുക്കാൻ പാസ്‌വേഡ് ആവശ്യമാണ്"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"ഉപകരണം റീസ്റ്റാർട്ടായശേഷം ‌പാറ്റേൺ വരയ്‌ക്കേണ്ടതുണ്ട്"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"ഉപകരണം റീസ്റ്റാർട്ടായശേഷം ‌പിൻ നൽകേണ്ടതുണ്ട്"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"ഉപകരണം റീസ്റ്റാർട്ടായശേഷം ‌പാസ്‌വേഡ് നൽകേണ്ടതുണ്ട്"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-mn/strings.xml b/packages/SystemUI/res-keyguard/values-mn/strings.xml
+index fb032f15df7..462017af192 100644
+--- a/packages/SystemUI/res-keyguard/values-mn/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-mn/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Үйлчилгээ алга."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Оруулах аргыг сэлгэх"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Нислэгийн горим"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Шинэчлэхэд бэлтгэхийн тулд ПИН шаардлагатай"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Шинэчлэхэд бэлтгэхийн тулд хээ шаардлагатай"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Шинэчлэхэд бэлтгэхийн тулд нууц үг шаардлагатай"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Төхөөрөмжийг дахин эхлүүлсний дараа загвар оруулах шаардлагатай"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Төхөөрөмжийг дахин эхлүүлсний дараа ПИН оруулах шаардлагатай"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Төхөөрөмжийг дахин эхлүүлсний дараа нууц үг оруулах шаардлагатай"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-mr/strings.xml b/packages/SystemUI/res-keyguard/values-mr/strings.xml
+index e79e5c5d923..0166791dc3b 100644
+--- a/packages/SystemUI/res-keyguard/values-mr/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-mr/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"सेवा नाही."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"इनपुट पद्धत स्विच करा"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"विमान मोड"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"अपडेटसाठी तयार करण्याकरिता पिन आवश्यक आहे"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"अपडेटसाठी तयार करण्याकरिता पॅटर्न आवश्यक आहे"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"अपडेटसाठी तयार करण्याकरिता पासवर्ड आवश्यक आहे"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"डिव्हाइस रीस्टार्ट झाल्यावर पॅटर्न आवश्यक आहे"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"डिव्हाइस रीस्टार्ट झाल्यावर पिन आवश्यक आहे"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"डिव्हाइस रीस्टार्ट झाल्यावर पासवर्ड आवश्यक आहे"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-ms/strings.xml b/packages/SystemUI/res-keyguard/values-ms/strings.xml
+index 5bc5df4d7c2..67500866f3d 100644
+--- a/packages/SystemUI/res-keyguard/values-ms/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-ms/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Tiada perkhidmatan."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Tukar kaedah masukan"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Mod Pesawat"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"PIN diperlukan untuk menyediakan kemas kini"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Corak diperlukan untuk menyediakan kemas kini"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Kata laluan diperlukan untuk menyediakan kemas kini"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Corak diperlukan setelah peranti dimulakan semula"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"PIN diperlukan setelah peranti dimulakan semula"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Kata laluan diperlukan setelah peranti dimulakan semula"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-my/strings.xml b/packages/SystemUI/res-keyguard/values-my/strings.xml
+index 43732d8ff26..3b32f06e19c 100644
+--- a/packages/SystemUI/res-keyguard/values-my/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-my/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"ဝန်ဆောင်မှု မရှိပါ။"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"စာရိုက်စနစ်ပြောင်းရန်"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"လေယာဉ်ပျံမုဒ်"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"အပ်ဒိတ်အတွက် ပြင်ဆင်ရန် ပင်နံပါတ် လိုပါသည်"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"အပ်ဒိတ်အတွက် ပြင်ဆင်ရန် ပုံစံလိုပါသည်"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"အပ်ဒိတ်အတွက် ပြင်ဆင်ရန် စကားဝှက် လိုပါသည်"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"စက်ပစ္စည်းကို ပိတ်ပြီးပြန်ဖွင့်လိုက်သည့်အခါတွင် ပုံစံ လိုအပ်ပါသည်"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"စက်ပစ္စည်းကို ပိတ်ပြီးပြန်ဖွင့်လိုက်သည့်အခါတွင် ပင်နံပါတ် လိုအပ်ပါသည်"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"စက်ပစ္စည်းကို ပိတ်ပြီးပြန်ဖွင့်လိုက်သည့်အခါတွင် စကားဝှက် လိုအပ်ပါသည်"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-nb/strings.xml b/packages/SystemUI/res-keyguard/values-nb/strings.xml
+index 6dd3b2ad6e7..ebd8f2922ba 100644
+--- a/packages/SystemUI/res-keyguard/values-nb/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-nb/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Ingen tilkobling."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Bytt inndatametode"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Flymodus"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"PIN-koden kreves for å klargjøre for oppdateringen"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Mønsteret kreves for å klargjøre for oppdateringen"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Passordet kreves for å klargjøre for oppdateringen"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Du må tegne mønsteret etter at enheten har startet på nytt"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Du må skrive inn PIN-koden etter at enheten har startet på nytt"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Du må skrive inn passordet etter at enheten har startet på nytt"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-ne/strings.xml b/packages/SystemUI/res-keyguard/values-ne/strings.xml
+index a1e6d62234e..ce05e38dca1 100644
+--- a/packages/SystemUI/res-keyguard/values-ne/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-ne/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"सेवा उपलब्ध छैन।"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"इनपुट विधिलाई स्विच गर्नुहोस्"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"हवाइजहाज मोड"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"अद्यावधिक गर्ने कार्यका लागि तयार पार्न PIN चाहिन्छ"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"अद्यावधिक गर्ने कार्यका लागि तयार पार्न प्याटर्न चाहिन्छ"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"अद्यावधिक गर्ने कार्यका लागि तयार पार्न पासवर्ड चाहिन्छ"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"यन्त्र पुनः सुरु भएपछि ढाँचा आवश्यक पर्दछ"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"यन्त्र पुनः सुरु भएपछि PIN आवश्यक पर्दछ"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"यन्त्र पुनः सुरु भएपछि पासवर्ड आवश्यक पर्दछ"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-nl/strings.xml b/packages/SystemUI/res-keyguard/values-nl/strings.xml
+index f3c35a405bd..aa783e84b89 100644
+--- a/packages/SystemUI/res-keyguard/values-nl/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-nl/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Geen service."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Invoermethode wijzigen"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Vliegtuigmodus"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Pincode vereist voor voorbereiding op update"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Patroon vereist voor voorbereiding op update"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Wachtwoord vereist voor voorbereiding op update"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Patroon vereist nadat het apparaat opnieuw is opgestart"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Pincode vereist nadat het apparaat opnieuw is opgestart"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Wachtwoord vereist nadat het apparaat opnieuw is opgestart"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-or/strings.xml b/packages/SystemUI/res-keyguard/values-or/strings.xml
+index e92dc42680e..8bbdcf1e9eb 100644
+--- a/packages/SystemUI/res-keyguard/values-or/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-or/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"କୌଣସି ସେବା ନାହିଁ।"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"ଇନପୁଟ୍‌ ପଦ୍ଧତି ବଦଳାନ୍ତୁ"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"ଏରୋପ୍ଲେନ୍‍ ମୋଡ୍"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"ଅପଡେଟ୍ ପାଇଁ ପ୍ରସ୍ତୁତ ହେବାକୁ PIN ଆବଶ୍ୟକ"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"ଅପଡେଟ୍ ପାଇଁ ପ୍ରସ୍ତୁତ ହେବାକୁ ପାଟର୍ନ ଆବଶ୍ୟକ"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"ଅପଡେଟ୍ ପାଇଁ ପ୍ରସ୍ତୁତ ହେବାକୁ ପାସୱାର୍ଡ ଆବଶ୍ୟକ"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"ଡିଭାଇସ୍‍ ରିଷ୍ଟାର୍ଟ ହେବା ପରେ ପାଟର୍ନ ଆବଶ୍ୟକ ଅଟେ"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"ଡିଭାଇସ୍‍ ରିଷ୍ଟାର୍ଟ ହେବାପରେ ପାସ୍‌ୱର୍ଡ ଆବଶ୍ୟକ"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"ଡିଭାଇସ୍‍ ରିଷ୍ଟାର୍ଟ ହେବା ପରେ ପାସୱର୍ଡ ଆବଶ୍ୟକ ଅଟେ"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-pa/strings.xml b/packages/SystemUI/res-keyguard/values-pa/strings.xml
+index 5c83ab8a354..78e06652684 100644
+--- a/packages/SystemUI/res-keyguard/values-pa/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-pa/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"ਕੋਈ ਸੇਵਾ ਨਹੀਂ।"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"ਇਨਪੁੱਟ ਵਿਧੀ ਸਵਿੱਚ ਕਰੋ"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"ਹਵਾਈ-ਜਹਾਜ਼ ਮੋਡ"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"ਅੱਪਡੇਟ ਨੂੰ ਤਿਆਰ ਕਰਨ ਲਈ ਪਿੰਨ ਲੋੜੀਂਦਾ ਹੈ"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"ਅੱਪਡੇਟ ਨੂੰ ਤਿਆਰ ਕਰਨ ਲਈ ਪੈਟਰਨ ਲੋੜੀਂਦਾ ਹੈ"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"ਅੱਪਡੇਟ ਨੂੰ ਤਿਆਰ ਕਰਨ ਲਈ ਪਾਸਵਰਡ ਲੋੜੀਂਦਾ ਹੈ"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"ਡੀਵਾਈਸ ਦੇ ਮੁੜ-ਚਾਲੂ ਹੋਣ \'ਤੇ ਪੈਟਰਨ ਦੀ ਲੋੜ ਹੈ"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"ਡੀਵਾਈਸ ਦੇ ਮੁੜ-ਚਾਲੂ ਹੋਣ \'ਤੇ ਪਿੰਨ ਦੀ ਲੋੜ ਹੈ"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"ਡੀਵਾਈਸ ਦੇ ਮੁੜ-ਚਾਲੂ ਹੋਣ \'ਤੇ ਪਾਸਵਰਡ ਦੀ ਲੋੜ ਹੈ"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-pl/strings.xml b/packages/SystemUI/res-keyguard/values-pl/strings.xml
+index 5f1df3e109b..5094cf9983a 100644
+--- a/packages/SystemUI/res-keyguard/values-pl/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-pl/strings.xml
+@@ -107,9 +107,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Brak usługi."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Przełączanie metody wprowadzania"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Tryb samolotowy"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Aby przygotować się do aktualizacji, wymagany jest kod PIN"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Aby przygotować się do aktualizacji, wymagany jest wzór"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Aby przygotować się do aktualizacji, wymagane jest hasło"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Po ponownym uruchomieniu urządzenia wymagany jest wzór"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Po ponownym uruchomieniu urządzenia wymagany jest kod PIN"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Po ponownym uruchomieniu urządzenia wymagane jest hasło"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-pt-rBR/strings.xml b/packages/SystemUI/res-keyguard/values-pt-rBR/strings.xml
+index 1e47efa2cc4..5bfc3dbc900 100644
+--- a/packages/SystemUI/res-keyguard/values-pt-rBR/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-pt-rBR/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Sem serviço."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Alterar o método de entrada"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Modo avião"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Insira o PIN para se preparar para a atualização"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Insira o padrão para se preparar para a atualização"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Insira a senha para se preparar para a atualização"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"O padrão é exigido após a reinicialização do dispositivo"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"O PIN é exigido após a reinicialização do dispositivo"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"A senha é exigida após a reinicialização do dispositivo"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-pt-rPT/strings.xml b/packages/SystemUI/res-keyguard/values-pt-rPT/strings.xml
+index 09cfcf1da02..5af8bc09a05 100644
+--- a/packages/SystemUI/res-keyguard/values-pt-rPT/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-pt-rPT/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Sem serviço."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Alternar o método de introdução"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Modo de avião"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"É necessário introduzir o PIN para a preparação para a atualização."</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"É necessário introduzir o padrão para a preparação para a atualização."</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"É necessário introduzir a palavra-passe para a preparação para a atualização."</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"É necessário um padrão após reiniciar o dispositivo"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"É necessário um PIN após reiniciar o dispositivo"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"É necessária uma palavra-passe após reiniciar o dispositivo"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-pt/strings.xml b/packages/SystemUI/res-keyguard/values-pt/strings.xml
+index 1e47efa2cc4..5bfc3dbc900 100644
+--- a/packages/SystemUI/res-keyguard/values-pt/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-pt/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Sem serviço."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Alterar o método de entrada"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Modo avião"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Insira o PIN para se preparar para a atualização"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Insira o padrão para se preparar para a atualização"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Insira a senha para se preparar para a atualização"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"O padrão é exigido após a reinicialização do dispositivo"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"O PIN é exigido após a reinicialização do dispositivo"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"A senha é exigida após a reinicialização do dispositivo"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-ro/strings.xml b/packages/SystemUI/res-keyguard/values-ro/strings.xml
+index 7df2db6f03f..8122241e661 100644
+--- a/packages/SystemUI/res-keyguard/values-ro/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-ro/strings.xml
+@@ -104,9 +104,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Fără serviciu."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Comutați metoda de introducere"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Mod Avion"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Pentru a vă pregăti pentru actualizare este necesar codul PIN"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Pentru a vă pregăti pentru actualizare este necesar modelul"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Pentru a vă pregăti pentru actualizare este necesară parola"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Modelul este necesar după repornirea dispozitivului"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Codul PIN este necesar după repornirea dispozitivului"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Parola este necesară după repornirea dispozitivului"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-ru/strings.xml b/packages/SystemUI/res-keyguard/values-ru/strings.xml
+index ccd3c968cd5..b80b479ca29 100644
+--- a/packages/SystemUI/res-keyguard/values-ru/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-ru/strings.xml
+@@ -107,9 +107,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Нет сигнала."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Сменить способ ввода"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Режим полета"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Для подготовки к обновлению необходимо ввести PIN-код."</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Для подготовки к обновлению необходимо ввести графический ключ."</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Для подготовки к обновлению необходимо ввести пароль."</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"После перезагрузки устройства необходимо ввести графический ключ"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"После перезагрузки устройства необходимо ввести PIN-код"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"После перезагрузки устройства необходимо ввести пароль"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-si/strings.xml b/packages/SystemUI/res-keyguard/values-si/strings.xml
+index 3dfc282ccae..1cd876f15d4 100644
+--- a/packages/SystemUI/res-keyguard/values-si/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-si/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"සේවාව නැත."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"ආදාන ක්‍රමය මාරු කිරීම"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"ගුවන් යානා ප්‍රකාරය"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"යාවත්කාලීනය සඳහා සුදානම් කිරීමට PIN අවශ්‍යය"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"යාවත්කාලීනය සඳහා සුදානම් කිරීමට රටාව අවශ්‍යය"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"යාවත්කාලීනය සඳහා සුදානම් කිරීමට මුරපදය අවශ්‍යය"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"උපාංගය නැවත ආරම්භ වූ පසු රටාව අවශ්‍යයි"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"උපාංගය නැවත ආරම්භ වූ පසු PIN අංකය අවශ්‍යයි"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"උපාංගය නැවත ආරම්භ වූ පසු මුරපදය අවශ්‍යයි"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-sk/strings.xml b/packages/SystemUI/res-keyguard/values-sk/strings.xml
+index 8568e14fecc..801a7dbccf6 100644
+--- a/packages/SystemUI/res-keyguard/values-sk/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-sk/strings.xml
+@@ -107,9 +107,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Žiadny signál."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Prepnúť metódu vstupu"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Režim v lietadle"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Príprava na aktualizáciu vyžaduje zadanie kódu PIN"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Príprava na aktualizáciu vyžaduje zadanie vzoru"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Príprava na aktualizáciu vyžaduje zadanie hesla"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Po reštartovaní zariadenia musíte zadať bezpečnostný vzor"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Po reštartovaní zariadenia musíte zadať kód PIN"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Po reštartovaní zariadenia musíte zadať heslo"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-sl/strings.xml b/packages/SystemUI/res-keyguard/values-sl/strings.xml
+index 168158d9d60..967255cb50e 100644
+--- a/packages/SystemUI/res-keyguard/values-sl/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-sl/strings.xml
+@@ -107,9 +107,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Ni storitve."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Preklop načina vnosa"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Način za letalo"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Za pripravo na posodobitev morate vnesti kodo PIN"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Za pripravo na posodobitev morate vnesti vzorec"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Za pripravo na posodobitev morate vnesti geslo"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Po vnovičnem zagonu naprave je treba vnesti vzorec"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Po vnovičnem zagonu naprave je treba vnesti kodo PIN"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Po vnovičnem zagonu naprave je treba vnesti geslo"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-sq/strings.xml b/packages/SystemUI/res-keyguard/values-sq/strings.xml
+index 14973f82dc4..382a4dcafed 100644
+--- a/packages/SystemUI/res-keyguard/values-sq/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-sq/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Nuk ka shërbim."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Ndërro metodën e hyrjes"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Modaliteti i aeroplanit"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Kërkohet kodi PIN për t\'u përgatitur për përditësimin"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Kërkohet motivi për t\'u përgatitur për përditësimin"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Kërkohet fjalëkalimi për t\'u përgatitur për përditësimin"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Kërkohet motivi pas rinisjes së pajisjes"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Kërkohet kodi PIN pas rinisjes së pajisjes"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Kërkohet fjalëkalimi pas rinisjes së pajisjes"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-sr/strings.xml b/packages/SystemUI/res-keyguard/values-sr/strings.xml
+index 24a1125f9a7..f83df3f8925 100644
+--- a/packages/SystemUI/res-keyguard/values-sr/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-sr/strings.xml
+@@ -104,9 +104,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Мрежа није доступна."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Промени метод уноса"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Режим рада у авиону"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"PIN је обавезан ради припреме за ажурирање"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Шаблон је обавезан ради припреме за ажурирање"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Лозинка је обавезна ради припреме за ажурирање"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Треба да унесете шаблон када се уређај поново покрене"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Треба да унесете PIN када се уређај поново покрене"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Треба да унесете лозинку када се уређај поново покрене"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-sv/strings.xml b/packages/SystemUI/res-keyguard/values-sv/strings.xml
+index a37c4809ccd..a037bffa4da 100644
+--- a/packages/SystemUI/res-keyguard/values-sv/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-sv/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Ingen tjänst."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Byt inmatningsmetod"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Flygplansläge"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Pinkod krävs för att förbereda för uppdatering"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Grafiskt lösenord krävs för att förbereda för uppdatering"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Lösenord krävs för att förbereda för uppdatering"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Du måste ange grafiskt lösenord när du har startat om enheten"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Du måste ange pinkod när du har startat om enheten"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Du måste ange lösenord när du har startat om enheten"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-sw/strings.xml b/packages/SystemUI/res-keyguard/values-sw/strings.xml
+index c4a9a1445ce..efa5ecfd44f 100644
+--- a/packages/SystemUI/res-keyguard/values-sw/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-sw/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Hakuna mtandao."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Kubadili mbinu ya kuingiza data"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Hali ya ndegeni"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Inahitaji PIN ili kujiandaa kwa ajili ya sasisho"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Inahitaji mchoro ili kujiandaa kwa ajili ya sasisho"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Inahitaji nenosiri ili kujiandaa kwa ajili ya sasisho"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Unafaa kuchora mchoro baada ya kuwasha kifaa upya"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Unafaa kuweka PIN baada ya kuwasha kifaa upya"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Unafaa kuweka nenosiri baada ya kuwasha kifaa upya"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-ta/strings.xml b/packages/SystemUI/res-keyguard/values-ta/strings.xml
+index a4dc0be3496..96dbbb0314d 100644
+--- a/packages/SystemUI/res-keyguard/values-ta/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-ta/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"சேவை இல்லை."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"உள்ளீட்டு முறையை மாற்றும்"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"விமானப் பயன்முறை"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"புதுப்பிப்பிற்குத் தயார்செய்ய பின் தேவை"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"புதுப்பிப்பிற்குத் தயார்செய்ய பேட்டர்ன் தேவை"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"புதுப்பிப்பிற்குத் தயார்செய்ய கடவுச்சொல் தேவை"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"சாதனத்தை மீண்டும் தொடங்கியதும், பேட்டர்னை வரைய வேண்டும்"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"சாதனத்தை மீண்டும் தொடங்கியதும், பின்னை உள்ளிட வேண்டும்"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"சாதனத்தை மீண்டும் தொடங்கியதும், கடவுச்சொல்லை உள்ளிட வேண்டும்"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-te/strings.xml b/packages/SystemUI/res-keyguard/values-te/strings.xml
+index 3e27ce8ba70..74386bc7a48 100644
+--- a/packages/SystemUI/res-keyguard/values-te/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-te/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"సేవ లేదు."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"ఇన్‌పుట్ పద్ధతిని మార్చు"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"విమానం మోడ్"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"అప్‌డేట్‌కు సిద్ధం చేయడానికి పిన్ అవసరం"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"అప్‌డేట్‌కు సిద్ధం చేయడానికి ఆకృతి అవసరం"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"అప్‌డేట్‌కు సిద్ధం చేయడానికి పాస్‌వర్డ్ అవసరం"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"పరికరాన్ని పునఃప్రారంభించిన తర్వాత నమూనాను గీయాలి"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"డివైజ్‌ను పునఃప్రారంభించిన తర్వాత పిన్ నమోదు చేయాలి"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"పరికరాన్ని పునఃప్రారంభించిన తర్వాత పాస్‌వర్డ్‌ను నమోదు చేయాలి"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-th/strings.xml b/packages/SystemUI/res-keyguard/values-th/strings.xml
+index 48ae2ceb9fb..e157be4ac18 100644
+--- a/packages/SystemUI/res-keyguard/values-th/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-th/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"ไม่มีบริการ"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"สลับวิธีการป้อนข้อมูล"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"โหมดบนเครื่องบิน"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"ต้องใช้ PIN เพื่อเตรียมรับการอัปเดต"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"ต้องใช้รูปแบบเพื่อเตรียมรับการอัปเดต"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"ต้องใช้รหัสผ่านเพื่อเตรียมรับการอัปเดต"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"ต้องวาดรูปแบบหลังจากอุปกรณ์รีสตาร์ท"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"ต้องระบุ PIN หลังจากอุปกรณ์รีสตาร์ท"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"ต้องป้อนรหัสผ่านหลังจากอุปกรณ์รีสตาร์ท"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-tl/strings.xml b/packages/SystemUI/res-keyguard/values-tl/strings.xml
+index bd87b20a2cc..7b7e17dc8dc 100644
+--- a/packages/SystemUI/res-keyguard/values-tl/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-tl/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Walang serbisyo."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Magpalit ng pamamaraan ng pag-input"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Airplane mode"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Kinakailangan ang PIN para makapaghanda sa pag-update"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Kinakailangan ang pattern para makapaghanda sa pag-update"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Kinakailangan ang password para makapaghanda sa pag-update"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Kailangan ng pattern pagkatapos mag-restart ng device"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Kailangan ng PIN pagkatapos mag-restart ng device"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Kailangan ng password pagkatapos mag-restart ng device"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-tr/strings.xml b/packages/SystemUI/res-keyguard/values-tr/strings.xml
+index cf37451a9ed..8c0caead0bd 100644
+--- a/packages/SystemUI/res-keyguard/values-tr/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-tr/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Hizmet yok."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Giriş yöntemini değiştir"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Uçak modu"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Güncellemenin hazırlanması için PIN gerekli"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Güncellemenin hazırlanması için desen gerekli"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Güncellemenin hazırlanması için şifre gerekli"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Cihaz yeniden başladıktan sonra desen gerekir"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Cihaz yeniden başladıktan sonra PIN gerekir"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Cihaz yeniden başladıktan sonra şifre gerekir"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-uk/strings.xml b/packages/SystemUI/res-keyguard/values-uk/strings.xml
+index 0ccd012c522..6e5ce0f142d 100644
+--- a/packages/SystemUI/res-keyguard/values-uk/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-uk/strings.xml
+@@ -107,9 +107,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Зв’язку немає."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Змінити метод введення"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Режим польоту"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Щоб підготуватися до оновлення, введіть PIN-код"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Щоб підготуватися до оновлення, введіть ключ"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Щоб підготуватися до оновлення, введіть пароль"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Після перезавантаження пристрою потрібно ввести ключ"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Після перезавантаження пристрою потрібно ввести PIN-код"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Після перезавантаження пристрою потрібно ввести пароль"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-ur/strings.xml b/packages/SystemUI/res-keyguard/values-ur/strings.xml
+index 22a477e3d63..0fd5e17c953 100644
+--- a/packages/SystemUI/res-keyguard/values-ur/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-ur/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"کوئی سروس نہیں ہے۔"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"اندراج کا طریقہ سوئچ کریں"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"ہوائی جہاز وضع"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"‏اپ ڈیٹ تیار کرنے کے لیے PIN درکار ہے"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"اپ ڈیٹ تیار کرنے کے لیے پیٹرن درکار ہے"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"اپ ڈیٹ تیار کرنے کے لیے پاس ورڈ درکار ہے"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"آلہ دوبارہ چالو ہونے کے بعد پیٹرن درکار ہوتا ہے"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"‏آلہ دوبارہ چالو ہونے کے بعد PIN درکار ہوتا ہے"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"آلہ دوبارہ چالو ہونے کے بعد پاسورڈ درکار ہوتا ہے"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-uz/strings.xml b/packages/SystemUI/res-keyguard/values-uz/strings.xml
+index 72d4fae575b..323fea5a608 100644
+--- a/packages/SystemUI/res-keyguard/values-uz/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-uz/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Aloqa yo‘q."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Matn kiritish usulini almashtirish"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Parvoz rejimi"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Yangilashga tayyorlash uchun PIN kod talab etiladi"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Yangilashga tayyorlash uchun grafik kalit talab etiladi"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Yangilashga tayyorlash uchun parol talab etiladi"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Qurilma o‘chirib yoqilgandan keyin grafik kalit talab qilinadi"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Qurilma o‘chirib yoqilgandan keyin PIN kod talab qilinadi"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Qurilma o‘chirib yoqilgandan keyin parol talab qilinadi"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-vi/strings.xml b/packages/SystemUI/res-keyguard/values-vi/strings.xml
+index de642f3cc27..2ba5089c7ed 100644
+--- a/packages/SystemUI/res-keyguard/values-vi/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-vi/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Không có dịch vụ."</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Chuyển phương thức nhập"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Chế độ trên máy bay"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Cần nhập mã PIN để chuẩn bị cập nhật"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Cần nhập hình mở khóa để chuẩn bị cập nhật"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Cần nhập mật khẩu để chuẩn bị cập nhật"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Yêu cầu hình mở khóa sau khi thiết bị khởi động lại"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Yêu cầu mã PIN sau khi thiết bị khởi động lại"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Yêu cầu mật khẩu sau khi thiết bị khởi động lại"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-zh-rCN/strings.xml b/packages/SystemUI/res-keyguard/values-zh-rCN/strings.xml
+index be162b0b579..b4bff5fab6d 100644
+--- a/packages/SystemUI/res-keyguard/values-zh-rCN/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-zh-rCN/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"无服务。"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"切换输入法"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"飞行模式"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"需要输入 PIN 码才能让设备做好更新准备"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"需要绘制解锁图案才能让设备做好更新准备"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"需要输入密码才能让设备做好更新准备"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"重启设备后需要绘制解锁图案"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"重启设备后需要输入 PIN 码"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"重启设备后需要输入密码"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-zh-rHK/strings.xml b/packages/SystemUI/res-keyguard/values-zh-rHK/strings.xml
+index 33e5b44ac31..b3d387706fa 100644
+--- a/packages/SystemUI/res-keyguard/values-zh-rHK/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-zh-rHK/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"沒有服務。"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"轉換輸入方法"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"飛行模式"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"必須提供 PIN 碼，才能準備進行更新"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"必須畫出上鎖圖案，才能準備進行更新"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"必須輸入密碼，才能準備進行更新"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"裝置重新啟動後，必須畫出上鎖圖案才能使用"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"裝置重新啟動後，必須輸入 PIN 碼才能使用"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"裝置重新啟動後，必須輸入密碼才能使用"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-zh-rTW/strings.xml b/packages/SystemUI/res-keyguard/values-zh-rTW/strings.xml
+index 763233cc2e1..03dec485277 100644
+--- a/packages/SystemUI/res-keyguard/values-zh-rTW/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-zh-rTW/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"沒有服務。"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"切換輸入法"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"飛航模式"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"請輸入 PIN 碼，以便為更新作業進行準備"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"請畫出解鎖圖案，以便為更新作業進行準備"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"請輸入密碼，以便為更新作業進行準備"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"裝置重新啟動後需要畫出解鎖圖案"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"裝置重新啟動後需要輸入 PIN 碼"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"裝置重新啟動後需要輸入密碼"</string>
+diff --git a/packages/SystemUI/res-keyguard/values-zu/strings.xml b/packages/SystemUI/res-keyguard/values-zu/strings.xml
+index 397c868e654..5ab567f706c 100644
+--- a/packages/SystemUI/res-keyguard/values-zu/strings.xml
++++ b/packages/SystemUI/res-keyguard/values-zu/strings.xml
+@@ -101,9 +101,6 @@
+     <string name="keyguard_carrier_default" msgid="6359808469637388586">"Ayikho isevisi"</string>
+     <string name="accessibility_ime_switch_button" msgid="9082358310194861329">"Shintsha indlela yokufaka"</string>
+     <string name="airplane_mode" msgid="2528005343938497866">"Imodi yendiza"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pin" msgid="8878724145347297575">"Iphinikhodi iyadingeka ukuze kulungiselelwe isibuyekezo"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_pattern" msgid="4873394344883271519">"Iphethini iyadingeka ukuze kulungiselelwe isibuyekezo"</string>
+-    <string name="kg_prompt_reason_prepare_for_update_password" msgid="5625446803865598337">"Iphasiwedi iyadingeka ukuze kulungiselelwe isibuyekezo"</string>
+     <string name="kg_prompt_reason_restart_pattern" msgid="4720554342633852066">"Iphethini iyadingeka ngemuva kokuqala kabusha kwedivayisi"</string>
+     <string name="kg_prompt_reason_restart_pin" msgid="1587671566498057656">"Iphinikhodi iyadingeka ngemuva kokuqala kabusha kwedivayisi"</string>
+     <string name="kg_prompt_reason_restart_password" msgid="8061279087240952002">"Iphasiwedi iyadingeka ngemuva kokuqala kabusha kwedivayisi"</string>
+diff --git a/packages/SystemUI/res-keyguard/values/strings.xml b/packages/SystemUI/res-keyguard/values/strings.xml
+index 4d184d5758d..f7e9fedd5f6 100644
+--- a/packages/SystemUI/res-keyguard/values/strings.xml
++++ b/packages/SystemUI/res-keyguard/values/strings.xml
+@@ -240,15 +240,6 @@
+     <!-- Description of airplane mode -->
+     <string name="airplane_mode">Airplane mode</string>
+ 
+-    <!-- An explanation text that the PIN needs to be entered to prepare for an operating system update. [CHAR LIMIT=80] -->
+-    <string name="kg_prompt_reason_prepare_for_update_pin">PIN required to prepare for update</string>
+-
+-    <!-- An explanation text that the pattern needs to be entered to prepare for an operating system update. [CHAR LIMIT=80] -->
+-    <string name="kg_prompt_reason_prepare_for_update_pattern">Pattern required to prepare for update</string>
+-
+-    <!-- An explanation text that the password needs to be entered to prepare for an operating system update. [CHAR LIMIT=80] -->
+-    <string name="kg_prompt_reason_prepare_for_update_password">Password required to prepare for update</string>
+-
+     <!-- An explanation text that the pattern needs to be solved since the device has just been restarted. [CHAR LIMIT=80] -->
+     <string name="kg_prompt_reason_restart_pattern">Pattern required after device restarts</string>
+ 
+diff --git a/packages/SystemUI/src/com/android/keyguard/KeyguardPasswordView.java b/packages/SystemUI/src/com/android/keyguard/KeyguardPasswordView.java
+index 65bf7e6e502..97317cf5580 100644
+--- a/packages/SystemUI/src/com/android/keyguard/KeyguardPasswordView.java
++++ b/packages/SystemUI/src/com/android/keyguard/KeyguardPasswordView.java
+@@ -138,7 +138,7 @@ public class KeyguardPasswordView extends KeyguardAbsKeyInputView
+             case PROMPT_REASON_USER_REQUEST:
+                 return R.string.kg_prompt_reason_user_request;
+             case PROMPT_REASON_PREPARE_FOR_UPDATE:
+-                return R.string.kg_prompt_reason_prepare_for_update_password;
++                return R.string.kg_prompt_reason_timeout_password;
+             case PROMPT_REASON_NONE:
+                 return 0;
+             default:
+diff --git a/packages/SystemUI/src/com/android/keyguard/KeyguardPatternView.java b/packages/SystemUI/src/com/android/keyguard/KeyguardPatternView.java
+index ad92f8f623e..c4a9fcb4528 100644
+--- a/packages/SystemUI/src/com/android/keyguard/KeyguardPatternView.java
++++ b/packages/SystemUI/src/com/android/keyguard/KeyguardPatternView.java
+@@ -440,8 +440,7 @@ public class KeyguardPatternView extends LinearLayout implements KeyguardSecurit
+                 mSecurityMessageDisplay.setMessage(R.string.kg_prompt_reason_user_request);
+                 break;
+             case PROMPT_REASON_PREPARE_FOR_UPDATE:
+-                mSecurityMessageDisplay.setMessage(
+-                        R.string.kg_prompt_reason_prepare_for_update_pattern);
++                mSecurityMessageDisplay.setMessage(R.string.kg_prompt_reason_timeout_pattern);
+                 break;
+             case PROMPT_REASON_NONE:
+                 break;
+diff --git a/packages/SystemUI/src/com/android/keyguard/KeyguardPinBasedInputView.java b/packages/SystemUI/src/com/android/keyguard/KeyguardPinBasedInputView.java
+index 6d865ab525f..c7f27cf8a71 100644
+--- a/packages/SystemUI/src/com/android/keyguard/KeyguardPinBasedInputView.java
++++ b/packages/SystemUI/src/com/android/keyguard/KeyguardPinBasedInputView.java
+@@ -117,7 +117,7 @@ public abstract class KeyguardPinBasedInputView extends KeyguardAbsKeyInputView
+             case PROMPT_REASON_USER_REQUEST:
+                 return R.string.kg_prompt_reason_user_request;
+             case PROMPT_REASON_PREPARE_FOR_UPDATE:
+-                return R.string.kg_prompt_reason_prepare_for_update_pin;
++                return R.string.kg_prompt_reason_timeout_pin;
+             case PROMPT_REASON_NONE:
+                 return 0;
+             default:
+-- 
+2.35.1
+

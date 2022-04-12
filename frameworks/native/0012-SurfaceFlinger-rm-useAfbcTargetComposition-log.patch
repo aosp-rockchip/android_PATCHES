@@ -1,0 +1,393 @@
+From 2857c87fef56b6aac5568ec7d2d4885dfe176cf2 Mon Sep 17 00:00:00 2001
+From: Zhixiong Lin <zhixiong.lin@rock-chips.com>
+Date: Mon, 28 Sep 2020 11:03:07 +0800
+Subject: [PATCH 12/33] SurfaceFlinger: rm useAfbcTargetComposition log
+
+Change-Id: Id107f3fcd6e4e87147f844e4c4fb6f2267016bc5
+Signed-off-by: Zhixiong Lin <zhixiong.lin@rock-chips.com>
+---
+ libs/gui/Android.go                           | 27 +++++++++---------
+ libs/gui/BufferQueueProducer.cpp              | 26 ++++++++---------
+ services/surfaceflinger/Android.go            | 28 +++++++++----------
+ .../CompositionEngine/Android.go              | 25 ++++++++---------
+ .../compositionengine/impl/RenderSurface.h    |  2 +-
+ .../compositionengine/mock/RenderSurface.h    |  2 +-
+ .../CompositionEngine/src/Output.cpp          | 10 +++----
+ .../CompositionEngine/src/RenderSurface.cpp   |  2 +-
+ .../DisplayHardware/HWComposer.cpp            | 10 +++----
+ .../DisplayHardware/HWComposer.h              |  2 +-
+ services/surfaceflinger/SurfaceFlinger.cpp    |  7 +++--
+ 11 files changed, 69 insertions(+), 72 deletions(-)
+
+diff --git a/libs/gui/Android.go b/libs/gui/Android.go
+index bfb53fc3e..a05c9f5da 100755
+--- a/libs/gui/Android.go
++++ b/libs/gui/Android.go
+@@ -1,17 +1,17 @@
+ package libgui
+ 
+ import (
+-        "android/soong/android"
+-        "android/soong/cc"
+-       // "fmt"
+-        "strings"
++    "android/soong/android"
++    "android/soong/cc"
++     //"fmt"
++    "strings"
+ )
+ 
+ func init() {
+-	//该打印会在执行mm命令时，打印在屏幕上
++    //该打印会在执行mm命令时，打印在屏幕上
+     //fmt.Println("libgui want to conditional Compile")
+ 
+-	android.RegisterModuleType("cc_libgui", DefaultsFactory)
++    android.RegisterModuleType("cc_libgui", DefaultsFactory)
+ }
+ 
+ func DefaultsFactory() (android.Module) {
+@@ -31,14 +31,13 @@ func Defaults(ctx android.LoadHookContext) {
+ 
+ //条件编译主要修改函数
+ func globalDefaults(ctx android.BaseContext) ([]string) {
+-	var cppflags []string
+-	//fmt.Println("BOARD_HS_DYNAMIC_AFBC_TARGET:",ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET")) 
+-	
+-	
++    var cppflags []string
++    //fmt.Println("BOARD_HS_DYNAMIC_AFBC_TARGET:",ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET")) 
++
+     if (strings.EqualFold(ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET"),"true")) {
+         cppflags = append(cppflags,"-DDYNAMIC_AFBC_TARGET=1")
+-    } 
+-   
+-	//将需要区分的环境变量在此区域添加 //....
+-	return cppflags
++    }
++
++    //将需要区分的环境变量在此区域添加 //....
++    return cppflags
+ }
+diff --git a/libs/gui/BufferQueueProducer.cpp b/libs/gui/BufferQueueProducer.cpp
+index 6ae14f905..f5a557dc1 100755
+--- a/libs/gui/BufferQueueProducer.cpp
++++ b/libs/gui/BufferQueueProducer.cpp
+@@ -259,7 +259,7 @@ int BufferQueueProducer::getFreeFBBufferLocked( bool isafbc) const {
+     int slot = mCore->mFreeBuffers.front();
+     mCore->mFreeBuffers.pop_front();
+     ALOGD("rk-debug-gui found first =%d, isafbc=%d,input_isafbc=%d",slot,mSlots[slot].mIsafbc,isafbc);
+-    
++
+     for(int i = 0; i < 4;i++)
+     {
+         if(mSlots[slot].mIsafbc == isafbc)
+@@ -269,12 +269,12 @@ int BufferQueueProducer::getFreeFBBufferLocked( bool isafbc) const {
+         else
+         {
+             mCore->mFreeBuffers.push_back(slot);
+-            slot = mCore->mFreeBuffers.front(); 
++            slot = mCore->mFreeBuffers.front();
+             mCore->mFreeBuffers.pop_front();
+             ALOGD("rk-debug-gui found [%d] =%d, isafbc=%d,input_isafbc=%d",i,slot,mSlots[slot].mIsafbc,isafbc);
+-           
++
+         }
+-    }    
++    }
+     ALOGD("rk-debug-gui fininal found=%d, isafbc=%d,input_isafbc=%d",slot,mSlots[slot].mIsafbc,isafbc);
+     return slot;
+ }
+@@ -357,12 +357,12 @@ status_t BufferQueueProducer::waitForFreeSlotThenRelock(FreeSlotCaller caller,
+                     // If we're calling this from dequeue, prefer free buffers
+                     if(isfb)
+                     {
+-                        slot = getFreeFBBufferLocked(isafbc);                    
++                        slot = getFreeFBBufferLocked(isafbc);
+                     }
+                     else
+                     {
+                         slot = getFreeBufferLocked();
+-                    } 
++                    }
+                     if (slot != BufferQueueCore::INVALID_BUFFER_SLOT) {
+                         *found = slot;
+                     } else if (mCore->mAllowAllocation) {
+@@ -415,9 +415,9 @@ status_t BufferQueueProducer::dequeueBuffer(int* outSlot, sp<android::Fence>* ou
+                                             uint32_t width, uint32_t height, PixelFormat format,
+                                             uint64_t usage, uint64_t* outBufferAge,
+                                             FrameEventHistoryDelta* outTimestamps) {
+-    bool need_afbc = 0;   
+-    bool isfb = 0;                                            
+-    
++    bool need_afbc = 0;
++    bool isfb = 0;
++
+     ATRACE_CALL();
+     { // Autolock scope
+         std::lock_guard<std::mutex> lock(mCore->mMutex);
+@@ -471,12 +471,12 @@ status_t BufferQueueProducer::dequeueBuffer(int* outSlot, sp<android::Fence>* ou
+             if(usage & GRALLOC_USAGE_PRIVATE_0)
+             {
+                 usage &= ~GRALLOC_USAGE_PRIVATE_0;
+-                need_afbc = 1;   
+-                ALOGD("rk-debug-gui need afbc fb-target");                
++                need_afbc = 1;
++                ALOGD("rk-debug-gui need afbc fb-target");
+             }
+-            else  
++            else
+             {
+-                ALOGD("rk-debug-gui no need afbc fb-target");                                
++                ALOGD("rk-debug-gui no need afbc fb-target");
+             }
+         }
+         #endif
+diff --git a/services/surfaceflinger/Android.go b/services/surfaceflinger/Android.go
+index d7a52d549..084344c23 100755
+--- a/services/surfaceflinger/Android.go
++++ b/services/surfaceflinger/Android.go
+@@ -1,17 +1,16 @@
+ package libsurfaceflinger
+ 
+ import (
+-        "android/soong/android"
+-        "android/soong/cc"
+-        //"fmt"
+-        "strings"
++    "android/soong/android"
++    "android/soong/cc"
++    //"fmt"
++    "strings"
+ )
+ 
+ func init() {
+-	//该打印会在执行mm命令时，打印在屏幕上
++    //该打印会在执行mm命令时，打印在屏幕上
+     //fmt.Println("libgui want to conditional Compile")
+-
+-	android.RegisterModuleType("cc_libsurfaceflinger", DefaultsFactory)
++    android.RegisterModuleType("cc_libsurfaceflinger", DefaultsFactory)
+ }
+ 
+ func DefaultsFactory() (android.Module) {
+@@ -31,14 +30,13 @@ func Defaults(ctx android.LoadHookContext) {
+ 
+ //条件编译主要修改函数
+ func globalDefaults(ctx android.BaseContext) ([]string) {
+-	var cflags []string
+-	//fmt.Println("BOARD_HS_DYNAMIC_AFBC_TARGET_SF:",ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET")) 
+-	
+-	
++    var cflags []string
++    //fmt.Println("BOARD_HS_DYNAMIC_AFBC_TARGET_SF:",ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET")) 
++
+     if (strings.EqualFold(ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET"),"true")) {
+         cflags = append(cflags,"-DDYNAMIC_AFBC_TARGET=1")
+-    } 
+-   
+-	//将需要区分的环境变量在此区域添加 //....
+-	return cflags
++    }
++
++    //将需要区分的环境变量在此区域添加 //....
++    return cflags
+ }
+diff --git a/services/surfaceflinger/CompositionEngine/Android.go b/services/surfaceflinger/CompositionEngine/Android.go
+index b798ffc2f..68afb3982 100755
+--- a/services/surfaceflinger/CompositionEngine/Android.go
++++ b/services/surfaceflinger/CompositionEngine/Android.go
+@@ -1,17 +1,17 @@
+ package  libcompositionengine
+ 
+ import (
+-        "android/soong/android"
+-        "android/soong/cc"
+-       // "fmt"
+-        "strings"
++    "android/soong/android"
++    "android/soong/cc"
++    //"fmt"
++    "strings"
+ )
+ 
+ func init() {
+-	//该打印会在执行mm命令时，打印在屏幕上
++    //该打印会在执行mm命令时，打印在屏幕上
+     //fmt.Println("libgui want to conditional Compile")
+ 
+-	android.RegisterModuleType("cc_libcompositionengine", DefaultsFactory)
++    android.RegisterModuleType("cc_libcompositionengine", DefaultsFactory)
+ }
+ 
+ func DefaultsFactory() (android.Module) {
+@@ -31,14 +31,13 @@ func Defaults(ctx android.LoadHookContext) {
+ 
+ //条件编译主要修改函数
+ func globalDefaults(ctx android.BaseContext) ([]string) {
+-	var cflags []string
+-	//fmt.Println("BOARD_HS_DYNAMIC_AFBC_TARGET_comp:",ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET")) 
++    var cflags []string
++    //fmt.Println("BOARD_HS_DYNAMIC_AFBC_TARGET_comp:",ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET")) 
+ 
+-	
+     if (strings.EqualFold(ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET"),"true")) {
+         cflags = append(cflags,"-DDYNAMIC_AFBC_TARGET=1")
+-    } 
+-   
+-	//将需要区分的环境变量在此区域添加 //....
+-	return cflags
++    }
++
++    //将需要区分的环境变量在此区域添加 //....
++    return cflags
+ }
+diff --git a/services/surfaceflinger/CompositionEngine/include/compositionengine/impl/RenderSurface.h b/services/surfaceflinger/CompositionEngine/include/compositionengine/impl/RenderSurface.h
+index 61f144036..6283957c3 100755
+--- a/services/surfaceflinger/CompositionEngine/include/compositionengine/impl/RenderSurface.h
++++ b/services/surfaceflinger/CompositionEngine/include/compositionengine/impl/RenderSurface.h
+@@ -55,7 +55,7 @@ public:
+     status_t beginFrame(bool mustRecompose) override;
+     void prepareFrame(bool usesClientComposition, bool usesDeviceComposition) override;
+     sp<GraphicBuffer> dequeueBuffer(base::unique_fd* bufferFence) override;
+-	int perform(int operation, uint64_t usage) override;
++    int perform(int operation, uint64_t usage) override;
+     void queueBuffer(base::unique_fd readyFence) override;
+     void onPresentDisplayCompleted() override;
+     void flip() override;
+diff --git a/services/surfaceflinger/CompositionEngine/include/compositionengine/mock/RenderSurface.h b/services/surfaceflinger/CompositionEngine/include/compositionengine/mock/RenderSurface.h
+index 83deb5f72..22e497fd4 100755
+--- a/services/surfaceflinger/CompositionEngine/include/compositionengine/mock/RenderSurface.h
++++ b/services/surfaceflinger/CompositionEngine/include/compositionengine/mock/RenderSurface.h
+@@ -40,7 +40,7 @@ public:
+     MOCK_METHOD1(beginFrame, status_t(bool mustRecompose));
+     MOCK_METHOD2(prepareFrame, void(bool, bool));
+     MOCK_METHOD1(dequeueBuffer, sp<GraphicBuffer>(base::unique_fd*));
+-	MOCK_METHOD2(perform, int(int,uint64_t));
++    MOCK_METHOD2(perform, int(int,uint64_t));
+     MOCK_METHOD1(queueBuffer, void(base::unique_fd));
+     MOCK_METHOD0(onPresentDisplayCompleted, void());
+     MOCK_METHOD0(flip, void());
+diff --git a/services/surfaceflinger/CompositionEngine/src/Output.cpp b/services/surfaceflinger/CompositionEngine/src/Output.cpp
+index 2be60140e..c6bacf29b 100755
+--- a/services/surfaceflinger/CompositionEngine/src/Output.cpp
++++ b/services/surfaceflinger/CompositionEngine/src/Output.cpp
+@@ -811,7 +811,7 @@ std::optional<base::unique_fd> Output::composeSurfaces(
+         const Region& debugRegion, const compositionengine::CompositionRefreshArgs& refreshArgs) {
+     ATRACE_CALL();
+     ALOGV(__FUNCTION__);
+-    static int docompcnt = 0;    
++    static int docompcnt = 0;
+     const auto& outputState = getState();
+     OutputCompositionState& outputCompositionState = editState();
+     const TracedOrdinal<bool> hasClientComposition = {"hasClientComposition",
+@@ -819,7 +819,7 @@ std::optional<base::unique_fd> Output::composeSurfaces(
+ 
+ #if DYNAMIC_AFBC_TARGET
+     const bool hasClientAfbc = refreshArgs.useAfbcTargetComposition;
+-#endif    
++#endif
+     auto& renderEngine = getCompositionEngine().getRenderEngine();
+     const bool supportsProtectedContent = renderEngine.supportsProtectedContent();
+ 
+@@ -852,10 +852,10 @@ std::optional<base::unique_fd> Output::composeSurfaces(
+         if(docompcnt > 10)
+         {
+             if(hasClientAfbc)
+-                mRenderSurface->perform(NATIVE_WINDOW_SET_USAGE,GRALLOC_USAGE_PRIVATE_0 | GRALLOC_USAGE_HW_FB | GRALLOC_USAGE_HW_COMPOSER | GRALLOC_USAGE_HW_RENDER); 
++                mRenderSurface->perform(NATIVE_WINDOW_SET_USAGE,GRALLOC_USAGE_PRIVATE_0 | GRALLOC_USAGE_HW_FB | GRALLOC_USAGE_HW_COMPOSER | GRALLOC_USAGE_HW_RENDER);
+             else
+-                mRenderSurface->perform(NATIVE_WINDOW_SET_USAGE, GRALLOC_USAGE_HW_FB | GRALLOC_USAGE_HW_COMPOSER | GRALLOC_USAGE_HW_RENDER); 
+-        }  
++                mRenderSurface->perform(NATIVE_WINDOW_SET_USAGE, GRALLOC_USAGE_HW_FB | GRALLOC_USAGE_HW_COMPOSER | GRALLOC_USAGE_HW_RENDER);
++        }
+         #endif
+         buf = mRenderSurface->dequeueBuffer(&fd);
+         if (buf == nullptr) {
+diff --git a/services/surfaceflinger/CompositionEngine/src/RenderSurface.cpp b/services/surfaceflinger/CompositionEngine/src/RenderSurface.cpp
+index 8cd2db680..cb90cc7d9 100755
+--- a/services/surfaceflinger/CompositionEngine/src/RenderSurface.cpp
++++ b/services/surfaceflinger/CompositionEngine/src/RenderSurface.cpp
+@@ -171,7 +171,7 @@ sp<GraphicBuffer> RenderSurface::dequeueBuffer(base::unique_fd* bufferFence) {
+ 
+ int RenderSurface::perform(int operation, uint64_t usage) {
+    // va_list args;
+-    ALOGD("rk-debug-sf set perform ver1"); 
++    ALOGD("surfacefliner set perform ver1 \n");
+    // va_start(args, operation);
+     int result = mNativeWindow->perform(mNativeWindow.get(),operation,usage);  //0x10001a00
+    // va_end(args);
+diff --git a/services/surfaceflinger/DisplayHardware/HWComposer.cpp b/services/surfaceflinger/DisplayHardware/HWComposer.cpp
+index 83dc0f4b8..bff96bb98 100755
+--- a/services/surfaceflinger/DisplayHardware/HWComposer.cpp
++++ b/services/surfaceflinger/DisplayHardware/HWComposer.cpp
+@@ -497,7 +497,7 @@ status_t HWComposer::getDeviceCompositionChanges(
+ 
+     uint32_t numTypes = 0;
+     uint32_t numRequests = 0;
+-	static int framecnt = 0;
++    static int framecnt = 0;
+     hal::Error error = hal::Error::NONE;
+ 
+     // First try to skip validate altogether when there is no client
+@@ -540,12 +540,12 @@ status_t HWComposer::getDeviceCompositionChanges(
+     layerRequests.reserve(numRequests);
+     error = hwcDisplay->getRequests(&displayRequests, &layerRequests);
+     RETURN_IF_HWC_ERROR_FOR("getRequests", error, displayId, BAD_INDEX);
+-	displayData.hasClientafbc = false;
+-	framecnt ++;
++    displayData.hasClientafbc = false;
++    framecnt ++;
+ 
+- 	if (0 == framecnt%2)
++    if (0 == framecnt%2)
+     {
+-    	displayData.hasClientafbc = true;
++        displayData.hasClientafbc = true;
+     }
+     DeviceRequestedChanges::ClientTargetProperty clientTargetProperty;
+     error = hwcDisplay->getClientTargetProperty(&clientTargetProperty);
+diff --git a/services/surfaceflinger/DisplayHardware/HWComposer.h b/services/surfaceflinger/DisplayHardware/HWComposer.h
+index aa239ff86..a90820a0d 100755
+--- a/services/surfaceflinger/DisplayHardware/HWComposer.h
++++ b/services/surfaceflinger/DisplayHardware/HWComposer.h
+@@ -384,7 +384,7 @@ private:
+ 
+     struct DisplayData {
+         bool isVirtual = false;
+-		bool hasClientafbc = false;
++        bool hasClientafbc = false;
+         std::unique_ptr<HWC2::Display> hwcDisplay;
+         sp<Fence> lastPresentFence = Fence::NO_FENCE; // signals when the last set op retires
+         std::unordered_map<HWC2::Layer*, sp<Fence>> releaseFences;
+diff --git a/services/surfaceflinger/SurfaceFlinger.cpp b/services/surfaceflinger/SurfaceFlinger.cpp
+index 1e7923ca5..c8949f362 100755
+--- a/services/surfaceflinger/SurfaceFlinger.cpp
++++ b/services/surfaceflinger/SurfaceFlinger.cpp
+@@ -339,6 +339,7 @@ SurfaceFlinger::SurfaceFlinger(Factory& factory) : SurfaceFlinger(factory, SkipI
+     #else
+     maxFrameBufferAcquiredBuffers = max_frame_buffer_acquired_buffers(2);
+     #endif
++
+     maxGraphicsWidth = std::max(max_graphics_width(0), 0);
+     maxGraphicsHeight = std::max(max_graphics_height(0), 0);
+ 
+@@ -2088,12 +2089,12 @@ void SurfaceFlinger::onMessageRefresh() {
+     }
+     const auto* dpy = ON_MAIN_THREAD(getDefaultDisplayDeviceLocked()).get();
+ 
+-    if(dpy)
++    if(dpy) {
+         refreshArgs.useAfbcTargetComposition =  getHwComposer().hasClientAFBC(*dpy->getId());
+-    else
++    } else {
+         refreshArgs.useAfbcTargetComposition =  false;
++    }
+ 
+-    ALOGD("rk-debug-sf useAfbcTargetComposition=%d",refreshArgs.useAfbcTargetComposition);    
+     mGeometryInvalid = false;
+ 
+     // Store the present time just before calling to the composition engine so we could notify
+-- 
+2.35.1
+

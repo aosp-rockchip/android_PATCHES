@@ -1,0 +1,39 @@
+From 26f5cf36e4eb9ae6531406570cfea1a55df90187 Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Wed, 16 Sep 2020 15:28:02 +0800
+Subject: [PATCH 09/33] feature: remove compass by default.
+
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+Change-Id: Iaa646c010bb2317fa35d3f51e4957e0b84d6ab57
+---
+ data/etc/go_handheld_core_hardware.xml | 1 -
+ data/etc/tablet_core_hardware.xml      | 1 -
+ 2 files changed, 2 deletions(-)
+
+diff --git a/data/etc/go_handheld_core_hardware.xml b/data/etc/go_handheld_core_hardware.xml
+index 915e579ec..ec73a6001 100644
+--- a/data/etc/go_handheld_core_hardware.xml
++++ b/data/etc/go_handheld_core_hardware.xml
+@@ -26,7 +26,6 @@
+     <feature name="android.hardware.camera" />
+     <feature name="android.hardware.location" />
+     <feature name="android.hardware.location.network" />
+-    <feature name="android.hardware.sensor.compass" />
+     <feature name="android.hardware.sensor.accelerometer" />
+     <feature name="android.hardware.bluetooth" />
+     <feature name="android.hardware.touchscreen" />
+diff --git a/data/etc/tablet_core_hardware.xml b/data/etc/tablet_core_hardware.xml
+index e878f8624..78c57fb79 100644
+--- a/data/etc/tablet_core_hardware.xml
++++ b/data/etc/tablet_core_hardware.xml
+@@ -29,7 +29,6 @@
+     <feature name="android.hardware.audio.output" />
+     <feature name="android.hardware.location" />
+     <feature name="android.hardware.location.network" />
+-    <feature name="android.hardware.sensor.compass" />
+     <feature name="android.hardware.sensor.accelerometer" />
+     <feature name="android.hardware.bluetooth" />
+     <feature name="android.hardware.touchscreen" />
+-- 
+2.35.1
+

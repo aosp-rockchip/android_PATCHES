@@ -1,0 +1,58 @@
+From 6a2691ea76d6ed3ad612f51653c655e687cbb7a5 Mon Sep 17 00:00:00 2001
+From: Wu Liangqing <wlq@rock-chips.com>
+Date: Tue, 29 Sep 2020 17:57:18 +0800
+Subject: [PATCH 09/11] pcba: support display rgb
+
+Change-Id: Id35834866fd59ba12f74d030ebe30b162efe52a3
+---
+ recovery_ui/include/recovery_ui/ui.h |  5 +++++
+ recovery_ui/screen_ui.cpp            | 10 +++++++++-
+ 2 files changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/recovery_ui/include/recovery_ui/ui.h b/recovery_ui/include/recovery_ui/ui.h
+index eea11689..d6d293f1 100644
+--- a/recovery_ui/include/recovery_ui/ui.h
++++ b/recovery_ui/include/recovery_ui/ui.h
+@@ -189,6 +189,10 @@ class RecoveryUI {
+   void SetEnableFastbootdLogo(bool enable) {
+     fastbootd_logo_enabled_ = enable;
+   }
++  // Set whether or not the RGA in PCBA is displayed.
++  void SetRkFactoryStart(bool enable) {
++    RkFactory_Start_ = enable;
++  }
+ 
+   // Resets the key interrupt status.
+   void ResetKeyInterruptStatus() {
+@@ -226,6 +230,7 @@ class RecoveryUI {
+   bool touch_finger_down_;
+ 
+   bool fastbootd_logo_enabled_;
++  bool RkFactory_Start_;
+ 
+  private:
+   enum class ScreensaverState {
+diff --git a/recovery_ui/screen_ui.cpp b/recovery_ui/screen_ui.cpp
+index 73a07bc3..737d40b6 100644
+--- a/recovery_ui/screen_ui.cpp
++++ b/recovery_ui/screen_ui.cpp
+@@ -776,7 +776,15 @@ void ScreenRecoveryUI::draw_menu_and_text_buffer_locked(
+     y += menu_->DrawHeader(x, y);
+     y += menu_->DrawItems(x, y, ScreenWidth(), IsLongPress());
+   }
+-
++  // Display RGA PCBA Test.
++  if(RkFactory_Start_){
++    gr_color(255, 0, 0, 255); //gr_color(255, 0, 0, 255);
++    DrawHighlightBar(0, y, ScreenWidth()/3, ScreenHeight()/5);
++    gr_color(0, 255, 0, 255);
++    DrawHighlightBar(ScreenWidth()/3, y, ScreenWidth()/3, ScreenHeight()/5);
++    gr_color(0, 0, 255, 255);
++    DrawHighlightBar(2*ScreenWidth()/3, y, ScreenWidth()/3, ScreenHeight()/5);
++  }
+   // Display from the bottom up, until we hit the top of the screen, the bottom of the menu, or
+   // we've displayed the entire text buffer.
+   SetColor(UIElement::LOG);
+-- 
+2.35.1
+

@@ -1,0 +1,75 @@
+From d3a7aa6c4296e6e5839b1644dda58073680c8e45 Mon Sep 17 00:00:00 2001
+From: lesl <lesl@google.com>
+Date: Thu, 13 Aug 2020 14:46:06 +0800
+Subject: [PATCH 247/297] wifi: Support SAE_TRANSITION when converting to
+ WifiConfiguration
+
+In android R, framework use SoftApConfiguratio to replace
+WifiConfiguration. The mapping function between WifiConfiguration and
+SoftApConfiguration was desinged to return Null when the type doesn't
+support in WifiConfiguration. Likes security type WPA3_SAE_TRANSITION.
+But it causes the app crash because unexpected Null config.
+Solution:
+Add the mapping, SAE_TRANSITION to WPA2, when converting to avoid break
+the legacy apps since WPA2 config also works normally when LOHS enabled on
+WPA3_SAE_TRANSITION mode.
+
+Bug: 163687359
+Test: atest FrameworksWifiTests
+Test: atest frameworks/base/wifi/tests/
+Test: atest -c android.net.wifi.cts.WifiManagerTest#testStartLocalOnlyHotspotSingleRequestByApps
+Change-Id: I6afba22e4081ba58884ffd1b560b81b1e9960132
+---
+ .../android/net/wifi/SoftApConfiguration.java   |  1 +
+ .../net/wifi/SoftApConfigurationTest.java       | 17 +++++++++++------
+ 2 files changed, 12 insertions(+), 6 deletions(-)
+
+diff --git a/wifi/java/android/net/wifi/SoftApConfiguration.java b/wifi/java/android/net/wifi/SoftApConfiguration.java
+index a5e76e6c92e..d2ff658b59b 100644
+--- a/wifi/java/android/net/wifi/SoftApConfiguration.java
++++ b/wifi/java/android/net/wifi/SoftApConfiguration.java
+@@ -533,6 +533,7 @@ public final class SoftApConfiguration implements Parcelable {
+                 wifiConfig.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
+                 break;
+             case SECURITY_TYPE_WPA2_PSK:
++            case SECURITY_TYPE_WPA3_SAE_TRANSITION:
+                 wifiConfig.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA2_PSK);
+                 break;
+             default:
+diff --git a/wifi/tests/src/android/net/wifi/SoftApConfigurationTest.java b/wifi/tests/src/android/net/wifi/SoftApConfigurationTest.java
+index 1a442703475..d78c942d55e 100644
+--- a/wifi/tests/src/android/net/wifi/SoftApConfigurationTest.java
++++ b/wifi/tests/src/android/net/wifi/SoftApConfigurationTest.java
+@@ -282,12 +282,6 @@ public class SoftApConfigurationTest {
+                 .build();
+ 
+         assertNull(band_6g_config.toWifiConfiguration());
+-        SoftApConfiguration sae_transition_config = new SoftApConfiguration.Builder()
+-                .setPassphrase("secretsecret",
+-                        SoftApConfiguration.SECURITY_TYPE_WPA3_SAE_TRANSITION)
+-                .build();
+-
+-        assertNull(sae_transition_config.toWifiConfiguration());
+     }
+ 
+     @Test
+@@ -330,5 +324,16 @@ public class SoftApConfigurationTest {
+         assertThat(wifiConfig_2g5g.apBand).isEqualTo(WifiConfiguration.AP_BAND_ANY);
+         assertThat(wifiConfig_2g5g.apChannel).isEqualTo(0);
+         assertThat(wifiConfig_2g5g.hiddenSSID).isEqualTo(true);
++
++        SoftApConfiguration softApConfig_sae_transition = new SoftApConfiguration.Builder()
++                .setPassphrase("secretsecret",
++                SoftApConfiguration.SECURITY_TYPE_WPA3_SAE_TRANSITION)
++                .build();
++
++        WifiConfiguration wifiConfig_sae_transition =
++                softApConfig_sae_transition.toWifiConfiguration();
++        assertThat(wifiConfig_sae_transition.getAuthType())
++                .isEqualTo(WifiConfiguration.KeyMgmt.WPA2_PSK);
++        assertThat(wifiConfig_sae_transition.preSharedKey).isEqualTo("secretsecret");
+     }
+ }
+-- 
+2.35.1
+

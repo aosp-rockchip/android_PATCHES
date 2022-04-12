@@ -1,0 +1,1549 @@
+From d00165a227dddf258f4e82890a3aa0a592b3a601 Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Tue, 20 Oct 2020 10:12:47 +0800
+Subject: [PATCH 17/25] Settings: Add EthernetSettings to network_and_internet
+ category.
+
+this commit need combine with others commit:
+  Ethernet: add interface for settings apk
+in frameworks/opt/net/ethernet and frameworks/base
+
+notes: ro.vendor.ethernet_settings=true to display the ethernet settings item
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: I97b0d7a494ca30657761be4b3bffd21a851b4da2
+---
+ AndroidManifest.xml                           |  24 +
+ res/drawable/ic_ethernet.xml                  |  26 +
+ res/layout/static_ip_dialog.xml               | 156 ++++
+ res/values-en-rGB/strings.xml                 |   1 +
+ res/values-en-rIN/strings.xml                 |   1 +
+ res/values/arrays.xml                         |  10 +
+ res/values/strings.xml                        |  44 ++
+ res/xml/ethernet_settings.xml                 |  74 ++
+ res/xml/network_and_internet.xml              |   7 +
+ src/com/android/settings/Settings.java        |   1 +
+ .../android/settings/SettingsActivity.java    |   7 +
+ .../core/gateway/SettingsGateway.java         |   2 +
+ .../ethernet/EtherentStaticIpDialog.java      | 249 +++++++
+ .../settings/ethernet/EthernetSettings.java   | 679 ++++++++++++++++++
+ .../EthernetSettingsPreferenceController.java |  43 ++
+ .../settings/ethernet/getStaticIpInfo.java    |   9 +
+ .../network/NetworkDashboardFragment.java     |   2 +
+ 17 files changed, 1335 insertions(+)
+ create mode 100644 res/drawable/ic_ethernet.xml
+ create mode 100644 res/layout/static_ip_dialog.xml
+ create mode 100644 res/xml/ethernet_settings.xml
+ create mode 100644 src/com/android/settings/ethernet/EtherentStaticIpDialog.java
+ create mode 100644 src/com/android/settings/ethernet/EthernetSettings.java
+ create mode 100644 src/com/android/settings/ethernet/EthernetSettingsPreferenceController.java
+ create mode 100644 src/com/android/settings/ethernet/getStaticIpInfo.java
+
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index efbd359878..bcdee617a9 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -531,6 +531,30 @@
+                 android:value="com.android.settings.TetherSettings" />
+         </activity-alias>
+ 
++        <activity android:name="Settings$EthernetSettingsActivity"
++            android:label="@string/ethernet_settings_title"
++            android:icon="@drawable/ic_settings_wireless"
++            android:taskAffinity="">
++            <intent-filter>
++                <action android:name="android.intent.action.MAIN" />
++                <category android:name="android.intent.category.DEFAULT" />
++                <category android:name="android.intent.category.VOICE_LAUNCH" />
++                <category android:name="com.android.settings.SHORTCUT" />
++            </intent-filter>
++            <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
++                android:value="com.android.settings.ethernet.EthernetSettings" />
++        </activity>
++
++        <!-- Keep compatibility with old shortcuts. -->
++        <activity-alias android:name=".EthernetSettings"
++            android:label="@string/ethernet_settings"
++            android:clearTaskOnLaunch="true"
++            android:targetActivity="Settings$EthernetSettingsActivity"
++            android:exported="true">
++            <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
++                android:value="com.android.settings.EthernetSettings" />
++        </activity-alias>
++
+         <activity android:name="Settings$WifiP2pSettingsActivity">
+             <intent-filter>
+                 <action android:name="android.intent.action.MAIN" />
+diff --git a/res/drawable/ic_ethernet.xml b/res/drawable/ic_ethernet.xml
+new file mode 100644
+index 0000000000..ca47ec96d0
+--- /dev/null
++++ b/res/drawable/ic_ethernet.xml
+@@ -0,0 +1,26 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++  Copyright (C) 2016 The Android Open Source Project
++
++  Licensed under the Apache License, Version 2.0 (the "License");
++  you may not use this file except in compliance with the License.
++  You may obtain a copy of the License at
++
++       http://www.apache.org/licenses/LICENSE-2.0
++
++  Unless required by applicable law or agreed to in writing, software
++  distributed under the License is distributed on an "AS IS" BASIS,
++  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++  See the License for the specific language governing permissions and
++  limitations under the License
++  -->
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++        android:width="24dp"
++        android:height="24dp"
++        android:viewportWidth="24.0"
++        android:viewportHeight="24.0"
++        android:tint="?android:attr/colorControlNormal">
++    <path
++        android:fillColor="#FF000000"
++        android:pathData="M7.77,6.76L6.23,5.48 0.82,12l5.41,6.52 1.54,-1.28L3.42,12l4.35,-5.24zM7,13h2v-2L7,11v2zM17,11h-2v2h2v-2zM11,13h2v-2h-2v2zM17.77,5.48l-1.54,1.28L20.58,12l-4.35,5.24 1.54,1.28L23.18,12l-5.41,-6.52z"/>
++</vector>
+diff --git a/res/layout/static_ip_dialog.xml b/res/layout/static_ip_dialog.xml
+new file mode 100644
+index 0000000000..8e7bef0815
+--- /dev/null
++++ b/res/layout/static_ip_dialog.xml
+@@ -0,0 +1,156 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     Copyright (C) 2010 The Android Open Source Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++
++<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="wrap_content"
++    android:layout_height="wrap_content"
++    android:fadeScrollbars="false" >
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:orientation="vertical"
++        android:paddingBottom="8dip" >
++
++        <LinearLayout
++            android:id="@+id/wifi_advanced_fields"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:orientation="vertical" >
++
++            <LinearLayout
++                android:id="@+id/proxy_fields"
++                style="@style/wifi_section"
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content" >
++
++                <LinearLayout
++                    android:id="@+id/staticip"
++                    style="@style/wifi_section"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content" >
++
++                    <LinearLayout
++                        style="@style/wifi_item"
++                        android:layout_width="match_parent"
++                        android:layout_height="wrap_content" >
++
++                        <TextView
++                            style="@style/wifi_item_label"
++                            android:layout_width="wrap_content"
++                            android:layout_height="wrap_content"
++                            android:text="@string/wifi_ip_address" />
++
++                        <EditText
++                            android:id="@+id/ipaddress"
++                            style="@style/wifi_item_edit_content"
++                            android:layout_width="match_parent"
++                            android:layout_height="wrap_content"
++                            android:hint="@string/wifi_ip_address_hint"
++                            android:inputType="textNoSuggestions"
++                            android:singleLine="true" />
++                    </LinearLayout>
++
++                    <LinearLayout
++                        style="@style/wifi_item"
++                        android:layout_width="match_parent"
++                        android:layout_height="wrap_content" >
++
++                        <TextView
++                            style="@style/wifi_item_label"
++                            android:layout_width="wrap_content"
++                            android:layout_height="wrap_content"
++                            android:text="@string/wifi_gateway" />
++
++                        <EditText
++                            android:id="@+id/gateway"
++                            style="@style/wifi_item_edit_content"
++                            android:layout_width="match_parent"
++                            android:layout_height="wrap_content"
++                            android:hint="@string/wifi_gateway_hint"
++                            android:inputType="textNoSuggestions"
++                            android:singleLine="true" />
++                    </LinearLayout>
++
++                    <LinearLayout
++                        style="@style/wifi_item"
++                        android:layout_width="match_parent"
++                        android:layout_height="wrap_content" >
++
++                        <TextView
++                            style="@style/wifi_item_label"
++                            android:layout_width="wrap_content"
++                            android:layout_height="wrap_content"
++                            android:text="@string/ethernet_netmask" />
++
++                        <EditText
++                            android:id="@+id/network_prefix_length"
++                            style="@style/wifi_item_edit_content"
++                            android:layout_width="match_parent"
++                            android:layout_height="wrap_content"
++                            android:hint="@string/ethernet_netmask_hint"
++                            android:inputType="textNoSuggestions"
++                            android:singleLine="true" />
++                    </LinearLayout>
++
++                    <LinearLayout
++                        style="@style/wifi_item"
++                        android:layout_width="match_parent"
++                        android:layout_height="wrap_content" >
++
++                        <TextView
++                            style="@style/wifi_item_label"
++                            android:layout_width="wrap_content"
++                            android:layout_height="wrap_content"
++                            android:text="@string/wifi_dns1" />
++
++                        <EditText
++                            android:id="@+id/dns1"
++                            style="@style/wifi_item_edit_content"
++                            android:layout_width="match_parent"
++                            android:layout_height="wrap_content"
++                            android:hint="@string/wifi_dns1_hint"
++                            android:inputType="textNoSuggestions"
++                            android:singleLine="true" />
++                    </LinearLayout>
++
++                    <LinearLayout
++                        style="@style/wifi_item"
++                        android:layout_width="match_parent"
++                        android:layout_height="wrap_content" >
++
++                        <TextView
++                            style="@style/wifi_item_label"
++                            android:layout_width="wrap_content"
++                            android:layout_height="wrap_content"
++                            android:text="@string/wifi_dns2" />
++
++                        <EditText
++                            android:id="@+id/dns2"
++                            style="@style/wifi_item_edit_content"
++                            android:layout_width="match_parent"
++                            android:layout_height="wrap_content"
++                            android:hint="@string/wifi_dns2_hint"
++                            android:inputType="textNoSuggestions"
++                            android:singleLine="true" />
++                    </LinearLayout>
++                </LinearLayout>
++            </LinearLayout>
++        </LinearLayout>
++    </LinearLayout>
++
++</ScrollView>
+diff --git a/res/values-en-rGB/strings.xml b/res/values-en-rGB/strings.xml
+index ad08f75ccc..6b9e02e9f7 100644
+--- a/res/values-en-rGB/strings.xml
++++ b/res/values-en-rGB/strings.xml
+@@ -1602,6 +1602,7 @@
+     <string name="reset_network_confirm_title" msgid="913014422184481270">"Reset?"</string>
+     <string name="network_reset_not_available" msgid="1966334631394607829">"Network reset is not available for this user"</string>
+     <string name="reset_network_complete_toast" msgid="1367872474130621115">"Network settings have been reset"</string>
++    <string name="ethernet_settings_title">"Ehernet"</string>
+     <string name="reset_esim_error_title" msgid="4670073610967959597">"Can’t delete SIMs"</string>
+     <string name="reset_esim_error_msg" msgid="4441504470684307370">"Downloaded SIMs can’t be deleted due to an error.\n\nRestart your device and try again."</string>
+     <string name="master_clear_title" msgid="5309249309235959383">"Delete all data (factory reset)"</string>
+diff --git a/res/values-en-rIN/strings.xml b/res/values-en-rIN/strings.xml
+index 5f3b9db0dd..21438fd9d9 100644
+--- a/res/values-en-rIN/strings.xml
++++ b/res/values-en-rIN/strings.xml
+@@ -1602,6 +1602,7 @@
+     <string name="reset_network_confirm_title" msgid="913014422184481270">"Want to reset?"</string>
+     <string name="network_reset_not_available" msgid="1966334631394607829">"Network reset is not available for this user"</string>
+     <string name="reset_network_complete_toast" msgid="1367872474130621115">"Network settings have been reset"</string>
++    <string name="ethernet_settings_title">"Ehernet"</string>
+     <string name="reset_esim_error_title" msgid="4670073610967959597">"Can’t delete SIMs"</string>
+     <string name="reset_esim_error_msg" msgid="4441504470684307370">"Downloaded SIMs can’t be deleted due to an error.\n\nRestart your device and try again."</string>
+     <string name="master_clear_title" msgid="5309249309235959383">"Delete all data (factory reset)"</string>
+diff --git a/res/values/arrays.xml b/res/values/arrays.xml
+index cf6245aa54..7e8b49c0a2 100644
+--- a/res/values/arrays.xml
++++ b/res/values/arrays.xml
+@@ -1520,4 +1520,14 @@
+         <item>4 minute later</item>
+         <item>5 minute later</item>
+     </string-array>
++
++    <!--ethernet mode select -->
++    <string-array name="ethernet_mode_location">
++        <item>@string/usestatic</item>
++        <item>@string/usedhcp</item>
++    </string-array>
++    <string-array name="ethernet_mode_values">
++        <item>StaticIP</item>
++        <item>DHCP</item>
++    </string-array>
+ </resources>
+diff --git a/res/values/strings.xml b/res/values/strings.xml
+index bdac1c49ca..dce1f23f46 100644
+--- a/res/values/strings.xml
++++ b/res/values/strings.xml
+@@ -3713,6 +3713,50 @@
+     <!-- Message of the error message shown when error happens during erase eSIM data [CHAR LIMIT=NONE] -->
+     <string name="reset_esim_error_msg">Downloaded SIMs can\u2019t be erased due to an error.\n\nRestart your device and try again.</string>
+ 
++    <!-- Ethernet Settings -->
++    <string name="ethernet_settings_title">Ethernet</string>
++    <string name="ethernet_netmask_hint" translatable="false"> 255.255.255.0</string>
++    <!--string name="ethernet_info_getting">"getting IP info..."</string-->
++    <string name="ethernet_settings">Ethernet</string>
++    <string name="ethernet_connect">Connect</string>
++    <string name="ethernet_cancel">Cancel</string>
++    <!--Wireless controls screen, settings summary for the item tot ake you to the ethernet settings screen -->
++    <string name="ethernet_settings_summary">Manager ethernet</string>
++    <!-- ethernet hw address  -->
++    <string name="ethernet_hw_addr">MAC</string>
++    <!-- ethernet ip address  -->
++    <string name="ethernet_ip_addr">IP address</string>
++    <!-- ethernet netmask  -->
++    <string name="ethernet_netmask">netmask</string>
++    <!-- ethernet gateway  -->
++    <string name="ethernet_gateway">gateway</string>
++    <!-- ethernet dns1  -->
++    <string name="ethernet_dns1">dns1</string>
++    <!-- ethernet dns2 -->
++    <string name="ethernet_dns2">dns2</string>
++    <string name="category_ethernet">Static IP Setttings</string>
++    <string name="usedhcp">dhcp</string>
++    <string name="usestatic">static</string>
++    <string name="ethernet_use_static_ip">Use static IP</string>
++    <string name="ethernet_ip_address">IP address</string>
++    <string name="staticip_save">Save</string>
++    <string name="staticip_cancel">Cancel</string>
++    <string name="str_ok">OK</string>
++    <string name="str_cancel">Cancel</string>
++    <string name="str_about">Important</string>
++    <string name="str_mesg">Whether save Settings?</string>
++    <string name="save_failed">Save failed!</string>
++    <string name="ethernet_ip_settings_invalid_ip">Please type a valid IP address.</string>
++    <string name="eth_ip_settings_please_complete_settings">Please give complete static IP settings!</string>
++    <string name="ethernet_quick_toggle_title">Ethernet</string>
++    <!-- Ethernet settings check box summary for turning on ethernet -->
++    <string name="ethernet_quick_toggle_summary_off">Ethernet is disabled</string>
++    <!--Used as title on second screen after selecting Ethernet settings -->
++    <string name="ethernet_quick_toggle_summary_on">Ethernet is enabled</string>
++    <!--Used as title on second screen after selecting Ethernet settings -->
++    <string name="ethernet_mode_title">Ethernet Ip mode</string>
++    <string name="ethernet_info_getting">"getting IP info..."</string>
++
+     <!-- Master Clear -->
+     <!-- Button title to factory data reset the entire device -->
+     <string name="master_clear_title">Erase all data (factory reset)</string>
+diff --git a/res/xml/ethernet_settings.xml b/res/xml/ethernet_settings.xml
+new file mode 100644
+index 0000000000..31899a8279
+--- /dev/null
++++ b/res/xml/ethernet_settings.xml
+@@ -0,0 +1,74 @@
++<?xml version="1.0" encoding="utf-8"?>
++<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:settings="http://schemas.android.com/apk/res/com.android.settings"
++    android:title="@string/ethernet_settings" >
++
++    <!-- $_rbox_$_modify_$_lijiehong: change to support bluetooth checkbox -->
++<!--
++    <SwitchPreference
++        android:key="ethernet"
++        android:title="@string/ethernet_quick_toggle_title"
++        android:summaryOff="@string/ethernet_quick_toggle_summary_off"
++        android:summaryOn="@string/ethernet_quick_toggle_summary_on"
++        android:persistent="false"
++        android:disableDependentsState="true" />
++  -->
++  <!--
++    <Preference
++        style="?android:preferenceInformationStyle"
++        android:key="ethernet_hw_addr"
++        android:summary="@string/device_info_default"
++        android:title="@string/ethernet_hw_addr" />
++  -->
++    <!-- ethernet ip address -->
++    <Preference
++        style="?android:preferenceInformationStyle"
++        android:key="ethernet_ip_addr"
++        android:summary="@string/device_info_default"
++        android:title="@string/ethernet_ip_addr" />
++
++    <!-- ethernet netmask -->
++    <Preference
++        style="?android:preferenceInformationStyle"
++        android:key="ethernet_netmask"
++        android:summary="@string/device_info_default"
++        android:title="@string/ethernet_netmask" />
++
++    <!-- ethernet gateway -->
++    <Preference
++        style="?android:preferenceInformationStyle"
++        android:key="ethernet_gateway"
++        android:summary="@string/device_info_default"
++        android:title="@string/ethernet_gateway" />
++
++    <!-- ethernet dns1 -->
++    <Preference
++        style="?android:preferenceInformationStyle"
++        android:key="ethernet_dns1"
++        android:summary="@string/device_info_default"
++        android:title="@string/ethernet_dns1" />
++
++    <!-- ethernet dns2 -->
++    <Preference
++        style="?android:preferenceInformationStyle"
++        android:key="ethernet_dns2"
++        android:summary="@string/device_info_default"
++        android:title="@string/ethernet_dns2" />
++
++    <ListPreference
++            android:entries="@array/ethernet_mode_location"
++            android:entryValues="@array/ethernet_mode_values"
++            android:key="ethernet_mode_select"
++            android:persistent="true"
++            android:title="@string/ethernet_mode_title" />
++
++ <!--
++    <CheckBoxPreference
++        android:key="static_ethernet"
++        android:title="@string/usestatic" />
++    <CheckBoxPreference
++        android:key="dhcp_ethernet"
++        android:title="@string/usedhcp" />
++ -->
++</PreferenceScreen>
++
+diff --git a/res/xml/network_and_internet.xml b/res/xml/network_and_internet.xml
+index eaa7808335..8f19a9b8c6 100644
+--- a/res/xml/network_and_internet.xml
++++ b/res/xml/network_and_internet.xml
+@@ -118,4 +118,11 @@
+         android:positiveButtonText="@string/save"
+         android:negativeButtonText="@android:string/cancel" />
+ 
++    <com.android.settingslib.RestrictedPreference
++        android:fragment="com.android.settings.ethernet.EthernetSettings"
++        android:icon="@drawable/ic_ethernet"
++        android:key="ethernet_settings"
++        android:title="@string/ethernet_settings_title"
++        settings:useAdminDisabledSummary="true"
++        settings:userRestriction="no_ethernet_settings" />
+ </PreferenceScreen>
+diff --git a/src/com/android/settings/Settings.java b/src/com/android/settings/Settings.java
+index eb2e691ca9..bc7575800b 100644
+--- a/src/com/android/settings/Settings.java
++++ b/src/com/android/settings/Settings.java
+@@ -180,6 +180,7 @@ public class Settings extends SettingsActivity {
+     }
+ 
+     public static class ApnSettingsActivity extends SettingsActivity { /* empty */ }
++    public static class EthernetSettingsActivity extends SettingsActivity { /* empty */ }
+     public static class WifiCallingSettingsActivity extends SettingsActivity { /* empty */ }
+     public static class MemorySettingsActivity extends SettingsActivity { /* empty */ }
+     public static class AppMemoryUsageActivity extends SettingsActivity { /* empty */ }
+diff --git a/src/com/android/settings/SettingsActivity.java b/src/com/android/settings/SettingsActivity.java
+index 1683499f75..2314e7f4af 100644
+--- a/src/com/android/settings/SettingsActivity.java
++++ b/src/com/android/settings/SettingsActivity.java
+@@ -59,6 +59,7 @@ import com.android.settings.core.SettingsBaseActivity;
+ import com.android.settings.core.SubSettingLauncher;
+ import com.android.settings.core.gateway.SettingsGateway;
+ import com.android.settings.dashboard.DashboardFeatureProvider;
++import com.android.settings.ethernet.EthernetSettings;
+ import com.android.settings.homepage.TopLevelSettings;
+ import com.android.settings.overlay.FeatureFactory;
+ import com.android.settings.wfd.WifiDisplaySettings;
+@@ -656,6 +657,12 @@ public class SettingsActivity extends SettingsBaseActivity
+                         Settings.ScreenshotSettingsActivity.class.getName()),
+                 SystemProperties.get("ro.build.characteristics","null").equals("tablet"), isAdmin)
+                 || somethingChanged;
++
++        somethingChanged = setTileEnabled(changedList, new ComponentName(packageName,
++                        Settings.EthernetSettingsActivity.class.getName()),
++                EthernetSettings.isAvailable(), isAdmin)
++                || somethingChanged;
++
+         if (UserHandle.MU_ENABLED && !isAdmin) {
+             // When on restricted users, disable all extra categories (but only the settings ones).
+             final List<DashboardCategory> categories = mDashboardFeatureProvider.getAllCategories();
+diff --git a/src/com/android/settings/core/gateway/SettingsGateway.java b/src/com/android/settings/core/gateway/SettingsGateway.java
+index be7be4021e..5a95949cfc 100644
+--- a/src/com/android/settings/core/gateway/SettingsGateway.java
++++ b/src/com/android/settings/core/gateway/SettingsGateway.java
+@@ -83,6 +83,7 @@ import com.android.settings.display.NightDisplaySettings;
+ import com.android.settings.display.darkmode.DarkModeSettingsFragment;
+ import com.android.settings.dream.DreamSettings;
+ import com.android.settings.enterprise.EnterprisePrivacySettings;
++import com.android.settings.ethernet.EthernetSettings;
+ import com.android.settings.fuelgauge.AdvancedPowerUsageDetail;
+ import com.android.settings.fuelgauge.PowerUsageSummary;
+ import com.android.settings.fuelgauge.batterysaver.BatterySaverScheduleSettings;
+@@ -182,6 +183,7 @@ public class SettingsGateway {
+             WifiTetherSettings.class.getName(),
+             BackgroundCheckSummary.class.getName(),
+             VpnSettings.class.getName(),
++            EthernetSettings.class.getName(),
+             DataSaverSummary.class.getName(),
+             DateTimeSettings.class.getName(),
+             LocaleListEditor.class.getName(),
+diff --git a/src/com/android/settings/ethernet/EtherentStaticIpDialog.java b/src/com/android/settings/ethernet/EtherentStaticIpDialog.java
+new file mode 100644
+index 0000000000..2c76183fe2
+--- /dev/null
++++ b/src/com/android/settings/ethernet/EtherentStaticIpDialog.java
+@@ -0,0 +1,249 @@
++/*
++ * Copyright (C) 2010 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.settings.ethernet;
++
++import java.net.Inet4Address;
++import java.net.InetAddress;
++
++import android.net.NetworkUtils;
++
++import com.android.settings.R;
++
++import java.util.regex.Pattern;
++
++import android.content.Context;
++import android.preference.EditTextPreference;
++import android.provider.Settings.System;
++import android.app.AlertDialog;
++import android.content.ContentResolver;
++import android.content.Context;
++import android.content.DialogInterface;
++import android.os.Bundle;
++import android.provider.Settings.System;
++import android.text.Editable;
++import android.text.TextUtils;
++import android.text.TextWatcher;
++import android.util.Log;
++import android.view.View;
++import android.widget.EditText;
++import android.widget.TextView;
++import android.widget.Button;
++
++import android.net.EthernetManager;
++
++class ethernet_static_ip_dialog extends AlertDialog implements TextWatcher {
++
++    public getStaticIpInfo mGetStaticInfo;
++    private TextView mIpAddressView;
++    private TextView mIPgateway;
++    private TextView ipnetmask;
++    private TextView mdns1;
++    private TextView mdns2;
++
++    public EditText ip_address;
++    public EditText ip_gateway;
++    public EditText gateway;
++    public EditText dns1;
++    public EditText dns2;
++
++    static final int BUTTON_SUBMIT = DialogInterface.BUTTON_POSITIVE;
++    static final int BUTTON_FORGET = DialogInterface.BUTTON_NEUTRAL;
++
++    private final static String nullIpInfo = "0.0.0.0";
++
++    // private final boolean mEdit;
++    private final DialogInterface.OnClickListener mListener;
++
++    private View mView;
++    Context mcontext;
++    EthernetManager mEthManager;
++    private String mIfaceName;
++
++    // private boolean mHideSubmitButton;
++
++    public ethernet_static_ip_dialog(Context context, boolean cancelable,
++                                     DialogInterface.OnClickListener listener, getStaticIpInfo GetgetStaticIpInfo,
++                                     String ifaceName) {
++        super(context);
++        mcontext = context;
++        mListener = listener;
++        mGetStaticInfo = GetgetStaticIpInfo;
++        mIfaceName = ifaceName;
++        // TODO Auto-generated constructor stub
++    }
++
++    @Override
++    protected void onCreate(Bundle savedInstanceState) {
++        mView = getLayoutInflater().inflate(R.layout.static_ip_dialog, null);
++        setView(mView);
++        setInverseBackgroundForced(true);
++
++        mIpAddressView = (TextView) mView.findViewById(R.id.ipaddress);
++        ipnetmask = (TextView) mView.findViewById(R.id.network_prefix_length);
++        mIPgateway = (TextView) mView.findViewById(R.id.gateway);
++        mdns1 = (TextView) mView.findViewById(R.id.dns1);
++        mdns2 = (TextView) mView.findViewById(R.id.dns2);
++
++        mIpAddressView.addTextChangedListener(this);
++        ipnetmask.addTextChangedListener(this);
++        mIPgateway.addTextChangedListener(this);
++        mdns1.addTextChangedListener(this);
++        mdns2.addTextChangedListener(this);
++
++        setButton(BUTTON_SUBMIT, mcontext.getString(R.string.ethernet_connect), mListener);
++        setButton(BUTTON_NEGATIVE, mcontext.getString(R.string.ethernet_cancel), mListener);
++        setTitle(mcontext.getString(R.string.ethernet_settings));
++
++        mEthManager = (EthernetManager) mcontext.getSystemService(Context.ETHERNET_SERVICE);
++
++        super.onCreate(savedInstanceState);
++    }
++
++    @Override
++    public void onStart() {
++        super.onStart();
++        updateIpSettingsInfo();
++        checkIPValue();
++    }
++
++    private void updateIpSettingsInfo() {
++        Log.d("blb", "Static IP status updateIpSettingsInfo");
++        ContentResolver contentResolver = mcontext.getContentResolver();
++        String staticip = /*System.getString(contentResolver,System.ETHERNET_STATIC_IP);*/
++                mEthManager.getIpAddress(mIfaceName);
++        if (!TextUtils.isEmpty(staticip))
++            mIpAddressView.setText(staticip);
++
++        String ipmask = /*System.getString(contentResolver,System.ETHERNET_STATIC_NETMASK);*/
++                mEthManager.getNetmask(mIfaceName);
++        if (!TextUtils.isEmpty(ipmask))
++            ipnetmask.setText(ipmask);
++
++        String gateway = /*System.getString(contentResolver,System.ETHERNET_STATIC_GATEWAY);*/
++                mEthManager.getGateway(mIfaceName);
++        if (!TextUtils.isEmpty(gateway))
++            mIPgateway.setText(gateway);
++
++        String dns = /*System.getString(contentResolver,System.ETHERNET_STATIC_DNS1);*/
++                mEthManager.getDns(mIfaceName);
++        String mDns1 = nullIpInfo;
++        String mDns2 = nullIpInfo;
++        if ((dns != null) && (!dns.equals(""))) {
++            String data[] = dns.split(",");
++            mDns1 = data[0];
++            if (data.length > 1)
++                mDns2 = data[1];
++        }
++        if (!TextUtils.isEmpty(mDns1))
++            mdns1.setText(mDns1);
++        if (!TextUtils.isEmpty(mDns2))
++            mdns2.setText(mDns2);
++    }
++
++    public void saveIpSettingInfo() {
++        ContentResolver contentResolver = mcontext.getContentResolver();
++        String ipAddr = mIpAddressView.getText().toString();
++        String gateway = mIPgateway.getText().toString();
++        String netMask = ipnetmask.getText().toString();
++        String dns1 = mdns1.getText().toString();
++        String dns2 = mdns2.getText().toString();
++        int network_prefix_length = 24;// Integer.parseInt(ipnetmask.getText().toString());
++        mGetStaticInfo.getStaticIp(ipAddr);
++        mGetStaticInfo.getStaticNetMask(netMask);
++        mGetStaticInfo.getStaticGateway(gateway);
++        mGetStaticInfo.getStaticDns1(dns1);
++        mGetStaticInfo.getStaticDns2(dns2);
++    }
++
++    /*
++     * 返回 指定的 String 是否是 有效的 IP 地址.
++     */
++    private boolean isValidIpAddress(String value) {
++        int start = 0;
++        int end = value.indexOf('.');
++        int numBlocks = 0;
++
++        while (start < value.length()) {
++
++            if (-1 == end) {
++                end = value.length();
++            }
++
++            try {
++                int block = Integer.parseInt(value.substring(start, end));
++                if ((block > 255) || (block < 0)) {
++                    Log.w("EthernetIP",
++                            "isValidIpAddress() : invalid 'block', block = "
++                                    + block);
++                    return false;
++                }
++            } catch (NumberFormatException e) {
++                Log.w("EthernetIP", "isValidIpAddress() : e = " + e);
++                return false;
++            }
++
++            numBlocks++;
++
++            start = end + 1;
++            end = value.indexOf('.', start);
++        }
++        return numBlocks == 4;
++    }
++
++    public void checkIPValue() {
++
++        boolean enable = false;
++        String ipAddr = mIpAddressView.getText().toString();
++        String gateway = mIPgateway.getText().toString();
++        String dns1 = mdns1.getText().toString();
++        String dns2 = mdns2.getText().toString();
++        String netMask = ipnetmask.getText().toString();
++        Pattern pattern = Pattern.compile("(^((\\d|[01]?\\d\\d|2[0-4]\\d|25[0-5])\\.){3}(\\d|[01]?\\d\\d|2[0-4]\\d|25[0-5])$)|^(\\d|[1-2]\\d|3[0-2])$"); /*check subnet mask*/
++        if (isValidIpAddress(ipAddr) && isValidIpAddress(gateway)
++                && isValidIpAddress(dns1) && (pattern.matcher(netMask).matches())) {
++            if (TextUtils.isEmpty(dns2)) { // 为空可以不考虑
++                enable = true;
++            } else {
++                if (isValidIpAddress(dns2)) {
++                    enable = true;
++                } else {
++                    enable = false;
++                }
++            }
++        } else {
++            enable = false;
++        }
++        getButton(BUTTON_SUBMIT).setEnabled(enable);
++
++    }
++
++    @Override
++    public void afterTextChanged(Editable s) {
++        checkIPValue();
++    }
++
++    @Override
++    public void beforeTextChanged(CharSequence s, int start, int count,
++                                  int after) {
++        // work done in afterTextChanged
++    }
++
++    @Override
++    public void onTextChanged(CharSequence s, int start, int before, int count) {
++        // work done in afterTextChanged
++    }
++
++}
+diff --git a/src/com/android/settings/ethernet/EthernetSettings.java b/src/com/android/settings/ethernet/EthernetSettings.java
+new file mode 100644
+index 0000000000..14541e9977
+--- /dev/null
++++ b/src/com/android/settings/ethernet/EthernetSettings.java
+@@ -0,0 +1,679 @@
++/*
++ * Copyright (C) 2009 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.settings.ethernet;
++
++import com.android.settings.R;
++import com.android.settings.SettingsPreferenceFragment;
++
++import android.app.Activity;
++import android.app.AlertDialog;
++import android.app.Dialog;
++import android.app.admin.DevicePolicyManager;
++import android.content.ActivityNotFoundException;
++import android.content.BroadcastReceiver;
++import android.content.ComponentName;
++import android.content.Context;
++import android.content.DialogInterface;
++import android.content.Intent;
++import android.content.IntentFilter;
++import android.content.pm.PackageManager;
++import android.content.res.Resources;
++import android.net.ConnectivityManager;
++import android.net.NetworkInfo;
++import android.net.Uri;
++import android.os.Bundle;
++import android.os.Handler;
++import android.os.Message;
++import android.os.SystemProperties;
++import android.os.UserHandle;
++import android.os.UserManager;
++import android.preference.CheckBoxPreference;
++import android.preference.Preference.OnPreferenceChangeListener;
++import android.preference.PreferenceScreen;
++import android.provider.SearchIndexableResource;
++import android.provider.Settings;
++import android.telephony.TelephonyManager;
++import android.text.TextUtils;
++import android.util.Log;
++import android.content.Intent;
++
++import androidx.preference.SwitchPreference;
++import androidx.preference.ListPreference;
++import androidx.preference.Preference;
++
++import java.io.File;
++import java.io.FileDescriptor;
++import java.io.File;
++import java.io.BufferedReader;
++import java.io.FileInputStream;
++import java.io.FileNotFoundException;
++import java.io.FileOutputStream;
++import java.io.IOException;
++import java.io.InputStreamReader;
++
++import java.util.regex.Pattern;
++import java.lang.Integer;
++import java.net.InetAddress;
++import java.net.Inet4Address;
++import java.util.Iterator;
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.Collection;
++import java.util.List;
++
++import android.preference.Preference.OnPreferenceChangeListener;
++import android.preference.Preference.OnPreferenceClickListener;
++
++import com.android.settings.SettingsPreferenceFragment.SettingsDialogFragment;
++
++/*for 5.0*/
++import android.net.EthernetManager;
++import android.net.IpConfiguration;
++import android.net.IpConfiguration.IpAssignment;
++import android.net.IpConfiguration.ProxySettings;
++import android.net.wifi.SupplicantState;
++import android.net.wifi.WifiInfo;
++import android.net.wifi.WifiManager;
++import android.net.StaticIpConfiguration;
++import android.net.NetworkUtils;
++import android.net.LinkAddress;
++import android.net.LinkProperties;
++import android.widget.Toast;
++//import android.preference.ListPreference;
++//import com.android.internal.logging.MetricsProto.MetricsEvent;
++import com.android.internal.logging.nano.MetricsProto.MetricsEvent;
++
++
++import com.android.settings.ethernet.ethernet_static_ip_dialog;
++
++public class EthernetSettings extends SettingsPreferenceFragment
++        implements DialogInterface.OnClickListener, Preference.OnPreferenceChangeListener {
++    private static final String TAG = "EthernetSettings";
++
++    public enum ETHERNET_STATE {
++        ETHER_STATE_DISCONNECTED,
++        ETHER_STATE_CONNECTING,
++        ETHER_STATE_CONNECTED
++    }
++
++    private static final String KEY_ETH_IP_ADDRESS = "ethernet_ip_addr";
++    private static final String KEY_ETH_HW_ADDRESS = "ethernet_hw_addr";
++    private static final String KEY_ETH_NET_MASK = "ethernet_netmask";
++    private static final String KEY_ETH_GATEWAY = "ethernet_gateway";
++    private static final String KEY_ETH_DNS1 = "ethernet_dns1";
++    private static final String KEY_ETH_DNS2 = "ethernet_dns2";
++    private static final String KEY_ETH_MODE = "ethernet_mode_select";
++
++
++    private static String mEthHwAddress = null;
++    private static String mEthIpAddress = null;
++    private static String mEthNetmask = null;
++    private static String mEthGateway = null;
++    private static String mEthdns1 = null;
++    private static String mEthdns2 = null;
++    private final static String nullIpInfo = "0.0.0.0";
++
++    private ListPreference mkeyEthMode;
++    //    private SwitchPreference mEthCheckBox;
++    private CheckBoxPreference staticEthernet;
++
++    private final IntentFilter mIntentFilter;
++    IpConfiguration mIpConfiguration;
++    EthernetManager mEthManager;
++    StaticIpConfiguration mStaticIpConfiguration;
++    Context mContext;
++    private ethernet_static_ip_dialog mDialog;
++    private String mIfaceName;
++    private long mChangeTime;
++    private static final int SHOW_RENAME_DIALOG = 0;
++    private static final int ETHER_IFACE_STATE_DOWN = 0;
++    private static final int ETHER_IFACE_STATE_UP = 1;
++
++    private static final String FILE = "/sys/class/net/eth0/flags";
++    private static final int MSG_GET_ETHERNET_STATE = 0;
++
++    private Handler mHandler = new Handler() {
++        @Override
++        public void handleMessage(Message msg) {
++            if (MSG_GET_ETHERNET_STATE == msg.what) {
++                handleEtherStateChange((ETHERNET_STATE) msg.obj);
++            }
++        }
++    };
++
++    @Override
++    public int getMetricsCategory() {
++        return MetricsEvent.WIFI_TETHER_SETTINGS;
++    }
++
++    @Override
++    public int getDialogMetricsCategory(int dialogId) {
++        switch (dialogId) {
++            case SHOW_RENAME_DIALOG:
++                return MetricsEvent.WIFI_TETHER_SETTINGS;
++            default:
++                return 0;
++        }
++    }
++
++
++    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
++        @Override
++        public void onReceive(Context context, Intent intent) {
++            String action = intent.getAction();
++            log("Action " + action);
++            if (ConnectivityManager.CONNECTIVITY_ACTION.equals(action)) {
++                NetworkInfo info = intent.getParcelableExtra(ConnectivityManager.EXTRA_NETWORK_INFO);
++                Log.v(TAG, "===" + info.toString());
++                if (null != info && ConnectivityManager.TYPE_ETHERNET == info.getType()) {
++                    long currentTime = System.currentTimeMillis();
++                    int delayTime = 0;
++                    if (currentTime - mChangeTime < 1000) {
++                        delayTime = 2000;
++                    }
++                    if (NetworkInfo.State.CONNECTED == info.getState()) {
++                        handleEtherStateChange(ETHERNET_STATE.ETHER_STATE_CONNECTED, delayTime);
++                    } else if (NetworkInfo.State.DISCONNECTED == info.getState()) {
++                        handleEtherStateChange(ETHERNET_STATE.ETHER_STATE_DISCONNECTED, delayTime);
++                    }
++                }
++            }
++        }
++    };
++
++    public EthernetSettings() {
++        mIntentFilter = new IntentFilter();
++        mIntentFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
++    }
++
++    private void handleEtherStateChange(ETHERNET_STATE EtherState, long delayMillis) {
++        mHandler.removeMessages(MSG_GET_ETHERNET_STATE);
++        if (delayMillis > 0) {
++            Message msg = new Message();
++            msg.what = MSG_GET_ETHERNET_STATE;
++            msg.obj = EtherState;
++            mHandler.sendMessageDelayed(msg, delayMillis);
++        } else {
++            handleEtherStateChange(EtherState);
++        }
++    }
++
++    private void handleEtherStateChange(ETHERNET_STATE EtherState) {
++        log("curEtherState" + EtherState);
++
++        switch (EtherState) {
++            case ETHER_STATE_DISCONNECTED:
++                mEthHwAddress = nullIpInfo;
++                mEthIpAddress = nullIpInfo;
++                mEthNetmask = nullIpInfo;
++                mEthGateway = nullIpInfo;
++                mEthdns1 = nullIpInfo;
++                mEthdns2 = nullIpInfo;
++                break;
++            case ETHER_STATE_CONNECTING:
++                String mStatusString = this.getResources().getString(R.string.ethernet_info_getting);
++                mEthHwAddress = mStatusString;
++                mEthIpAddress = mStatusString;
++                mEthNetmask = mStatusString;
++                mEthGateway = mStatusString;
++                mEthdns1 = mStatusString;
++                mEthdns2 = mStatusString;
++                break;
++            case ETHER_STATE_CONNECTED:
++                getEthInfo();
++                break;
++        }
++
++        refreshUI();
++    }
++
++    @Override
++    public void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        addPreferencesFromResource(R.xml.ethernet_settings);
++
++        mContext = this.getActivity().getApplicationContext();
++        mEthManager = (EthernetManager) getSystemService(Context.ETHERNET_SERVICE);
++
++        if (mEthManager == null) {
++            Log.e(TAG, "get ethernet manager failed");
++            Toast.makeText(mContext, R.string.disabled_feature, Toast.LENGTH_SHORT).show();
++            finish();
++            return;
++        }
++        String[] ifaces = mEthManager.getAvailableInterfaces();
++        if (ifaces.length > 0) {
++            mIfaceName = ifaces[0];//"eth0";
++        }
++        if (null == mIfaceName) {
++            Log.e(TAG, "get ethernet ifaceName failed");
++            Toast.makeText(mContext, R.string.disabled_feature, Toast.LENGTH_SHORT).show();
++            finish();
++        }
++    }
++
++    private Inet4Address getIPv4Address(String text) {
++        try {
++            return (Inet4Address) NetworkUtils.numericToInetAddress(text);
++        } catch (IllegalArgumentException | ClassCastException e) {
++            return null;
++        }
++    }
++
++    @Override
++    public void onResume() {
++        super.onResume();
++        if (null == mIfaceName) {
++            return;
++        }
++        if (mkeyEthMode == null) {
++            mkeyEthMode = (ListPreference) findPreference(KEY_ETH_MODE);
++            mkeyEthMode.setOnPreferenceChangeListener(this);
++        }
++    /*
++        if (mEthCheckBox== null) {
++            mEthCheckBox = (SwitchPreference) findPreference("ethernet");
++            mEthCheckBox.setOnPreferenceChangeListener(this);
++        }
++    */
++        //handleEtherStateChange(1 == getEthernetCarrierState(mIfaceName)? EthernetManager.ETHER_STATE_CONNECTED/*mEthManager.getEthernetConnectState()*/);
++        refreshUI();
++        log("resume");
++        mContext.registerReceiver(mReceiver, mIntentFilter);
++    }
++
++    @Override
++    public void onPause() {
++        super.onPause();
++        if (null == mIfaceName) {
++            return;
++        }
++        mContext.unregisterReceiver(mReceiver);
++    }
++
++    @Override
++    public void onDestroy() {
++        super.onDestroy();
++        mHandler.removeMessages(MSG_GET_ETHERNET_STATE);
++        log("destory");
++    }
++
++    @Override
++    public void onStop() {
++        super.onStop();
++        log("stop");
++    }
++
++    private void setStringSummary(String preference, String value) {
++        try {
++            findPreference(preference).setSummary(value);
++        } catch (RuntimeException e) {
++            findPreference(preference).setSummary("");
++            log("can't find " + preference);
++        }
++    }
++
++    private String getStringFromPref(String preference) {
++        try {
++            return findPreference(preference).getSummary().toString();
++        } catch (RuntimeException e) {
++            return null;
++        }
++    }
++
++    private void refreshUI() {
++
++        //    setStringSummary(KEY_ETH_HW_ADDRESS,mEthHwAddress);
++
++        setStringSummary(KEY_ETH_IP_ADDRESS, mEthIpAddress);
++        setStringSummary(KEY_ETH_NET_MASK, mEthNetmask);
++        setStringSummary(KEY_ETH_GATEWAY, mEthGateway);
++        setStringSummary(KEY_ETH_DNS1, mEthdns1);
++        setStringSummary(KEY_ETH_DNS2, mEthdns2);
++        updateCheckbox();
++    }
++
++    private void updateCheckbox() {  //add by ljh for adding a checkbox switch
++
++        if (mEthManager == null) {
++            mkeyEthMode.setSummary("null");
++        } else {
++            IpAssignment mode = mEthManager.getConfiguration(mIfaceName).getIpAssignment();
++            if (mode == IpAssignment.DHCP || mode == IpAssignment.UNASSIGNED) {
++                mkeyEthMode.setValue("DHCP");
++                mkeyEthMode.setSummary(R.string.usedhcp);
++            } else {
++                mkeyEthMode.setValue("StaticIP");
++                mkeyEthMode.setSummary(R.string.usestatic);
++            }
++/*            int isEnable = mEthManager.getEthernetIfaceState();
++            if(isEnable == ETHER_IFACE_STATE_UP) {
++                mEthCheckBox.setChecked(true);
++            }else{
++                mEthCheckBox.setChecked(false);
++            }
++*/
++        }
++    }
++
++    @Override
++    public boolean onPreferenceChange(Preference preference, Object newValue) {
++        log("onPreferenceChange");
++        if (preference == mkeyEthMode) {
++            String value = (String) newValue;
++            if (value.equals("DHCP")) {
++                mChangeTime = System.currentTimeMillis();
++                handleEtherStateChange(ETHERNET_STATE.ETHER_STATE_CONNECTING);
++                mEthManager.setConfiguration(mIfaceName, new IpConfiguration(IpAssignment.DHCP, ProxySettings.NONE, null, null));
++                log("switch to dhcp");
++            } else if (value.equals("StaticIP")) {
++                log("static editor");
++                this.showDialog(SHOW_RENAME_DIALOG);
++            }
++
++        }
++        return true;
++    }
++
++    //将子网掩码转换成ip子网掩码形式，比如输入32输出为255.255.255.255
++    public String interMask2String(int prefixLength) {
++        String netMask = null;
++        int inetMask = prefixLength;
++
++        int part = inetMask / 8;
++        int remainder = inetMask % 8;
++        int sum = 0;
++
++        for (int i = 8; i > 8 - remainder; i--) {
++            sum = sum + (int) Math.pow(2, i - 1);
++        }
++
++        if (part == 0) {
++            netMask = sum + ".0.0.0";
++        } else if (part == 1) {
++            netMask = "255." + sum + ".0.0";
++        } else if (part == 2) {
++            netMask = "255.255." + sum + ".0";
++        } else if (part == 3) {
++            netMask = "255.255.255." + sum;
++        } else if (part == 4) {
++            netMask = "255.255.255.255";
++        }
++
++        return netMask;
++    }
++
++    /*
++     * convert subMask string to prefix length
++     */
++    private int maskStr2InetMask(String maskStr) {
++        StringBuffer sb;
++        String str;
++        int inetmask = 0;
++        int count = 0;
++        /*
++         * check the subMask format
++         */
++        Pattern pattern = Pattern.compile("(^((\\d|[01]?\\d\\d|2[0-4]\\d|25[0-5])\\.){3}(\\d|[01]?\\d\\d|2[0-4]\\d|25[0-5])$)|^(\\d|[1-2]\\d|3[0-2])$");
++        if (pattern.matcher(maskStr).matches() == false) {
++            Log.e(TAG, "subMask is error");
++            return 0;
++        }
++
++        String[] ipSegment = maskStr.split("\\.");
++        for (int n = 0; n < ipSegment.length; n++) {
++            sb = new StringBuffer(Integer.toBinaryString(Integer.parseInt(ipSegment[n])));
++            str = sb.reverse().toString();
++            count = 0;
++            for (int i = 0; i < str.length(); i++) {
++                i = str.indexOf("1", i);
++                if (i == -1)
++                    break;
++                count++;
++            }
++            inetmask += count;
++        }
++        return inetmask;
++    }
++
++    private boolean setStaticIpConfiguration() {
++
++        mStaticIpConfiguration = new StaticIpConfiguration();
++        /*
++         * get ip address, netmask,dns ,gw etc.
++         */
++        Inet4Address inetAddr = getIPv4Address(this.mEthIpAddress);
++        int prefixLength = maskStr2InetMask(this.mEthNetmask);
++        InetAddress gatewayAddr = getIPv4Address(this.mEthGateway);
++        InetAddress dnsAddr = getIPv4Address(this.mEthdns1);
++
++        if (inetAddr.getAddress().toString().isEmpty() || prefixLength == 0 || gatewayAddr.toString().isEmpty()
++                || dnsAddr.toString().isEmpty()) {
++            log("ip,mask or dnsAddr is wrong");
++            return false;
++        }
++
++        String dnsStr2 = this.mEthdns2;
++        mStaticIpConfiguration.ipAddress = new LinkAddress(inetAddr, prefixLength);
++        mStaticIpConfiguration.gateway = gatewayAddr;
++        mStaticIpConfiguration.dnsServers.add(dnsAddr);
++
++        if (!dnsStr2.isEmpty()) {
++            mStaticIpConfiguration.dnsServers.add(getIPv4Address(dnsStr2));
++        }
++        mIpConfiguration = new IpConfiguration(IpAssignment.STATIC, ProxySettings.NONE, mStaticIpConfiguration, null);
++        return true;
++    }
++
++    public void getEthInfoFromDhcp() {
++        String tempIpInfo;
++
++        tempIpInfo = /*SystemProperties.get("dhcp."+ iface +".ipaddress");*/
++                mEthManager.getIpAddress(mIfaceName);
++
++        if ((tempIpInfo != null) && (!tempIpInfo.equals(""))) {
++            mEthIpAddress = tempIpInfo;
++        } else {
++            mEthIpAddress = nullIpInfo;
++        }
++
++        tempIpInfo = /*SystemProperties.get("dhcp."+ iface +".mask");*/
++                mEthManager.getNetmask(mIfaceName);
++        if ((tempIpInfo != null) && (!tempIpInfo.equals(""))) {
++            mEthNetmask = tempIpInfo;
++        } else {
++            mEthNetmask = nullIpInfo;
++        }
++
++        tempIpInfo = /*SystemProperties.get("dhcp."+ iface +".gateway");*/
++                mEthManager.getGateway(mIfaceName);
++        if ((tempIpInfo != null) && (!tempIpInfo.equals(""))) {
++            mEthGateway = tempIpInfo;
++        } else {
++            mEthGateway = nullIpInfo;
++        }
++
++        tempIpInfo = /*SystemProperties.get("dhcp."+ iface +".dns1");*/
++                mEthManager.getDns(mIfaceName);
++        if ((tempIpInfo != null) && (!tempIpInfo.equals(""))) {
++            String data[] = tempIpInfo.split(",");
++            mEthdns1 = data[0];
++            if (data.length <= 1) {
++                mEthdns2 = nullIpInfo;
++            } else {
++                mEthdns2 = data[1];
++            }
++        } else {
++            mEthdns1 = nullIpInfo;
++        }
++    }
++
++    public void getEthInfoFromStaticIp() {
++        StaticIpConfiguration staticIpConfiguration = mEthManager.getConfiguration(mIfaceName).getStaticIpConfiguration();
++
++        if (staticIpConfiguration == null) {
++            return;
++        }
++        LinkAddress ipAddress = staticIpConfiguration.ipAddress;
++        InetAddress gateway = staticIpConfiguration.gateway;
++        ArrayList<InetAddress> dnsServers = staticIpConfiguration.dnsServers;
++
++        if (ipAddress != null) {
++            mEthIpAddress = ipAddress.getAddress().getHostAddress();
++            mEthNetmask = interMask2String(ipAddress.getPrefixLength());
++        }
++        if (gateway != null) {
++            mEthGateway = gateway.getHostAddress();
++        }
++        mEthdns1 = dnsServers.get(0).getHostAddress();
++
++        if (dnsServers.size() > 1) { /* 只保留两个*/
++            mEthdns2 = dnsServers.get(1).getHostAddress();
++        }
++    }
++
++    /*
++     * TODO:
++     */
++    public void getEthInfo() {
++        /*
++        mEthHwAddress = mEthManager.getEthernetHwaddr(mEthManager.getEthernetIfaceName());
++        if (mEthHwAddress == null) mEthHwAddress = nullIpInfo;
++        */
++        IpAssignment mode = mEthManager.getConfiguration(mIfaceName).getIpAssignment();
++
++
++        if (mode == IpAssignment.DHCP || mode == IpAssignment.UNASSIGNED) {
++            /*
++             * getEth from dhcp
++             */
++            getEthInfoFromDhcp();
++        } else if (mode == IpAssignment.STATIC) {
++            /*
++             * TODO: get static IP
++             */
++            getEthInfoFromStaticIp();
++        }
++    }
++
++    /*
++     * tools
++     */
++    private void log(String s) {
++        Log.d(TAG, s);
++    }
++
++    @Override
++    public void onClick(DialogInterface dialogInterface, int button) {
++        if (button == ethernet_static_ip_dialog.BUTTON_SUBMIT) {
++            mDialog.saveIpSettingInfo(); //从Dialog获取静态数据
++            if (setStaticIpConfiguration()) {
++                mChangeTime = System.currentTimeMillis();
++                handleEtherStateChange(ETHERNET_STATE.ETHER_STATE_CONNECTING);
++                mEthManager.setConfiguration(mIfaceName, mIpConfiguration);
++            } else {
++                Log.e(TAG, mIpConfiguration.toString());
++            }
++        }
++        updateCheckbox();
++    }
++
++    @Override
++    public Dialog onCreateDialog(int dialogId) {
++        log("onCreateDialog " + dialogId);
++        switch (dialogId) {
++            case SHOW_RENAME_DIALOG:
++
++                mDialog = new ethernet_static_ip_dialog(getActivity(), false, this, mGetStaticIpInfo, mIfaceName);
++                return mDialog;
++        }
++        return super.onCreateDialog(dialogId);
++    }
++
++    /*interface*/
++
++    public getStaticIpInfo mGetStaticIpInfo = new getStaticIpInfo() {
++
++        public boolean getStaticIp(String ipAddr) {
++            mEthIpAddress = ipAddr;
++
++            log("ipAddr: " + ipAddr);
++            return true;
++        }
++
++        public boolean getStaticNetMask(String netMask) {
++            mEthNetmask = netMask;
++
++            log("netMask: " + netMask);
++            return true;
++        }
++
++        public boolean getStaticGateway(String gateway) {
++            mEthGateway = gateway;
++
++            log("gateway: " + gateway);
++            return true;
++        }
++
++        public boolean getStaticDns1(String dns1) {
++            mEthdns1 = dns1;
++
++            log("dns1: " + dns1);
++            return true;
++        }
++
++        public boolean getStaticDns2(String dns2) {
++            mEthdns2 = dns2;
++
++            log("dns2: " + dns2);
++            return true;
++        }
++    };
++
++    private String ReadFromFile(File file) {
++        if ((file != null) && file.exists()) {
++            try {
++                FileInputStream fin = new FileInputStream(file);
++                BufferedReader reader = new BufferedReader(new InputStreamReader(fin));
++                String flag = reader.readLine();
++                fin.close();
++                return flag;
++            } catch (Exception e) {
++                e.printStackTrace();
++            }
++        }
++        return null;
++    }
++
++    private int getEthernetCarrierState(String iface) {
++        if (iface != "") {
++            try {
++                File file = new File("/sys/class/net/" + iface + "/carrier");
++                String carrier = ReadFromFile(file);
++                return Integer.parseInt(carrier);
++            } catch (Exception e) {
++                e.printStackTrace();
++                return 0;
++            }
++        } else {
++            return 0;
++        }
++    }
++
++    public static boolean isAvailable() {
++        return "true".equals(SystemProperties.get("ro.vendor.ethernet_settings"));
++    }
++}
+\ No newline at end of file
+diff --git a/src/com/android/settings/ethernet/EthernetSettingsPreferenceController.java b/src/com/android/settings/ethernet/EthernetSettingsPreferenceController.java
+new file mode 100644
+index 0000000000..c9793e46b8
+--- /dev/null
++++ b/src/com/android/settings/ethernet/EthernetSettingsPreferenceController.java
+@@ -0,0 +1,43 @@
++/*
++ * Copyright (C) 2016 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file
++ * except in compliance with the License. You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software distributed under the
++ * License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied. See the License for the specific language governing
++ * permissions and limitations under the License.
++ */
++package com.android.settings.ethernet;
++
++import android.content.Context;
++import android.os.SystemProperties;
++
++import com.android.settings.R;
++import com.android.settings.core.PreferenceControllerMixin;
++import com.android.settingslib.core.AbstractPreferenceController;
++
++public class EthernetSettingsPreferenceController extends AbstractPreferenceController implements
++        PreferenceControllerMixin {
++
++    private final String mEthernetSettingsKey;
++
++    public EthernetSettingsPreferenceController(Context context, String key) {
++        super(context);
++        mEthernetSettingsKey = key;
++    }
++
++    @Override
++    public boolean isAvailable() {
++        return EthernetSettings.isAvailable();
++    }
++
++    @Override
++    public String getPreferenceKey() {
++        return mEthernetSettingsKey;
++    }
++
++}
+diff --git a/src/com/android/settings/ethernet/getStaticIpInfo.java b/src/com/android/settings/ethernet/getStaticIpInfo.java
+new file mode 100644
+index 0000000000..396482af68
+--- /dev/null
++++ b/src/com/android/settings/ethernet/getStaticIpInfo.java
+@@ -0,0 +1,9 @@
++package com.android.settings.ethernet;
++
++public interface getStaticIpInfo {
++    public boolean getStaticIp(String ipAddr);
++    public boolean getStaticNetMask(String netMask);
++    public boolean getStaticGateway(String gateway);
++    public boolean getStaticDns1(String dns1);
++    public boolean getStaticDns2(String dns2);
++}
+diff --git a/src/com/android/settings/network/NetworkDashboardFragment.java b/src/com/android/settings/network/NetworkDashboardFragment.java
+index db704ae850..961d392397 100644
+--- a/src/com/android/settings/network/NetworkDashboardFragment.java
++++ b/src/com/android/settings/network/NetworkDashboardFragment.java
+@@ -28,6 +28,7 @@ import androidx.fragment.app.Fragment;
+ 
+ import com.android.settings.R;
+ import com.android.settings.dashboard.DashboardFragment;
++import com.android.settings.ethernet.EthernetSettingsPreferenceController;
+ import com.android.settings.network.MobilePlanPreferenceController.MobilePlanPreferenceHost;
+ import com.android.settings.search.BaseSearchIndexProvider;
+ import com.android.settings.wifi.WifiMasterSwitchPreferenceController;
+@@ -120,6 +121,7 @@ public class NetworkDashboardFragment extends DashboardFragment implements
+         controllers.add(mobilePlanPreferenceController);
+         controllers.add(wifiPreferenceController);
+         controllers.add(privateDnsPreferenceController);
++        controllers.add(new EthernetSettingsPreferenceController(context, "ethernet_settings"));
+         return controllers;
+     }
+ 
+-- 
+2.35.1
+

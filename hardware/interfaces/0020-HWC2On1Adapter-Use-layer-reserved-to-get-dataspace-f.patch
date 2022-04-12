@@ -1,0 +1,74 @@
+From a414fdbe2795fae2cefb1ae42d72b902ceb85fd8 Mon Sep 17 00:00:00 2001
+From: libin <bin.li@rock-chips.com>
+Date: Fri, 26 Oct 2018 15:23:11 +0800
+Subject: [PATCH 20/24] HWC2On1Adapter : Use layer reserved to get dataspace
+ for HWC2On1Adapter.
+
+Change-Id: Ib4f0f7160072f6a85484b92fc532d20626fad275
+Signed-off-by: libin <bin.li@rock-chips.com>
+---
+ .../2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp       | 11 ++++++++++-
+ .../include/hwc2on1adapter/HWC2On1Adapter.h           |  1 +
+ 2 files changed, 11 insertions(+), 1 deletion(-)
+ mode change 100755 => 100644 graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+
+diff --git a/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp b/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+old mode 100755
+new mode 100644
+index 4e3510a17..385c6c18c
+--- a/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
++++ b/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+@@ -1921,6 +1921,7 @@ HWC2On1Adapter::Layer::Layer(Display& display)
+     mSourceCrop({0.0f, 0.0f, -1.0f, -1.0f}),
+     mTransform(Transform::None),
+     mVisibleRegion(),
++    mDataSpace(HAL_DATASPACE_UNKNOWN),
+     mZ(0),
+     mReleaseFence(),
+     mHwc1Id(0),
+@@ -1984,7 +1985,9 @@ Error HWC2On1Adapter::Layer::setCompositionType(Composition type) {
+     return Error::None;
+ }
+ 
+-Error HWC2On1Adapter::Layer::setDataspace(android_dataspace_t) {
++Error HWC2On1Adapter::Layer::setDataspace(android_dataspace_t dataspace) {
++    mDataSpace = dataspace;
++    mDisplay.markGeometryChanged();
+     return Error::None;
+ }
+ 
+@@ -2108,6 +2111,7 @@ std::string HWC2On1Adapter::Layer::dump() const {
+                 frectString(mSourceCrop) << '\n';
+         output << fill << "  Transform: " << to_string(mTransform);
+         output << "  Blend mode: " << to_string(mBlendMode);
++        output << " DataSpace: " << mDataSpace;
+         if (mPlaneAlpha != 1.0f) {
+             output << "  Alpha: " <<
+                 alphaString(mPlaneAlpha) << '\n';
+@@ -2153,6 +2157,11 @@ void HWC2On1Adapter::Layer::applyCommonState(hwc_layer_1_t& hwc1Layer) {
+     } else {
+         hwc1Layer.sourceCropf = mSourceCrop;
+     }
++    auto pendingDataSpace = mDataSpace;
++    hwc1Layer.reserved[0] = pendingDataSpace & 0xFF;
++    hwc1Layer.reserved[1] = (pendingDataSpace >> 8) & 0xFF;
++    hwc1Layer.reserved[2] = (pendingDataSpace >> 16) & 0xFF;
++    hwc1Layer.reserved[3] = (pendingDataSpace >> 24) & 0xFF;
+ 
+     hwc1Layer.transform = static_cast<uint32_t>(mTransform);
+ 
+diff --git a/graphics/composer/2.1/utils/hwc2on1adapter/include/hwc2on1adapter/HWC2On1Adapter.h b/graphics/composer/2.1/utils/hwc2on1adapter/include/hwc2on1adapter/HWC2On1Adapter.h
+index 27d078cf0..784f431da 100755
+--- a/graphics/composer/2.1/utils/hwc2on1adapter/include/hwc2on1adapter/HWC2On1Adapter.h
++++ b/graphics/composer/2.1/utils/hwc2on1adapter/include/hwc2on1adapter/HWC2On1Adapter.h
+@@ -606,6 +606,7 @@ private:
+             HWC2::Transform mTransform;
+             std::vector<hwc_rect_t> mVisibleRegion;
+ 
++            android_dataspace_t mDataSpace;
+             uint32_t mZ;
+ 
+             DeferredFence mReleaseFence;
+-- 
+2.35.1
+

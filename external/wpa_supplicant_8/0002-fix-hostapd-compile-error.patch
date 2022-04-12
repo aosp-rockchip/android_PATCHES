@@ -1,0 +1,36 @@
+From ff3f030f458ac9b32bf8df2623cd25fc326d482f Mon Sep 17 00:00:00 2001
+From: Alex Zhao <zzc@rock-chips.com>
+Date: Fri, 23 Oct 2020 16:34:46 +0800
+Subject: [PATCH 2/4] fix hostapd compile error
+
+Signed-off-by: Alex Zhao <zzc@rock-chips.com>
+Change-Id: I37bc6eb87607f47d9efea238d5125257e7b4260d
+---
+ hostapd/Android.mk | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/hostapd/Android.mk b/hostapd/Android.mk
+index 3bde8d52..a536d80b 100644
+--- a/hostapd/Android.mk
++++ b/hostapd/Android.mk
+@@ -1135,7 +1135,7 @@ endif
+ ifneq ($(BOARD_HOSTAPD_PRIVATE_LIB),)
+ LOCAL_STATIC_LIBRARIES += $(BOARD_HOSTAPD_PRIVATE_LIB)
+ endif
+-LOCAL_SHARED_LIBRARIES := libc libcutils liblog libcrypto libssl
++LOCAL_SHARED_LIBRARIES := libc libcutils liblog libcrypto libssl librkwifi-ctrl
+ ifdef CONFIG_DRIVER_NL80211
+ ifneq ($(wildcard external/libnl),)
+ LOCAL_SHARED_LIBRARIES += libnl
+@@ -1167,7 +1167,7 @@ endif
+ ifneq ($(BOARD_HOSTAPD_PRIVATE_LIB),)
+ LOCAL_STATIC_LIBRARIES += $(BOARD_HOSTAPD_PRIVATE_LIB)
+ endif
+-LOCAL_SHARED_LIBRARIES := libc libcutils liblog libcrypto libssl
++LOCAL_SHARED_LIBRARIES := libc libcutils liblog libcrypto libssl librkwifi-ctrl
+ ifdef CONFIG_DRIVER_NL80211
+ ifneq ($(wildcard external/libnl),)
+ LOCAL_SHARED_LIBRARIES += libnl
+-- 
+2.35.1
+

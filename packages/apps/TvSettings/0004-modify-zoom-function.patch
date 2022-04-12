@@ -1,0 +1,293 @@
+From ea6febd304da8ead3edbe414d8d6ea7c971e25a5 Mon Sep 17 00:00:00 2001
+From: zw <Johnny.zhang@rock-chips.com>
+Date: Tue, 10 Nov 2020 11:43:34 +0800
+Subject: [PATCH 4/7] modify zoom function
+
+Signed-off-by: zw <Johnny.zhang@rock-chips.com>
+Change-Id: Ibe86eb711c04388dd306747a74c824aa743b397e
+---
+ .../settings/display/ScreenScaleActivity.java | 165 +++++++++---------
+ 1 file changed, 86 insertions(+), 79 deletions(-)
+
+diff --git a/Settings/src/com/android/tv/settings/display/ScreenScaleActivity.java b/Settings/src/com/android/tv/settings/display/ScreenScaleActivity.java
+index a89a38be..570c5570 100755
+--- a/Settings/src/com/android/tv/settings/display/ScreenScaleActivity.java
++++ b/Settings/src/com/android/tv/settings/display/ScreenScaleActivity.java
+@@ -53,7 +53,6 @@ public class ScreenScaleActivity extends Activity {
+     private ImageView mUpButton;
+     private ImageView mDownButton;
+ 
+-
+     private static final int MAX_SCALE = 100;
+     private static final int MIN_SCALE = 80;
+ 
+@@ -152,7 +151,6 @@ public class ScreenScaleActivity extends Activity {
+         param.setMargins(centerX - map.getWidth() / 2, 10, 0, 0);
+         touch_down.setLayoutParams(param);
+ 
+-
+         mLeftButton = (ImageView) findViewById(R.id.button_left);
+         map = bitMapScale(R.drawable.button_left);
+         int x = -okmap.getWidth() / 2 - 10 - map.getWidth() / 2;
+@@ -203,10 +201,9 @@ public class ScreenScaleActivity extends Activity {
+             getWindow().setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS,
+                     WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+             getWindow().getDecorView().setSystemUiVisibility(
+-                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+-                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+-                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+-                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
++                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
++                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav
++                                                                                                          // bar
+                             | View.SYSTEM_UI_FLAG_FULLSCREEN // hide status bar
+                             | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+         }
+@@ -215,25 +212,26 @@ public class ScreenScaleActivity extends Activity {
+     public void onCreate(Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+         initData();
+-        //full screen
++        // full screen
+         hideSystemUI();
+ 
+         setContentView(R.layout.screen_setting);
+ 
+         getWindow().setFormat(PixelFormat.RGBA_8888);
+-//      BitmapFactory.setDefaultConfig(Bitmap.Config.ARGB_8888);
++        // BitmapFactory.setDefaultConfig(Bitmap.Config.ARGB_8888);
+         getScreenSize();
+         createView();
+-    /*
+-        mRightButton = (ImageView)findViewById(R.id.button_right);
+-        mLeftButton = (ImageView)findViewById(R.id.button_left);
+-        mUpButton = (ImageView)findViewById(R.id.button_up);
+-        mDownButton = (ImageView)findViewById(R.id.button_down);
+-
+-        mRightButton.setOnClickListener(mOnClick);
+-        mLeftButton.setOnClickListener(mOnClick);
+-        mUpButton.setOnClickListener(mOnClick);
+-        mDownButton.setOnClickListener(mOnClick);*/
++        /*
++         * mRightButton = (ImageView)findViewById(R.id.button_right); mLeftButton =
++         * (ImageView)findViewById(R.id.button_left); mUpButton =
++         * (ImageView)findViewById(R.id.button_up); mDownButton =
++         * (ImageView)findViewById(R.id.button_down);
++         * 
++         * mRightButton.setOnClickListener(mOnClick);
++         * mLeftButton.setOnClickListener(mOnClick);
++         * mUpButton.setOnClickListener(mOnClick);
++         * mDownButton.setOnClickListener(mOnClick);
++         */
+ 
+     }
+ 
+@@ -242,22 +240,22 @@ public class ScreenScaleActivity extends Activity {
+             int id = v.getId();
+             int scalevalue;
+             switch (id) {
+-                case R.id.button_right:
+-                    LOGD("button_right");
+-                    rightClick(true);
+-                    break;
+-                case R.id.button_left:
+-                    LOGD("button_left");
+-                    leftClick(true);
+-                    break;
+-                case R.id.button_up:
+-                    LOGD("touch_up");
+-                    upClick(true);
+-                    break;
+-                case R.id.button_down:
+-                    LOGD("touch_down");
+-                    downClick(true);
+-                    break;
++            case R.id.button_right:
++                LOGD("button_right");
++                rightClick(true);
++                break;
++            case R.id.button_left:
++                LOGD("button_left");
++                leftClick(true);
++                break;
++            case R.id.button_up:
++                LOGD("touch_up");
++                upClick(true);
++                break;
++            case R.id.button_down:
++                LOGD("touch_down");
++                downClick(true);
++                break;
+             }
+         }
+     };
+@@ -269,18 +267,18 @@ public class ScreenScaleActivity extends Activity {
+         if (mkeylast != keyCode) {
+             mkeylast = keyCode;
+             switch (keyCode) {
+-                case KeyEvent.KEYCODE_DPAD_RIGHT:
+-                    rightClick(false);
+-                    break;
+-                case KeyEvent.KEYCODE_DPAD_LEFT:
+-                    leftClick(false);
+-                    break;
+-                case KeyEvent.KEYCODE_DPAD_UP:
+-                    upClick(false);
+-                    break;
+-                case KeyEvent.KEYCODE_DPAD_DOWN:
+-                    downClick(false);
+-                    break;
++            case KeyEvent.KEYCODE_DPAD_RIGHT:
++                rightClick(false);
++                break;
++            case KeyEvent.KEYCODE_DPAD_LEFT:
++                leftClick(false);
++                break;
++            case KeyEvent.KEYCODE_DPAD_UP:
++                upClick(false);
++                break;
++            case KeyEvent.KEYCODE_DPAD_DOWN:
++                downClick(false);
++                break;
+             }
+         } else {
+             mkeylast = -1;
+@@ -292,18 +290,18 @@ public class ScreenScaleActivity extends Activity {
+     private Handler mHandler = new Handler() {
+         public void handleMessage(Message msg) {
+             switch (msg.what) {
+-                case RightButtonResume:
+-                    mRightButton.setImageResource(R.drawable.button_vertical_right);
+-                    break;
+-                case LeftButtonResume:
+-                    mLeftButton.setImageResource(R.drawable.button_vertical_left);
+-                    break;
+-                case UpButtonResume:
+-                    mUpButton.setImageResource(R.drawable.button_up);
+-                    break;
+-                case DownButtonResume:
+-                    mDownButton.setImageResource(R.drawable.button_down);
+-                    break;
++            case RightButtonResume:
++                mRightButton.setImageResource(R.drawable.button_vertical_right);
++                break;
++            case LeftButtonResume:
++                mLeftButton.setImageResource(R.drawable.button_vertical_left);
++                break;
++            case UpButtonResume:
++                mUpButton.setImageResource(R.drawable.button_up);
++                break;
++            case DownButtonResume:
++                mDownButton.setImageResource(R.drawable.button_down);
++                break;
+             }
+         }
+     };
+@@ -314,7 +312,7 @@ public class ScreenScaleActivity extends Activity {
+     }
+ 
+     private void rightClick(boolean isClick) {
+- if (!mIsUseDisplayd) {
++        if (!mIsUseDisplayd) {
+             mLeftScale += 1;
+             if (mLeftScale > MAX_SCALE)
+                 mLeftScale = MAX_SCALE;
+@@ -328,7 +326,7 @@ public class ScreenScaleActivity extends Activity {
+     }
+ 
+     private void leftClick(boolean isClick) {
+-	if (!mIsUseDisplayd) {
++        if (!mIsUseDisplayd) {
+             mLeftScale -= 1;
+             if (mLeftScale < MIN_SCALE)
+                 mLeftScale = MIN_SCALE;
+@@ -343,7 +341,7 @@ public class ScreenScaleActivity extends Activity {
+ 
+     private void upClick(boolean isClick) {
+         // add code here
+-	if (!mIsUseDisplayd) {
++        if (!mIsUseDisplayd) {
+             mBottomScale -= 1;
+             if (mBottomScale < MIN_SCALE)
+                 mBottomScale = MIN_SCALE;
+@@ -357,7 +355,7 @@ public class ScreenScaleActivity extends Activity {
+     }
+ 
+     private void downClick(boolean isClick) {
+-	if (!mIsUseDisplayd) {
++        if (!mIsUseDisplayd) {
+             mBottomScale += 1;
+             if (mBottomScale > MAX_SCALE)
+                 mBottomScale = MAX_SCALE;
+@@ -375,7 +373,7 @@ public class ScreenScaleActivity extends Activity {
+      */
+     public void initData() {
+         mPlatform = getIntent().getStringExtra(ConstData.IntentKey.PLATFORM);
+-        mIsUseDisplayd = false;//SystemProperties.getBoolean("ro.rk.displayd.enable", true);
++        mIsUseDisplayd = false;// SystemProperties.getBoolean("ro.rk.displayd.enable", true);
+         mDisplayInfo = (DisplayInfo) getIntent().getSerializableExtra(ConstData.IntentKey.DISPLAY_INFO);
+         String overScan;
+         if (!mIsUseDisplayd) {
+@@ -388,11 +386,10 @@ public class ScreenScaleActivity extends Activity {
+                 return;
+             try {
+                 mLeftScale = Integer.parseInt(overScan.split(",")[0].split("\\s+")[1]);
+-            } catch (Exception e) {
+-            }
+-            try {
+                 mBottomScale = Integer.parseInt(overScan.split(",")[3]);
+             } catch (Exception e) {
++                e.printStackTrace();
++                Log.e(TAG, "mLeft = " + mLeftScale + ",mBottom = " + mBottomScale);
+             }
+         }
+     }
+@@ -406,22 +403,32 @@ public class ScreenScaleActivity extends Activity {
+         }
+         if (rkDisplayOutputManager == null)
+             return;
++        Log.i(TAG, "setOverScanProperty->time1:" + System.currentTimeMillis());
+         switch (direction) {
+-            case ConstData.ScaleDirection.LEFT:
+-            case ConstData.ScaleDirection.RIGHT:
+-                Log.i(TAG, "setOverScanProperty->time1:" + System.currentTimeMillis());
+-                ReflectUtils.invokeMethod(rkDisplayOutputManager, "setOverScan", new Class[]{int.class, int.class, int.class}, new Object[]{mDisplayInfo.getDisplayId(), 0, mLeftScale});
+-                Log.i(TAG, "setOverScanProperty->time2:" + System.currentTimeMillis());
+-                break;
+-            case ConstData.ScaleDirection.TOP:
+-            case ConstData.ScaleDirection.BOTTOM:
+-                ReflectUtils.invokeMethod(rkDisplayOutputManager, "setOverScan", new Class[]{int.class, int.class, int.class}, new Object[]{mDisplayInfo.getDisplayId(), 1, mBottomScale});
+-                break;
+-            default:
+-                break;
++        case ConstData.ScaleDirection.LEFT:
++        case ConstData.ScaleDirection.RIGHT:
++            ReflectUtils.invokeMethod(rkDisplayOutputManager, "setOverScan",
++                    new Class[] { int.class, int.class, int.class },
++                    new Object[] { mDisplayInfo.getDisplayId(), 0, mLeftScale });
++            ReflectUtils.invokeMethod(rkDisplayOutputManager, "setOverScan",
++                    new Class[] { int.class, int.class, int.class },
++                    new Object[] { mDisplayInfo.getDisplayId(), 2, mLeftScale });
++            break;
++        case ConstData.ScaleDirection.TOP:
++        case ConstData.ScaleDirection.BOTTOM:
++            ReflectUtils.invokeMethod(rkDisplayOutputManager, "setOverScan",
++                    new Class[] { int.class, int.class, int.class },
++                    new Object[] { mDisplayInfo.getDisplayId(), 1, mBottomScale });
++            ReflectUtils.invokeMethod(rkDisplayOutputManager, "setOverScan",
++                    new Class[] { int.class, int.class, int.class },
++                    new Object[] { mDisplayInfo.getDisplayId(), 3, mBottomScale });
++            break;
++        default:
++            break;
+         }
++        Log.i(TAG, "setOverScanProperty->time2:" + System.currentTimeMillis());
+ 
+         // save config
+-        ReflectUtils.invokeMethod(rkDisplayOutputManager, "saveConfig", new Class[]{}, new Object[]{});
++        ReflectUtils.invokeMethod(rkDisplayOutputManager, "saveConfig", new Class[] {}, new Object[] {});
+     }
+ }
+-- 
+2.35.1
+

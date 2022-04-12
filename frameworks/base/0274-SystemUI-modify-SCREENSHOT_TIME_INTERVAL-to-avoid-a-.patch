@@ -1,0 +1,30 @@
+From 46e3f629de8e2b050c54604e5ab0dbd8ec68d76c Mon Sep 17 00:00:00 2001
+From: "alex.lin" <alex.lin@rock-chips.com>
+Date: Tue, 29 Dec 2020 09:36:20 +0800
+Subject: [PATCH 274/297] SystemUI: modify SCREENSHOT_TIME_INTERVAL to avoid a
+ crash
+
+https://redmine.rock-chips.com/issues/279022
+
+Signed-off-by: alex.lin <alex.lin@rock-chips.com>
+Change-Id: I0476fe93d2bb6248a5c6129557191e35339318d5
+---
+ .../android/systemui/statusbar/phone/NavigationBarFragment.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
+index f3bfc7901da..8ccf1fbdbca 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
+@@ -160,7 +160,7 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+     /** Allow some time inbetween the long press for back and recents. */
+     private static final int LOCK_TO_APP_GESTURE_TOLERENCE = 200;
+     private static final long AUTODIM_TIMEOUT_MS = 2250;
+-    private static final long SCREENSHOT_TIME_INTERVAL = 600;
++    private static final long SCREENSHOT_TIME_INTERVAL = 3000;
+ 
+     private final AccessibilityManagerWrapper mAccessibilityManagerWrapper;
+     protected final AssistManager mAssistManager;
+-- 
+2.35.1
+

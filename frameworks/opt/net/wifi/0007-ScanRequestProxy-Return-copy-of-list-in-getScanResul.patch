@@ -1,0 +1,68 @@
+From 6d77d26bfe6755dda5dfdc5ca93d408f40294890 Mon Sep 17 00:00:00 2001
+From: David Su <dysu@google.com>
+Date: Wed, 8 Jul 2020 12:57:54 -0700
+Subject: [PATCH 07/13] ScanRequestProxy: Return copy of list in getScanResults
+
+Return a copy of internal list to prevent external
+modification.
+
+Bug: 160751554
+Test: atest FrameworksWifiTests
+Change-Id: Id7f8c05160d0d480077327d56dec03080708b375
+Merged-In: Id7f8c05160d0d480077327d56dec03080708b375
+(cherry picked from commit 48e1bcfb68371999d968c4527791d302be3140b4)
+---
+ .../com/android/server/wifi/ScanRequestProxy.java |  3 ++-
+ .../android/server/wifi/ScanRequestProxyTest.java | 15 +++++++++++++++
+ 2 files changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/service/java/com/android/server/wifi/ScanRequestProxy.java b/service/java/com/android/server/wifi/ScanRequestProxy.java
+index c054b90a4..622fcdab9 100644
+--- a/service/java/com/android/server/wifi/ScanRequestProxy.java
++++ b/service/java/com/android/server/wifi/ScanRequestProxy.java
+@@ -464,7 +464,8 @@ public class ScanRequestProxy {
+      * @return the list of results
+      */
+     public List<ScanResult> getScanResults() {
+-        return mLastScanResults;
++        // return a copy to prevent external modification
++        return new ArrayList<>(mLastScanResults);
+     }
+ 
+     /**
+diff --git a/tests/wifitests/src/com/android/server/wifi/ScanRequestProxyTest.java b/tests/wifitests/src/com/android/server/wifi/ScanRequestProxyTest.java
+index b065f823c..cc96602d5 100644
+--- a/tests/wifitests/src/com/android/server/wifi/ScanRequestProxyTest.java
++++ b/tests/wifitests/src/com/android/server/wifi/ScanRequestProxyTest.java
+@@ -22,6 +22,8 @@ import static com.android.server.wifi.ScanRequestProxy.SCAN_REQUEST_THROTTLE_MAX
+ import static com.android.server.wifi.ScanRequestProxy.SCAN_REQUEST_THROTTLE_TIME_WINDOW_FG_APPS_MS;
+ import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_SCAN_THROTTLE_ENABLED;
+ 
++import static com.google.common.truth.Truth.assertThat;
++
+ import static org.junit.Assert.*;
+ import static org.mockito.Mockito.*;
+ 
+@@ -1009,6 +1011,19 @@ public class ScanRequestProxyTest extends WifiBaseTest {
+         mLooper.dispatchAll();
+         validateScanResultsAvailableBroadcastSent(true);
+         verify(mScanResultsCallback, never()).onScanResultsAvailable();
++    }
++
++    /** Test that modifying the returned scan results list does not change the original. */
++    @Test
++    public void testGetScanResults_modifyReturnedList_doesNotChangeOriginal() {
++        // initialize scan results
++        testStartScanSuccess();
++
++        List<ScanResult> scanResults = mScanRequestProxy.getScanResults();
++        int scanResultsOriginalSize = scanResults.size();
++
++        scanResults.add(new ScanResult());
+ 
++        assertThat(mScanRequestProxy.getScanResults()).hasSize(scanResultsOriginalSize);
+     }
+ }
+-- 
+2.35.1
+

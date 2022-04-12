@@ -1,0 +1,58 @@
+From 4a3088702963736a1e8c69f27538fb4d139b9688 Mon Sep 17 00:00:00 2001
+From: Jiyong Park <jiyong@google.com>
+Date: Thu, 14 Nov 2019 03:07:36 +0000
+Subject: [PATCH 047/297] Revert "Replace framework-annotation-proc java lib
+ with framework-all"
+
+This reverts commit 0b5eb9a48687d91144399f029cf136d0617a7b74.
+
+Reason for revert: Broke CtsAndroidTestBase28ApiSignatureTestCases
+Bug: 144448055
+Test: CtsAndroidTestBase28ApiSignatureTestCases
+
+Change-Id: Ic6997f7b83318fa5d0c819c197cb5965adc31347
+(cherry picked from commit 9718349faa9793f940d80c4d8c18d101b0da6ec2)
+---
+ Android.bp | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/Android.bp b/Android.bp
+index 135a9eeef23..5070b5ea240 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -467,6 +467,14 @@ java_library {
+     srcs: [":framework-all-sources"],
+     installable: false,
+     libs: ["app-compat-annotations"],
++}
++
++java_library {
++    name: "framework-annotation-proc",
++    defaults: ["framework-aidl-export-defaults"],
++    srcs: [":framework-all-sources"],
++    libs: ["app-compat-annotations"],
++    installable: false,
+     plugins: [
+         "unsupportedappusage-annotation-processor",
+         "compat-changeid-annotation-processor",
+@@ -475,7 +483,7 @@ java_library {
+ 
+ platform_compat_config {
+     name: "framework-platform-compat-config",
+-    src: ":framework-all",
++    src: ":framework-annotation-proc",
+ }
+ 
+ // A library including just UnsupportedAppUsage.java classes.
+@@ -1600,7 +1608,7 @@ aidl_mapping {
+ 
+ genrule {
+     name: "framework-annotation-proc-index",
+-    srcs: [":framework-all"],
++    srcs: [":framework-annotation-proc"],
+     cmd: "unzip -qp $(in) unsupportedappusage/unsupportedappusage_index.csv > $(out)",
+     out: ["unsupportedappusage_index.csv"],
+     dist: {
+-- 
+2.35.1
+

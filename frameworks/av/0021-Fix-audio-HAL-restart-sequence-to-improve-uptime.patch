@@ -1,0 +1,68 @@
+From 70b8fdaeb4a772d7ac7340ec31810835ea2192e7 Mon Sep 17 00:00:00 2001
+From: Mikhail Naganov <mnaganov@google.com>
+Date: Wed, 3 Jun 2020 19:02:34 +0000
+Subject: [PATCH 21/25] Fix audio HAL restart sequence to improve uptime
+
+Do not use 'restart vendor.audio-hal' directly when serving the
+framework request for HAL restart via 'sys.audio.restart.hal'
+property.  This is to avoid triggering 'onrestart' event the .rc
+file of the audio HAL service. Instead use 'stop / start'
+sequence.
+
+Do not use the 'sys.audio.restart.hal' property for handling
+audioserver restart to avoid race conditions.
+
+Bug: 151795571
+Bug: 159966243
+Test: 1) repro steps from b/151795571
+      2) adb shell stop, verify that audio HAL is running
+         and has been restarted (has different PID from prior
+         to adb shell stop)
+Change-Id: I5d87f4bba93153a84fe35c7a740e05960dcb6997
+Merged-In: I5d87f4bba93153a84fe35c7a740e05960dcb6997
+---
+ media/audioserver/audioserver.rc | 20 ++++++++++++++------
+ 1 file changed, 14 insertions(+), 6 deletions(-)
+
+diff --git a/media/audioserver/audioserver.rc b/media/audioserver/audioserver.rc
+index f05c2d271f..f75e4c7a9b 100644
+--- a/media/audioserver/audioserver.rc
++++ b/media/audioserver/audioserver.rc
+@@ -6,8 +6,11 @@ service audioserver /system/bin/audioserver
+     capabilities BLOCK_SUSPEND
+     ioprio rt 4
+     task_profiles ProcessCapacityHigh HighPerformance
+-
+-    onrestart setprop sys.audio.restart.hal 1
++    onrestart restart vendor.audio-hal
++    onrestart restart vendor.audio-hal-4-0-msd
++    # Keep the original service names for backward compatibility
++    onrestart restart vendor.audio-hal-2-0
++    onrestart restart audio-hal-2-0
+ 
+ on property:vts.native_server.on=1
+     stop audioserver
+@@ -37,11 +40,16 @@ on property:init.svc.audioserver=running
+     start audio-hal-2-0
+ 
+ on property:sys.audio.restart.hal=1
+-    restart vendor.audio-hal
+-    restart vendor.audio-hal-4-0-msd
++    # See b/159966243. Avoid restart loop between audioserver and HAL.
+     # Keep the original service names for backward compatibility
+-    restart vendor.audio-hal-2-0
+-    restart audio-hal-2-0
++    stop vendor.audio-hal
++    stop vendor.audio-hal-4-0-msd
++    stop vendor.audio-hal-2-0
++    stop audio-hal-2-0
++    start vendor.audio-hal
++    start vendor.audio-hal-4-0-msd
++    start vendor.audio-hal-2-0
++    start audio-hal-2-0
+     # reset the property
+     setprop sys.audio.restart.hal 0
+ 
+-- 
+2.35.1
+

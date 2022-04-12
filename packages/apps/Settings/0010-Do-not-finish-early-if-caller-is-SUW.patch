@@ -1,0 +1,42 @@
+From 6d4f8ee2eb846327e7deee89212fca68ace20c63 Mon Sep 17 00:00:00 2001
+From: Kevin Chyn <kchyn@google.com>
+Date: Mon, 16 Mar 2020 09:32:41 -0700
+Subject: [PATCH 10/25] Do not finish early if caller is SUW
+
+Fixes: 151576034
+
+
+Test: Wipe device, go past fingerprint enrollment in SUW, press
+      back button. SUW should not get stuck
+Change-Id: I9021946dd169acfa205e6bacc4c4581242452983
+(cherry picked from commit e6bcc49eb9c6c26ee4909655f61e47d32e98d952)
+---
+ .../settings/biometrics/BiometricEnrollActivity.java | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/src/com/android/settings/biometrics/BiometricEnrollActivity.java b/src/com/android/settings/biometrics/BiometricEnrollActivity.java
+index a0aa6db4c7..4179ea3d96 100644
+--- a/src/com/android/settings/biometrics/BiometricEnrollActivity.java
++++ b/src/com/android/settings/biometrics/BiometricEnrollActivity.java
+@@ -68,11 +68,13 @@ public class BiometricEnrollActivity extends InstrumentedActivity {
+ 
+         final int result = bm.canAuthenticate(authenticators);
+ 
+-        if (result == BiometricManager.BIOMETRIC_SUCCESS
+-                || result == BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE) {
+-            Log.e(TAG, "Unexpected result: " + result);
+-            finish();
+-            return;
++        if (!WizardManagerHelper.isAnySetupWizard(getIntent())) {
++            if (result == BiometricManager.BIOMETRIC_SUCCESS
++                    || result == BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE) {
++                Log.e(TAG, "Unexpected result: " + result);
++                finish();
++                return;
++            }
+         }
+ 
+         if (authenticators == BiometricManager.Authenticators.DEVICE_CREDENTIAL) {
+-- 
+2.35.1
+

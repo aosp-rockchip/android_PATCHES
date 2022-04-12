@@ -1,0 +1,29 @@
+From 5ab747b0b13b5a9d5d8245fab0a2d63b8b8efd82 Mon Sep 17 00:00:00 2001
+From: Steve Elliott <steell@google.com>
+Date: Wed, 11 Mar 2020 13:14:21 -0400
+Subject: [PATCH 114/297] Null-check notif chan when ident people notifs
+
+Bug: 151050221
+Test: manual
+Change-Id: I0cbf29a33c228ac9f3566639a592733716eee891
+(cherry picked from commit b17ee6c17c0bac69797587041f8ecdcf9b73d5e9)
+---
+ .../notification/people/PeopleNotificationIdentifier.kt         | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/people/PeopleNotificationIdentifier.kt b/packages/SystemUI/src/com/android/systemui/statusbar/notification/people/PeopleNotificationIdentifier.kt
+index 597bdb9f2e7..be3873a5fd7 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/people/PeopleNotificationIdentifier.kt
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/people/PeopleNotificationIdentifier.kt
+@@ -83,7 +83,7 @@ class PeopleNotificationIdentifierImpl @Inject constructor(
+ 
+     private val Ranking.personTypeInfo
+         get() = when {
+-            channel.isImportantConversation -> TYPE_IMPORTANT_PERSON
++            channel?.isImportantConversation == true -> TYPE_IMPORTANT_PERSON
+             isConversation -> TYPE_PERSON
+             else -> TYPE_NON_PERSON
+         }
+-- 
+2.35.1
+

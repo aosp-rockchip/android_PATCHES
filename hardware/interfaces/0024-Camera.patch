@@ -1,0 +1,239 @@
+From 7dd198668c6c71c53e2f255d9b5da959a07e1f58 Mon Sep 17 00:00:00 2001
+From: chenxiao <cx@rock-chips.com>
+Date: Sun, 7 Feb 2021 10:20:44 +0800
+Subject: [PATCH 24/24] Camera:      fix usb camera take picture block.
+
+Signed-off-by: chenxiao <cx@rock-chips.com>
+Change-Id: I922ff1ab9798f7488ba9a85a019acad41716019a
+---
+ .../default/ExternalCameraDeviceSession.cpp   | 54 +++++++++++++------
+ .../3.4/default/ExternalCameraGralloc4.cpp    | 20 +++----
+ .../3.4/default/ExternalCameraUtils.cpp       |  2 +-
+ 3 files changed, 50 insertions(+), 26 deletions(-)
+
+diff --git a/camera/device/3.4/default/ExternalCameraDeviceSession.cpp b/camera/device/3.4/default/ExternalCameraDeviceSession.cpp
+index 12344b090..67744a046 100755
+--- a/camera/device/3.4/default/ExternalCameraDeviceSession.cpp
++++ b/camera/device/3.4/default/ExternalCameraDeviceSession.cpp
+@@ -14,7 +14,7 @@
+  * limitations under the License.
+  */
+ #define LOG_TAG "ExtCamDevSsn@3.4"
+-#define LOG_NDEBUG 0
++//#define LOG_NDEBUG 0
+ #define ATRACE_TAG ATRACE_TAG_CAMERA
+ #include <log/log.h>
+ 
+@@ -1107,7 +1107,7 @@ bool ExternalCameraDeviceSession::FormatConvertThread::threadLoop() {
+     mVirAddr = mCamMemManager->getBufferAddr(
+             PREVIEWBUFFER, req->frameIn->mBufferIndex, buffer_addr_vir);
+ 
+-    LOGD("%s(%d)mShareFd(%d) mVirAddr(%p)!\n", __FUNCTION__, __LINE__, mShareFd, mVirAddr);
++    ALOGV("%s(%d)mShareFd(%d) mVirAddr(%p)!\n", __FUNCTION__, __LINE__, mShareFd, mVirAddr);
+ 
+     int tmpW = req->frameIn->mWidth;
+     int tmpH = req->frameIn->mHeight;
+@@ -1750,6 +1750,7 @@ bool ExternalCameraDeviceSession::OutputThread::threadLoop() {
+             isBlobOrYv12 = true;
+         }
+     }
++   
+     if (req->frameIn->mFourcc == V4L2_PIX_FMT_MJPEG) {
+         if((tempFrameWidth & 0x0f) || (tempFrameHeight & 0x0f)) {
+             is16Align = false;
+@@ -1759,14 +1760,33 @@ bool ExternalCameraDeviceSession::OutputThread::threadLoop() {
+     }
+ 
+     if (isBlobOrYv12 && req->frameIn->mFourcc == V4L2_PIX_FMT_MJPEG) {
+-        LOGD("format is BLOB or YV12,use software jpeg decoder, framenumber(%d)", req->frameNumber);
++        /*LOGD("format is BLOB or YV12,use software jpeg decoder, framenumber(%d)", req->frameNumber);
+         ATRACE_BEGIN("MJPGtoI420");
+         int res = libyuv::MJPGToI420(
+             req->inData, req->inDataSize, static_cast<uint8_t*>(mYu12FrameLayout.y), mYu12FrameLayout.yStride,
+             static_cast<uint8_t*>(mYu12FrameLayout.cb), mYu12FrameLayout.cStride,
+             static_cast<uint8_t*>(mYu12FrameLayout.cr), mYu12FrameLayout.cStride,
+             mYu12Frame->mWidth, mYu12Frame->mHeight, mYu12Frame->mWidth, mYu12Frame->mHeight);
+-        ATRACE_END();
++        ATRACE_END();*/
++        YCbCrLayout input;
++        input.y = (uint8_t*)req->mVirAddr;
++        input.yStride = mYu12Frame->mWidth;
++        input.cb = (uint8_t*)(req->mVirAddr) + tempFrameWidth * tempFrameHeight;
++        input.cStride = mYu12Frame->mWidth;
++        LOGD("format is BLOB or YV12, use software NV12ToI420");
++
++        int ret = libyuv::NV12ToI420(
++                static_cast<uint8_t*>(input.y),
++                input.yStride,
++                static_cast<uint8_t*>(input.cb),
++                input.cStride,
++                static_cast<uint8_t*>(mYu12FrameLayout.y),
++                mYu12FrameLayout.yStride,
++                static_cast<uint8_t*>(mYu12FrameLayout.cb),
++                mYu12FrameLayout.cStride,
++                static_cast<uint8_t*>(mYu12FrameLayout.cr),
++                mYu12FrameLayout.cStride,
++                tempFrameWidth, tempFrameHeight);
+ 
+         if (res != 0) {
+             // For some webcam, the first few V4L2 frames might be malformed...
+@@ -1781,15 +1801,6 @@ bool ExternalCameraDeviceSession::OutputThread::threadLoop() {
+         }
+     }
+ 
+-    ATRACE_BEGIN("Wait for BufferRequest done");
+-    res = waitForBufferRequestDone(&req->buffers);
+-    ATRACE_END();
+-
+-    if (res != 0) {
+-        ALOGE("%s: wait for BufferRequest done failed! res %d", __FUNCTION__, res);
+-        lk.unlock();
+-        return onDeviceError("%s: failed to process buffer request error!", __FUNCTION__);
+-    }
+     if (isBlobOrYv12 && req->frameIn->mFourcc == V4L2_PIX_FMT_YUYV) {
+         YCbCrLayout input;
+         input.y = (uint8_t*)req->inData;
+@@ -1818,6 +1829,17 @@ bool ExternalCameraDeviceSession::OutputThread::threadLoop() {
+             return true;
+         }
+     }
++
++    ATRACE_BEGIN("Wait for BufferRequest done");
++    res = waitForBufferRequestDone(&req->buffers);
++    ATRACE_END();
++
++    if (res != 0) {
++        ALOGE("%s: wait for BufferRequest done failed! res %d", __FUNCTION__, res);
++        lk.unlock();
++        return onDeviceError("%s: failed to process buffer request error!", __FUNCTION__);
++    }
++    
+     ALOGV("%s processing new request", __FUNCTION__);
+     const int kSyncWaitTimeoutMs = 500;
+     for (auto& halBuf : req->buffers) {
+@@ -2103,11 +2125,13 @@ Status ExternalCameraDeviceSession::OutputThread::allocateIntermediateBuffers(
+         return Status::INTERNAL_ERROR;
+     }
+ 
++    Size v4lAlign16Size = {(v4lSize.width + 15) & (~15), (v4lSize.height + 15) & (~15)};
++
+     // Allocating intermediate YU12 frame
+     if (mYu12Frame == nullptr || mYu12Frame->mWidth != v4lSize.width ||
+             mYu12Frame->mHeight != v4lSize.height) {
+         mYu12Frame.clear();
+-        mYu12Frame = new AllocatedFrame(v4lSize.width, v4lSize.height);
++        mYu12Frame = new AllocatedFrame(v4lAlign16Size.width, v4lAlign16Size.height);
+         int ret = mYu12Frame->allocate(&mYu12FrameLayout);
+         if (ret != 0) {
+             ALOGE("%s: allocating YU12 frame failed!", __FUNCTION__);
+@@ -2131,7 +2155,7 @@ Status ExternalCameraDeviceSession::OutputThread::allocateIntermediateBuffers(
+     // Allocating scaled buffers
+     for (const auto& stream : streams) {
+         Size sz = {stream.width, stream.height};
+-        if (sz == v4lSize) {
++        if (sz == v4lAlign16Size) {
+             continue; // Don't need an intermediate buffer same size as v4lBuffer
+         }
+         if (mIntermediateBuffers.count(sz) == 0) {
+diff --git a/camera/device/3.4/default/ExternalCameraGralloc4.cpp b/camera/device/3.4/default/ExternalCameraGralloc4.cpp
+index bc7522080..8f233243f 100755
+--- a/camera/device/3.4/default/ExternalCameraGralloc4.cpp
++++ b/camera/device/3.4/default/ExternalCameraGralloc4.cpp
+@@ -15,7 +15,7 @@
+  */
+ 
+ #define LOG_TAG "ExCamGraBuf"
+-#define LOG_NDEBUG 0
++//#define LOG_NDEBUG 0
+ #include <log/log.h>
+ #include <utils/threads.h>
+ #include <utils/Log.h>
+@@ -272,11 +272,11 @@ int lock(buffer_handle_t bufferHandle,
+                                   uint32_t width,
+                                   uint32_t height,
+                                   void** out_addr) {
+-    LOGD("lock buffer:%p   rect(%d, %d, %d, %d) flag: 0x%08x", bufferHandle, left, top, width, height, flags);
++    ALOGD("lock buffer:%p   rect(%d, %d, %d, %d) flag: 0x%08x", bufferHandle, left, top, width, height, flags);
+ 
+     auto &mapper = get_mapperservice();
+     auto buffer = const_cast<native_handle_t*>(bufferHandle);
+-    LOGD("lock buffer pointer:%p", &buffer);
++    ALOGD("lock buffer pointer:%p", &buffer);
+ 
+     IMapper::Rect accessRegion = {(int)left, (int)top, (int)width, (int)height};
+ 
+@@ -304,11 +304,11 @@ int lock(buffer_handle_t bufferHandle,
+ }
+ 
+ int unlock(buffer_handle_t bufferHandle) {
+-    LOGD("Unlock buffer:%p", bufferHandle);
++    ALOGD("Unlock buffer:%p", bufferHandle);
+ 
+     auto &mapper = get_mapperservice();
+     auto buffer = const_cast<native_handle_t*>(bufferHandle);
+-    LOGD("Unlock buffer:%p", buffer);
++    ALOGD("Unlock buffer:%p", buffer);
+ 
+     int releaseFence = -1;
+     Error error;
+@@ -376,7 +376,7 @@ int get_allocation_size(buffer_handle_t handle, uint64_t* allocation_size)
+ 
+ status_t importBuffer(buffer_handle_t rawHandle,
+                                       buffer_handle_t* outBufferHandle) {
+-    LOGD("import rawBuffer :%p", rawHandle);
++    ALOGD("import rawBuffer :%p", rawHandle);
+     Error error;
+     auto &mapper = get_mapperservice();
+     auto ret = mapper.importBuffer(android::hardware::hidl_handle(rawHandle), [&](const auto& tmpError, const auto& tmpBuffer) {
+@@ -385,7 +385,7 @@ status_t importBuffer(buffer_handle_t rawHandle,
+             return;
+         }
+         *outBufferHandle = static_cast<buffer_handle_t>(tmpBuffer);
+-        LOGD("import outBuffer :%p", outBufferHandle);
++        ALOGD("import outBuffer :%p", outBufferHandle);
+     });
+ 
+     return static_cast<status_t>((ret.isOk()) ? error : kTransactionError);
+@@ -403,7 +403,7 @@ status_t freeBuffer(buffer_handle_t bufferHandle) {
+ }
+ 
+ int get_share_fd(buffer_handle_t buffer, int* share_fd) {
+-    LOGD(" buffer:%p", buffer);
++    ALOGV(" buffer:%p", buffer);
+     int fd = -1;
+     int err = 0;
+     Mutex mLock;
+@@ -582,7 +582,7 @@ static cam_mem_info_t* cam_mem_gralloc_ops_alloc(
+     ExCamGralloc4::unlock(buf_handle);
+ 
+     ret = ExCamGralloc4::get_allocation_size(buf_handle, &allocation_size);
+-    LOGD("alloc buffer size(%lld)", allocation_size);
++    ALOGD("alloc buffer size(%lld)", allocation_size);
+ 
+     ret = ExCamGralloc4::get_share_fd(buf_handle, &fd);
+     if (ret) {
+@@ -601,7 +601,7 @@ static cam_mem_info_t* cam_mem_gralloc_ops_alloc(
+     mem->width = width;
+     mem->height = height;
+ 
+-    LOGD("alloc graphic buffer sucess,mem %p, vir_addr %p, fd %d",
++    ALOGD("alloc graphic buffer sucess,mem %p, vir_addr %p, fd %d",
+         mem, mem_addr, mem->fd);
+ 
+     return mem;
+diff --git a/camera/device/3.4/default/ExternalCameraUtils.cpp b/camera/device/3.4/default/ExternalCameraUtils.cpp
+index 10839e390..457b6e996 100755
+--- a/camera/device/3.4/default/ExternalCameraUtils.cpp
++++ b/camera/device/3.4/default/ExternalCameraUtils.cpp
+@@ -14,7 +14,7 @@
+  * limitations under the License.
+  */
+ #define LOG_TAG "ExtCamUtils@3.4"
+-#define LOG_NDEBUG 0
++//#define LOG_NDEBUG 0
+ #include <log/log.h>
+ 
+ #include <cmath>
+-- 
+2.35.1
+

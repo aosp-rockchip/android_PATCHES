@@ -1,0 +1,83 @@
+From 004873a25502b3f468fa8f165699ec718819455e Mon Sep 17 00:00:00 2001
+From: Riddle Hsu <riddlehsu@google.com>
+Date: Tue, 22 Sep 2020 18:05:25 +0800
+Subject: [PATCH 250/297] Use normal rotation if orientation is changed by
+ resume-scheduled app
+
+With traditional normal rotation, if an app calls
+Activity#setRequestedOrientation to change orientation in its onCreate
+or onResume, the system display info will be updated immediately.
+So if the app gets display rotation right after the orientation request,
+it can get the rotated result.
+
+While if fixed rotation transform takes effect for the case, though the
+rotated display adjustments will be sent to the app, it is too late
+that the app may have accessed the global display info which is not
+rotated, that may cause inconsistent UI layout if the app depends on
+the rotation info.
+
+Bug: 167564038
+Test: DisplayContentTests#testNoFixedRotationOnResumedScheduledApp
+Change-Id: I3253264cb1bb8886074e88012582daa3589a1896
+Merged-In: I3253264cb1bb8886074e88012582daa3589a1896
+(cherry picked from commit 4d576bfa25b764b3d2dd44761f632e7962443b02)
+---
+ .../com/android/server/wm/DisplayContent.java |  9 ++++++++
+ .../server/wm/DisplayContentTests.java        | 21 +++++++++++++++++++
+ 2 files changed, 30 insertions(+)
+
+diff --git a/services/core/java/com/android/server/wm/DisplayContent.java b/services/core/java/com/android/server/wm/DisplayContent.java
+index 06c0c465633..5acaf14df15 100644
+--- a/services/core/java/com/android/server/wm/DisplayContent.java
++++ b/services/core/java/com/android/server/wm/DisplayContent.java
+@@ -1495,6 +1495,15 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
+                 // intermediate orientation change, it is more stable to freeze the display.
+                 return false;
+             }
++            if (r.isState(RESUMED) && !r.getRootTask().mInResumeTopActivity) {
++                // If the activity is executing or has done the lifecycle callback, use normal
++                // rotation animation so the display info can be updated immediately (see
++                // updateDisplayAndOrientation). This prevents a compatibility issue such as
++                // calling setRequestedOrientation in Activity#onCreate and then get display info.
++                // If fixed rotation is applied, the display rotation will still be the old one,
++                // unless the client side gets the rotation again after the adjustments arrive.
++                return false;
++            }
+         } else if (r != topRunningActivity()) {
+             // If the transition has not started yet, the activity must be the top.
+             return false;
+diff --git a/services/tests/wmtests/src/com/android/server/wm/DisplayContentTests.java b/services/tests/wmtests/src/com/android/server/wm/DisplayContentTests.java
+index 66dfbfdda60..fa7a2e917fd 100644
+--- a/services/tests/wmtests/src/com/android/server/wm/DisplayContentTests.java
++++ b/services/tests/wmtests/src/com/android/server/wm/DisplayContentTests.java
+@@ -1290,6 +1290,27 @@ public class DisplayContentTests extends WindowTestsBase {
+         assertTrue(displayContent.getPinnedStackController().isPipActiveOrWindowingModeChanging());
+     }
+ 
++    @Test
++    public void testNoFixedRotationOnResumedScheduledApp() {
++        final ActivityRecord app = new ActivityTestsBase.StackBuilder(mWm.mRoot)
++                .setDisplay(mDisplayContent).build().getTopMostActivity();
++        app.setVisible(false);
++        app.setState(ActivityStack.ActivityState.RESUMED, "test");
++        mDisplayContent.prepareAppTransition(WindowManager.TRANSIT_ACTIVITY_OPEN,
++                false /* alwaysKeepCurrent */);
++        mDisplayContent.mOpeningApps.add(app);
++        final int newOrientation = getRotatedOrientation(mDisplayContent);
++        app.setRequestedOrientation(newOrientation);
++
++        // The condition should reject using fixed rotation because the resumed client in real case
++        // might get display info immediately. And the fixed rotation adjustments haven't arrived
++        // client side so the info may be inconsistent with the requested orientation.
++        verify(mDisplayContent).handleTopActivityLaunchingInDifferentOrientation(eq(app),
++                eq(true) /* checkOpening */);
++        assertFalse(app.isFixedRotationTransforming());
++        assertFalse(mDisplayContent.hasTopFixedRotationLaunchingApp());
++    }
++
+     @Test
+     public void testRecentsNotRotatingWithFixedRotation() {
+         final DisplayRotation displayRotation = mDisplayContent.getDisplayRotation();
+-- 
+2.35.1
+

@@ -1,0 +1,80 @@
+From 8abf0ff394cd9019331a8c841a60c011f9ecb0ca Mon Sep 17 00:00:00 2001
+From: Mark Chien <markchien@google.com>
+Date: Wed, 30 Oct 2019 12:26:49 +0000
+Subject: [PATCH 1/3] Revert "Limit access to the device's fixed 802.11 MAC
+ address."
+
+This reverts commit ce8d90a38a8706628ef5abef166d2b69e9848d69.
+
+Reason for revert: Tethering function is broken
+
+Bug: 143591326
+
+Change-Id: I11847ad76fc55987d99ba8f2f73821104066597a
+(cherry picked from commit ef34f8b190f54ed03a77699a30bd7f59603b631f)
+---
+ .../main/java/java/net/NetworkInterface.java  | 33 +------------------
+ 1 file changed, 1 insertion(+), 32 deletions(-)
+
+diff --git a/ojluni/src/main/java/java/net/NetworkInterface.java b/ojluni/src/main/java/java/net/NetworkInterface.java
+index 267f70bc8a..673a1d2013 100644
+--- a/ojluni/src/main/java/java/net/NetworkInterface.java
++++ b/ojluni/src/main/java/java/net/NetworkInterface.java
+@@ -37,9 +37,6 @@ import java.util.List;
+ import java.util.Map;
+ import java.util.NoSuchElementException;
+ 
+-import android.compat.annotation.ChangeId;
+-import android.compat.Compatibility;
+-import android.system.Os;
+ import android.system.StructIfaddrs;
+ import libcore.io.IoUtils;
+ import libcore.io.Libcore;
+@@ -61,19 +58,6 @@ import static android.system.OsConstants.*;
+  * @since 1.4
+  */
+ public final class NetworkInterface {
+-    // BEGIN Android-added: Return anonymized device address to non-system processes.
+-    // The following change-id gates whether calls to {@link getHardwareAddress()} made by non-
+-    // system processes return the actual MAC address (pre-change behavior), or an anonymized MAC
+-    // address (post-change behavior).
+-    // This allows us to assess the impact of the eventual enforcement through SELinux.
+-    @ChangeId
+-    static final long ANONYMIZED_DEVICE_ADDRESS_CHANGE_ID = 141455849L;
+-    // This is used instead of the own device MAC.
+-    private static final byte[] ANONYMIZED_DEVICE_ADDRESS = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00};
+-    // First UID of non-system applications. See {@code android.os.Process.FIRST_APPLICATION_UID}.
+-    private static final int FIRST_APPLICATION_UID = 10000;
+-    // END Android-added: Return anonymized device address to non-system processes.
+-
+     private String name;
+     private String displayName;
+     private int index;
+@@ -567,23 +551,8 @@ public final class NetworkInterface {
+         if (ni == null) {
+             throw new SocketException("NetworkInterface doesn't exist anymore");
+         }
++        return ni.hardwareAddr;
+         // END Android-changed: Fix upstream not returning link-down interfaces. http://b/26238832
+-        // BEGIN Android-changed: Return anonymized device address to non-system processes.
+-        if (!Compatibility.isChangeEnabled(ANONYMIZED_DEVICE_ADDRESS_CHANGE_ID)) {
+-            return ni.hardwareAddr;
+-        } else {
+-            if (ni.hardwareAddr == null) {
+-                // MAC address does not exist or is not accessible.
+-                return null;
+-            }
+-            if (Os.getuid() < FIRST_APPLICATION_UID) {
+-                // This is a system process. Return the actual MAC address.
+-                return ni.hardwareAddr;
+-            } else {
+-                return ANONYMIZED_DEVICE_ADDRESS;
+-            }
+-        }
+-        // END Android-changed: Return anonymized device address to non-system processes.
+     }
+ 
+     /**
+-- 
+2.35.1
+

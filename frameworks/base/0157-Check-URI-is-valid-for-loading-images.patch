@@ -1,0 +1,71 @@
+From 1bb43b6c4cdd2c94c39491fae609ff286fa2b2b1 Mon Sep 17 00:00:00 2001
+From: Beth Thibodeau <ethibodeau@google.com>
+Date: Mon, 27 Apr 2020 14:17:08 -0400
+Subject: [PATCH 157/297] Check URI is valid for loading images
+
+ImageDecoder requires URIs to have a scheme of type
+SCHEME_CONTENT,
+SCHEME_ANDROID_RESOURCE, or
+SCHEME_FILE
+
+In addition URI scheme being null was causing NPE since ImageDecoder
+does not check for that.
+
+Fixes: 155021174
+Test: manual
+Change-Id: I724c8b7e1000c2fc5b3910550ec69904da079bce
+(cherry picked from commit dba74bcfa8897da3644df1f97e69ab5f13c23a1c)
+---
+ .../android/systemui/media/MediaControlPanel.java | 15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/media/MediaControlPanel.java b/packages/SystemUI/src/com/android/systemui/media/MediaControlPanel.java
+index 683c7934908..f6bd948fe11 100644
+--- a/packages/SystemUI/src/com/android/systemui/media/MediaControlPanel.java
++++ b/packages/SystemUI/src/com/android/systemui/media/MediaControlPanel.java
+@@ -19,6 +19,7 @@ package com.android.systemui.media;
+ import android.annotation.LayoutRes;
+ import android.app.PendingIntent;
+ import android.content.ComponentName;
++import android.content.ContentResolver;
+ import android.content.Context;
+ import android.content.Intent;
+ import android.content.SharedPreferences;
+@@ -39,6 +40,7 @@ import android.media.session.MediaSession;
+ import android.media.session.PlaybackState;
+ import android.net.Uri;
+ import android.service.media.MediaBrowserService;
++import android.text.TextUtils;
+ import android.util.Log;
+ import android.view.LayoutInflater;
+ import android.view.View;
+@@ -431,7 +433,7 @@ public class MediaControlPanel {
+         // First look in URI fields
+         for (String field : ART_URIS) {
+             String uriString = metadata.getString(field);
+-            if (uriString != null) {
++            if (!TextUtils.isEmpty(uriString)) {
+                 albumArt = loadBitmapFromUri(Uri.parse(uriString));
+                 if (albumArt != null) {
+                     Log.d(TAG, "loaded art from " + field);
+@@ -459,6 +461,17 @@ public class MediaControlPanel {
+      * @return bitmap, or null if couldn't be loaded
+      */
+     private Bitmap loadBitmapFromUri(Uri uri) {
++        // ImageDecoder requires a scheme of the following types
++        if (uri.getScheme() == null) {
++            return null;
++        }
++
++        if (!uri.getScheme().equals(ContentResolver.SCHEME_CONTENT)
++                && !uri.getScheme().equals(ContentResolver.SCHEME_ANDROID_RESOURCE)
++                && !uri.getScheme().equals(ContentResolver.SCHEME_FILE)) {
++            return null;
++        }
++
+         ImageDecoder.Source source = ImageDecoder.createSource(mContext.getContentResolver(), uri);
+         try {
+             return ImageDecoder.decodeBitmap(source);
+-- 
+2.35.1
+

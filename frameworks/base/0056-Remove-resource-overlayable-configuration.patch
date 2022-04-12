@@ -1,0 +1,57 @@
+From bae62664e2f56d91581e978631b62d0d686cccb8 Mon Sep 17 00:00:00 2001
+From: Al Sutton <alsutton@google.com>
+Date: Thu, 9 Jan 2020 11:45:24 +0000
+Subject: [PATCH 056/297] Remove resource overlayable configuration
+
+Resource overlay configurations are an "All or Nothing" situation
+where we either have to list all overridable settings or none.
+
+We're currently not in a place to find all possible overlayable
+settings, and overlayable configuration isn't a requirement for
+R, so I'm removing the single defintion I added in an earlier
+CL to restore the previous behaviour of allowing all settings to
+be overriden by vendors.
+
+Fixes: 147408832
+Test: Rebuild for Flame, manually confirm overridden setting is correct
+Change-Id: Idccdee8197529b09fe2cb3e8701550c3c896f46e
+(cherry picked from commit 114cb5bdf7d938c764f8ead2f57bbc684d2c7c62)
+---
+ .../res/values/overlayable.xml                | 25 -------------------
+ 1 file changed, 25 deletions(-)
+ delete mode 100644 packages/SettingsProvider/res/values/overlayable.xml
+
+diff --git a/packages/SettingsProvider/res/values/overlayable.xml b/packages/SettingsProvider/res/values/overlayable.xml
+deleted file mode 100644
+index dc41a77d0e2..00000000000
+--- a/packages/SettingsProvider/res/values/overlayable.xml
++++ /dev/null
+@@ -1,25 +0,0 @@
+-<?xml version="1.0" encoding="utf-8" ?>
+-<!-- Copyright (C) 2019 The Android Open Source Project
+-
+-     Licensed under the Apache License, Version 2.0 (the "License");
+-     you may not use this file except in compliance with the License.
+-     You may obtain a copy of the License at
+-
+-          http://www.apache.org/licenses/LICENSE-2.0
+-
+-     Unless required by applicable law or agreed to in writing, software
+-     distributed under the License is distributed on an "AS IS" BASIS,
+-     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-     See the License for the specific language governing permissions and
+-     limitations under the License.
+--->
+-<resources xmlns:android="http://schemas.android.com/apk/res/android">
+-  <overlayable name="SettingsToNotRestore">
+-    <policy type="product|system|vendor">
+-      <item type="array" name="restore_blocked_device_specific_settings" />
+-      <item type="array" name="restore_blocked_global_settings" />
+-      <item type="array" name="restore_blocked_secure_settings" />
+-      <item type="array" name="restore_blocked_system_settings" />
+-    </policy>
+-  </overlayable>
+-</resources>
+-- 
+2.35.1
+

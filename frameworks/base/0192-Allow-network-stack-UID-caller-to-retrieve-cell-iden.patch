@@ -1,0 +1,43 @@
+From 35c84e1293868a7f15ae314c96e07319341ea599 Mon Sep 17 00:00:00 2001
+From: Jack Yu <jackyu@google.com>
+Date: Fri, 24 Jul 2020 12:34:43 -0700
+Subject: [PATCH 192/297] Allow network stack UID caller to retrieve cell
+ identity
+
+For backwards compatibility, we allow phone, system UID to
+access cell identity through getServiceState. Cell broadcast
+service, which is used to be part of telephony, now is running
+under network stack UID. We should consider network stack UID as
+trustable components like system/telephony.
+
+Fix: 157618105
+Test: Manual
+Change-Id: I9b2dfc778752e130f5c7e44c4b2e45b63ac6f918
+(cherry picked from commit 56cfdd1e873c6c7762f9c7a3cde6a321b85c8ce8)
+---
+ .../common/android/telephony/LocationAccessPolicy.java     | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/telephony/common/android/telephony/LocationAccessPolicy.java b/telephony/common/android/telephony/LocationAccessPolicy.java
+index 3048ad7c1fb..1c7a700a96e 100644
+--- a/telephony/common/android/telephony/LocationAccessPolicy.java
++++ b/telephony/common/android/telephony/LocationAccessPolicy.java
+@@ -260,11 +260,12 @@ public final class LocationAccessPolicy {
+     /** Check if location permissions have been granted */
+     public static LocationPermissionResult checkLocationPermission(
+             Context context, LocationPermissionQuery query) {
+-        // Always allow the phone process and system server to access location. This avoid
+-        // breaking legacy code that rely on public-facing APIs to access cell location, and
+-        // it doesn't create an info leak risk because the cell location is stored in the phone
++        // Always allow the phone process, system server, and network stack to access location.
++        // This avoid breaking legacy code that rely on public-facing APIs to access cell location,
++        // and it doesn't create an info leak risk because the cell location is stored in the phone
+         // process anyway, and the system server already has location access.
+         if (query.callingUid == Process.PHONE_UID || query.callingUid == Process.SYSTEM_UID
++                || query.callingUid == Process.NETWORK_STACK_UID
+                 || query.callingUid == Process.ROOT_UID) {
+             return LocationPermissionResult.ALLOWED;
+         }
+-- 
+2.35.1
+

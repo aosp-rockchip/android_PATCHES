@@ -1,0 +1,82 @@
+From be3dd44c62defb96b7464aaf07645d4fae220ffd Mon Sep 17 00:00:00 2001
+From: Jooyung Han <jooyung@google.com>
+Date: Wed, 16 Oct 2019 22:40:26 +0000
+Subject: [PATCH 03/33] Revert "libbinder: Consider VNDK_APEX as vendor stable"
+
+This reverts commit 6b92a6d3830a0f428adf0a2c7ecc53d52c37aa90.
+
+Reason for revert: some targets are broken
+
+Test: m
+Bug: 142773030
+Change-Id: I6109ecf7a73ea77de1e64981d21329c8c3119bcf
+(cherry picked from commit e896c8e4053dbab5461b8dbd32c447572e504dd5)
+---
+ libs/binder/Parcel.cpp                                   | 2 +-
+ libs/binder/include/binder/Stability.h                   | 2 +-
+ .../ndk/include_platform/android/binder_stability.h      | 9 +++------
+ 3 files changed, 5 insertions(+), 8 deletions(-)
+
+diff --git a/libs/binder/Parcel.cpp b/libs/binder/Parcel.cpp
+index 7d9846a3c..b70e57d49 100644
+--- a/libs/binder/Parcel.cpp
++++ b/libs/binder/Parcel.cpp
+@@ -505,7 +505,7 @@ void Parcel::updateWorkSourceRequestHeaderPosition() const {
+     }
+ }
+ 
+-#if defined(__ANDROID_APEX_COM_ANDROID_VNDK_CURRENT__) || (defined(__ANDROID_VNDK__) && !defined(__ANDROID_APEX__))
++#if defined(__ANDROID_VNDK__) && !defined(__ANDROID_APEX__)
+ constexpr int32_t kHeader = B_PACK_CHARS('V', 'N', 'D', 'R');
+ #else
+ constexpr int32_t kHeader = B_PACK_CHARS('S', 'Y', 'S', 'T');
+diff --git a/libs/binder/include/binder/Stability.h b/libs/binder/include/binder/Stability.h
+index b2f51d381..2894482f5 100644
+--- a/libs/binder/include/binder/Stability.h
++++ b/libs/binder/include/binder/Stability.h
+@@ -81,7 +81,7 @@ private:
+         VINTF = 0b111111,
+     };
+ 
+-#if defined(__ANDROID_APEX_COM_ANDROID_VNDK_CURRENT__) || (defined(__ANDROID_VNDK__) && !defined(__ANDROID_APEX__))
++#if defined(__ANDROID_VNDK__) && !defined(__ANDROID_APEX__)
+     static constexpr Level kLocalStability = Level::VENDOR;
+ #else
+     static constexpr Level kLocalStability = Level::SYSTEM;
+diff --git a/libs/binder/ndk/include_platform/android/binder_stability.h b/libs/binder/ndk/include_platform/android/binder_stability.h
+index 2a4ded869..e1a8cfd1f 100644
+--- a/libs/binder/ndk/include_platform/android/binder_stability.h
++++ b/libs/binder/ndk/include_platform/android/binder_stability.h
+@@ -30,8 +30,7 @@ enum {
+     FLAG_PRIVATE_VENDOR = 0x10000000,
+ };
+ 
+-#if defined(__ANDROID_APEX_COM_ANDROID_VNDK_CURRENT__) || \
+-        (defined(__ANDROID_VNDK__) && !defined(__ANDROID_APEX__))
++#if (defined(__ANDROID_VNDK__) && !defined(__ANDROID_APEX__))
+ 
+ enum {
+     FLAG_PRIVATE_LOCAL = FLAG_PRIVATE_VENDOR,
+@@ -46,8 +45,7 @@ static inline void AIBinder_markCompilationUnitStability(AIBinder* binder) {
+     AIBinder_markVendorStability(binder);
+ }
+ 
+-#else  // defined(__ANDROID_APEX_COM_ANDROID_VNDK_CURRENT__) || (defined(__ANDROID_VNDK__) &&
+-       // !defined(__ANDROID_APEX__))
++#else  // defined(__ANDROID_VNDK__) && !defined(__ANDROID_APEX__)
+ 
+ enum {
+     FLAG_PRIVATE_LOCAL = 0,
+@@ -62,8 +60,7 @@ static inline void AIBinder_markCompilationUnitStability(AIBinder* binder) {
+     AIBinder_markSystemStability(binder);
+ }
+ 
+-#endif  // defined(__ANDROID_APEX_COM_ANDROID_VNDK_CURRENT__) || (defined(__ANDROID_VNDK__) &&
+-        // !defined(__ANDROID_APEX__))
++#endif  // defined(__ANDROID_VNDK__) && !defined(__ANDROID_APEX__)
+ 
+ /**
+  * This interface has system<->vendor stability
+-- 
+2.35.1
+

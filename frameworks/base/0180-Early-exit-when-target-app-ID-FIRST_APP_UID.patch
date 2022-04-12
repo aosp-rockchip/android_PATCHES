@@ -1,0 +1,46 @@
+From e79d159e22693f5c863f391248b29289b350b60d Mon Sep 17 00:00:00 2001
+From: Patrick Baumann <patb@google.com>
+Date: Tue, 16 Jun 2020 13:50:58 -0700
+Subject: [PATCH 180/297] Early exit when target app ID < FIRST_APP_UID
+
+This change ensures that we also grant visibility to the framework and
+other settings that are outside of the APPLICATION_UID space.
+
+Fixes: 159152185
+Test: atest com.android.server.pm.UserManagerTest#testAddManagedProfile_withDisallowedPackages
+Change-Id: I00c8390dfa748f90c538a57243b472610886be7b
+(cherry picked from commit 947d63d1158d4727d382a952c8a677859ba1884c)
+---
+ services/core/java/com/android/server/pm/AppsFilter.java       | 1 +
+ .../src/com/android/server/pm/AppsFilterTest.java              | 3 ++-
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/pm/AppsFilter.java b/services/core/java/com/android/server/pm/AppsFilter.java
+index 01e5a469d29..e7e6fe9d6b9 100644
+--- a/services/core/java/com/android/server/pm/AppsFilter.java
++++ b/services/core/java/com/android/server/pm/AppsFilter.java
+@@ -851,6 +851,7 @@ public class AppsFilter {
+         try {
+             int callingAppId = UserHandle.getAppId(callingUid);
+             if (callingAppId < Process.FIRST_APPLICATION_UID
++                    || targetPkgSetting.appId < Process.FIRST_APPLICATION_UID
+                     || callingAppId == targetPkgSetting.appId) {
+                 return false;
+             }
+diff --git a/services/tests/servicestests/src/com/android/server/pm/AppsFilterTest.java b/services/tests/servicestests/src/com/android/server/pm/AppsFilterTest.java
+index eb6b043dbfd..26230949cda 100644
+--- a/services/tests/servicestests/src/com/android/server/pm/AppsFilterTest.java
++++ b/services/tests/servicestests/src/com/android/server/pm/AppsFilterTest.java
+@@ -806,7 +806,8 @@ public class AppsFilterTest {
+ 
+         final SparseArray<int[]> systemFilter =
+                 appsFilter.getVisibilityWhitelist(system, USER_ARRAY, mExisting);
+-        assertThat(toList(systemFilter.get(SYSTEM_USER)), empty());
++        assertThat(toList(systemFilter.get(SYSTEM_USER)),
++                contains(seesNothingAppId, hasProviderAppId, queriesProviderAppId));
+ 
+         final SparseArray<int[]> seesNothingFilter =
+                 appsFilter.getVisibilityWhitelist(seesNothing, USER_ARRAY, mExisting);
+-- 
+2.35.1
+

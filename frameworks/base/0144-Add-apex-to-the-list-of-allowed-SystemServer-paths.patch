@@ -1,0 +1,34 @@
+From 9d592ad5612709518f980a1424b1912dc8cc4a80 Mon Sep 17 00:00:00 2001
+From: Calin Juravle <calin@google.com>
+Date: Thu, 9 Apr 2020 18:02:29 -0700
+Subject: [PATCH 144/297] Add /apex to the list of allowed SystemServer paths
+
+SystemPartitions does not have the /apex mount. We need to do an
+explicit check for it when recording the system server jars.
+
+Test: DexManagerTests, manual
+Bug: 148774920
+Change-Id: I9c92866304d98144cb82f39b3c768948dcf284ea
+(cherry picked from commit 5bb1b8f3ab9ab717c28c8c62b0a97688e0b100f7)
+---
+ services/core/java/com/android/server/pm/dex/DexManager.java | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/services/core/java/com/android/server/pm/dex/DexManager.java b/services/core/java/com/android/server/pm/dex/DexManager.java
+index eb7057dd299..6dcf71e9fbf 100644
+--- a/services/core/java/com/android/server/pm/dex/DexManager.java
++++ b/services/core/java/com/android/server/pm/dex/DexManager.java
+@@ -232,6 +232,10 @@ public class DexManager {
+     private boolean isSystemServerDexPathSupportedForOdex(String dexPath) {
+         ArrayList<PackagePartitions.SystemPartition> partitions =
+                 PackagePartitions.getOrderedPartitions(identity());
++        // First check the apex partition as it's not part of the SystemPartitions.
++        if (dexPath.startsWith("/apex/")) {
++            return true;
++        }
+         for (int i = 0; i < partitions.size(); i++) {
+             if (partitions.get(i).containsPath(dexPath)) {
+                 return true;
+-- 
+2.35.1
+

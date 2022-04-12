@@ -1,0 +1,173 @@
+From 973ce688273473ee7919ea4944bd276e5a5b87f2 Mon Sep 17 00:00:00 2001
+From: hehua <hh@rock-chips.com>
+Date: Thu, 22 Nov 2018 11:55:27 +0800
+Subject: [PATCH 22/36] [hw_output] : fix bug in hw_output.cpp
+
+Change-Id: Idc79e59251151efa1117589ef899a6a090baa566
+Signed-off-by: hehua <hh@rock-chips.com>
+---
+ modules/hw_output/hw_output.cpp | 62 +++++++++++++++++++--------------
+ 1 file changed, 35 insertions(+), 27 deletions(-)
+
+diff --git a/modules/hw_output/hw_output.cpp b/modules/hw_output/hw_output.cpp
+index c5df5095..72d415c9 100755
+--- a/modules/hw_output/hw_output.cpp
++++ b/modules/hw_output/hw_output.cpp
+@@ -42,7 +42,6 @@
+ 
+ using namespace android;
+ /*****************************************************************************/
+-static int timeline=0;
+ typedef struct hw_output_private {
+     hw_output_device_t device;
+ 
+@@ -869,14 +868,15 @@ static int hw_output_set_mode(struct hw_output_device*, int dpy, const char* mod
+     ALOGD("nativeSetMode %s display %d", mode, dpy);
+ 
+     if (strcmp(mode, property) !=0) {
+-        char tmp[128];
+-
+-        timeline++;
+-        sprintf(tmp, "%d", timeline);
+         if (dpy == HWC_DISPLAY_PRIMARY)
+             property_set("persist.vendor.resolution.main", mode);
+         else 
+             property_set("persist.vendor.resolution.aux", mode);
++
++        int timeline = property_get_int32("vendor.display.timeline", -1);
++        timeline++;
++        char tmp[128];
++        snprintf(tmp,128,"%d",timeline);
+         property_set("vendor.display.timeline", tmp);
+     }
+     return 0;
+@@ -887,14 +887,14 @@ static int hw_output_set_3d_mode(struct hw_output_device*, const char* mode)
+     char property[PROPERTY_VALUE_MAX];
+     property_get("vendor.3d_resolution.main", property, "null");
+     if (strcmp(mode, property) !=0) {
+-        char tmp[128];
++        property_set("vendor.3d_resolution.main", mode);
+ 
++        int timeline = property_get_int32("vendor.display.timeline", -1);
+         timeline++;
+-        snprintf(tmp,128, "%d", timeline);
+-
+-        ALOGV("%s: setprop vendor.3d_resolution.main %s",__FUNCTION__,mode);
+-        property_set("vendor.3d_resolution.main", mode);
++        char tmp[128];
++        snprintf(tmp,128,"%d",timeline);
+         property_set("vendor.display.timeline", tmp);
++        ALOGD("%s: setprop vendor.3d_resolution.main %s,timeline = %s",__FUNCTION__,mode,tmp);
+     }
+     return 0;
+ }
+@@ -932,9 +932,10 @@ static int hw_output_set_brightness(struct hw_output_device*, int dpy, int brigh
+             property_set("persist.vendor.brightness.main", tmp);
+         else
+             property_set("persist.vendor.brightness.aux", tmp);
++
++        int timeline = property_get_int32("vendor.display.timeline", -1);
+         timeline++;
+-        memset(tmp, 0, sizeof(tmp));
+-        sprintf(tmp, "%d", timeline);
++        snprintf(tmp,128,"%d",timeline);
+         property_set("vendor.display.timeline", tmp);
+     }
+     return 0;
+@@ -957,9 +958,10 @@ static int hw_output_set_contrast(struct hw_output_device*, int dpy, int contras
+             property_set("persist.vendor.contrast.main", tmp);
+         else
+             property_set("persist.vendor.contrast.aux", tmp);
++
++        int timeline = property_get_int32("vendor.display.timeline", -1);
+         timeline++;
+-        memset(tmp, 0, sizeof(tmp));
+-        sprintf(tmp, "%d", timeline);
++        snprintf(tmp,128,"%d",timeline);
+         property_set("vendor.display.timeline", tmp);
+     }
+     return 0;
+@@ -982,9 +984,10 @@ static int hw_output_set_sat(struct hw_output_device*, int dpy, int sat)
+             property_set("persist.vendor.saturation.main", tmp);
+         else
+             property_set("persist.vendor.saturation.aux", tmp);
++
++        int timeline = property_get_int32("vendor.display.timeline", -1);
+         timeline++;
+-        memset(tmp, 0, sizeof(tmp));
+-        sprintf(tmp, "%d", timeline);
++        snprintf(tmp,128,"%d",timeline);
+         property_set("vendor.display.timeline", tmp);
+     }
+     return 0;
+@@ -1007,9 +1010,10 @@ static int hw_output_set_hue(struct hw_output_device*, int dpy, int hue)
+             property_set("persist.vendor.hue.main", tmp);
+         else
+             property_set("persist.vendor.hue.aux", tmp);
++
++        int timeline = property_get_int32("vendor.display.timeline", -1);
+         timeline++;
+-        memset(tmp, 0, sizeof(tmp));
+-        sprintf(tmp, "%d", timeline);
++        snprintf(tmp,128,"%d",timeline);
+         property_set("vendor.display.timeline", tmp);
+     }
+     return 0;
+@@ -1041,13 +1045,14 @@ static int hw_output_set_screen_scale(struct hw_output_device*, int dpy, int dir
+ 
+     if (strcmp(property, overscan) != 0) {
+         char tmp[128];
+-
+-        timeline++;
+-        sprintf(tmp, "%d", timeline);
+         if(dpy == HWC_DISPLAY_PRIMARY)
+             property_set("persist.vendor.overscan.main", overscan);
+         else
+             property_set("persist.vendor.overscan.aux", overscan);
++
++        int timeline = property_get_int32("vendor.display.timeline", -1);
++        timeline++;
++        snprintf(tmp,128,"%d",timeline);
+         property_set("vendor.display.timeline", tmp);
+     }
+ 
+@@ -1067,13 +1072,14 @@ static int hw_output_set_hdr_mode(struct hw_output_device*, int dpy, int hdr_mod
+     }
+ 
+     if (atoi(property) != hdr_mode) {
+-        timeline++;
+-        memset(tmp, 0, sizeof(tmp));
+-        sprintf(tmp, "%d", timeline);
+         if (dpy == HWC_DISPLAY_PRIMARY)
+             property_set("persist.vendor.hdr_mode.main", tmp);
+         else
+             property_set("persist.vendor.hdr_mode.aux", tmp);
++
++        int timeline = property_get_int32("vendor.display.timeline", -1);
++        timeline++;
++        snprintf(tmp,128,"%d",timeline);
+         property_set("vendor.display.timeline", tmp);
+     }
+     return 0;
+@@ -1091,13 +1097,15 @@ static int hw_output_set_color_mode(struct hw_output_device*, int dpy, const cha
+     ALOGD("hw_output_set_color_mode %s display %d ", color_mode, dpy);
+ 
+     if (strcmp(color_mode, property) !=0) {
+-        char tmp[128];
+-        timeline++;
+-        sprintf(tmp, "%d", timeline);
+         if (dpy == HWC_DISPLAY_PRIMARY)
+             property_set("persist.vendor.color.main", color_mode);
+         else
+             property_set("persist.vendor.color.aux", color_mode);
++
++        int timeline = property_get_int32("vendor.display.timeline", -1);
++        timeline++;
++        char tmp[128];
++        snprintf(tmp,128,"%d",timeline);
+         property_set("vendor.display.timeline", tmp);
+     }
+     return 0;
+-- 
+2.35.1
+

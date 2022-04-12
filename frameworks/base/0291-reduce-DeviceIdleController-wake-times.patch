@@ -1,0 +1,32 @@
+From e59e72a3e0fdcad65cb25ba23ad6090c9b2da1a4 Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Wed, 27 Jan 2021 16:55:37 +0800
+Subject: [PATCH 291/297] reduce DeviceIdleController wake times
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: Iee594573587a7be069a59c2ff74fa4543979483a
+---
+ .../service/java/com/android/server/DeviceIdleController.java | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/apex/jobscheduler/service/java/com/android/server/DeviceIdleController.java b/apex/jobscheduler/service/java/com/android/server/DeviceIdleController.java
+index ac58f3d6a94..5f644eff722 100644
+--- a/apex/jobscheduler/service/java/com/android/server/DeviceIdleController.java
++++ b/apex/jobscheduler/service/java/com/android/server/DeviceIdleController.java
+@@ -1177,11 +1177,11 @@ public class DeviceIdleController extends SystemService
+                 LIGHT_PRE_IDLE_TIMEOUT = mParser.getDurationMillis(KEY_LIGHT_PRE_IDLE_TIMEOUT,
+                         !COMPRESS_TIME ? 3 * 60 * 1000L : 30 * 1000L);
+                 LIGHT_IDLE_TIMEOUT = mParser.getDurationMillis(KEY_LIGHT_IDLE_TIMEOUT,
+-                        !COMPRESS_TIME ? 5 * 60 * 1000L : 15 * 1000L);
++                        !COMPRESS_TIME ? 15 * 60 * 1000L : 15 * 1000L);
+                 LIGHT_IDLE_FACTOR = mParser.getFloat(KEY_LIGHT_IDLE_FACTOR,
+                         2f);
+                 LIGHT_MAX_IDLE_TIMEOUT = mParser.getDurationMillis(KEY_LIGHT_MAX_IDLE_TIMEOUT,
+-                        !COMPRESS_TIME ? 15 * 60 * 1000L : 60 * 1000L);
++                        !COMPRESS_TIME ? 30 * 60 * 1000L : 60 * 1000L);
+                 LIGHT_IDLE_MAINTENANCE_MIN_BUDGET = mParser.getDurationMillis(
+                         KEY_LIGHT_IDLE_MAINTENANCE_MIN_BUDGET,
+                         !COMPRESS_TIME ? 1 * 60 * 1000L : 15 * 1000L);
+-- 
+2.35.1
+

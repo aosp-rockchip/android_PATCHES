@@ -1,0 +1,199 @@
+From 0abadeca7f5ba07837bdca7a849358b501ffb5cd Mon Sep 17 00:00:00 2001
+From: Tiger Huang <tigerhuang@google.com>
+Date: Fri, 10 Apr 2020 02:07:30 +0800
+Subject: [PATCH 147/297] Re-send the IME control after IME is re-created
+
+The control would be revoked when setting window to the insets source
+provider. So this CL updates the control target again after IME window
+is set to the provider, and also refines the timing about updating IME
+control target.
+
+Fix: 152185205
+Fix: 152698568
+Fix: 153831557
+Test: atest NexusLauncherTests:MemoryTests MultiDisplayClientTests
+Test: 1. Add Traditional Chinese as a secondary language in Setitngs.
+      2. Launch soft keyboard in Messages and use ZhuYin keyboard.
+      3. Tap microphone icon repeatedly (this will re-create IME).
+      4. See if the soft keyboard is missing.
+Test: Also make sure b/149920295 and b/152410995 stay fixed.
+Change-Id: Ic113f564e964ebb0ab3375cf1df78b3f912169da
+(cherry picked from commit fdec32c83f7dd828bb962833f220bbf5bc5f7d71)
+---
+ .../com/android/server/wm/DisplayContent.java | 36 ++++++++++++-------
+ .../server/wm/WindowManagerService.java       | 14 +++++---
+ .../com/android/server/wm/WindowState.java    |  5 +++
+ 3 files changed, 38 insertions(+), 17 deletions(-)
+
+diff --git a/services/core/java/com/android/server/wm/DisplayContent.java b/services/core/java/com/android/server/wm/DisplayContent.java
+index 8d46a6769bc..c24d83efe5a 100644
+--- a/services/core/java/com/android/server/wm/DisplayContent.java
++++ b/services/core/java/com/android/server/wm/DisplayContent.java
+@@ -73,7 +73,6 @@ import static android.view.WindowManager.LayoutParams.TYPE_WALLPAPER;
+ import static android.view.WindowManager.TRANSIT_ACTIVITY_OPEN;
+ import static android.view.WindowManager.TRANSIT_TASK_OPEN;
+ import static android.view.WindowManager.TRANSIT_TASK_TO_FRONT;
+-import static android.window.DisplayAreaOrganizer.FEATURE_DEFAULT_TASK_CONTAINER;
+ 
+ import static com.android.server.policy.WindowManagerPolicy.FINISH_LAYOUT_REDO_ANIM;
+ import static com.android.server.policy.WindowManagerPolicy.FINISH_LAYOUT_REDO_CONFIG;
+@@ -199,7 +198,6 @@ import android.view.ViewRootImpl;
+ import android.view.WindowInsets;
+ import android.view.WindowManager;
+ import android.view.WindowManagerPolicyConstants.PointerEventListener;
+-import android.window.ITaskOrganizer;
+ 
+ import com.android.internal.annotations.VisibleForTesting;
+ import com.android.internal.logging.MetricsLogger;
+@@ -539,6 +537,15 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
+      */
+     WindowState mInputMethodTarget;
+ 
++    /**
++     * The window which receives input from the input method. This is also a candidate of the
++     * input method control target.
++     */
++    WindowState mInputMethodInputTarget;
++
++    /**
++     * This controls the visibility and animation of the input method window.
++     */
+     InsetsControlTarget mInputMethodControlTarget;
+ 
+     /** If true hold off on modifying the animation layer of mInputMethodTarget */
+@@ -3243,6 +3250,7 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
+         mInsetsStateController.getSourceProvider(ITYPE_IME).setWindow(win,
+                 null /* frameProvider */, null /* imeFrameProvider */);
+         computeImeTarget(true /* updateImeTarget */);
++        updateImeControlTarget();
+     }
+ 
+     /**
+@@ -3422,8 +3430,6 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
+     }
+ 
+     private void setInputMethodTarget(WindowState target, boolean targetWaitingAnim) {
+-        // Always update control target. This is needed to handle rotation.
+-        updateImeControlTarget(target);
+         if (target == mInputMethodTarget && mInputMethodTargetWaitingAnim == targetWaitingAnim) {
+             return;
+         }
+@@ -3432,22 +3438,28 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
+         mInputMethodTargetWaitingAnim = targetWaitingAnim;
+         assignWindowLayers(false /* setLayoutNeeded */);
+         updateImeParent();
++        updateImeControlTarget();
+     }
+ 
+     /**
+-     * IME control target is the window that controls the IME visibility and animation.
+-     * This window is same as the window on which startInput is called.
+-     * @param target the window that receives IME control. This is ignored if we aren't attaching
+-     *               the IME to an app (eg. when in multi-window mode).
++     * The IME input target is the window which receives input from IME. It is also a candidate
++     * which controls the visibility and animation of the input method window.
+      *
+-     * @see #getImeControlTarget()
++     * @param target the window that receives input from IME.
+      */
+-    void updateImeControlTarget(InsetsControlTarget target) {
++    void setInputMethodInputTarget(WindowState target) {
++        if (mInputMethodInputTarget != target) {
++            mInputMethodInputTarget = target;
++            updateImeControlTarget();
++        }
++    }
++
++    private void updateImeControlTarget() {
+         if (!isImeAttachedToApp() && mRemoteInsetsControlTarget != null) {
+             mInputMethodControlTarget = mRemoteInsetsControlTarget;
+         } else {
+-            // Otherwise, we just use the ime target
+-            mInputMethodControlTarget = target;
++            // Otherwise, we just use the ime input target
++            mInputMethodControlTarget = mInputMethodInputTarget;
+         }
+         mInsetsStateController.onImeControlTargetChanged(mInputMethodControlTarget);
+     }
+diff --git a/services/core/java/com/android/server/wm/WindowManagerService.java b/services/core/java/com/android/server/wm/WindowManagerService.java
+index 9d879765f8d..fe70643e246 100644
+--- a/services/core/java/com/android/server/wm/WindowManagerService.java
++++ b/services/core/java/com/android/server/wm/WindowManagerService.java
+@@ -1696,15 +1696,14 @@ public class WindowManagerService extends IWindowManager.Stub
+             }
+             displayContent.getInputMonitor().updateInputWindowsLw(false /*force*/);
+ 
+-            getInsetsSourceControls(win, outActiveControls);
+-
+             ProtoLog.v(WM_DEBUG_ADD_REMOVE, "addWindow: New client %s"
+                     + ": window=%s Callers=%s", client.asBinder(), win, Debug.getCallers(5));
+ 
+-
+             if (win.isVisibleOrAdding() && displayContent.updateOrientation()) {
+                 displayContent.sendNewConfiguration();
+             }
++
++            getInsetsSourceControls(win, outActiveControls);
+         }
+ 
+         Binder.restoreCallingIdentity(origId);
+@@ -2400,7 +2399,6 @@ public class WindowManagerService extends IWindowManager.Stub
+             outCutout.set(win.getWmDisplayCutout().getDisplayCutout());
+             outBackdropFrame.set(win.getBackdropFrame(win.getFrameLw()));
+             outInsetsState.set(win.getInsetsState(), win.isClientLocal());
+-            getInsetsSourceControls(win, outActiveControls);
+             if (DEBUG) {
+                 Slog.v(TAG_WM, "Relayout given client " + client.asBinder()
+                         + ", requestedWidth=" + requestedWidth
+@@ -2431,6 +2429,7 @@ public class WindowManagerService extends IWindowManager.Stub
+                 outSurfaceSize.set(winAnimator.mSurfaceController.getWidth(),
+                                          winAnimator.mSurfaceController.getHeight());
+             }
++            getInsetsSourceControls(win, outActiveControls);
+         }
+ 
+         Binder.restoreCallingIdentity(origId);
+@@ -6104,10 +6103,15 @@ public class WindowManagerService extends IWindowManager.Stub
+         mRoot.forAllDisplays(dc -> {
+             final int displayId = dc.getDisplayId();
+             final WindowState inputMethodTarget = dc.mInputMethodTarget;
++            final WindowState inputMethodInputTarget = dc.mInputMethodInputTarget;
+             if (inputMethodTarget != null) {
+                 pw.print("  mInputMethodTarget in display# "); pw.print(displayId);
+                 pw.print(' '); pw.println(inputMethodTarget);
+             }
++            if (inputMethodInputTarget != null) {
++                pw.print("  mInputMethodInputTarget in display# "); pw.print(displayId);
++                pw.print(' '); pw.println(inputMethodInputTarget);
++            }
+             if (mAccessibilityController != null) {
+                 final Region magnificationRegion = new Region();
+                 mAccessibilityController.getMagnificationRegionLocked(displayId,
+@@ -7359,7 +7363,7 @@ public class WindowManagerService extends IWindowManager.Stub
+             synchronized (mGlobalLock) {
+                 final WindowState imeTarget = mWindowMap.get(imeTargetWindowToken);
+                 if (imeTarget != null) {
+-                    imeTarget.getDisplayContent().updateImeControlTarget(imeTarget);
++                    imeTarget.getDisplayContent().setInputMethodInputTarget(imeTarget);
+                 }
+             }
+         }
+diff --git a/services/core/java/com/android/server/wm/WindowState.java b/services/core/java/com/android/server/wm/WindowState.java
+index c11c29b5deb..2e1b907e71b 100644
+--- a/services/core/java/com/android/server/wm/WindowState.java
++++ b/services/core/java/com/android/server/wm/WindowState.java
+@@ -1469,6 +1469,11 @@ class WindowState extends WindowContainer<WindowState> implements WindowManagerP
+ 
+     @Override
+     void onDisplayChanged(DisplayContent dc) {
++        if (dc != null && mDisplayContent != null
++                && mDisplayContent.mInputMethodInputTarget == this) {
++            dc.setInputMethodInputTarget(mDisplayContent.mInputMethodInputTarget);
++            mDisplayContent.mInputMethodInputTarget = null;
++        }
+         super.onDisplayChanged(dc);
+         // Window was not laid out for this display yet, so make sure mLayoutSeq does not match.
+         if (dc != null && mInputWindowHandle.displayId != dc.getDisplayId()) {
+-- 
+2.35.1
+

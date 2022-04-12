@@ -1,0 +1,59 @@
+From b2f4de1a64fb42f67a5b8e16984fd484c8922dc7 Mon Sep 17 00:00:00 2001
+From: Mohammad Samiul Islam <samiul@google.com>
+Date: Thu, 15 Oct 2020 01:05:13 +0100
+Subject: [PATCH 260/297] Prevent extra sessions owned by staged install from
+ living across restarts
+
+If system server crashes due to external reasons (not due to
+exception in pre-reboot verifications), then the staged install will be
+retried. But, any extra sessions that have not been cleaned up will
+linger on until removed due to old age.
+
+And if the crash keeps on happening every time at the worst possible
+time, then we can have 1024 extra sessions created all with copies of
+apks in it. It will waste a lot of user's space.
+
+With this CL, we cleanup any leftover extra sessions whenever system
+server is restarted.
+
+Bug: 170784748
+Test: manual
+Test: verified that without this CL if system server crashses after
+extra sessions are created but before they are cleaned up, then folders
+start to pile up in /data/app folder with copy of the apks inside.
+
+Change-Id: I5c19093853e28c668f882d37691959b1ac2464cc
+---
+ .../com/android/server/pm/PackageInstallerService.java   | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/services/core/java/com/android/server/pm/PackageInstallerService.java b/services/core/java/com/android/server/pm/PackageInstallerService.java
+index 330f9952350..56ef468407c 100644
+--- a/services/core/java/com/android/server/pm/PackageInstallerService.java
++++ b/services/core/java/com/android/server/pm/PackageInstallerService.java
+@@ -393,6 +393,8 @@ public class PackageInstallerService extends IPackageInstaller.Stub implements
+                             Slog.w(TAG, "Abandoning old session created at "
+                                         + session.createdMillis);
+                             valid = false;
++                        } else if (isExtraSessionForStagedInstall(session)) {
++                            valid = false;
+                         } else {
+                             valid = true;
+                         }
+@@ -423,6 +425,13 @@ public class PackageInstallerService extends IPackageInstaller.Stub implements
+         }
+     }
+ 
++    // Extra sessions are created during staged install on temporary basis. They should not be
++    // allowed to live across system server restart.
++    private boolean isExtraSessionForStagedInstall(PackageInstallerSession session) {
++        return (session.params.installFlags & PackageManager.INSTALL_DRY_RUN) != 0
++                || (session.params.installFlags & PackageManager.INSTALL_DISABLE_VERIFICATION) != 0;
++    }
++
+     @GuardedBy("mSessions")
+     private void addHistoricalSessionLocked(PackageInstallerSession session) {
+         CharArrayWriter writer = new CharArrayWriter();
+-- 
+2.35.1
+

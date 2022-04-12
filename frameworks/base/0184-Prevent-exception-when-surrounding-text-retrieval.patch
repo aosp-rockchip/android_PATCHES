@@ -1,0 +1,99 @@
+From bb2eb8cc3206a37d5d36e09aaec648675fe77249 Mon Sep 17 00:00:00 2001
+From: Wilson Wu <wilsonwu@google.com>
+Date: Fri, 17 Jul 2020 23:50:45 +0800
+Subject: [PATCH 184/297] Prevent exception when surrounding text retrieval
+
+We use same reference from TextView to set the initial
+surrounding text. The actual surrounding text may be
+modified before retrieval since the mSurroundingText
+is mutable. Use a copy of subText should avoid this
+concurrent issue.
+
+Bug: 160390184
+Test: atest FrameworksCoreTests:EditorInfoTest
+Change-Id: I6082a4cae2fcdc4c529dc14e2e5e7a45ab1aae4d
+(cherry picked from commit 0ebe70cb0fa685693d7834b4b4ee94515149c8fb)
+---
+ .../android/view/inputmethod/EditorInfo.java  | 10 ++++++----
+ .../view/inputmethod/EditorInfoTest.java      | 19 +++++++++++++++++++
+ 2 files changed, 25 insertions(+), 4 deletions(-)
+
+diff --git a/core/java/android/view/inputmethod/EditorInfo.java b/core/java/android/view/inputmethod/EditorInfo.java
+index 07fef76961f..c5f2299e4f8 100644
+--- a/core/java/android/view/inputmethod/EditorInfo.java
++++ b/core/java/android/view/inputmethod/EditorInfo.java
+@@ -27,6 +27,7 @@ import android.os.LocaleList;
+ import android.os.Parcel;
+ import android.os.Parcelable;
+ import android.os.UserHandle;
++import android.text.Editable;
+ import android.text.InputType;
+ import android.text.TextUtils;
+ import android.util.Printer;
+@@ -567,7 +568,8 @@ public class EditorInfo implements InputType, Parcelable {
+      *                      editor wants to trim out the first 10 chars, subTextStart should be 10.
+      */
+     public void setInitialSurroundingSubText(@NonNull CharSequence subText, int subTextStart) {
+-        Objects.requireNonNull(subText);
++        CharSequence newSubText = Editable.Factory.getInstance().newEditable(subText);
++        Objects.requireNonNull(newSubText);
+ 
+         // Swap selection start and end if necessary.
+         final int subTextSelStart = initialSelStart > initialSelEnd
+@@ -575,7 +577,7 @@ public class EditorInfo implements InputType, Parcelable {
+         final int subTextSelEnd = initialSelStart > initialSelEnd
+                 ? initialSelStart - subTextStart : initialSelEnd - subTextStart;
+ 
+-        final int subTextLength = subText.length();
++        final int subTextLength = newSubText.length();
+         // Unknown or invalid selection.
+         if (subTextStart < 0 || subTextSelStart < 0 || subTextSelEnd > subTextLength) {
+             mInitialSurroundingText = new InitialSurroundingText();
+@@ -589,12 +591,12 @@ public class EditorInfo implements InputType, Parcelable {
+         }
+ 
+         if (subTextLength <= MEMORY_EFFICIENT_TEXT_LENGTH) {
+-            mInitialSurroundingText = new InitialSurroundingText(subText, subTextSelStart,
++            mInitialSurroundingText = new InitialSurroundingText(newSubText, subTextSelStart,
+                     subTextSelEnd);
+             return;
+         }
+ 
+-        trimLongSurroundingText(subText, subTextSelStart, subTextSelEnd);
++        trimLongSurroundingText(newSubText, subTextSelStart, subTextSelEnd);
+     }
+ 
+     /**
+diff --git a/core/tests/coretests/src/android/view/inputmethod/EditorInfoTest.java b/core/tests/coretests/src/android/view/inputmethod/EditorInfoTest.java
+index 02ffc00dcba..93de03adfa8 100644
+--- a/core/tests/coretests/src/android/view/inputmethod/EditorInfoTest.java
++++ b/core/tests/coretests/src/android/view/inputmethod/EditorInfoTest.java
+@@ -264,6 +264,25 @@ public class EditorInfoTest {
+                         InputConnection.GET_TEXT_WITH_STYLES)));
+     }
+ 
++    @Test
++    public void surroundingTextRetrieval_writeToParcel_noException() {
++        StringBuilder sb = new StringBuilder("abcdefg");
++        Parcel parcel = Parcel.obtain();
++        EditorInfo editorInfo = new EditorInfo();
++        editorInfo.initialSelStart = 2;
++        editorInfo.initialSelEnd = 5;
++        editorInfo.inputType = EditorInfo.TYPE_CLASS_TEXT;
++
++        editorInfo.setInitialSurroundingText(sb);
++        sb.setLength(0);
++        editorInfo.writeToParcel(parcel, 0);
++
++        try {
++            editorInfo.getInitialTextBeforeCursor(60, 1);
++            fail("Test shouldn't have exception");
++        } catch (AssertionError e) { }
++    }
++
+     private static void assertExpectedTextLength(EditorInfo editorInfo,
+             @Nullable Integer expectBeforeCursorLength, @Nullable Integer expectSelectionLength,
+             @Nullable Integer expectAfterCursorLength) {
+-- 
+2.35.1
+

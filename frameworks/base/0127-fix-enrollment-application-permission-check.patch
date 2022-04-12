@@ -1,0 +1,202 @@
+From 94c8b2175831d8d6e758c44b5a24dcfed17e2a2b Mon Sep 17 00:00:00 2001
+From: Nicholas Ambur <nambur@google.com>
+Date: Thu, 19 Mar 2020 21:16:10 -0700
+Subject: [PATCH 127/297] fix enrollment application permission check
+
+Remove check associated with enrollment application UID, and allow
+enrollment applications holding the KEYPHRASE_ENROLLMENT_APPLICATION
+privledged permission to enroll.
+
+Bug: 151405284
+Test: Confirm enrollment from both enrollment application and active
+voiceinteraction service. Confirm enrollment can still occurr after
+system user switch.
+
+Change-Id: I8686f705fe5405523004eef5de834282a7382464
+(cherry picked from commit 55603081c1db07a802ef407c7749fefab03af577)
+---
+ .../soundtrigger/KeyphraseEnrollmentInfo.java | 21 ---------
+ .../VoiceInteractionManagerService.java       | 45 +++++--------------
+ 2 files changed, 11 insertions(+), 55 deletions(-)
+
+diff --git a/core/java/android/hardware/soundtrigger/KeyphraseEnrollmentInfo.java b/core/java/android/hardware/soundtrigger/KeyphraseEnrollmentInfo.java
+index 1aeb76a396b..05935452e8a 100644
+--- a/core/java/android/hardware/soundtrigger/KeyphraseEnrollmentInfo.java
++++ b/core/java/android/hardware/soundtrigger/KeyphraseEnrollmentInfo.java
+@@ -43,7 +43,6 @@ import java.util.LinkedList;
+ import java.util.List;
+ import java.util.Locale;
+ import java.util.Map;
+-import java.util.Set;
+ 
+ /**
+  * Enrollment information about the different available keyphrases.
+@@ -119,11 +118,6 @@ public class KeyphraseEnrollmentInfo {
+      */
+     private final KeyphraseMetadata[] mKeyphrases;
+ 
+-    /**
+-     * Set of UIDs associated with the detected enrollment applications.
+-     */
+-    private final Set<Integer> mEnrollmentApplicationUids;
+-
+     /**
+      * Map between KeyphraseMetadata and the package name of the enrollment app that provides it.
+      */
+@@ -142,13 +136,11 @@ public class KeyphraseEnrollmentInfo {
+             mParseError = "No enrollment applications found";
+             mKeyphrasePackageMap = Collections.<KeyphraseMetadata, String>emptyMap();
+             mKeyphrases = null;
+-            mEnrollmentApplicationUids = Collections.emptySet();
+             return;
+         }
+ 
+         List<String> parseErrors = new LinkedList<String>();
+         mKeyphrasePackageMap = new HashMap<KeyphraseMetadata, String>();
+-        mEnrollmentApplicationUids = new ArraySet<>();
+         for (ResolveInfo ri : ris) {
+             try {
+                 ApplicationInfo ai = pm.getApplicationInfo(
+@@ -170,7 +162,6 @@ public class KeyphraseEnrollmentInfo {
+                         getKeyphraseMetadataFromApplicationInfo(pm, ai, parseErrors);
+                 if (metadata != null) {
+                     mKeyphrasePackageMap.put(metadata, ai.packageName);
+-                    mEnrollmentApplicationUids.add(ai.uid);
+                 }
+             } catch (PackageManager.NameNotFoundException e) {
+                 String error = "error parsing voice enrollment meta-data for "
+@@ -373,21 +364,9 @@ public class KeyphraseEnrollmentInfo {
+         return null;
+     }
+ 
+-    /**
+-     * Tests if the input UID matches a supported enrollment application.
+-     *
+-     * @param uid UID of the caller to test against.
+-     * @return Returns true if input uid matches the uid of a supported enrollment application.
+-     *         False if not.
+-     */
+-    public boolean isUidSupportedEnrollmentApplication(int uid) {
+-        return mEnrollmentApplicationUids.contains(uid);
+-    }
+-
+     @Override
+     public String toString() {
+         return "KeyphraseEnrollmentInfo [KeyphrasePackageMap=" + mKeyphrasePackageMap.toString()
+-                + ", enrollmentApplicationUids=" + mEnrollmentApplicationUids.toString()
+                 + ", ParseError=" + mParseError + "]";
+     }
+ }
+diff --git a/services/voiceinteraction/java/com/android/server/voiceinteraction/VoiceInteractionManagerService.java b/services/voiceinteraction/java/com/android/server/voiceinteraction/VoiceInteractionManagerService.java
+index 0eba07b118b..70c7d509097 100644
+--- a/services/voiceinteraction/java/com/android/server/voiceinteraction/VoiceInteractionManagerService.java
++++ b/services/voiceinteraction/java/com/android/server/voiceinteraction/VoiceInteractionManagerService.java
+@@ -41,7 +41,6 @@ import android.content.pm.UserInfo;
+ import android.content.res.Resources;
+ import android.database.ContentObserver;
+ import android.hardware.soundtrigger.IRecognitionStatusCallback;
+-import android.hardware.soundtrigger.KeyphraseEnrollmentInfo;
+ import android.hardware.soundtrigger.KeyphraseMetadata;
+ import android.hardware.soundtrigger.ModelParams;
+ import android.hardware.soundtrigger.SoundTrigger;
+@@ -100,7 +99,7 @@ import java.util.concurrent.Executor;
+  * SystemService that publishes an IVoiceInteractionManagerService.
+  */
+ public class VoiceInteractionManagerService extends SystemService {
+-    static final String TAG = "VoiceInteractionManagerService";
++    static final String TAG = "VoiceInteractionManager";
+     static final boolean DEBUG = false;
+ 
+     final Context mContext;
+@@ -172,17 +171,17 @@ public class VoiceInteractionManagerService extends SystemService {
+     }
+ 
+     @Override
+-    public void onStartUser(@NonNull UserInfo userInfo) {
+-        if (DEBUG_USER) Slog.d(TAG, "onStartUser(" + userInfo + ")");
++    public void onUserStarting(@NonNull TargetUser user) {
++        if (DEBUG_USER) Slog.d(TAG, "onUserStarting(" + user + ")");
+ 
+-        mServiceStub.initForUser(userInfo.id);
++        mServiceStub.initForUser(user.getUserIdentifier());
+     }
+ 
+     @Override
+-    public void onUnlockUser(@NonNull UserInfo userInfo) {
+-        if (DEBUG_USER) Slog.d(TAG, "onUnlockUser(" + userInfo + ")");
++    public void onUserUnlocking(@NonNull TargetUser user) {
++        if (DEBUG_USER) Slog.d(TAG, "onUserUnlocking(" + user + ")");
+ 
+-        mServiceStub.initForUser(userInfo.id);
++        mServiceStub.initForUser(user.getUserIdentifier());
+         mServiceStub.switchImplementationIfNeeded(false);
+     }
+ 
+@@ -224,7 +223,6 @@ public class VoiceInteractionManagerService extends SystemService {
+     class VoiceInteractionManagerServiceStub extends IVoiceInteractionManagerService.Stub {
+ 
+         VoiceInteractionManagerServiceImpl mImpl;
+-        KeyphraseEnrollmentInfo mEnrollmentApplicationInfo;
+ 
+         private boolean mSafeMode;
+         private int mCurUser;
+@@ -449,15 +447,6 @@ public class VoiceInteractionManagerService extends SystemService {
+             }
+         }
+ 
+-        private void getOrCreateEnrollmentApplicationInfo() {
+-            synchronized (this) {
+-                if (mEnrollmentApplicationInfo == null) {
+-                    mEnrollmentApplicationInfo = new KeyphraseEnrollmentInfo(
+-                            mContext.getPackageManager());
+-                }
+-            }
+-        }
+-
+         private void setCurrentUserLocked(@UserIdInt int userHandle) {
+             mCurUser = userHandle;
+             final UserInfo userInfo = mUserManagerInternal.getUserInfo(mCurUser);
+@@ -1391,11 +1380,6 @@ public class VoiceInteractionManagerService extends SystemService {
+                 pw.println("  mCurUserUnlocked: " + mCurUserUnlocked);
+                 pw.println("  mCurUserSupported: " + mCurUserSupported);
+                 dumpSupportedUsers(pw, "  ");
+-                if (mEnrollmentApplicationInfo == null) {
+-                    pw.println("  (No enrollment application info)");
+-                } else {
+-                    pw.println("  " + mEnrollmentApplicationInfo.toString());
+-                }
+                 mDbHelper.dump(pw);
+                 if (mImpl == null) {
+                     pw.println("  (No active implementation)");
+@@ -1440,11 +1424,10 @@ public class VoiceInteractionManagerService extends SystemService {
+         }
+ 
+         private void enforceCallerAllowedToEnrollVoiceModel() {
+-            enforceCallingPermission(Manifest.permission.MANAGE_VOICE_KEYPHRASES);
+-            if (!isCallerCurrentVoiceInteractionService()
+-                    && !isCallerTrustedEnrollmentApplication()) {
+-                throw new SecurityException("Caller is required to be the current voice interaction"
+-                        + " service or a system enrollment application to enroll voice models");
++            if (isCallerCurrentVoiceInteractionService()) {
++                enforceCallingPermission(Manifest.permission.MANAGE_VOICE_KEYPHRASES);
++            } else {
++                enforceCallingPermission(Manifest.permission.KEYPHRASE_ENROLLMENT_APPLICATION);
+             }
+         }
+ 
+@@ -1453,12 +1436,6 @@ public class VoiceInteractionManagerService extends SystemService {
+                     && mImpl.mInfo.getServiceInfo().applicationInfo.uid == Binder.getCallingUid();
+         }
+ 
+-        private boolean isCallerTrustedEnrollmentApplication() {
+-            getOrCreateEnrollmentApplicationInfo();
+-            return mEnrollmentApplicationInfo.isUidSupportedEnrollmentApplication(
+-                            Binder.getCallingUid());
+-        }
+-
+         private void setImplLocked(VoiceInteractionManagerServiceImpl impl) {
+             mImpl = impl;
+             mAtmInternal.notifyActiveVoiceInteractionServiceChanged(
+-- 
+2.35.1
+

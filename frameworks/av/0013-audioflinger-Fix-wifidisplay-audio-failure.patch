@@ -1,0 +1,59 @@
+From c9ed715788c17d4286217b10ad3b4c73b07e9a67 Mon Sep 17 00:00:00 2001
+From: Jianhui Wang <wjh@rock-chips.com>
+Date: Fri, 20 Dec 2019 16:13:04 +0800
+Subject: [PATCH 13/25] audioflinger: Fix wifidisplay audio failure.
+
+Change-Id: Ic1f04e11c4710bacfa5c89b1cd50dd26736f6b04
+Signed-off-by: Jianhui Wang <wjh@rock-chips.com>
+---
+ media/utils/ServiceUtilities.cpp | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+diff --git a/media/utils/ServiceUtilities.cpp b/media/utils/ServiceUtilities.cpp
+index 87ea084811..edb2f56f39 100644
+--- a/media/utils/ServiceUtilities.cpp
++++ b/media/utils/ServiceUtilities.cpp
+@@ -40,6 +40,18 @@ static const String16 sAndroidPermissionRecordAudio("android.permission.RECORD_A
+ static const String16 sModifyPhoneState("android.permission.MODIFY_PHONE_STATE");
+ static const String16 sModifyAudioRouting("android.permission.MODIFY_AUDIO_ROUTING");
+ 
++// A trusted calling UID may specify the client UID as part of a binder interface call.
++// otherwise the calling UID must be equal to the client UID.
++static bool isTrustedCallingUid(uid_t uid) {
++    switch (uid) {
++    case AID_MEDIA:
++    case AID_AUDIOSERVER:
++        return true;
++    default:
++        return false;
++    }
++}
++
+ static String16 resolveCallingPackage(PermissionController& permissionController,
+         const String16& opPackageName, uid_t uid) {
+     if (opPackageName.size() > 0) {
+@@ -77,6 +89,10 @@ static bool checkRecordingInternal(const String16& opPackageName, pid_t pid,
+     const bool ok = permissionController.checkPermission(sAndroidPermissionRecordAudio, pid, uid);
+     if (!ok) {
+         ALOGE("Request requires %s", String8(sAndroidPermissionRecordAudio).c_str());
++        if(isTrustedCallingUid(uid)) {
++            ALOGD("Rockchip recordingAllowed true.");
++            return true;
++        }
+         return false;
+     }
+ 
+@@ -134,6 +150,10 @@ bool captureAudioOutputAllowed(pid_t pid, uid_t uid) {
+     static const String16 sCaptureAudioOutput("android.permission.CAPTURE_AUDIO_OUTPUT");
+     bool ok = PermissionCache::checkPermission(sCaptureAudioOutput, pid, uid);
+     if (!ok) ALOGV("Request requires android.permission.CAPTURE_AUDIO_OUTPUT");
++    if(isTrustedCallingUid(uid)) {
++        ALOGD("Rockchip captureAudioOutputAllowed true.");
++        return true;
++    }
+     return ok;
+ }
+ 
+-- 
+2.35.1
+

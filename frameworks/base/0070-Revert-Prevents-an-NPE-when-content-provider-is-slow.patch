@@ -1,0 +1,234 @@
+From 5709d34037154160623672d60c563c1a79a693ff Mon Sep 17 00:00:00 2001
+From: Daniel Chapin <chapin@google.com>
+Date: Mon, 10 Feb 2020 22:12:44 +0000
+Subject: [PATCH 070/297] Revert "Prevents an NPE when content provider is slow
+ to start"
+
+This reverts commit 140fc2e9c9382d5326b72ff28e8782e7bffc493d.
+
+Reason for revert: b/149176266
+
+Change-Id: I4015fcc1624ee116c4a013c99816d43ce7b24834
+(cherry picked from commit 3a54effffdb361ccd60169dcce93cf4e87fc6dac)
+---
+ .../java/android/content/ContentResolver.java | 23 +------
+ core/tests/coretests/AndroidManifest.xml      |  6 --
+ .../android/content/ContentResolverTest.java  |  9 ---
+ .../src/android/content/SlowProvider.java     | 65 -------------------
+ .../server/am/ActivityManagerService.java     | 27 ++++----
+ 5 files changed, 18 insertions(+), 112 deletions(-)
+ delete mode 100644 core/tests/coretests/src/android/content/SlowProvider.java
+
+diff --git a/core/java/android/content/ContentResolver.java b/core/java/android/content/ContentResolver.java
+index 0e0161ff4e9..f32a4ab4335 100644
+--- a/core/java/android/content/ContentResolver.java
++++ b/core/java/android/content/ContentResolver.java
+@@ -700,27 +700,6 @@ public abstract class ContentResolver implements ContentInterface {
+     /** @hide */
+     public static final String REMOTE_CALLBACK_RESULT = "result";
+ 
+-    /**
+-     * How long we wait for an attached process to publish its content providers
+-     * before we decide it must be hung.
+-     * @hide
+-     */
+-    public static final int CONTENT_PROVIDER_PUBLISH_TIMEOUT_MILLIS = 10 * 1000;
+-
+-    /**
+-     * How long we wait for an provider to be published. Should be longer than
+-     * {@link #CONTENT_PROVIDER_PUBLISH_TIMEOUT_MILLIS}.
+-     * @hide
+-     */
+-    public static final int CONTENT_PROVIDER_WAIT_TIMEOUT_MILLIS =
+-            CONTENT_PROVIDER_PUBLISH_TIMEOUT_MILLIS + 10 * 1000;
+-
+-    // Should be >= {@link #CONTENT_PROVIDER_WAIT_TIMEOUT_MILLIS}, because that's how
+-    // long ActivityManagerService is giving a content provider to get published if a new process
+-    // needs to be started for that.
+-    private static final int GET_TYPE_TIMEOUT_MILLIS =
+-            CONTENT_PROVIDER_WAIT_TIMEOUT_MILLIS + 5 * 1000;
+-
+     public ContentResolver(@Nullable Context context) {
+         this(context, null);
+     }
+@@ -870,6 +849,8 @@ public abstract class ContentResolver implements ContentInterface {
+         }
+     }
+ 
++    private static final int GET_TYPE_TIMEOUT_MILLIS = 3000;
++
+     private static class GetTypeResultListener implements RemoteCallback.OnResultListener {
+         @GuardedBy("this")
+         public boolean done;
+diff --git a/core/tests/coretests/AndroidManifest.xml b/core/tests/coretests/AndroidManifest.xml
+index 718ca46a4f1..59335a59533 100644
+--- a/core/tests/coretests/AndroidManifest.xml
++++ b/core/tests/coretests/AndroidManifest.xml
+@@ -1330,12 +1330,6 @@
+             android:process=":FakeProvider">
+         </provider>
+ 
+-        <provider
+-            android:name="android.content.SlowProvider"
+-            android:authorities="android.content.SlowProvider"
+-            android:process=":SlowProvider">
+-        </provider>
+-
+         <!-- Application components used for os tests -->
+ 
+         <service android:name="android.os.MessengerService"
+diff --git a/core/tests/coretests/src/android/content/ContentResolverTest.java b/core/tests/coretests/src/android/content/ContentResolverTest.java
+index 6dc7392945d..9dcce1e51e0 100644
+--- a/core/tests/coretests/src/android/content/ContentResolverTest.java
++++ b/core/tests/coretests/src/android/content/ContentResolverTest.java
+@@ -209,13 +209,4 @@ public class ContentResolverTest {
+         String type = mResolver.getType(Uri.parse("content://android.content.FakeProviderRemote"));
+         assertEquals("fake/remote", type);
+     }
+-
+-
+-    @Test
+-    public void testGetType_slowProvider() {
+-        // This provider is running in a different process and is intentionally slow to start.
+-        // We are trying to confirm that it does not cause an ANR
+-        String type = mResolver.getType(Uri.parse("content://android.content.SlowProvider"));
+-        assertEquals("slow", type);
+-    }
+ }
+diff --git a/core/tests/coretests/src/android/content/SlowProvider.java b/core/tests/coretests/src/android/content/SlowProvider.java
+deleted file mode 100644
+index aba32e836e8..00000000000
+--- a/core/tests/coretests/src/android/content/SlowProvider.java
++++ /dev/null
+@@ -1,65 +0,0 @@
+-/*
+- * Copyright (C) 2020 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-package android.content;
+-
+-import android.database.Cursor;
+-import android.net.Uri;
+-
+-/**
+- * A dummy content provider for tests.  This provider runs in a different process from the test and
+- * is intentionally slow.
+- */
+-public class SlowProvider extends ContentProvider {
+-
+-    private static final int ON_CREATE_LATENCY_MILLIS = 3000;
+-
+-    @Override
+-    public boolean onCreate() {
+-        try {
+-            Thread.sleep(ON_CREATE_LATENCY_MILLIS);
+-        } catch (InterruptedException e) {
+-            // Ignore
+-        }
+-        return true;
+-    }
+-
+-    @Override
+-    public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
+-            String sortOrder) {
+-        return null;
+-    }
+-
+-    @Override
+-    public String getType(Uri uri) {
+-        return "slow";
+-    }
+-
+-    @Override
+-    public Uri insert(Uri uri, ContentValues values) {
+-        return null;
+-    }
+-
+-    @Override
+-    public int delete(Uri uri, String selection, String[] selectionArgs) {
+-        return 0;
+-    }
+-
+-    @Override
+-    public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
+-        return 0;
+-    }
+-}
+diff --git a/services/core/java/com/android/server/am/ActivityManagerService.java b/services/core/java/com/android/server/am/ActivityManagerService.java
+index d5a725339b9..a6a569c92b7 100644
+--- a/services/core/java/com/android/server/am/ActivityManagerService.java
++++ b/services/core/java/com/android/server/am/ActivityManagerService.java
+@@ -466,9 +466,18 @@ public class ActivityManagerService extends IActivityManager.Stub
+     // How long we wait for a launched process to attach to the activity manager
+     // before we decide it's never going to come up for real.
+     static final int PROC_START_TIMEOUT = 10*1000;
++    // How long we wait for an attached process to publish its content providers
++    // before we decide it must be hung.
++    static final int CONTENT_PROVIDER_PUBLISH_TIMEOUT = 10*1000;
++
+     // How long we wait to kill an application zygote, after the last process using
+     // it has gone away.
+     static final int KILL_APP_ZYGOTE_DELAY_MS = 5 * 1000;
++    /**
++     * How long we wait for an provider to be published. Should be longer than
++     * {@link #CONTENT_PROVIDER_PUBLISH_TIMEOUT}.
++     */
++    static final int CONTENT_PROVIDER_WAIT_TIMEOUT = 20 * 1000;
+ 
+     // How long we wait for a launched process to attach to the activity manager
+     // before we decide it's never going to come up for real, when the process was
+@@ -4959,8 +4968,7 @@ public class ActivityManagerService extends IActivityManager.Stub
+         if (providers != null && checkAppInLaunchingProvidersLocked(app)) {
+             Message msg = mHandler.obtainMessage(CONTENT_PROVIDER_PUBLISH_TIMEOUT_MSG);
+             msg.obj = app;
+-            mHandler.sendMessageDelayed(msg,
+-                    ContentResolver.CONTENT_PROVIDER_PUBLISH_TIMEOUT_MILLIS);
++            mHandler.sendMessageDelayed(msg, CONTENT_PROVIDER_PUBLISH_TIMEOUT);
+         }
+ 
+         checkTime(startTime, "attachApplicationLocked: before bindApplication");
+@@ -7239,8 +7247,7 @@ public class ActivityManagerService extends IActivityManager.Stub
+         }
+ 
+         // Wait for the provider to be published...
+-        final long timeout =
+-                SystemClock.uptimeMillis() + ContentResolver.CONTENT_PROVIDER_WAIT_TIMEOUT_MILLIS;
++        final long timeout = SystemClock.uptimeMillis() + CONTENT_PROVIDER_WAIT_TIMEOUT;
+         boolean timedOut = false;
+         synchronized (cpr) {
+             while (cpr.provider == null) {
+@@ -7277,14 +7284,12 @@ public class ActivityManagerService extends IActivityManager.Stub
+             }
+         }
+         if (timedOut) {
+-            // Note we do it after releasing the lock.
++            // Note we do it afer releasing the lock.
+             String callerName = "unknown";
+-            if (caller != null) {
+-                synchronized (this) {
+-                    final ProcessRecord record = mProcessList.getLRURecordForAppLocked(caller);
+-                    if (record != null) {
+-                        callerName = record.processName;
+-                    }
++            synchronized (this) {
++                final ProcessRecord record = mProcessList.getLRURecordForAppLocked(caller);
++                if (record != null) {
++                    callerName = record.processName;
+                 }
+             }
+ 
+-- 
+2.35.1
+

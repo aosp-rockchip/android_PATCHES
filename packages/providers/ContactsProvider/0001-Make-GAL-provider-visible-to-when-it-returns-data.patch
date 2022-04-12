@@ -1,0 +1,37 @@
+From 1bae996f81de649206a8dbfe8141ec63a397a61a Mon Sep 17 00:00:00 2001
+From: Makoto Onuki <omakoto@google.com>
+Date: Tue, 18 Aug 2020 12:51:39 -0700
+Subject: [PATCH] Make GAL provider visible to when it returns data
+
+Bug: 158688602
+Test: atest CtsContactsProviderTestCases
+Change-Id: I6702c31bb2aff095c2d9caaea581b4b326f345cc
+---
+ .../android/providers/contacts/ContactsProvider2.java | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/src/com/android/providers/contacts/ContactsProvider2.java b/src/com/android/providers/contacts/ContactsProvider2.java
+index 5159fb94..4fc9bfc5 100644
+--- a/src/com/android/providers/contacts/ContactsProvider2.java
++++ b/src/com/android/providers/contacts/ContactsProvider2.java
+@@ -5548,6 +5548,17 @@ public class ContactsProvider2 extends AbstractContactsProvider
+             return null;
+         }
+ 
++        if (cursor.getCount() > 0) {
++            final int callingUid = Binder.getCallingUid();
++            final String directoryAuthority = directoryInfo.authority;
++            if (VERBOSE_LOGGING) {
++                Log.v(TAG, "Making authority " + directoryAuthority
++                        + " visible to UID " + callingUid);
++            }
++            getContext().getPackageManager().grantImplicitAccess(
++                    callingUid, directoryAuthority);
++        }
++
+         // Load the cursor contents into a memory cursor (backed by a cursor window) and close the
+         // underlying cursor.
+         try {
+-- 
+2.35.1
+

@@ -1,0 +1,391 @@
+From f87c6789ea23b50a5c88d0e36b352bc9f5b187ef Mon Sep 17 00:00:00 2001
+From: Kevin DuBois <kevindubois@google.com>
+Date: Fri, 10 Jul 2020 14:29:36 -0700
+Subject: [PATCH 27/33] SF: hwvsync on for more samples on recalibration
+
+Decrease the amount of time that the VSyncPredictor is using the
+idealPeriod (ie, the hwc-reported period) by leaving hwVsync on until
+there's enough info (4 additional pulses) to infer device's
+measured/actual period.
+
+This will benefit frames that come intermittently, as the vsync's
+cumulative error over the larger time gap will be smaller, giving the
+timer a better chance of landing closer to the vsync signal when those
+one-off frames come in.
+
+Test: 3 new unit tests, 2 other tests modified in substance.
+Test: dogfooding
+Test: uibench
+Fixes: 159896971
+
+Change-Id: Ic3190822e38c5a24d3445ea89ef6d7e34a590077
+Merged-In: Ic3190822e38c5a24d3445ea89ef6d7e34a590077
+(cherry picked from commit b818bfaf7b5bb2f62ed8af0a3ede300a8eb65e2f)
+---
+ .../Scheduler/VSyncPredictor.cpp              | 16 +---
+ .../surfaceflinger/Scheduler/VSyncPredictor.h |  5 +-
+ .../surfaceflinger/Scheduler/VSyncReactor.cpp | 23 ++++-
+ .../surfaceflinger/Scheduler/VSyncTracker.h   |  2 +
+ .../unittests/VSyncDispatchRealtimeTest.cpp   |  2 +
+ .../unittests/VSyncDispatchTimerQueueTest.cpp |  1 +
+ .../tests/unittests/VSyncPredictorTest.cpp    | 32 ++-----
+ .../tests/unittests/VSyncReactorTest.cpp      | 83 ++++++++++++++++++-
+ 8 files changed, 118 insertions(+), 46 deletions(-)
+
+diff --git a/services/surfaceflinger/Scheduler/VSyncPredictor.cpp b/services/surfaceflinger/Scheduler/VSyncPredictor.cpp
+index ab5773dc0..61f3fbbdf 100644
+--- a/services/surfaceflinger/Scheduler/VSyncPredictor.cpp
++++ b/services/surfaceflinger/Scheduler/VSyncPredictor.cpp
+@@ -255,21 +255,9 @@ void VSyncPredictor::clearTimestamps() {
+     }
+ }
+ 
+-bool VSyncPredictor::needsMoreSamples(nsecs_t now) const {
+-    using namespace std::literals::chrono_literals;
++bool VSyncPredictor::needsMoreSamples() const {
+     std::lock_guard<std::mutex> lk(mMutex);
+-    bool needsMoreSamples = true;
+-    if (mTimestamps.size() >= kMinimumSamplesForPrediction) {
+-        nsecs_t constexpr aLongTime =
+-                std::chrono::duration_cast<std::chrono::nanoseconds>(500ms).count();
+-        if (!(mLastTimestampIndex < 0 || mTimestamps.empty())) {
+-            auto const lastTimestamp = mTimestamps[mLastTimestampIndex];
+-            needsMoreSamples = !((lastTimestamp + aLongTime) > now);
+-        }
+-    }
+-
+-    ATRACE_INT("VSP-moreSamples", needsMoreSamples);
+-    return needsMoreSamples;
++    return mTimestamps.size() < kMinimumSamplesForPrediction;
+ }
+ 
+ void VSyncPredictor::resetModel() {
+diff --git a/services/surfaceflinger/Scheduler/VSyncPredictor.h b/services/surfaceflinger/Scheduler/VSyncPredictor.h
+index 3ca878d77..5f3c418fe 100644
+--- a/services/surfaceflinger/Scheduler/VSyncPredictor.h
++++ b/services/surfaceflinger/Scheduler/VSyncPredictor.h
+@@ -52,11 +52,10 @@ public:
+      */
+     void setPeriod(nsecs_t period) final;
+ 
+-    /* Query if the model is in need of more samples to make a prediction at timePoint.
+-     * \param [in] timePoint    The timePoint to inquire of.
++    /* Query if the model is in need of more samples to make a prediction.
+      * \return  True, if model would benefit from more samples, False if not.
+      */
+-    bool needsMoreSamples(nsecs_t timePoint) const;
++    bool needsMoreSamples() const final;
+ 
+     std::tuple<nsecs_t /* slope */, nsecs_t /* intercept */> getVSyncPredictionModel() const;
+ 
+diff --git a/services/surfaceflinger/Scheduler/VSyncReactor.cpp b/services/surfaceflinger/Scheduler/VSyncReactor.cpp
+index c743de07a..efa8bab8f 100644
+--- a/services/surfaceflinger/Scheduler/VSyncReactor.cpp
++++ b/services/surfaceflinger/Scheduler/VSyncReactor.cpp
+@@ -233,6 +233,7 @@ nsecs_t VSyncReactor::expectedPresentTime(nsecs_t now) {
+ }
+ 
+ void VSyncReactor::startPeriodTransition(nsecs_t newPeriod) {
++    ATRACE_CALL();
+     mPeriodConfirmationInProgress = true;
+     mPeriodTransitioningTo = newPeriod;
+     mMoreSamplesNeeded = true;
+@@ -240,8 +241,7 @@ void VSyncReactor::startPeriodTransition(nsecs_t newPeriod) {
+ }
+ 
+ void VSyncReactor::endPeriodTransition() {
+-    setIgnorePresentFencesInternal(false);
+-    mMoreSamplesNeeded = false;
++    ATRACE_CALL();
+     mPeriodTransitioningTo.reset();
+     mPeriodConfirmationInProgress = false;
+     mLastHwVsync.reset();
+@@ -254,6 +254,8 @@ void VSyncReactor::setPeriod(nsecs_t period) {
+ 
+     if (!mSupportKernelIdleTimer && period == getPeriod()) {
+         endPeriodTransition();
++        setIgnorePresentFencesInternal(false);
++        mMoreSamplesNeeded = false;
+     } else {
+         startPeriodTransition(period);
+     }
+@@ -303,6 +305,7 @@ bool VSyncReactor::addResyncSample(nsecs_t timestamp, std::optional<nsecs_t> hwc
+ 
+     std::lock_guard<std::mutex> lk(mMutex);
+     if (periodConfirmed(timestamp, hwcVsyncPeriod)) {
++        ATRACE_NAME("VSR: period confirmed");
+         if (mPeriodTransitioningTo) {
+             mTracker->setPeriod(*mPeriodTransitioningTo);
+             for (auto& entry : mCallbacks) {
+@@ -310,17 +313,29 @@ bool VSyncReactor::addResyncSample(nsecs_t timestamp, std::optional<nsecs_t> hwc
+             }
+             *periodFlushed = true;
+         }
++
++        if (mLastHwVsync) {
++            mTracker->addVsyncTimestamp(*mLastHwVsync);
++        }
++        mTracker->addVsyncTimestamp(timestamp);
++
+         endPeriodTransition();
++        mMoreSamplesNeeded = mTracker->needsMoreSamples();
+     } else if (mPeriodConfirmationInProgress) {
++        ATRACE_NAME("VSR: still confirming period");
+         mLastHwVsync = timestamp;
+         mMoreSamplesNeeded = true;
+         *periodFlushed = false;
+     } else {
+-        mMoreSamplesNeeded = false;
++        ATRACE_NAME("VSR: adding sample");
+         *periodFlushed = false;
++        mTracker->addVsyncTimestamp(timestamp);
++        mMoreSamplesNeeded = mTracker->needsMoreSamples();
+     }
+ 
+-    mTracker->addVsyncTimestamp(timestamp);
++    if (!mMoreSamplesNeeded) {
++        setIgnorePresentFencesInternal(false);
++    }
+     return mMoreSamplesNeeded;
+ }
+ 
+diff --git a/services/surfaceflinger/Scheduler/VSyncTracker.h b/services/surfaceflinger/Scheduler/VSyncTracker.h
+index 05a6fc3a8..107c5400f 100644
+--- a/services/surfaceflinger/Scheduler/VSyncTracker.h
++++ b/services/surfaceflinger/Scheduler/VSyncTracker.h
+@@ -66,6 +66,8 @@ public:
+     /* Inform the tracker that the samples it has are not accurate for prediction. */
+     virtual void resetModel() = 0;
+ 
++    virtual bool needsMoreSamples() const = 0;
++
+     virtual void dump(std::string& result) const = 0;
+ 
+ protected:
+diff --git a/services/surfaceflinger/tests/unittests/VSyncDispatchRealtimeTest.cpp b/services/surfaceflinger/tests/unittests/VSyncDispatchRealtimeTest.cpp
+index be49ef33f..c2a77527a 100644
+--- a/services/surfaceflinger/tests/unittests/VSyncDispatchRealtimeTest.cpp
++++ b/services/surfaceflinger/tests/unittests/VSyncDispatchRealtimeTest.cpp
+@@ -51,6 +51,7 @@ public:
+ 
+     void setPeriod(nsecs_t) final {}
+     void resetModel() final {}
++    bool needsMoreSamples() const final { return false; }
+     void dump(std::string&) const final {}
+ 
+ private:
+@@ -86,6 +87,7 @@ public:
+ 
+     void setPeriod(nsecs_t) final {}
+     void resetModel() final {}
++    bool needsMoreSamples() const final { return false; }
+     void dump(std::string&) const final {}
+ 
+ private:
+diff --git a/services/surfaceflinger/tests/unittests/VSyncDispatchTimerQueueTest.cpp b/services/surfaceflinger/tests/unittests/VSyncDispatchTimerQueueTest.cpp
+index d940dc587..65c391d49 100644
+--- a/services/surfaceflinger/tests/unittests/VSyncDispatchTimerQueueTest.cpp
++++ b/services/surfaceflinger/tests/unittests/VSyncDispatchTimerQueueTest.cpp
+@@ -47,6 +47,7 @@ public:
+     MOCK_CONST_METHOD0(currentPeriod, nsecs_t());
+     MOCK_METHOD1(setPeriod, void(nsecs_t));
+     MOCK_METHOD0(resetModel, void());
++    MOCK_CONST_METHOD0(needsMoreSamples, bool());
+     MOCK_CONST_METHOD1(dump, void(std::string&));
+ 
+     nsecs_t nextVSyncTime(nsecs_t timePoint) const {
+diff --git a/services/surfaceflinger/tests/unittests/VSyncPredictorTest.cpp b/services/surfaceflinger/tests/unittests/VSyncPredictorTest.cpp
+index fc39235a9..d4cd11dbe 100644
+--- a/services/surfaceflinger/tests/unittests/VSyncPredictorTest.cpp
++++ b/services/surfaceflinger/tests/unittests/VSyncPredictorTest.cpp
+@@ -73,27 +73,27 @@ TEST_F(VSyncPredictorTest, reportsAnticipatedPeriod) {
+ 
+ TEST_F(VSyncPredictorTest, reportsSamplesNeededWhenHasNoDataPoints) {
+     for (auto i = 0u; i < kMinimumSamplesForPrediction; i++) {
+-        EXPECT_TRUE(tracker.needsMoreSamples(mNow += mPeriod));
+-        tracker.addVsyncTimestamp(mNow);
++        EXPECT_TRUE(tracker.needsMoreSamples());
++        tracker.addVsyncTimestamp(mNow += mPeriod);
+     }
+-    EXPECT_FALSE(tracker.needsMoreSamples(mNow));
++    EXPECT_FALSE(tracker.needsMoreSamples());
+ }
+ 
+ TEST_F(VSyncPredictorTest, reportsSamplesNeededAfterExplicitRateChange) {
+     for (auto i = 0u; i < kMinimumSamplesForPrediction; i++) {
+         tracker.addVsyncTimestamp(mNow += mPeriod);
+     }
+-    EXPECT_FALSE(tracker.needsMoreSamples(mNow));
++    EXPECT_FALSE(tracker.needsMoreSamples());
+ 
+     auto const changedPeriod = mPeriod * 2;
+     tracker.setPeriod(changedPeriod);
+-    EXPECT_TRUE(tracker.needsMoreSamples(mNow));
++    EXPECT_TRUE(tracker.needsMoreSamples());
+ 
+     for (auto i = 0u; i < kMinimumSamplesForPrediction; i++) {
+-        EXPECT_TRUE(tracker.needsMoreSamples(mNow += changedPeriod));
+-        tracker.addVsyncTimestamp(mNow);
++        EXPECT_TRUE(tracker.needsMoreSamples());
++        tracker.addVsyncTimestamp(mNow += changedPeriod);
+     }
+-    EXPECT_FALSE(tracker.needsMoreSamples(mNow));
++    EXPECT_FALSE(tracker.needsMoreSamples());
+ }
+ 
+ TEST_F(VSyncPredictorTest, transitionsToModelledPointsAfterSynthetic) {
+@@ -320,20 +320,6 @@ TEST_F(VSyncPredictorTest, willBeAccurateUsingPriorResultsForRate) {
+     EXPECT_THAT(intercept, Eq(0));
+ }
+ 
+-TEST_F(VSyncPredictorTest, willBecomeInaccurateAfterA_longTimeWithNoSamples) {
+-    auto const simulatedVsyncs = generateVsyncTimestamps(kMinimumSamplesForPrediction, mPeriod, 0);
+-
+-    for (auto const& timestamp : simulatedVsyncs) {
+-        tracker.addVsyncTimestamp(timestamp);
+-    }
+-    auto const mNow = *simulatedVsyncs.rbegin();
+-    EXPECT_FALSE(tracker.needsMoreSamples(mNow));
+-
+-    // TODO: would be better to decay this as a result of the variance of the samples
+-    static auto constexpr aLongTimeOut = 1000000000;
+-    EXPECT_TRUE(tracker.needsMoreSamples(mNow + aLongTimeOut));
+-}
+-
+ TEST_F(VSyncPredictorTest, idealModelPredictionsBeforeRegressionModelIsBuilt) {
+     auto const simulatedVsyncs =
+             generateVsyncTimestamps(kMinimumSamplesForPrediction + 1, mPeriod, 0);
+@@ -443,7 +429,7 @@ TEST_F(VSyncPredictorTest, slopeAlwaysValid) {
+         // When VsyncPredictor returns the period it means that it doesn't know how to predict and
+         // it needs to get more samples
+         if (slope == mPeriod && intercept == 0) {
+-            EXPECT_TRUE(tracker.needsMoreSamples(now));
++            EXPECT_TRUE(tracker.needsMoreSamples());
+         }
+     }
+ }
+diff --git a/services/surfaceflinger/tests/unittests/VSyncReactorTest.cpp b/services/surfaceflinger/tests/unittests/VSyncReactorTest.cpp
+index a97256203..6856612b7 100644
+--- a/services/surfaceflinger/tests/unittests/VSyncReactorTest.cpp
++++ b/services/surfaceflinger/tests/unittests/VSyncReactorTest.cpp
+@@ -41,6 +41,7 @@ public:
+     MOCK_CONST_METHOD0(currentPeriod, nsecs_t());
+     MOCK_METHOD1(setPeriod, void(nsecs_t));
+     MOCK_METHOD0(resetModel, void());
++    MOCK_CONST_METHOD0(needsMoreSamples, bool());
+     MOCK_CONST_METHOD1(dump, void(std::string&));
+ };
+ 
+@@ -57,6 +58,7 @@ public:
+     nsecs_t currentPeriod() const final { return mTracker->currentPeriod(); }
+     void setPeriod(nsecs_t period) final { mTracker->setPeriod(period); }
+     void resetModel() final { mTracker->resetModel(); }
++    bool needsMoreSamples() const final { return mTracker->needsMoreSamples(); }
+     void dump(std::string& result) const final { mTracker->dump(result); }
+ 
+ private:
+@@ -455,6 +457,83 @@ TEST_F(VSyncReactorTest, addPresentFenceWhileAwaitingPeriodConfirmationRequestsH
+     EXPECT_FALSE(mReactor.addPresentFence(generateSignalledFenceWithTime(0)));
+ }
+ 
++TEST_F(VSyncReactorTest, hwVsyncIsRequestedForTracker) {
++    auto time = 0;
++    bool periodFlushed = false;
++    nsecs_t const newPeriod = 4000;
++    mReactor.setPeriod(newPeriod);
++
++    static auto constexpr numSamplesWithNewPeriod = 4;
++    Sequence seq;
++    EXPECT_CALL(*mMockTracker, needsMoreSamples())
++            .Times(numSamplesWithNewPeriod - 2)
++            .InSequence(seq)
++            .WillRepeatedly(Return(true));
++    EXPECT_CALL(*mMockTracker, needsMoreSamples())
++            .Times(1)
++            .InSequence(seq)
++            .WillRepeatedly(Return(false));
++    EXPECT_CALL(*mMockTracker, addVsyncTimestamp(_)).Times(numSamplesWithNewPeriod);
++
++    EXPECT_TRUE(mReactor.addResyncSample(time += period, std::nullopt, &periodFlushed));
++
++    EXPECT_TRUE(mReactor.addResyncSample(time += period, std::nullopt, &periodFlushed));
++    // confirmed period, but predictor wants numRequest samples. This one and prior are valid.
++    EXPECT_TRUE(mReactor.addResyncSample(time += newPeriod, std::nullopt, &periodFlushed));
++    EXPECT_TRUE(mReactor.addResyncSample(time += newPeriod, std::nullopt, &periodFlushed));
++    EXPECT_FALSE(mReactor.addResyncSample(time += newPeriod, std::nullopt, &periodFlushed));
++}
++
++TEST_F(VSyncReactorTest, hwVsyncturnsOffOnConfirmationWhenTrackerDoesntRequest) {
++    auto time = 0;
++    bool periodFlushed = false;
++    nsecs_t const newPeriod = 4000;
++    mReactor.setPeriod(newPeriod);
++
++    Sequence seq;
++    EXPECT_CALL(*mMockTracker, needsMoreSamples())
++            .Times(1)
++            .InSequence(seq)
++            .WillRepeatedly(Return(false));
++    EXPECT_CALL(*mMockTracker, addVsyncTimestamp(_)).Times(2);
++
++    EXPECT_TRUE(mReactor.addResyncSample(time += period, std::nullopt, &periodFlushed));
++    EXPECT_TRUE(mReactor.addResyncSample(time += period, std::nullopt, &periodFlushed));
++    EXPECT_FALSE(mReactor.addResyncSample(time += newPeriod, std::nullopt, &periodFlushed));
++}
++
++TEST_F(VSyncReactorTest, hwVsyncIsRequestedForTrackerMultiplePeriodChanges) {
++    auto time = 0;
++    bool periodFlushed = false;
++    nsecs_t const newPeriod1 = 4000;
++    nsecs_t const newPeriod2 = 7000;
++
++    mReactor.setPeriod(newPeriod1);
++
++    Sequence seq;
++    EXPECT_CALL(*mMockTracker, needsMoreSamples())
++            .Times(4)
++            .InSequence(seq)
++            .WillRepeatedly(Return(true));
++    EXPECT_CALL(*mMockTracker, needsMoreSamples())
++            .Times(1)
++            .InSequence(seq)
++            .WillRepeatedly(Return(false));
++    EXPECT_CALL(*mMockTracker, addVsyncTimestamp(_)).Times(7);
++
++    EXPECT_TRUE(mReactor.addResyncSample(time += period, std::nullopt, &periodFlushed));
++    EXPECT_TRUE(mReactor.addResyncSample(time += period, std::nullopt, &periodFlushed));
++    // confirmed period, but predictor wants numRequest samples. This one and prior are valid.
++    EXPECT_TRUE(mReactor.addResyncSample(time += newPeriod1, std::nullopt, &periodFlushed));
++    EXPECT_TRUE(mReactor.addResyncSample(time += newPeriod1, std::nullopt, &periodFlushed));
++
++    mReactor.setPeriod(newPeriod2);
++    EXPECT_TRUE(mReactor.addResyncSample(time += newPeriod1, std::nullopt, &periodFlushed));
++    EXPECT_TRUE(mReactor.addResyncSample(time += newPeriod2, std::nullopt, &periodFlushed));
++    EXPECT_TRUE(mReactor.addResyncSample(time += newPeriod2, std::nullopt, &periodFlushed));
++    EXPECT_FALSE(mReactor.addResyncSample(time += newPeriod2, std::nullopt, &periodFlushed));
++}
++
+ static nsecs_t computeWorkload(nsecs_t period, nsecs_t phase) {
+     return period - phase;
+ }
+@@ -648,7 +727,7 @@ TEST_F(VSyncReactorTest, beginResyncResetsModel) {
+ 
+ TEST_F(VSyncReactorTest, periodChangeWithGivenVsyncPeriod) {
+     bool periodFlushed = true;
+-    EXPECT_CALL(*mMockTracker, addVsyncTimestamp(_)).Times(3);
++    EXPECT_CALL(*mMockTracker, addVsyncTimestamp(_)).Times(2);
+     mReactor.setIgnorePresentFences(true);
+ 
+     nsecs_t const newPeriod = 5000;
+@@ -672,7 +751,7 @@ TEST_F(VSyncReactorTest, periodIsMeasuredIfIgnoringComposer) {
+                                     kPendingLimit, true /* supportKernelIdleTimer */);
+ 
+     bool periodFlushed = true;
+-    EXPECT_CALL(*mMockTracker, addVsyncTimestamp(_)).Times(5);
++    EXPECT_CALL(*mMockTracker, addVsyncTimestamp(_)).Times(4);
+     idleReactor.setIgnorePresentFences(true);
+ 
+     // First, set the same period, which should only be confirmed when we receive two
+-- 
+2.35.1
+

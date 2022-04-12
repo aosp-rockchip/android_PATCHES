@@ -1,0 +1,28 @@
+From 094303b799a7a1ee68e9f1d2e6ba644cef74ffad Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Tue, 8 Dec 2020 22:06:30 +0800
+Subject: [PATCH 25/26] MediaProvider: workaround some apps save in extend
+ storage
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: Ic6ef13676e23d11ad2772b2b21e5992bd9ca3084
+---
+ src/com/android/providers/media/MediaProvider.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/com/android/providers/media/MediaProvider.java b/src/com/android/providers/media/MediaProvider.java
+index 57a8d6ef..9c7e6832 100644
+--- a/src/com/android/providers/media/MediaProvider.java
++++ b/src/com/android/providers/media/MediaProvider.java
+@@ -2721,7 +2721,7 @@ public class MediaProvider extends ContentProvider {
+             final File actual = new File(values.getAsString(MediaColumns.DATA))
+                     .getCanonicalFile();
+             if (!FileUtils.contains(allowed, actual)) {
+-                throw new VolumeArgumentException(actual, allowed);
++                //throw new VolumeArgumentException(actual, allowed);
+             }
+         } catch (IOException e) {
+             throw new VolumeNotFoundException(volumeName);
+-- 
+2.35.1
+

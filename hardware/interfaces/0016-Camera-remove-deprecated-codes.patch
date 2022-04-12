@@ -1,0 +1,52 @@
+From 380a5b7e8558fd572736f6d86b7c35cb16a0ab07 Mon Sep 17 00:00:00 2001
+From: Wang Panzhenzhuan <randy.wang@rock-chips.com>
+Date: Fri, 15 Jan 2021 14:16:20 +0800
+Subject: [PATCH 16/24] Camera: remove deprecated codes
+
+Signed-off-by: Wang Panzhenzhuan <randy.wang@rock-chips.com>
+Change-Id: I6b4b064643b322c6ed732b24e50738a809e99700
+---
+ .../ExternalCameraMemManager.h                | 24 -------------------
+ 1 file changed, 24 deletions(-)
+ mode change 100644 => 100755 camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraMemManager.h
+
+diff --git a/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraMemManager.h b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraMemManager.h
+old mode 100644
+new mode 100755
+index 736aa7a5d..d06d4e3f8
+--- a/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraMemManager.h
++++ b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraMemManager.h
+@@ -46,30 +46,6 @@ typedef enum buffer_addr_e {
+     buffer_sharre_fd
+ }buffer_addr_t;
+ 
+-typedef unsigned long ulong_t;
+-/* mjpeg decoder interface in librk_vpu_api.*/
+-typedef void* (*getMjpegDecoderFun)(void);
+-typedef void (*destroyMjpegDecoderFun)(void* jpegDecoder);
+-
+-typedef int (*initMjpegDecoderFun)(void* jpegDecoder);
+-typedef int (*deInitMjpegDecoderFun)(void* jpegDecoder);
+-
+-typedef int (*mjpegDecodeOneFrameFun)(
+-            void * jpegDecoder, uint8_t* aOutBuffer,
+-            uint32_t *aOutputLength, uint8_t* aInputBuf,
+-            uint32_t* aInBufSize, ulong_t out_phyaddr);
+-
+-typedef struct mjpeg_interface {
+-    void*                       decoder;
+-    int                         state;
+-
+-    getMjpegDecoderFun          get;
+-    destroyMjpegDecoderFun      destroy;
+-    initMjpegDecoderFun         init;
+-    deInitMjpegDecoderFun       deInit;
+-    mjpegDecodeOneFrameFun      decode;
+-} mjpeg_interface_t;
+-
+ class MemManagerBase : public virtual VirtualLightRefBase {
+ public :
+     MemManagerBase();
+-- 
+2.35.1
+

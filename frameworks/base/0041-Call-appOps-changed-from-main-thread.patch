@@ -1,0 +1,113 @@
+From 494249aa7fbf4e725fd54010598b875b67b2d2b7 Mon Sep 17 00:00:00 2001
+From: Beverly <beverlyt@google.com>
+Date: Fri, 8 Nov 2019 15:44:21 -0500
+Subject: [PATCH 041/297] Call appOps changed from main thread
+
+Since it can cause an update to notification views
+and changes to the views must be done on the main thread
+
+Test: atest ForegroundServiceControllerTest
+Fixes: 144170894
+Change-Id: I788d9b31c0f1ad8d2e1dd1df5ce743100f3a4a67
+(cherry picked from commit d30d6d0610916421c44290986d2c60f6cff6bbfa)
+---
+ .../systemui/ForegroundServiceController.java  | 18 +++++++++++++-----
+ .../ForegroundServiceControllerTest.java       |  4 +++-
+ 2 files changed, 16 insertions(+), 6 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/ForegroundServiceController.java b/packages/SystemUI/src/com/android/systemui/ForegroundServiceController.java
+index c2d090e0071..385de4acfea 100644
+--- a/packages/SystemUI/src/com/android/systemui/ForegroundServiceController.java
++++ b/packages/SystemUI/src/com/android/systemui/ForegroundServiceController.java
+@@ -16,6 +16,7 @@ package com.android.systemui;
+ 
+ import android.annotation.Nullable;
+ import android.app.AppOpsManager;
++import android.os.Handler;
+ import android.os.UserHandle;
+ import android.service.notification.StatusBarNotification;
+ import android.util.ArraySet;
+@@ -23,13 +24,13 @@ import android.util.SparseArray;
+ 
+ import com.android.internal.messages.nano.SystemMessageProto;
+ import com.android.systemui.appops.AppOpsController;
++import com.android.systemui.dagger.qualifiers.MainHandler;
+ import com.android.systemui.statusbar.notification.NotificationEntryManager;
+ import com.android.systemui.statusbar.notification.collection.NotificationEntry;
+ 
+ import javax.inject.Inject;
+ import javax.inject.Singleton;
+ 
+-
+ /**
+  * Tracks state of foreground services and notifications related to foreground services per user.
+  */
+@@ -44,12 +45,18 @@ public class ForegroundServiceController {
+     private final SparseArray<ForegroundServicesUserState> mUserServices = new SparseArray<>();
+     private final Object mMutex = new Object();
+     private final NotificationEntryManager mEntryManager;
++    private final Handler mMainHandler;
+ 
+     @Inject
+     public ForegroundServiceController(NotificationEntryManager entryManager,
+-            AppOpsController appOpsController) {
++            AppOpsController appOpsController, @MainHandler Handler mainHandler) {
+         mEntryManager = entryManager;
+-        appOpsController.addCallback(APP_OPS, this::onAppOpChanged);
++        mMainHandler = mainHandler;
++        appOpsController.addCallback(APP_OPS, (code, uid, packageName, active) -> {
++            mMainHandler.post(() -> {
++                onAppOpChanged(code, uid, packageName, active);
++            });
++        });
+     }
+ 
+     /**
+@@ -113,7 +120,7 @@ public class ForegroundServiceController {
+      * @param packageName package that created the notification
+      * @param active whether the appOpCode is active or not
+      */
+-    public void onAppOpChanged(int appOpCode, int uid, String packageName, boolean active) {
++    void onAppOpChanged(int appOpCode, int uid, String packageName, boolean active) {
+         int userId = UserHandle.getUserId(uid);
+         // Record active app ops
+         synchronized (mMutex) {
+@@ -132,7 +139,8 @@ public class ForegroundServiceController {
+         // Update appOp if there's an associated pending or visible notification:
+         final String foregroundKey = getStandardLayoutKey(userId, packageName);
+         if (foregroundKey != null) {
+-            final NotificationEntry entry = mEntryManager.getPendingOrCurrentNotif(foregroundKey);
++            final NotificationEntry entry = mEntryManager.getPendingOrCurrentNotif(
++                    foregroundKey);
+             if (entry != null
+                     && uid == entry.getSbn().getUid()
+                     && packageName.equals(entry.getSbn().getPackageName())) {
+diff --git a/packages/SystemUI/tests/src/com/android/systemui/ForegroundServiceControllerTest.java b/packages/SystemUI/tests/src/com/android/systemui/ForegroundServiceControllerTest.java
+index bb4387eb4a2..e63b6d6670f 100644
+--- a/packages/SystemUI/tests/src/com/android/systemui/ForegroundServiceControllerTest.java
++++ b/packages/SystemUI/tests/src/com/android/systemui/ForegroundServiceControllerTest.java
+@@ -33,6 +33,7 @@ import android.app.AppOpsManager;
+ import android.app.Notification;
+ import android.app.NotificationManager;
+ import android.os.Bundle;
++import android.os.Handler;
+ import android.os.UserHandle;
+ import android.service.notification.StatusBarNotification;
+ import android.widget.RemoteViews;
+@@ -64,11 +65,12 @@ public class ForegroundServiceControllerTest extends SysuiTestCase {
+     private NotificationEntryListener mEntryListener;
+     @Mock private NotificationEntryManager mEntryManager;
+     @Mock private AppOpsController mAppOpsController;
++    @Mock private Handler mMainHandler;
+ 
+     @Before
+     public void setUp() throws Exception {
+         MockitoAnnotations.initMocks(this);
+-        mFsc = new ForegroundServiceController(mEntryManager, mAppOpsController);
++        mFsc = new ForegroundServiceController(mEntryManager, mAppOpsController, mMainHandler);
+         mListener = new ForegroundServiceNotificationListener(
+                 mContext, mFsc, mEntryManager);
+         ArgumentCaptor<NotificationEntryListener> entryListenerCaptor =
+-- 
+2.35.1
+

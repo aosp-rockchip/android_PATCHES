@@ -1,0 +1,37 @@
+From ebfc12232a8f0b071840d460a6b2bd21b477213f Mon Sep 17 00:00:00 2001
+From: Jorim Jaggi <jjaggi@google.com>
+Date: Tue, 21 Jan 2020 22:32:37 +0100
+Subject: [PATCH 059/297] Fix emergency button overlap with nav bar
+
+Fortunately this layout *censored* will go away very soon, but until
+that's done, we still have to hack in this custom logic for every
+window.
+
+Layout notification shade exact same way as status bar.
+
+Test: Set up PIN/Pattern/Password, try to unlock, click emergency
+button
+Fixes: 148041093
+
+Change-Id: I8dda4fbaaa718016adc303e21c26a1b72f1e31b5
+(cherry picked from commit f2ce4fa593967995deb5ea443041add6438389e7)
+---
+ services/core/java/com/android/server/wm/DisplayPolicy.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/wm/DisplayPolicy.java b/services/core/java/com/android/server/wm/DisplayPolicy.java
+index 2c325e56ceb..4f1d40e3931 100644
+--- a/services/core/java/com/android/server/wm/DisplayPolicy.java
++++ b/services/core/java/com/android/server/wm/DisplayPolicy.java
+@@ -1958,7 +1958,7 @@ public class DisplayPolicy {
+             }
+         } else if (type == TYPE_WALLPAPER) {
+             layoutWallpaper(displayFrames, pf, df, cf);
+-        } else if (win == mStatusBar) {
++        } else if (win == mStatusBar || type == TYPE_NOTIFICATION_SHADE) {
+             df.set(displayFrames.mUnrestricted);
+             pf.set(displayFrames.mUnrestricted);
+             cf.set(displayFrames.mStable);
+-- 
+2.35.1
+

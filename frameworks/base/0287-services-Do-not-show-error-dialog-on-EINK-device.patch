@@ -1,0 +1,27 @@
+From d925fbe814dc45027170c5e653dc7335b9ce4a23 Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Fri, 15 Jan 2021 16:28:40 +0800
+Subject: [PATCH 287/297] services: Do not show error dialog on EINK device.
+
+Change-Id: Ic4e80c0681af275cc03da42f3e6d0bc3473ac184
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+---
+ .../java/com/android/server/wm/ActivityTaskManagerService.java  | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/wm/ActivityTaskManagerService.java b/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
+index e4cf423ab83..82b858efe39 100755
+--- a/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
++++ b/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
+@@ -6503,7 +6503,7 @@ public class ActivityTaskManagerService extends IActivityTaskManager.Stub {
+                 } catch (RemoteException e) {
+                 }
+ 
+-                if (!getContext().getPackageManager().hasSystemFeature(FEATURE_EINK)/*EINK*/ &&
++                if (!mContext.getPackageManager().hasSystemFeature(FEATURE_EINK)/*EINK*/ &&
+                     !Build.isBuildConsistent()) {
+                     Slog.e(TAG, "Build fingerprint is not consistent, warning user");
+                     mUiHandler.post(() -> {
+-- 
+2.35.1
+

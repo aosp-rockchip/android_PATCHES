@@ -1,0 +1,42 @@
+From c5c474df8184f99dd420bd20ac375cfc29bcf819 Mon Sep 17 00:00:00 2001
+From: Lloyd Pique <lpique@google.com>
+Date: Thu, 8 Aug 2019 11:57:53 -0700
+Subject: [PATCH 01/33] SF: Present before signalling presentation done
+
+In doing the refactor, I had effectively swapped the calls to
+HWComposer::presentAndGetReleaseFences() and
+DisplaySurface::onFrameCommitted() so that onFrameCommitted was being
+called before the display was presented.
+
+If client composition was used for those frames, the result was that the
+GPU composed buffer on display could be written to (cleared) before it was
+actually replaced by a new buffer.
+
+Bug: 138914274
+Test: Unable to reproduce black scanlines in Hangouts on Walleye
+Change-Id: I13625f124130826a5f80337b74e937f1291220e1
+(cherry picked from commit 7d90ba5fdf9fe081ccb900e9032a965aaf00d978)
+---
+ services/surfaceflinger/CompositionEngine/src/Output.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/services/surfaceflinger/CompositionEngine/src/Output.cpp b/services/surfaceflinger/CompositionEngine/src/Output.cpp
+index b411e0a04..6878e99b7 100644
+--- a/services/surfaceflinger/CompositionEngine/src/Output.cpp
++++ b/services/surfaceflinger/CompositionEngine/src/Output.cpp
+@@ -300,10 +300,10 @@ void Output::postFramebuffer() {
+         return;
+     }
+ 
+-    mRenderSurface->onPresentDisplayCompleted();
+-
+     auto frame = presentAndGetFrameFences();
+ 
++    mRenderSurface->onPresentDisplayCompleted();
++
+     for (auto& layer : getOutputLayersOrderedByZ()) {
+         // The layer buffer from the previous frame (if any) is released
+         // by HWC only when the release fence from this frame (if any) is
+-- 
+2.35.1
+

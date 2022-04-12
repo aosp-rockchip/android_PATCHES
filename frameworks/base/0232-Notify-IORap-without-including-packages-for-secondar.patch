@@ -1,0 +1,53 @@
+From 5cfd2dafa6a8d7a492a4ac1035f668d818cd199d Mon Sep 17 00:00:00 2001
+From: yawanng <yawanng@google.com>
+Date: Tue, 28 Jul 2020 23:34:54 +0000
+Subject: [PATCH 232/297] Notify IORap without including packages for secondary
+ dex opt.
+
+The current secondary dex opt doesn't distinct between
+opt performed and skipped, which causes unnecessary traces
+purge for IORap.
+
+Bug:161633001
+Test: manually trigger bg-dexopt via 'adb shell cmd jobscheduler run -f
+android 800' and check the log.
+
+(cherry picked from commit ff800a363bbdec0eaac0960340689a20ebc9bf7a)
+Merged-In: Iae4fc0b6fc73707ada8895b38c3ae3f772ac2cd0
+Change-Id: Iae4fc0b6fc73707ada8895b38c3ae3f772ac2cd0
+(cherry picked from commit 9b4958afb079bc2907d62f1bba8ca11d22c6f2c5)
+---
+ .../java/com/android/server/pm/BackgroundDexOptService.java | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/pm/BackgroundDexOptService.java b/services/core/java/com/android/server/pm/BackgroundDexOptService.java
+index 5415967c3bd..d48570fa3b0 100644
+--- a/services/core/java/com/android/server/pm/BackgroundDexOptService.java
++++ b/services/core/java/com/android/server/pm/BackgroundDexOptService.java
+@@ -337,6 +337,7 @@ public class BackgroundDexOptService extends JobService {
+     private int idleOptimizePackages(PackageManagerService pm, ArraySet<String> pkgs,
+             long lowStorageThreshold) {
+         ArraySet<String> updatedPackages = new ArraySet<>();
++        ArraySet<String> updatedPackagesDueToSecondaryDex = new ArraySet<>();
+ 
+         try {
+             final boolean supportSecondaryDex = supportSecondaryDex();
+@@ -391,11 +392,14 @@ public class BackgroundDexOptService extends JobService {
+             }
+ 
+             int secondaryResult = optimizePackages(pm, pkgs, lowStorageThreshold,
+-                    /*isForPrimaryDex*/ false, updatedPackages);
++                    /*isForPrimaryDex*/ false, updatedPackagesDueToSecondaryDex);
+             return secondaryResult;
+         } finally {
+             // Always let the pinner service know about changes.
+             notifyPinService(updatedPackages);
++            // Only notify IORap the primary dex opt, because we don't want to
++            // invalidate traces unnecessary due to b/161633001 and that it's
++            // better to have a trace than no trace at all.
+             notifyPackagesUpdated(updatedPackages);
+         }
+     }
+-- 
+2.35.1
+

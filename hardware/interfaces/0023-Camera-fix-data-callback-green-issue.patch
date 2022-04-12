@@ -1,0 +1,34 @@
+From 1f38e70391aad5f5d682f762ee9a1622eb65743e Mon Sep 17 00:00:00 2001
+From: Wang Panzhenzhuan <randy.wang@rock-chips.com>
+Date: Fri, 29 Jan 2021 16:45:56 +0800
+Subject: [PATCH 23/24] Camera: fix data callback green issue
+
+Signed-off-by: Wang Panzhenzhuan <randy.wang@rock-chips.com>
+Change-Id: Ia350f25176f7bfea4be87bf38a54e19492c3a12c
+---
+ camera/device/3.4/default/ExternalCameraDeviceSession.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/camera/device/3.4/default/ExternalCameraDeviceSession.cpp b/camera/device/3.4/default/ExternalCameraDeviceSession.cpp
+index 3efed0e41..12344b090 100755
+--- a/camera/device/3.4/default/ExternalCameraDeviceSession.cpp
++++ b/camera/device/3.4/default/ExternalCameraDeviceSession.cpp
+@@ -1859,7 +1859,6 @@ bool ExternalCameraDeviceSession::OutputThread::threadLoop() {
+                     halBuf.acquireFence = relFence;
+                 }
+             } break;
+-            case PixelFormat::YCBCR_420_888:
+             case PixelFormat::YV12: {
+                 IMapper::Rect outRect {0, 0,
+                         static_cast<int32_t>(halBuf.width),
+@@ -1903,6 +1902,7 @@ bool ExternalCameraDeviceSession::OutputThread::threadLoop() {
+                     halBuf.acquireFence = relFence;
+                 }
+             } break;
++            case PixelFormat::YCBCR_420_888:
+             case PixelFormat::IMPLEMENTATION_DEFINED:
+             case PixelFormat::YCRCB_420_SP: {
+                 if (req->frameIn->mFourcc == V4L2_PIX_FMT_YUYV){
+-- 
+2.35.1
+

@@ -1,0 +1,606 @@
+From ba33983130c448711936d149c649422b03f7af86 Mon Sep 17 00:00:00 2001
+From: chenxiao <cx@rock-chips.com>
+Date: Sat, 10 Oct 2020 11:21:00 +0800
+Subject: [PATCH] Camera: Merge from Android Q.
+
+Signed-off-by: chenxiao <cx@rock-chips.com>
+Change-Id: Ica086fbec82d5d333ed266da7913a3539fffe4ab
+---
+ .../portability/AndroidCamera2AgentImpl.java  |   4 +-
+ .../portability/AndroidCameraAgentImpl.java   |  43 ++++++-
+ .../AndroidCameraCapabilities.java            | 102 ++++++++++++++++
+ .../ex/camera2/portability/CameraAgent.java   |  11 +-
+ .../portability/CameraAgentFactory.java       |  12 +-
+ .../portability/CameraCapabilities.java       | 104 ++++++++++++++--
+ .../camera2/portability/CameraSettings.java   | 112 ++++++++++++++++++
+ 7 files changed, 376 insertions(+), 12 deletions(-)
+
+diff --git a/camera2/portability/src/com/android/ex/camera2/portability/AndroidCamera2AgentImpl.java b/camera2/portability/src/com/android/ex/camera2/portability/AndroidCamera2AgentImpl.java
+index 2fc4ad3..464f3e5 100644
+--- a/camera2/portability/src/com/android/ex/camera2/portability/AndroidCamera2AgentImpl.java
++++ b/camera2/portability/src/com/android/ex/camera2/portability/AndroidCamera2AgentImpl.java
+@@ -221,7 +221,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
+         @Override
+         public void handleMessage(final Message msg) {
+             super.handleMessage(msg);
+-            Log.v(TAG, "handleMessage - action = '" + CameraActions.stringify(msg.what) + "'");
++            Log.w(TAG, "handleMessage - action = '" + CameraActions.stringify(msg.what) + "'");
+             int cameraAction = msg.what;
+             try {
+                 switch (cameraAction) {
+@@ -641,6 +641,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
+                     }
+                 }
+             } catch (final Exception ex) {
++		Log.e(TAG,"action:" + CameraActions.stringify(msg.what) + " has error:" + ex);
+                 if (cameraAction != CameraActions.RELEASE && mCamera != null) {
+                     // TODO: Handle this better
+                     mCamera.close();
+@@ -664,6 +665,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
+                 }
+             } finally {
+                 WaitDoneBundle.unblockSyncWaiters(msg);
++		Log.w(TAG,"action:" + CameraActions.stringify(msg.what) + " done well");
+             }
+         }
+ 
+diff --git a/camera2/portability/src/com/android/ex/camera2/portability/AndroidCameraAgentImpl.java b/camera2/portability/src/com/android/ex/camera2/portability/AndroidCameraAgentImpl.java
+index a2b6299..44a381f 100644
+--- a/camera2/portability/src/com/android/ex/camera2/portability/AndroidCameraAgentImpl.java
++++ b/camera2/portability/src/com/android/ex/camera2/portability/AndroidCameraAgentImpl.java
+@@ -264,6 +264,16 @@ class AndroidCameraAgentImpl extends CameraAgent {
+         private ParametersCache mParameterCache;
+         private int mCancelAfPending = 0;
+ 
++        private static final String KEY_BURST_SUPPORT = "burst-support";
++        private static final String KEY_BURST_LENGTH = "burst-length";
++        private static final String KEY_PREVIEW_WINDOW_SIZE = "preview-window-size";
++        private static final String KEY_SATURATION_MODE = "saturation-mode";
++        private static final String KEY_BRIGHTNESS_MODE = "brightness-mode";
++        private static final String KEY_CONTRAST_MODE = "contrast-mode";
++        private static final String KEY_HUE_MODE = "hue-mode";
++        private static final String KEY_SHARPNESS_MODE = "sharpness-mode";
++        private static final String KEY_3DNR_ENABLED = "3dnr_enabled";
++
+         private class CaptureCallbacks {
+             public final ShutterCallback mShutter;
+             public final PictureCallback mRaw;
+@@ -350,7 +360,7 @@ class AndroidCameraAgentImpl extends CameraAgent {
+             super.handleMessage(msg);
+ 
+             if (getCameraState().isInvalid()) {
+-                Log.v(TAG, "Skip handleMessage - action = '" + CameraActions.stringify(msg.what) + "'");
++                Log.w(TAG, "Skip handleMessage - action = '" + CameraActions.stringify(msg.what) + "'");
+                 return;
+             }
+             Log.v(TAG, "handleMessage - action = '" + CameraActions.stringify(msg.what) + "'");
+@@ -724,6 +734,37 @@ class AndroidCameraAgentImpl extends CameraAgent {
+                 }
+             }
+ 
++            if (settings.getBurstMode() != null)
++                parameters.set(KEY_BURST_SUPPORT, settings.getBurstMode());
++            if (settings.getBurstLength() > 0)
++                parameters.set(KEY_BURST_LENGTH, settings.getBurstLength());
++
++            if (settings.getPreviewWindowSize() != null)
++                parameters.set(KEY_PREVIEW_WINDOW_SIZE, settings.getPreviewWindowSize());
++
++            if (settings.getColorEffect() != null)
++                parameters.setColorEffect(settings.getColorEffect());
++
++            if (settings.getSaturation() != null)
++                parameters.set(KEY_SATURATION_MODE, settings.getSaturation());
++
++            if (settings.getContrast() != null)
++                parameters.set(KEY_CONTRAST_MODE, settings.getContrast());
++
++            if (settings.getBrightness() != null)
++                parameters.set(KEY_BRIGHTNESS_MODE, settings.getBrightness());
++
++            if (settings.getSharpness() != null)
++                parameters.set(KEY_SHARPNESS_MODE, settings.getSharpness());
++
++            if (settings.getHue() != null)
++                parameters.set(KEY_HUE_MODE, settings.getHue());
++
++            if (settings.getAntiBanding() != null)
++                parameters.setAntibanding(settings.getAntiBanding());
++
++            parameters.set(KEY_3DNR_ENABLED, settings.is3dnrEnabled() ? "true" : "false");
++
+         }
+ 
+         /**
+diff --git a/camera2/portability/src/com/android/ex/camera2/portability/AndroidCameraCapabilities.java b/camera2/portability/src/com/android/ex/camera2/portability/AndroidCameraCapabilities.java
+index 4f430bb..83450ea 100644
+--- a/camera2/portability/src/com/android/ex/camera2/portability/AndroidCameraCapabilities.java
++++ b/camera2/portability/src/com/android/ex/camera2/portability/AndroidCameraCapabilities.java
+@@ -17,9 +17,11 @@
+ package com.android.ex.camera2.portability;
+ 
+ import android.hardware.Camera;
++import android.text.TextUtils;
+ 
+ import com.android.ex.camera2.portability.debug.Log;
+ 
++import java.util.ArrayList;
+ import java.util.Collections;
+ import java.util.Comparator;
+ import java.util.List;
+@@ -58,6 +60,14 @@ class AndroidCameraCapabilities extends CameraCapabilities {
+         buildFocusModes(p);
+         buildWhiteBalances(p);
+ 
++        buildColorEffects(p);
++        buildSaturations(p);
++        buildContrasts(p);
++        buildSharpnesses(p);
++        buildBrightnesses(p);
++        buildHues(p);
++        buildAntiBandings(p);
++
+         if (p.isZoomSupported()) {
+             mMaxZoomRatio = p.getZoomRatios().get(p.getMaxZoom()) / ZOOM_MULTIPLIER;
+             mSupportedFeatures.add(Feature.ZOOM);
+@@ -238,6 +248,98 @@ class AndroidCameraCapabilities extends CameraCapabilities {
+         }
+     }
+ 
++    // Splits a comma delimited string to an ArrayList of String.
++    // Return null if the passing string is null or the size is 0.
++    private ArrayList<String> split(String str) {
++        if (str == null) return null;
++
++        TextUtils.StringSplitter splitter = new TextUtils.SimpleStringSplitter(',');
++        splitter.setString(str);
++        ArrayList<String> substrings = new ArrayList<String>();
++        for (String s : splitter) {
++            substrings.add(s);
++        }
++        return substrings;
++    }
++
++    private void buildColorEffects(Camera.Parameters p) {
++        List<String> supportedColorEffects = p.getSupportedColorEffects();
++        if (supportedColorEffects != null) {
++            for (String coloreffect : supportedColorEffects) {
++                mSupportedColorEffects.add(coloreffect);
++            }
++        }
++    }
++
++    private void buildSaturations(Camera.Parameters p) {
++        String SUPPORTED_VALUES_SUFFIX = "-values";
++        String KEY_SATURATION_MODE = "saturation-mode";
++        String str = p.get(KEY_SATURATION_MODE + SUPPORTED_VALUES_SUFFIX);
++        List<String> supportedSaturations = split(str);
++        if (supportedSaturations != null) {
++            for (String saturation : supportedSaturations) {
++                mSupportedSaturations.add(saturation);
++            }
++        }
++    }
++
++    private void buildContrasts(Camera.Parameters p) {
++        String SUPPORTED_VALUES_SUFFIX = "-values";
++        String KEY_CONTRAST_MODE = "contrast-mode";
++        String str = p.get(KEY_CONTRAST_MODE + SUPPORTED_VALUES_SUFFIX);
++        List<String> supportedContrasts = split(str);
++        if (supportedContrasts != null) {
++            for (String contrast : supportedContrasts) {
++                mSupportedContrasts.add(contrast);
++            }
++        }
++    }
++
++    private void buildSharpnesses(Camera.Parameters p) {
++        String SUPPORTED_VALUES_SUFFIX = "-values";
++        String KEY_SHARPNESS_MODE = "sharpness-mode";
++        String str = p.get(KEY_SHARPNESS_MODE + SUPPORTED_VALUES_SUFFIX);
++        List<String> supportedSharpnesses = split(str);
++        if (supportedSharpnesses != null) {
++            for (String sharpness : supportedSharpnesses) {
++                mSupportedSharpnesses.add(sharpness);
++            }
++        }
++    }
++
++    private void buildBrightnesses(Camera.Parameters p) {
++        String SUPPORTED_VALUES_SUFFIX = "-values";
++        String KEY_BRIGHTNESS_MODE = "brightness-mode";
++        String str = p.get(KEY_BRIGHTNESS_MODE + SUPPORTED_VALUES_SUFFIX);
++        List<String> supportedBrightnesses = split(str);
++        if (supportedBrightnesses != null) {
++            for (String brightness : supportedBrightnesses) {
++                mSupportedBrightnesses.add(brightness);
++            }
++        }
++    }
++
++    private void buildHues(Camera.Parameters p) {
++        String SUPPORTED_VALUES_SUFFIX = "-values";
++        String KEY_HUE_MODE = "hue-mode";
++        String str = p.get(KEY_HUE_MODE + SUPPORTED_VALUES_SUFFIX);
++        List<String> supportedHues = split(str);
++        if (supportedHues != null) {
++            for (String hue : supportedHues) {
++                mSupportedHues.add(hue);
++            }
++        }
++    }
++
++    private void buildAntiBandings(Camera.Parameters p) {
++        List<String> supportedAntiBandings = p.getSupportedAntibanding();
++        if (supportedAntiBandings != null) {
++            for (String antiBanding : supportedAntiBandings) {
++                mSupportedAntiBandings.add(antiBanding);
++            }
++        }
++    }
++
+     private static class FpsComparator implements Comparator<int[]> {
+         @Override
+         public int compare(int[] fps1, int[] fps2) {
+diff --git a/camera2/portability/src/com/android/ex/camera2/portability/CameraAgent.java b/camera2/portability/src/com/android/ex/camera2/portability/CameraAgent.java
+index 66762fd..cb68294 100644
+--- a/camera2/portability/src/com/android/ex/camera2/portability/CameraAgent.java
++++ b/camera2/portability/src/com/android/ex/camera2/portability/CameraAgent.java
+@@ -686,7 +686,16 @@ public abstract class CameraAgent {
+              // cancelAutoFocus should get executed asap, set the state back to idle.
+             getCameraHandler().sendMessageAtFrontOfQueue(
+                     getCameraHandler().obtainMessage(CameraActions.CANCEL_AUTO_FOCUS));
+-            getCameraHandler().sendEmptyMessage(CameraActions.CANCEL_AUTO_FOCUS_FINISH);
++            //getCameraHandler().sendEmptyMessage(CameraActions.CANCEL_AUTO_FOCUS_FINISH);
++            try {
++                getDispatchThread().runJob(new Runnable() {
++                    @Override
++                    public void run() {
++                        getCameraHandler().sendEmptyMessage(CameraActions.CANCEL_AUTO_FOCUS_FINISH);
++                    }});
++            } catch (final RuntimeException ex) {
++                getAgent().getCameraExceptionHandler().onDispatchThreadException(ex);
++            }
+         }
+ 
+         /**
+diff --git a/camera2/portability/src/com/android/ex/camera2/portability/CameraAgentFactory.java b/camera2/portability/src/com/android/ex/camera2/portability/CameraAgentFactory.java
+index 77ad0c3..694bdc6 100644
+--- a/camera2/portability/src/com/android/ex/camera2/portability/CameraAgentFactory.java
++++ b/camera2/portability/src/com/android/ex/camera2/portability/CameraAgentFactory.java
+@@ -117,7 +117,17 @@ public class CameraAgentFactory {
+                 sAndroidCameraAgent = new AndroidCameraAgentImpl();
+                 sAndroidCameraAgentClientCount = 1;
+             } else {
+-                ++sAndroidCameraAgentClientCount;
++                CameraStateHolder camerastate = sAndroidCameraAgent.getCameraState();
++                if (camerastate != null && camerastate.isInvalid()) {
++                    Log.w(TAG, "CameraAgentFactory camerastate.isInvalid() = "
++                            + camerastate.isInvalid());
++                    sAndroidCameraAgent.recycle();
++                    sAndroidCameraAgent = null;
++                    sAndroidCameraAgent = new AndroidCameraAgentImpl();
++                    sAndroidCameraAgentClientCount = 1;
++                } else {
++                    ++sAndroidCameraAgentClientCount;
++                }
+             }
+             return sAndroidCameraAgent;
+         } else { // API_2
+diff --git a/camera2/portability/src/com/android/ex/camera2/portability/CameraCapabilities.java b/camera2/portability/src/com/android/ex/camera2/portability/CameraCapabilities.java
+index 31c47d3..6fff316 100644
+--- a/camera2/portability/src/com/android/ex/camera2/portability/CameraCapabilities.java
++++ b/camera2/portability/src/com/android/ex/camera2/portability/CameraCapabilities.java
+@@ -66,6 +66,14 @@ public class CameraCapabilities {
+     protected float mVerticalViewAngle;
+     private final Stringifier mStringifier;
+ 
++    protected final ArrayList<String> mSupportedColorEffects = new ArrayList<String>();
++    protected final ArrayList<String> mSupportedSaturations = new ArrayList<String>();
++    protected final ArrayList<String> mSupportedContrasts = new ArrayList<String>();
++    protected final ArrayList<String> mSupportedSharpnesses = new ArrayList<String>();
++    protected final ArrayList<String> mSupportedBrightnesses = new ArrayList<String>();
++    protected final ArrayList<String> mSupportedHues = new ArrayList<String>();
++    protected final ArrayList<String> mSupportedAntiBandings = new ArrayList<String>();
++
+     /**
+      * Focus modes.
+      */
+@@ -494,6 +502,14 @@ public class CameraCapabilities {
+         mHorizontalViewAngle = src.mHorizontalViewAngle;
+         mVerticalViewAngle = src.mVerticalViewAngle;
+         mStringifier = src.mStringifier;
++
++        mSupportedColorEffects.addAll(src.mSupportedColorEffects);
++        mSupportedSaturations.addAll(src.mSupportedSaturations);
++        mSupportedContrasts.addAll(src.mSupportedContrasts);
++        mSupportedSharpnesses.addAll(src.mSupportedSharpnesses);
++        mSupportedBrightnesses.addAll(src.mSupportedBrightnesses);
++        mSupportedHues.addAll(src.mSupportedHues);
++        mSupportedAntiBandings.addAll(src.mSupportedAntiBandings);
+     }
+ 
+     public float getHorizontalViewAngle() {
+@@ -676,16 +692,88 @@ public class CameraCapabilities {
+         return mStringifier;
+     }
+ 
++    /**
++     * Gets the supported color effects.
++     *
++     * @return a list of supported color effects. null if color effect
++     *         setting is not supported.
++     * @see #getColorEffect()
++     */
++    public List<String> getSupportedColorEffects() {
++        return new ArrayList<String>(mSupportedColorEffects);
++    }
++
++    /**
++     * Gets the supported saturations.
++     *
++     * @return a list of supported saturations. null if saturation
++     *         setting is not supported.
++     */
++    public List<String> getSupportedSaturations() {
++        return new ArrayList<String>(mSupportedSaturations);
++    }
++
++    /**
++     * Gets the supported contrasts.
++     *
++     * @return a list of supported contrasts. null if contrast
++     *         setting is not supported.
++     */
++    public List<String> getSupportedContrasts() {
++        return new ArrayList<String>(mSupportedContrasts);
++    }
++
++    /**
++     * Gets the supported sharpnesses.
++     *
++     * @return a list of supported sharpnesses. null if sharpness
++     *         setting is not supported.
++     */
++    public List<String> getSupportedSharpnesses() {
++        return new ArrayList<String>(mSupportedSharpnesses);
++    }
++
++    /**
++     * Gets the supported brightnesses.
++     *
++     * @return a list of supported brightnesses. null if brightness
++     *         setting is not supported.
++     */
++    public List<String> getSupportedBrightnesses() {
++        return new ArrayList<String>(mSupportedBrightnesses);
++    }
++
++    /**
++     * Gets the supported hues.
++     *
++     * @return a list of supported hues. null if hue
++     *         setting is not supported.
++     */
++    public List<String> getSupportedHues() {
++        return new ArrayList<String>(mSupportedHues);
++    }
++
++    /**
++     * Gets the supported antibanding values.
++     *
++     * @return a list of supported antibanding values. null if antibanding
++     *         setting is not supported.
++     * @see #getAntibanding()
++     */
++    public List<String> getSupportedAntiBanding() {
++        return new ArrayList<String>(mSupportedAntiBandings);
++    }
++
+     private boolean zoomCheck(final CameraSettings settings) {
+         final float ratio = settings.getCurrentZoomRatio();
+         if (!supports(Feature.ZOOM)) {
+             if (ratio != ZOOM_RATIO_UNZOOMED) {
+-                Log.v(TAG, "Zoom is not supported");
++                Log.w(TAG, "Zoom is not supported");
+                 return false;
+             }
+         } else {
+             if (settings.getCurrentZoomRatio() > getMaxZoomRatio()) {
+-                Log.v(TAG, "Zoom ratio is not supported: ratio = " +
++                Log.w(TAG, "Zoom ratio is not supported: ratio = " +
+                         settings.getCurrentZoomRatio());
+                 return false;
+             }
+@@ -696,7 +784,7 @@ public class CameraCapabilities {
+     private boolean exposureCheck(final CameraSettings settings) {
+         final int index = settings.getExposureCompensationIndex();
+         if (index > getMaxExposureCompensation() || index < getMinExposureCompensation()) {
+-            Log.v(TAG, "Exposure compensation index is not supported. Min = " +
++            Log.w(TAG, "Exposure compensation index is not supported. Min = " +
+                     getMinExposureCompensation() + ", max = " + getMaxExposureCompensation() + "," +
+                     " setting = " + index);
+             return false;
+@@ -713,7 +801,7 @@ public class CameraCapabilities {
+                 Log.w(TAG, "Focus mode not supported... trying FIXED");
+                 settings.setFocusMode(FocusMode.FIXED);
+             } else {
+-                Log.v(TAG, "Focus mode not supported:" +
++                Log.w(TAG, "Focus mode not supported:" +
+                         (focusMode != null ? focusMode.name() : "null"));
+                 return false;
+             }
+@@ -724,7 +812,7 @@ public class CameraCapabilities {
+     private boolean flashCheck(final CameraSettings settings) {
+         FlashMode flashMode = settings.getCurrentFlashMode();
+         if (!supports(flashMode)) {
+-            Log.v(TAG,
++            Log.w(TAG,
+                     "Flash mode not supported:" + (flashMode != null ? flashMode.name() : "null"));
+             return false;
+         }
+@@ -736,7 +824,7 @@ public class CameraCapabilities {
+         if (mSupportedPhotoSizes.contains(photoSize)) {
+             return true;
+         }
+-        Log.v(TAG, "Unsupported photo size:" + photoSize);
++        Log.w(TAG, "Unsupported photo size:" + photoSize);
+         return false;
+     }
+ 
+@@ -745,7 +833,7 @@ public class CameraCapabilities {
+         if (mSupportedPreviewSizes.contains(previewSize)) {
+             return true;
+         }
+-        Log.v(TAG, "Unsupported preview size:" + previewSize);
++        Log.w(TAG, "Unsupported preview size:" + previewSize);
+         return false;
+     }
+ 
+@@ -753,7 +841,7 @@ public class CameraCapabilities {
+         if (!settings.isVideoStabilizationEnabled() || supports(Feature.VIDEO_STABILIZATION)) {
+             return true;
+         }
+-        Log.v(TAG, "Video stabilization is not supported");
++        Log.w(TAG, "Video stabilization is not supported");
+         return false;
+     }
+ }
+diff --git a/camera2/portability/src/com/android/ex/camera2/portability/CameraSettings.java b/camera2/portability/src/com/android/ex/camera2/portability/CameraSettings.java
+index ccd980a..16b7675 100644
+--- a/camera2/portability/src/com/android/ex/camera2/portability/CameraSettings.java
++++ b/camera2/portability/src/com/android/ex/camera2/portability/CameraSettings.java
+@@ -60,6 +60,18 @@ public abstract class CameraSettings {
+     protected GpsData mGpsData;
+     protected Size mExifThumbnailSize;
+ 
++    protected String mBurstMode;
++    protected int mBurstLength;
++    protected String mPreviewWindowSize;
++    protected String mColorEffect;
++    protected String mSaturation;
++    protected String mBrightness;
++    protected String mContrast;
++    protected String mHue;
++    protected String mSharpness;
++    protected String mAntiBanding;
++    protected boolean m3dnrEnabled;
++
+     /**
+      * An immutable class storing GPS related information.
+      * <p>It's a hack since we always use GPS time stamp but does not use other
+@@ -140,6 +152,18 @@ public abstract class CameraSettings {
+         mRecordingHintEnabled = src.mRecordingHintEnabled;
+         mGpsData = src.mGpsData;
+         mExifThumbnailSize = src.mExifThumbnailSize;
++
++        mBurstMode = src.mBurstMode;
++        mBurstLength = src.mBurstLength;
++        mPreviewWindowSize = src.mPreviewWindowSize;
++        mColorEffect = src.mColorEffect;
++        mSaturation = src.mSaturation;
++        mContrast = src.mContrast;
++        mBrightness = src.mBrightness;
++        mSharpness = src.mSharpness;
++        mHue = src.mHue;
++        mAntiBanding = src.mAntiBanding;
++        m3dnrEnabled = src.m3dnrEnabled;
+     }
+ 
+     /**
+@@ -509,4 +533,92 @@ public abstract class CameraSettings {
+     public Size getExifThumbnailSize() {
+         return (mExifThumbnailSize == null) ? null : new Size(mExifThumbnailSize);
+     }
++
++    public void setBurstMode(String mode) {
++        mBurstMode = mode;
++    }
++
++    public String getBurstMode() {
++        return mBurstMode;
++    }
++
++    public void setBurstLength(int length) {
++        mBurstLength = length;
++    }
++
++    public int getBurstLength() {
++        return mBurstLength;
++    }
++
++    public void setPreviewWindowSize(String size) {
++        mPreviewWindowSize = size;
++    }
++
++    public String getPreviewWindowSize() {
++        return mPreviewWindowSize;
++    }
++
++    public void setColorEffect(String effect) {
++        mColorEffect = effect;
++    }
++
++    public String getColorEffect() {
++        return mColorEffect;
++    }
++
++    public void setSaturation(String saturation) {
++        mSaturation = saturation;
++    }
++
++    public String getSaturation() {
++        return mSaturation;
++    }
++
++    public void setContrast(String contrast) {
++        mContrast = contrast;
++    }
++
++    public String getContrast() {
++        return mContrast;
++    }
++
++    public void setBrightness(String brightness) {
++        mBrightness = brightness;
++    }
++
++    public String getBrightness() {
++        return mBrightness;
++    }
++
++    public void setSharpness(String sharpness) {
++        mSharpness = sharpness;
++    }
++
++    public String getSharpness() {
++        return mSharpness;
++    }
++
++    public void setHue(String hue) {
++        mHue= hue;
++    }
++
++    public String getHue() {
++        return mHue;
++    }
++
++    public void setAntiBanding(String antibanding) {
++        mAntiBanding = antibanding;
++    }
++
++    public String getAntiBanding() {
++        return mAntiBanding;
++    }
++
++    public void set3dnrEnabled(boolean enabled) {
++        m3dnrEnabled = enabled;
++    }
++
++    public boolean is3dnrEnabled() {
++        return m3dnrEnabled;
++    }
+ }
+-- 
+2.35.1
+

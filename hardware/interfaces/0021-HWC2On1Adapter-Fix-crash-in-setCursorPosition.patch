@@ -1,0 +1,47 @@
+From 9261a4733975b0b706c7b5c65bcdab30e3333322 Mon Sep 17 00:00:00 2001
+From: libin <bin.li@rock-chips.com>
+Date: Thu, 20 Sep 2018 17:10:14 +0800
+Subject: [PATCH 21/24] HWC2On1Adapter : Fix crash in setCursorPosition.
+
+1.Check hwc1Device whether it is NULL.
+2.Amend setCursorPosition from Android 8.1 commit:
+
+    Directory:frameworks/native/libs/hwc2on1adapter
+
+    commit c805bddb6acf7d69d99c56c02a956dacc53a9385
+    Author: ZhuangXiaoLiang <zhuangxl@rock-chips.com>
+    Date:   Wed Nov 22 18:08:41 2017 +0800
+
+    hwc2on1adapter: Fix crash in setCursorPosition.
+
+    Crash when plug out HDMI when use Mouse.
+
+    Change-Id: Ib97a3b06a335e528c2d959581e5659814d266ff8
+    Signed-off-by: ZhuangXiaoLiang <zhuangxl@rock-chips.com>
+
+Change-Id: I496ea821a254b695f8eca15f332e7bb24a9aa926
+Signed-off-by: libin <bin.li@rock-chips.com>
+---
+ graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+ mode change 100644 => 100755 graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+
+diff --git a/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp b/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+old mode 100644
+new mode 100755
+index 385c6c18c..0a5ad5e75
+--- a/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
++++ b/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+@@ -1951,7 +1951,8 @@ Error HWC2On1Adapter::Layer::setCursorPosition(int32_t x, int32_t y) {
+ 
+     auto displayId = mDisplay.getHwc1Id();
+     auto hwc1Device = mDisplay.getDevice().getHwc1Device();
+-    hwc1Device->setCursorPositionAsync(hwc1Device, displayId, x, y);
++    if(hwc1Device != NULL && hwc1Device->setCursorPositionAsync)
++        hwc1Device->setCursorPositionAsync(hwc1Device, displayId, x, y);
+     return Error::None;
+ }
+ 
+-- 
+2.35.1
+

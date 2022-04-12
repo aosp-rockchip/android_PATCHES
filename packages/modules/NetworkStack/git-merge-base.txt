@@ -1,0 +1,84 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/modules/NetworkStack (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/modules/NetworkStack (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 7490ba324eeed69716c1c483f0bd2fb0863f8fa4
+Merge: a2a8cbeb 0b62b105
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Mon Jan 25 15:30:08 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/modules/NetworkStack (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/modules/NetworkStack (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 7490ba324eeed69716c1c483f0bd2fb0863f8fa4
+Merge: a2a8cbeb 0b62b105
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Mon Jan 25 15:30:08 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/modules/NetworkStack (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/modules/NetworkStack (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 7490ba324eeed69716c1c483f0bd2fb0863f8fa4
+Merge: a2a8cbeb 0b62b105
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Mon Jan 25 15:30:08 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/modules/NetworkStack (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/modules/NetworkStack (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 7490ba324eeed69716c1c483f0bd2fb0863f8fa4
+Merge: a2a8cbeb 0b62b105
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Mon Jan 25 15:30:08 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/modules/NetworkStack (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/modules/NetworkStack (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 7490ba324eeed69716c1c483f0bd2fb0863f8fa4
+Merge: a2a8cbeb 0b62b105
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Mon Jan 25 15:30:08 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/modules/NetworkStack (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/modules/NetworkStack (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 7490ba324eeed69716c1c483f0bd2fb0863f8fa4
+Merge: a2a8cbeb 0b62b105
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Mon Jan 25 15:30:08 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28

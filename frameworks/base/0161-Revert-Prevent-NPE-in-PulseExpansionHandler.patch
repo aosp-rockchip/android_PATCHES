@@ -1,0 +1,60 @@
+From 370b805aafe0c2405af22a069155dcec6e0b73d6 Mon Sep 17 00:00:00 2001
+From: Dave Mankoff <mankoff@google.com>
+Date: Tue, 12 May 2020 20:23:16 +0000
+Subject: [PATCH 161/297] Revert "Prevent NPE in PulseExpansionHandler"
+
+This reverts commit 14f069b83ced6680a154753e9d944983e60f78a8.
+
+Reason for revert: http://b/156204772
+
+Change-Id: Ie47d41d3d6625d3769005bd46b5dfe20171d5d70
+(cherry picked from commit 9a45fe67e97e964e2cb9b2161f3a8a4508a1a52d)
+---
+ .../statusbar/PulseExpansionHandler.kt        | 21 +++++++------------
+ 1 file changed, 8 insertions(+), 13 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/PulseExpansionHandler.kt b/packages/SystemUI/src/com/android/systemui/statusbar/PulseExpansionHandler.kt
+index 02c98ae2867..88f148b00cd 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/PulseExpansionHandler.kt
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/PulseExpansionHandler.kt
+@@ -121,14 +121,14 @@ constructor(
+     }
+ 
+     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
+-        return canHandleMotionEvent() && startExpansion(event)
++        return maybeStartExpansion(event)
+     }
+ 
+-    private fun canHandleMotionEvent(): Boolean {
+-        return !wakeUpCoordinator.canShowPulsingHuns || qsExpanded || bouncerShowing
+-    }
+-
+-    private fun startExpansion(event: MotionEvent): Boolean {
++    private fun maybeStartExpansion(event: MotionEvent): Boolean {
++        if (!wakeUpCoordinator.canShowPulsingHuns || qsExpanded ||
++                bouncerShowing) {
++            return false
++        }
+         if (velocityTracker == null) {
+             velocityTracker = VelocityTracker.obtain()
+         }
+@@ -177,14 +177,9 @@ constructor(
+     }
+ 
+     override fun onTouchEvent(event: MotionEvent): Boolean {
+-        if (!canHandleMotionEvent()) {
+-            return false
+-        }
+-
+-        if (!isExpanding || event.actionMasked == MotionEvent.ACTION_DOWN) {
+-            return startExpansion(event)
++        if (!isExpanding) {
++            return maybeStartExpansion(event)
+         }
+-
+         velocityTracker!!.addMovement(event)
+         val y = event.y
+ 
+-- 
+2.35.1
+

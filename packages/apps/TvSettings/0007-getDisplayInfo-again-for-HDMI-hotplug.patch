@@ -1,0 +1,33 @@
+From 81f1de5dc60bf1f8e2eb8d9db9892d5e73bd97cb Mon Sep 17 00:00:00 2001
+From: Alex Wang <alex.wang@rock-chips.com>
+Date: Thu, 21 Jan 2021 09:20:04 +0800
+Subject: [PATCH 7/7] getDisplayInfo again for HDMI hotplug
+
+Change-Id: Ia795c289031d0e8b0f74ccff4c930efde6a195c0
+---
+ .../com/android/tv/settings/display/DisplayFragment.java | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/Settings/src/com/android/tv/settings/display/DisplayFragment.java b/Settings/src/com/android/tv/settings/display/DisplayFragment.java
+index a53112a8..56d27d0b 100755
+--- a/Settings/src/com/android/tv/settings/display/DisplayFragment.java
++++ b/Settings/src/com/android/tv/settings/display/DisplayFragment.java
+@@ -159,6 +159,15 @@ public class DisplayFragment extends LeanbackPreferenceFragment {
+         mDisplayDeviceCategory.removeAll();
+         List<DisplayInfo> displayInfos = getDisplayInfos();
+         Log.i(TAG, "rebuildView->displayInfos:" + displayInfos);
++        if (displayInfos.size() <= 0) {
++            try {
++                Log.i(TAG, "sleep for waiting native status update");
++                Thread.sleep(1500);
++                displayInfos = getDisplayInfos();
++                Log.i(TAG, "after sleep rebuildView->displayInfos:" + displayInfos);
++            } catch (InterruptedException e) {
++            }
++        }
+         if (displayInfos.size() > 0) {
+             for (DisplayInfo displayInfo : displayInfos) {
+                 Intent intent = new Intent();
+-- 
+2.35.1
+

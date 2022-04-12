@@ -1,0 +1,31 @@
+From b3b7262b72714e83429a1c83671ddc5dfe4562e9 Mon Sep 17 00:00:00 2001
+From: Steve Elliott <steell@google.com>
+Date: Mon, 18 May 2020 13:23:33 -0400
+Subject: [PATCH 164/297] Fix crash caused by unhandled bucket
+
+We no longer handle all buckets inside of the `when` block,
+so the default case should no longer throw an error.
+
+Fixes: 156866868
+Test: manual, atest
+Change-Id: Ib811165d8b09bca4f3045d4408ac250ef4b9bafa
+(cherry picked from commit 64320cc2de142984b7e04224e30c796fb0aaaf3a)
+---
+ .../statusbar/notification/stack/NotificationSectionsManager.kt  | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/stack/NotificationSectionsManager.kt b/packages/SystemUI/src/com/android/systemui/statusbar/notification/stack/NotificationSectionsManager.kt
+index 65633a2e209..e39a4a0c799 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/stack/NotificationSectionsManager.kt
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/stack/NotificationSectionsManager.kt
+@@ -360,7 +360,6 @@ class NotificationSectionsManager @Inject internal constructor(
+                                 }
+                             }
+                         }
+-                        else -> throw IllegalStateException("Cannot find section bucket for view")
+                     }
+ 
+                     prev = child
+-- 
+2.35.1
+

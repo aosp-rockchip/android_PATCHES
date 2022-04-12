@@ -1,0 +1,507 @@
+From 8b47265a801db01c78a8cc06ca04060764748304 Mon Sep 17 00:00:00 2001
+From: Steven Chen <cw@rock-chips.com>
+Date: Fri, 17 May 2019 14:22:18 +0800
+Subject: [PATCH 06/10] Initial commit for Q
+
+Change-Id: Id219f9e8c3b96ab1cfb8d146ca35704efd2c9e6b
+Signed-off-by: Steven Chen <cw@rock-chips.com>
+---
+ bcmdhd/wifi_hal/Android.mk           |   1 +
+ bcmdhd/wifi_hal/common.cpp           |  21 ++++
+ bcmdhd/wifi_hal/common.h             |   8 ++
+ bcmdhd/wifi_hal/gscan.cpp            |   5 +
+ bcmdhd/wifi_hal/link_layer_stats.cpp | 174 +++++++++++++++++++++++++++
+ bcmdhd/wifi_hal/wifi_hal.cpp         |  27 ++++-
+ bcmdhd/wifi_hal/wifi_logger.cpp      |  50 +++++++-
+ 7 files changed, 284 insertions(+), 2 deletions(-)
+
+diff --git a/bcmdhd/wifi_hal/Android.mk b/bcmdhd/wifi_hal/Android.mk
+index b4fe46e..47e8ab4 100644
+--- a/bcmdhd/wifi_hal/Android.mk
++++ b/bcmdhd/wifi_hal/Android.mk
+@@ -45,6 +45,7 @@ LOCAL_SRC_FILES := \
+ 	wifi_logger.cpp \
+ 	wifi_offload.cpp
+ 
++LOCAL_SHARED_LIBRARIES := librkwifi-ctrl
+ LOCAL_MODULE := libwifi-hal-bcm
+ LOCAL_PROPRIETARY_MODULE := true
+ 
+diff --git a/bcmdhd/wifi_hal/common.cpp b/bcmdhd/wifi_hal/common.cpp
+index 3540d49..133b08d 100644
+--- a/bcmdhd/wifi_hal/common.cpp
++++ b/bcmdhd/wifi_hal/common.cpp
+@@ -261,3 +261,24 @@ wifi_error wifi_cancel_cmd(wifi_request_id id, wifi_interface_handle iface)
+     return WIFI_ERROR_INVALID_ARGS;
+ }
+ 
++static char wifi_type[64] = {0};
++extern "C" int check_wifi_chip_type_string(char *type);
++int check_wifi_chip_type()
++{
++	int type;
++	if (wifi_type[0] == 0) {
++		check_wifi_chip_type_string(wifi_type);
++		ALOGE("WIFI_TYPE = %s\n",wifi_type);
++	}
++	if (0 == strncmp(wifi_type, "RTL", 3)) {
++		type = REALTEK_WIFI;
++	} else if (0 == strncmp(wifi_type, "SSV", 3)) {
++		type = SSV_WIFI;
++	} else if (0 == strncmp(wifi_type, "RK912", 3)) {
++		type = RK912_WIFI;
++	} else {
++		type = BROADCOM_WIFI;
++	}
++	return type;
++}
++
+diff --git a/bcmdhd/wifi_hal/common.h b/bcmdhd/wifi_hal/common.h
+index 28e2156..c29806a 100644
+--- a/bcmdhd/wifi_hal/common.h
++++ b/bcmdhd/wifi_hal/common.h
+@@ -237,6 +237,13 @@ typedef struct wifi_gscan_full_result {
+     u8  ie_data[1];                  // IE data to follow
+ } wifi_gscan_full_result_t;
+ 
++enum {
++	REALTEK_WIFI = 1,
++	BROADCOM_WIFI,
++	SSV_WIFI,
++	RK912_WIFI,
++};
++
+ wifi_error wifi_register_handler(wifi_handle handle, int cmd, nl_recvmsg_msg_cb_t func, void *arg);
+ wifi_error wifi_register_vendor_handler(wifi_handle handle,
+             uint32_t id, int subcmd, nl_recvmsg_msg_cb_t func, void *arg);
+@@ -256,6 +263,7 @@ hal_info *getHalInfo(wifi_interface_handle handle);
+ wifi_handle getWifiHandle(hal_info *info);
+ wifi_interface_handle getIfaceHandle(interface_info *info);
+ wifi_error wifi_cancel_cmd(wifi_request_id id, wifi_interface_handle iface);
++int check_wifi_chip_type();
+ 
+ // some common macros
+ 
+diff --git a/bcmdhd/wifi_hal/gscan.cpp b/bcmdhd/wifi_hal/gscan.cpp
+index 4e4ee93..81bc701 100644
+--- a/bcmdhd/wifi_hal/gscan.cpp
++++ b/bcmdhd/wifi_hal/gscan.cpp
+@@ -320,6 +320,11 @@ protected:
+ wifi_error wifi_get_valid_channels(wifi_interface_handle handle,
+         int band, int max_channels, wifi_channel *channels, int *num_channels)
+ {
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        *num_channels = 12;
++        return WIFI_SUCCESS;
++    }
++
+     GetChannelListCommand command(handle, channels, num_channels,
+                                         max_channels, band);
+     return (wifi_error) command.requestResponse();
+diff --git a/bcmdhd/wifi_hal/link_layer_stats.cpp b/bcmdhd/wifi_hal/link_layer_stats.cpp
+index 42e3f2f..73d3cb1 100644
+--- a/bcmdhd/wifi_hal/link_layer_stats.cpp
++++ b/bcmdhd/wifi_hal/link_layer_stats.cpp
+@@ -61,6 +61,8 @@ typedef struct {
+ 
+ enum {
+     LSTATS_SUBCMD_GET_INFO = ANDROID_NL80211_SUBCMD_LSTATS_RANGE_START,
++	LSTATS_SUBCMD_SET_INFO,
++	LSTATS_SUBCMD_CLEAR_INFO,
+ };
+ 
+ class GetLinkStatsCommand : public WifiCommand
+@@ -160,9 +162,181 @@ private:
+     }
+ };
+ 
++class RTKGetLinkStatsCommand : public WifiCommand
++{
++    wifi_stats_result_handler mHandler;
++public:
++    RTKGetLinkStatsCommand(wifi_interface_handle iface, wifi_stats_result_handler handler)
++        : WifiCommand("GetLinkStatsCommand", iface, 0), mHandler(handler)
++    { }
++
++    virtual int create() {
++        // ALOGI("Creating message to get link statistics; iface = %d", mIfaceInfo->id);
++
++        int ret = mMsg.create(GOOGLE_OUI, LSTATS_SUBCMD_GET_INFO);
++        if (ret < 0) {
++            ALOGE("Failed to create %x - %d", LSTATS_SUBCMD_GET_INFO, ret);
++            return ret;
++        }
++
++        return ret;
++    }
++
++protected:
++    virtual int handleResponse(WifiEvent& reply) {
++
++        // ALOGI("In GetLinkStatsCommand::handleResponse");
++
++        if (reply.get_cmd() != NL80211_CMD_VENDOR) {
++            ALOGD("Ignoring reply with cmd = %d", reply.get_cmd());
++            return NL_SKIP;
++        }
++
++        int id = reply.get_vendor_id();
++        int subcmd = reply.get_vendor_subcmd();
++
++        // ALOGI("Id = %0x, subcmd = %d", id, subcmd);
++
++        void *data = reply.get_vendor_data();
++        int len = reply.get_vendor_data_len();
++        wifi_radio_stat *radio_stat = (wifi_radio_stat *)data;
++	radio_stat->tx_time_per_levels = (u32*)((char*)data + sizeof(wifi_radio_stat) + sizeof(wifi_iface_stat));
++#if 0
++	ALOGE("radio: = %d", radio_stat->radio);
++        ALOGE("on_time: = %u ms", radio_stat->on_time);
++        ALOGE("tx_time: = %u ms", radio_stat->tx_time);
++	ALOGE("num_tx_levels: = %u", radio_stat->num_tx_levels);
++	ALOGE("tx_time_per_levels: = %u ms", radio_stat->tx_time_per_levels[0]);
++        ALOGE("rx_time: = %u ms", radio_stat->rx_time);
++        ALOGE("on_time_scan: = %u ms", radio_stat->on_time_scan);
++        ALOGE("on_time_nbd: = %u ms", radio_stat->on_time_nbd);
++        ALOGE("on_time_gscan: = %u ms", radio_stat->on_time_gscan);
++        ALOGE("on_time_pno_scan: = %u ms", radio_stat->on_time_pno_scan);
++        ALOGE("on_time_hs20: = %u ms", radio_stat->on_time_hs20);
++#endif
++	if (!radio_stat) {
++            ALOGE("Invalid stats pointer received");
++            return NL_SKIP;
++        }
++        if (radio_stat->num_channels > 11) {
++            ALOGE("Incorrect number of channels = %d", radio_stat->num_channels);
++            // dump data before num_channels
++            ALOGE("radio: = %d", radio_stat->radio);
++            ALOGE("on_time: = %u ms", radio_stat->on_time);
++            ALOGE("tx_time: = %u ms", radio_stat->tx_time);
++            ALOGE("rx_time: = %u ms", radio_stat->rx_time);
++            ALOGE("on_time_scan: = %u ms", radio_stat->on_time_scan);
++            ALOGE("on_time_nbd: = %u ms", radio_stat->on_time_nbd);
++            ALOGE("on_time_gscan: = %u ms", radio_stat->on_time_gscan);
++            ALOGE("on_time_pno_scan: = %u ms", radio_stat->on_time_pno_scan);
++            ALOGE("on_time_hs20: = %u ms", radio_stat->on_time_hs20);
++            free(radio_stat);
++            return NL_SKIP;
++        }
++	wifi_iface_stat *iface_stat = NULL;
++	iface_stat = (wifi_iface_stat *)((char* )data + sizeof(wifi_radio_stat));
++
++	if(*mHandler.on_link_stats_results == NULL) {
++		ALOGE("*mHandler.on_link_stats_results is NULL");
++	} else {
++		(*mHandler.on_link_stats_results)(id, iface_stat, 1, radio_stat);
++	}
++        //free(radio_stat);
++        return NL_OK;
++    }
++
++};
++
++class RTKSetLinkStatsCommand : public WifiCommand
++{
++    wifi_stats_result_handler mHandler;
++public:
++    RTKSetLinkStatsCommand(wifi_interface_handle iface)
++        : WifiCommand("SetLinkStatsCommand", iface, 0)
++    { }
++
++    virtual int create() {
++        // ALOGI("Creating message to get link statistics; iface = %d", mIfaceInfo->id);
++
++        int ret = mMsg.create(GOOGLE_OUI, LSTATS_SUBCMD_SET_INFO);
++        if (ret < 0) {
++            ALOGE("Failed to create %x - %d", LSTATS_SUBCMD_SET_INFO, ret);
++            return ret;
++        }
++
++        return ret;
++    }
++
++protected:
++    virtual int handleResponse(WifiEvent& reply) {
++
++        // ALOGI("In GetLinkStatsCommand::handleResponse");
++
++        if (reply.get_cmd() != NL80211_CMD_VENDOR) {
++            ALOGD("Ignoring reply with cmd = %d", reply.get_cmd());
++            return NL_SKIP;
++        }
++
++        int id = reply.get_vendor_id();
++        int subcmd = reply.get_vendor_subcmd();
++
++        // ALOGI("Id = %0x, subcmd = %d", id, subcmd);
++
++        void *data = reply.get_vendor_data();
++        int len = reply.get_vendor_data_len();
++         return NL_OK;
++    }
++
++};
++
++class RTKClearLinkStatsCommand : public WifiCommand
++{
++    wifi_stats_result_handler mHandler;
++public:
++    RTKClearLinkStatsCommand(wifi_interface_handle iface)
++        : WifiCommand("ClearLinkStatsCommand", iface, 0)
++    { }
++
++    virtual int create() {
++        // ALOGI("Creating message to get link statistics; iface = %d", mIfaceInfo->id);
++
++        int ret = mMsg.create(GOOGLE_OUI, LSTATS_SUBCMD_CLEAR_INFO);
++        if (ret < 0) {
++            ALOGE("Failed to create %x - %d", LSTATS_SUBCMD_CLEAR_INFO, ret);
++            return ret;
++        }
++
++        return ret;
++    }
++
++protected:
++    virtual int handleResponse(WifiEvent& reply) {
++
++        // ALOGI("In GetLinkStatsCommand::handleResponse");
++
++        if (reply.get_cmd() != NL80211_CMD_VENDOR) {
++            ALOGD("Ignoring reply with cmd = %d", reply.get_cmd());
++            return NL_SKIP;
++        }
++
++        int id = reply.get_vendor_id();
++        int subcmd = reply.get_vendor_subcmd();
++
++        // ALOGI("Id = %0x, subcmd = %d", id, subcmd);
++
++        void *data = reply.get_vendor_data();
++        int len = reply.get_vendor_data_len();
++         return NL_OK;
++    }
++
++};
+ wifi_error wifi_get_link_stats(wifi_request_id id,
+         wifi_interface_handle iface, wifi_stats_result_handler handler)
+ {
++	if (check_wifi_chip_type() != BROADCOM_WIFI) {
++		RTKGetLinkStatsCommand command(iface, handler);
++		return (wifi_error) command.requestResponse();
++	}
+     GetLinkStatsCommand command(iface, handler);
+     return (wifi_error) command.requestResponse();
+ }
+diff --git a/bcmdhd/wifi_hal/wifi_hal.cpp b/bcmdhd/wifi_hal/wifi_hal.cpp
+index 508268e..732213c 100644
+--- a/bcmdhd/wifi_hal/wifi_hal.cpp
++++ b/bcmdhd/wifi_hal/wifi_hal.cpp
+@@ -219,7 +219,12 @@ wifi_error wifi_initialize(wifi_handle *handle)
+ {
+     srand(getpid());
+ 
+-    ALOGI("Initializing wifi");
++	if (check_wifi_chip_type() != BROADCOM_WIFI) {
++		ALOGI("Initializing REALTEK_WIFI");
++	} else {
++		ALOGI("Initializing BROADCOM_WIFI");
++	}
++
+     hal_info *info = (hal_info *)malloc(sizeof(hal_info));
+     if (info == NULL) {
+         ALOGE("Could not allocate hal_info");
+@@ -1255,6 +1260,10 @@ wifi_error wifi_get_iface_name(wifi_interface_handle handle, char *name, size_t
+ 
+ wifi_error wifi_get_supported_feature_set(wifi_interface_handle handle, feature_set *set)
+ {
++    if (check_wifi_chip_type() == RK912_WIFI) {
++        *set = 0;
++        return WIFI_SUCCESS;
++    }
+     GetFeatureSetCommand command(handle, ANDR_WIFI_ATTRIBUTE_NUM_FEATURE_SET, set, NULL, NULL, 1);
+     return (wifi_error) command.requestResponse();
+ }
+@@ -1269,6 +1278,10 @@ wifi_error wifi_get_concurrency_matrix(wifi_interface_handle handle, int set_siz
+ 
+ wifi_error wifi_set_scanning_mac_oui(wifi_interface_handle handle, oui scan_oui)
+ {
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
++
+     SetPnoMacAddrOuiCommand command(handle, scan_oui);
+     return (wifi_error)command.start();
+ 
+@@ -1282,6 +1295,10 @@ wifi_error wifi_set_nodfs_flag(wifi_interface_handle handle, u32 nodfs)
+ 
+ wifi_error wifi_set_country_code(wifi_interface_handle handle, const char *country_code)
+ {
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
++
+     SetCountryCodeCommand command(handle, country_code);
+     return (wifi_error) command.requestResponse();
+ }
+@@ -1329,6 +1346,10 @@ static wifi_error wifi_stop_rssi_monitoring(wifi_request_id id, wifi_interface_h
+ static wifi_error wifi_get_packet_filter_capabilities(wifi_interface_handle handle,
+         u32 *version, u32 *max_len)
+ {
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
++
+     ALOGD("Getting APF capabilities, halHandle = %p\n", handle);
+     AndroidPktFilterCommand *cmd = new AndroidPktFilterCommand(handle, version, max_len);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+@@ -1353,6 +1374,10 @@ static wifi_error wifi_set_packet_filter(wifi_interface_handle handle,
+ 
+ static wifi_error wifi_configure_nd_offload(wifi_interface_handle handle, u8 enable)
+ {
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
++
+     SetNdoffloadCommand command(handle, enable);
+     return (wifi_error) command.requestResponse();
+ }
+diff --git a/bcmdhd/wifi_hal/wifi_logger.cpp b/bcmdhd/wifi_hal/wifi_logger.cpp
+index 7a38883..ffa80bb 100644
+--- a/bcmdhd/wifi_hal/wifi_logger.cpp
++++ b/bcmdhd/wifi_hal/wifi_logger.cpp
+@@ -15,7 +15,7 @@
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+-
++#include <string>
+ #include <stdint.h>
+ #include <fcntl.h>
+ #include <sys/socket.h>
+@@ -402,6 +402,11 @@ public:
+ wifi_error wifi_get_firmware_version(wifi_interface_handle iface, char *buffer,
+         int buffer_size)
+ {
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        std::string pFirmwareVer = "RTK_FIRMWARE";
++        memcpy(buffer, pFirmwareVer.c_str(), pFirmwareVer.length()+1);
++        return WIFI_SUCCESS;
++    }
+     if (buffer && (buffer_size > 0)) {
+         DebugCommand *cmd = new DebugCommand(iface, buffer, &buffer_size, GET_FW_VER);
+         NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+@@ -417,6 +422,11 @@ wifi_error wifi_get_firmware_version(wifi_interface_handle iface, char *buffer,
+ /* API to collect a driver version string */
+ wifi_error wifi_get_driver_version(wifi_interface_handle iface, char *buffer, int buffer_size)
+ {
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        std::string pDriverVer = "RTK_DRIVER";
++        memcpy(buffer, pDriverVer.c_str(), pDriverVer.length()+1);
++        return WIFI_SUCCESS;
++    }
+     if (buffer && (buffer_size > 0)) {
+         DebugCommand *cmd = new DebugCommand(iface, buffer, &buffer_size, GET_DRV_VER);
+         NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+@@ -432,6 +442,9 @@ wifi_error wifi_get_driver_version(wifi_interface_handle iface, char *buffer, in
+ /* API to collect driver records */
+ wifi_error wifi_get_ring_data(wifi_interface_handle iface, char *ring_name)
+ {
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
+     DebugCommand *cmd = new DebugCommand(iface, ring_name, GET_RING_DATA);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+     wifi_error result = (wifi_error)cmd->start();
+@@ -443,6 +456,14 @@ wifi_error wifi_get_ring_data(wifi_interface_handle iface, char *ring_name)
+ wifi_error wifi_get_ring_buffers_status(wifi_interface_handle iface,
+         u32 *num_rings, wifi_ring_buffer_status *status)
+ {
++	if (check_wifi_chip_type() != BROADCOM_WIFI) {
++		wifi_ring_buffer_status* pLocalstatus = NULL;
++		std::string from = "RTK_RING";
++		memcpy(status->name, from.c_str(), strlen(from.c_str())+1);
++		*num_rings = 1;
++
++		return  WIFI_SUCCESS;
++	}
+     if (status && num_rings) {
+         DebugCommand *cmd = new DebugCommand(iface, num_rings, status, GET_RING_STATUS);
+         NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+@@ -460,11 +481,21 @@ wifi_error wifi_get_logger_supported_feature_set(wifi_interface_handle iface,
+         unsigned int *support)
+ {
+     if (support) {
++	if (check_wifi_chip_type() != BROADCOM_WIFI) {
++		if (check_wifi_chip_type() == RK912_WIFI) {
++			*support = 0;
++			return WIFI_SUCCESS;
++		}
++		wifi_error result = WIFI_SUCCESS;
++		*support = WIFI_LOGGER_MEMORY_DUMP_SUPPORTED;
++		return result;
++	} else {
+         DebugCommand *cmd = new DebugCommand(iface, support, GET_FEATURE);
+         NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+         wifi_error result = (wifi_error)cmd->start();
+         cmd->releaseRef();
+         return result;
++	}
+     } else {
+         ALOGE("Get support buffer NULL");
+         return  WIFI_ERROR_INVALID_ARGS;
+@@ -474,6 +505,9 @@ wifi_error wifi_get_logger_supported_feature_set(wifi_interface_handle iface,
+ wifi_error wifi_start_logging(wifi_interface_handle iface, u32 verbose_level,
+         u32 flags, u32 max_interval_sec, u32 min_data_size, char *ring_name)
+ {
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
+     if (ring_name) {
+         DebugCommand *cmd = new DebugCommand(iface, verbose_level, flags, max_interval_sec,
+                     min_data_size, ring_name, START_RING_LOG);
+@@ -906,6 +940,11 @@ public:
+ wifi_error wifi_get_firmware_memory_dump( wifi_interface_handle iface,
+         wifi_firmware_memory_dump_handler handler)
+ {
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        if (check_wifi_chip_type() == RK912_WIFI)
++            return WIFI_ERROR_NOT_SUPPORTED;
++        return WIFI_SUCCESS;
++    }
+     MemoryDumpCommand *cmd = new MemoryDumpCommand(iface, handler);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+     wifi_error result = (wifi_error)cmd->start();
+@@ -1077,6 +1116,9 @@ public:
+ 
+ wifi_error wifi_start_pkt_fate_monitoring(wifi_interface_handle handle)
+ {
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
+     PacketFateCommand *cmd = new PacketFateCommand(handle);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+     wifi_error result = (wifi_error)cmd->start();
+@@ -1088,6 +1130,9 @@ wifi_error wifi_get_tx_pkt_fates(wifi_interface_handle handle,
+         wifi_tx_report *tx_report_bufs, size_t n_requested_fates,
+         size_t *n_provided_fates)
+ {
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
+     PacketFateCommand *cmd = new PacketFateCommand(handle, tx_report_bufs,
+                 n_requested_fates, n_provided_fates);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+@@ -1100,6 +1145,9 @@ wifi_error wifi_get_rx_pkt_fates(wifi_interface_handle handle,
+         wifi_rx_report *rx_report_bufs, size_t n_requested_fates,
+         size_t *n_provided_fates)
+ {
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
+     PacketFateCommand *cmd = new PacketFateCommand(handle, rx_report_bufs,
+                 n_requested_fates, n_provided_fates);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+-- 
+2.35.1
+

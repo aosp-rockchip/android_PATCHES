@@ -1,0 +1,786 @@
+From 5c67b4db3a8d4317d23cdea98be7ae9478d36c3d Mon Sep 17 00:00:00 2001
+From: Brad Ebinger <breadley@google.com>
+Date: Thu, 3 Sep 2020 14:47:29 -0700
+Subject: [PATCH 5/5] Exempt Dialer from power restrictions temporarily after
+ missing a call
+
+For default dialers that manage missed call notifications themselves, they
+may need to do multiple things after a missed call, including update the
+call log.
+
+In order for Dialer to not need to start a foreground service, Telecom will
+exempt them from power restrictions for a default of 30 seconds after a
+call is missed to remove the possiblity of causing an ANR.
+
+Bug: 160724034
+Test: atest TelecomUnitTests; check `adb shell cmd deviceidle tempwhitelist`
+      after a missed call.
+Change-Id: Id19a8563aef0b9f1888b3575e9daf7085d781e13
+---
+ .../telecom/DeviceIdleControllerAdapter.java  | 57 +++++++++++++
+ .../InternalServiceRetrieverAdapter.java      | 44 ++++++++++
+ .../android/server/telecom/TelecomSystem.java |  6 +-
+ src/com/android/server/telecom/Timeouts.java  | 11 +++
+ .../telecom/components/TelecomService.java    | 34 +++++---
+ .../telecom/ui/MissedCallNotifierImpl.java    | 81 ++++++++++++++-----
+ .../tests/ComponentContextFixture.java        | 45 +++++++++++
+ .../tests/MissedCallNotifierImplTest.java     | 79 ++++++++++++++++--
+ .../telecom/tests/TelecomSystemTest.java      |  7 +-
+ 9 files changed, 324 insertions(+), 40 deletions(-)
+ create mode 100644 src/com/android/server/telecom/DeviceIdleControllerAdapter.java
+ create mode 100644 src/com/android/server/telecom/InternalServiceRetrieverAdapter.java
+
+diff --git a/src/com/android/server/telecom/DeviceIdleControllerAdapter.java b/src/com/android/server/telecom/DeviceIdleControllerAdapter.java
+new file mode 100644
+index 000000000..d3a798add
+--- /dev/null
++++ b/src/com/android/server/telecom/DeviceIdleControllerAdapter.java
+@@ -0,0 +1,57 @@
++/*
++ * Copyright (C) 2020 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.server.telecom;
++
++import android.annotation.NonNull;
++import android.content.Context;
++import android.os.PowerWhitelistManager;
++import android.os.RemoteException;
++import android.telecom.Log;
++
++import com.android.internal.telecom.IDeviceIdleControllerAdapter;
++
++/**
++ * Telecom is in the same process as the {@link PowerWhitelistManager}, so we can not make direct
++ * calls to the manager interface, since they will fail in the DeviceIdleController
++ * (see {@link Context#enforceCallingPermission(String, String)}). Instead, we must access it
++ * through SystemService#getLocalService, which is only accessible to the Telecom
++ * core loader service (TelecomLoaderService). Unfortunately, due to the architecture, this means
++ * we must use a Binder to allow services such as this to be accessible.
++ */
++public class DeviceIdleControllerAdapter {
++
++    private static final String TAG = "DeviceIdleControllerAdapter";
++
++    private final IDeviceIdleControllerAdapter mAdapter;
++
++    public DeviceIdleControllerAdapter(IDeviceIdleControllerAdapter adapter) {
++        mAdapter = adapter;
++    }
++
++    /**
++     * Exempts an application from power restrictions for the duration specified. See
++     * DeviceIdleController for more information on how this works.
++     */
++    public void exemptAppTemporarilyForEvent(@NonNull String packageName, long duration,
++            int userHandle, @NonNull String reason) {
++        try {
++            mAdapter.exemptAppTemporarilyForEvent(packageName, duration, userHandle, reason);
++        } catch (RemoteException e) {
++            Log.w(TAG, "exemptAppTemporarilyForEvent e=" + e.getMessage());
++        }
++    }
++}
+diff --git a/src/com/android/server/telecom/InternalServiceRetrieverAdapter.java b/src/com/android/server/telecom/InternalServiceRetrieverAdapter.java
+new file mode 100644
+index 000000000..4a2c3d171
+--- /dev/null
++++ b/src/com/android/server/telecom/InternalServiceRetrieverAdapter.java
+@@ -0,0 +1,44 @@
++/*
++ * Copyright (C) 2020 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.server.telecom;
++
++import android.os.RemoteException;
++
++import com.android.internal.telecom.IInternalServiceRetriever;
++
++/**
++ * Contains all services that Telecom must access that are only accessible as a local service as
++ * part of the SYSTEM process.
++ */
++public class InternalServiceRetrieverAdapter {
++
++    private final IInternalServiceRetriever mRetriever;
++
++    public InternalServiceRetrieverAdapter(IInternalServiceRetriever retriever) {
++        mRetriever = retriever;
++    }
++
++    public DeviceIdleControllerAdapter getDeviceIdleController() {
++        try {
++            return new DeviceIdleControllerAdapter(mRetriever.getDeviceIdleController());
++        } catch (RemoteException e) {
++            // This should not happen - if it does, there is a bad configuration as this should
++            // all be local.
++            throw new IllegalStateException(e);
++        }
++    }
++}
+diff --git a/src/com/android/server/telecom/TelecomSystem.java b/src/com/android/server/telecom/TelecomSystem.java
+index 807cc2de0..08389b9a9 100644
+--- a/src/com/android/server/telecom/TelecomSystem.java
++++ b/src/com/android/server/telecom/TelecomSystem.java
+@@ -207,7 +207,8 @@ public class TelecomSystem {
+             ClockProxy clockProxy,
+             RoleManagerAdapter roleManagerAdapter,
+             IncomingCallFilter.Factory incomingCallFilterFactory,
+-            ContactsAsyncHelper.Factory contactsAsyncHelperFactory) {
++            ContactsAsyncHelper.Factory contactsAsyncHelperFactory,
++            DeviceIdleControllerAdapter deviceIdleControllerAdapter) {
+         mContext = context.getApplicationContext();
+         LogUtils.initLogging(mContext);
+         DefaultDialerManagerAdapter defaultDialerAdapter =
+@@ -241,7 +242,8 @@ public class TelecomSystem {
+         SystemStateHelper systemStateHelper = new SystemStateHelper(mContext);
+ 
+         mMissedCallNotifier = missedCallNotifierImplFactory
+-                .makeMissedCallNotifierImpl(mContext, mPhoneAccountRegistrar, defaultDialerCache);
++                .makeMissedCallNotifierImpl(mContext, mPhoneAccountRegistrar, defaultDialerCache,
++                        deviceIdleControllerAdapter);
+         DisconnectedCallNotifier.Factory disconnectedCallNotifierFactory =
+                 new DisconnectedCallNotifier.Default();
+ 
+diff --git a/src/com/android/server/telecom/Timeouts.java b/src/com/android/server/telecom/Timeouts.java
+index a701b886f..230959641 100644
+--- a/src/com/android/server/telecom/Timeouts.java
++++ b/src/com/android/server/telecom/Timeouts.java
+@@ -211,4 +211,15 @@ public final class Timeouts {
+     public static long getCallRecordingToneRepeatIntervalMillis(ContentResolver contentResolver) {
+         return get(contentResolver, "call_recording_tone_repeat_interval", 15000L /* 15 seconds */);
+     }
++
++    /**
++     * Returns the number of milliseconds for which the system should exempt the default dialer from
++     * power save restrictions due to the dialer needing to handle a missed call notification
++     * (update call log, check VVM, etc...).
++     */
++    public static long getDialerMissedCallPowerSaveExemptionTimeMillis(
++            ContentResolver contentResolver) {
++        return get(contentResolver, "dialer_missed_call_power_save_exemption_time_millis",
++                30000L /*30 seconds*/);
++    }
+ }
+diff --git a/src/com/android/server/telecom/components/TelecomService.java b/src/com/android/server/telecom/components/TelecomService.java
+index e20da809d..b6705f4bf 100644
+--- a/src/com/android/server/telecom/components/TelecomService.java
++++ b/src/com/android/server/telecom/components/TelecomService.java
+@@ -30,6 +30,10 @@ import android.os.SystemClock;
+ import android.telecom.Log;
+ 
+ import android.telecom.CallerInfoAsyncQuery;
++
++import com.android.internal.telecom.IInternalServiceRetriever;
++import com.android.internal.telecom.ITelecomLoader;
++import com.android.internal.telecom.ITelecomService;
+ import com.android.server.telecom.AsyncRingtonePlayer;
+ import com.android.server.telecom.BluetoothAdapterProxy;
+ import com.android.server.telecom.BluetoothPhoneServiceImpl;
+@@ -41,16 +45,17 @@ import com.android.server.telecom.ClockProxy;
+ import com.android.server.telecom.ConnectionServiceFocusManager;
+ import com.android.server.telecom.ContactsAsyncHelper;
+ import com.android.server.telecom.DefaultDialerCache;
++import com.android.server.telecom.DeviceIdleControllerAdapter;
+ import com.android.server.telecom.HeadsetMediaButton;
+ import com.android.server.telecom.HeadsetMediaButtonFactory;
+ import com.android.server.telecom.InCallWakeLockControllerFactory;
+ import com.android.server.telecom.CallAudioManager;
++import com.android.server.telecom.InternalServiceRetrieverAdapter;
+ import com.android.server.telecom.PhoneAccountRegistrar;
+ import com.android.server.telecom.PhoneNumberUtilsAdapterImpl;
+ import com.android.server.telecom.ProximitySensorManagerFactory;
+ import com.android.server.telecom.InCallWakeLockController;
+ import com.android.server.telecom.ProximitySensorManager;
+-import com.android.server.telecom.R;
+ import com.android.server.telecom.RoleManagerAdapterImpl;
+ import com.android.server.telecom.TelecomSystem;
+ import com.android.server.telecom.TelecomWakeLock;
+@@ -68,10 +73,17 @@ public class TelecomService extends Service implements TelecomSystem.Component {
+     @Override
+     public IBinder onBind(Intent intent) {
+         Log.d(this, "onBind");
+-        initializeTelecomSystem(this);
+-        synchronized (getTelecomSystem().getLock()) {
+-            return getTelecomSystem().getTelecomServiceImpl().getBinder();
+-        }
++        return new ITelecomLoader.Stub() {
++            @Override
++            public ITelecomService createTelecomService(IInternalServiceRetriever retriever) {
++                InternalServiceRetrieverAdapter adapter =
++                        new InternalServiceRetrieverAdapter(retriever);
++                initializeTelecomSystem(TelecomService.this, adapter);
++                synchronized (getTelecomSystem().getLock()) {
++                    return getTelecomSystem().getTelecomServiceImpl().getBinder();
++                }
++            }
++        };
+     }
+ 
+     /**
+@@ -84,7 +96,8 @@ public class TelecomService extends Service implements TelecomSystem.Component {
+      *
+      * @param context
+      */
+-    static void initializeTelecomSystem(Context context) {
++    static void initializeTelecomSystem(Context context,
++            InternalServiceRetrieverAdapter internalServiceRetriever) {
+         if (TelecomSystem.getInstance() == null) {
+             NotificationChannelManager notificationChannelManager =
+                     new NotificationChannelManager();
+@@ -98,9 +111,11 @@ public class TelecomService extends Service implements TelecomSystem.Component {
+                                 public MissedCallNotifierImpl makeMissedCallNotifierImpl(
+                                         Context context,
+                                         PhoneAccountRegistrar phoneAccountRegistrar,
+-                                        DefaultDialerCache defaultDialerCache) {
++                                        DefaultDialerCache defaultDialerCache,
++                                        DeviceIdleControllerAdapter idleControllerAdapter) {
+                                     return new MissedCallNotifierImpl(context,
+-                                            phoneAccountRegistrar, defaultDialerCache);
++                                            phoneAccountRegistrar, defaultDialerCache,
++                                            idleControllerAdapter);
+                                 }
+                             },
+                             new CallerInfoAsyncQueryFactory() {
+@@ -191,7 +206,8 @@ public class TelecomService extends Service implements TelecomSystem.Component {
+                             new RoleManagerAdapterImpl(context,
+                                     (RoleManager) context.getSystemService(Context.ROLE_SERVICE)),
+                             new IncomingCallFilter.Factory(),
+-                            new ContactsAsyncHelper.Factory()));
++                            new ContactsAsyncHelper.Factory(),
++                            internalServiceRetriever.getDeviceIdleController()));
+         }
+         if (BluetoothAdapter.getDefaultAdapter() != null) {
+             context.startService(new Intent(context, BluetoothPhoneService.class));
+diff --git a/src/com/android/server/telecom/ui/MissedCallNotifierImpl.java b/src/com/android/server/telecom/ui/MissedCallNotifierImpl.java
+index a0eca8f34..e37fe6b71 100644
+--- a/src/com/android/server/telecom/ui/MissedCallNotifierImpl.java
++++ b/src/com/android/server/telecom/ui/MissedCallNotifierImpl.java
+@@ -19,8 +19,10 @@ package com.android.server.telecom.ui;
+ import static android.Manifest.permission.READ_PHONE_STATE;
+ 
+ import android.annotation.NonNull;
++import android.app.BroadcastOptions;
+ import android.content.ContentProvider;
+ import android.content.pm.PackageManager.NameNotFoundException;
++import android.os.Bundle;
+ import android.telecom.Logging.Runnable;
+ import android.telecom.PhoneAccountHandle;
+ import android.telecom.TelecomManager;
+@@ -29,11 +31,13 @@ import com.android.server.telecom.CallerInfoLookupHelper;
+ import com.android.server.telecom.CallsManagerListenerBase;
+ import com.android.server.telecom.Constants;
+ import com.android.server.telecom.DefaultDialerCache;
++import com.android.server.telecom.DeviceIdleControllerAdapter;
+ import com.android.server.telecom.MissedCallNotifier;
+ import com.android.server.telecom.PhoneAccountRegistrar;
+ import com.android.server.telecom.R;
+ import com.android.server.telecom.TelecomBroadcastIntentProcessor;
+ import com.android.server.telecom.TelecomSystem;
++import com.android.server.telecom.Timeouts;
+ import com.android.server.telecom.components.TelecomBroadcastReceiver;
+ 
+ import android.app.Notification;
+@@ -86,7 +90,8 @@ public class MissedCallNotifierImpl extends CallsManagerListenerBase implements
+     public interface MissedCallNotifierImplFactory {
+         MissedCallNotifier makeMissedCallNotifierImpl(Context context,
+                 PhoneAccountRegistrar phoneAccountRegistrar,
+-                DefaultDialerCache defaultDialerCache);
++                DefaultDialerCache defaultDialerCache,
++                DeviceIdleControllerAdapter deviceIdleControllerAdapter);
+     }
+ 
+     public interface NotificationBuilderFactory {
+@@ -124,12 +129,14 @@ public class MissedCallNotifierImpl extends CallsManagerListenerBase implements
+ 
+     private static final int MISSED_CALL_NOTIFICATION_ID = 1;
+     private static final String NOTIFICATION_TAG = MissedCallNotifierImpl.class.getSimpleName();
++    private static final String MISSED_CALL_POWER_SAVE_REASON = "missed-call";
+ 
+     private final Context mContext;
+     private final PhoneAccountRegistrar mPhoneAccountRegistrar;
+     private final NotificationManager mNotificationManager;
+     private final NotificationBuilderFactory mNotificationBuilderFactory;
+     private final DefaultDialerCache mDefaultDialerCache;
++    private final DeviceIdleControllerAdapter mDeviceIdleControllerAdapter;
+     private UserHandle mCurrentUserHandle;
+ 
+     // Used to track the number of missed calls.
+@@ -138,19 +145,22 @@ public class MissedCallNotifierImpl extends CallsManagerListenerBase implements
+     private List<UserHandle> mUsersToLoadAfterBootComplete = new ArrayList<>();
+ 
+     public MissedCallNotifierImpl(Context context, PhoneAccountRegistrar phoneAccountRegistrar,
+-            DefaultDialerCache defaultDialerCache) {
++            DefaultDialerCache defaultDialerCache,
++            DeviceIdleControllerAdapter deviceIdleControllerAdapter) {
+         this(context, phoneAccountRegistrar, defaultDialerCache,
+-                new DefaultNotificationBuilderFactory());
++                new DefaultNotificationBuilderFactory(), deviceIdleControllerAdapter);
+     }
+ 
+     public MissedCallNotifierImpl(Context context,
+             PhoneAccountRegistrar phoneAccountRegistrar,
+             DefaultDialerCache defaultDialerCache,
+-            NotificationBuilderFactory notificationBuilderFactory) {
++            NotificationBuilderFactory notificationBuilderFactory,
++            DeviceIdleControllerAdapter deviceIdleControllerAdapter) {
+         mContext = context;
+         mPhoneAccountRegistrar = phoneAccountRegistrar;
+         mNotificationManager =
+                 (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
++        mDeviceIdleControllerAdapter = deviceIdleControllerAdapter;
+         mDefaultDialerCache = defaultDialerCache;
+ 
+         mNotificationBuilderFactory = notificationBuilderFactory;
+@@ -162,7 +172,8 @@ public class MissedCallNotifierImpl extends CallsManagerListenerBase implements
+     public void clearMissedCalls(UserHandle userHandle) {
+         // If the default dialer is showing the missed call notification then it will modify the
+         // call log and we don't have to do anything here.
+-        if (!shouldManageNotificationThroughDefaultDialer(userHandle)) {
++        String dialerPackage = getDefaultDialerPackage(userHandle);
++        if (!shouldManageNotificationThroughDefaultDialer(dialerPackage, userHandle)) {
+             markMissedCallsAsRead(userHandle);
+         }
+         cancelMissedCallNotification(userHandle);
+@@ -194,6 +205,15 @@ public class MissedCallNotifierImpl extends CallsManagerListenerBase implements
+         }.prepare());
+     }
+ 
++    private String getDefaultDialerPackage(UserHandle userHandle) {
++        String dialerPackage = mDefaultDialerCache.getDefaultDialerApplication(
++                userHandle.getIdentifier());
++        if (TextUtils.isEmpty(dialerPackage)) {
++            return null;
++        }
++        return dialerPackage;
++    }
++
+     /**
+      * Returns the missed-call notification intent to send to the default dialer for the given user.
+      * Note, the passed in userHandle is always the non-managed user for SIM calls (multi-user
+@@ -204,18 +224,16 @@ public class MissedCallNotifierImpl extends CallsManagerListenerBase implements
+      * handle of the phone account. This could be a managed user. In that case we return the default
+      * dialer for the given user which could be a managed (work profile) dialer.
+      */
+-    private Intent getShowMissedCallIntentForDefaultDialer(UserHandle userHandle) {
+-        String dialerPackage = mDefaultDialerCache.getDefaultDialerApplication(
+-                userHandle.getIdentifier());
+-        if (TextUtils.isEmpty(dialerPackage)) {
+-            return null;
+-        }
++    private Intent getShowMissedCallIntentForDefaultDialer(String dialerPackage) {
+         return new Intent(TelecomManager.ACTION_SHOW_MISSED_CALLS_NOTIFICATION)
+             .setPackage(dialerPackage);
+     }
+ 
+-    private boolean shouldManageNotificationThroughDefaultDialer(UserHandle userHandle) {
+-        Intent intent = getShowMissedCallIntentForDefaultDialer(userHandle);
++    private boolean shouldManageNotificationThroughDefaultDialer(String dialerPackage,
++            UserHandle userHandle) {
++        if (TextUtils.isEmpty(dialerPackage)) return false;
++
++        Intent intent = getShowMissedCallIntentForDefaultDialer(dialerPackage);
+         if (intent == null) {
+             return false;
+         }
+@@ -225,9 +243,29 @@ public class MissedCallNotifierImpl extends CallsManagerListenerBase implements
+         return receivers.size() > 0;
+     }
+ 
+-    private void sendNotificationThroughDefaultDialer(CallInfo callInfo, UserHandle userHandle) {
++    /**
++     * For dialers that manage missed call handling themselves, we must temporarily add them to the
++     * power save exemption list, as they must perform operations such as modifying the call log and
++     * power save restrictions can cause these types of operations to not complete (sometimes
++     * causing ANRs).
++     */
++    private Bundle exemptFromPowerSavingTemporarily(String dialerPackage, UserHandle handle) {
++        if (TextUtils.isEmpty(dialerPackage)) {
++            return null;
++        }
++        BroadcastOptions bopts = BroadcastOptions.makeBasic();
++        long duration = Timeouts.getDialerMissedCallPowerSaveExemptionTimeMillis(
++                mContext.getContentResolver());
++        mDeviceIdleControllerAdapter.exemptAppTemporarilyForEvent(dialerPackage, duration,
++                handle.getIdentifier(), MISSED_CALL_POWER_SAVE_REASON);
++        bopts.setTemporaryAppWhitelistDuration(duration);
++        return bopts.toBundle();
++    }
++
++    private void sendNotificationThroughDefaultDialer(String dialerPackage, CallInfo callInfo,
++            UserHandle userHandle) {
+         int count = mMissedCallCounts.get(userHandle).get();
+-        Intent intent = getShowMissedCallIntentForDefaultDialer(userHandle)
++        Intent intent = getShowMissedCallIntentForDefaultDialer(dialerPackage)
+             .setFlags(Intent.FLAG_RECEIVER_FOREGROUND)
+             .putExtra(TelecomManager.EXTRA_CLEAR_MISSED_CALLS_INTENT,
+                     createClearMissedCallsPendingIntent(userHandle))
+@@ -248,7 +286,8 @@ public class MissedCallNotifierImpl extends CallsManagerListenerBase implements
+ 
+ 
+         Log.w(this, "Showing missed calls through default dialer.");
+-        mContext.sendBroadcastAsUser(intent, userHandle, READ_PHONE_STATE);
++        Bundle options = exemptFromPowerSavingTemporarily(dialerPackage, userHandle);
++        mContext.sendBroadcastAsUser(intent, userHandle, READ_PHONE_STATE, options);
+     }
+ 
+     /**
+@@ -276,8 +315,9 @@ public class MissedCallNotifierImpl extends CallsManagerListenerBase implements
+         mMissedCallCounts.putIfAbsent(userHandle, new AtomicInteger(0));
+         int missCallCounts = mMissedCallCounts.get(userHandle).incrementAndGet();
+ 
+-        if (shouldManageNotificationThroughDefaultDialer(userHandle)) {
+-            sendNotificationThroughDefaultDialer(callInfo, userHandle);
++        String dialerPackage = getDefaultDialerPackage(userHandle);
++        if (shouldManageNotificationThroughDefaultDialer(dialerPackage, userHandle)) {
++            sendNotificationThroughDefaultDialer(dialerPackage, callInfo, userHandle);
+             return;
+         }
+ 
+@@ -393,8 +433,9 @@ public class MissedCallNotifierImpl extends CallsManagerListenerBase implements
+         mMissedCallCounts.putIfAbsent(userHandle, new AtomicInteger(0));
+         mMissedCallCounts.get(userHandle).set(0);
+ 
+-        if (shouldManageNotificationThroughDefaultDialer(userHandle)) {
+-            sendNotificationThroughDefaultDialer(null, userHandle);
++        String dialerPackage = getDefaultDialerPackage(userHandle);
++        if (shouldManageNotificationThroughDefaultDialer(dialerPackage, userHandle)) {
++            sendNotificationThroughDefaultDialer(dialerPackage, null, userHandle);
+             return;
+         }
+ 
+diff --git a/tests/src/com/android/server/telecom/tests/ComponentContextFixture.java b/tests/src/com/android/server/telecom/tests/ComponentContextFixture.java
+index 7effc475c..af062d77f 100644
+--- a/tests/src/com/android/server/telecom/tests/ComponentContextFixture.java
++++ b/tests/src/com/android/server/telecom/tests/ComponentContextFixture.java
+@@ -39,6 +39,7 @@ import android.content.IContentProvider;
+ import android.content.Intent;
+ import android.content.IntentFilter;
+ import android.content.ServiceConnection;
++import android.content.pm.ActivityInfo;
+ import android.content.pm.ApplicationInfo;
+ import android.content.pm.PackageManager;
+ import android.content.pm.ResolveInfo;
+@@ -52,6 +53,7 @@ import android.os.Bundle;
+ import android.os.Handler;
+ import android.os.IInterface;
+ import android.os.PersistableBundle;
++import android.os.PowerWhitelistManager;
+ import android.os.UserHandle;
+ import android.os.UserManager;
+ import android.telecom.CallAudioState;
+@@ -319,6 +321,12 @@ public class ComponentContextFixture implements TestFixture<Context> {
+             // TODO -- need to ensure this is captured
+         }
+ 
++        @Override
++        public void sendBroadcastAsUser(Intent intent, UserHandle user, String receiverPermission,
++                Bundle options) {
++            // Override so that this can be verified via spy.
++        }
++
+         @Override
+         public void sendOrderedBroadcastAsUser(Intent intent, UserHandle user,
+                 String receiverPermission, BroadcastReceiver resultReceiver, Handler scheduler,
+@@ -434,6 +442,7 @@ public class ComponentContextFixture implements TestFixture<Context> {
+             ArrayListMultimap.create();
+     private final Map<ComponentName, IInterface> mServiceByComponentName = new HashMap<>();
+     private final Map<ComponentName, ServiceInfo> mServiceInfoByComponentName = new HashMap<>();
++    private final Map<ComponentName, ActivityInfo> mActivityInfoByComponentName = new HashMap<>();
+     private final Map<IInterface, ComponentName> mComponentNameByService = new HashMap<>();
+     private final Map<ServiceConnection, IInterface> mServiceByServiceConnection = new HashMap<>();
+ 
+@@ -507,6 +516,24 @@ public class ComponentContextFixture implements TestFixture<Context> {
+             }
+         }).when(mPackageManager).queryIntentServicesAsUser((Intent) any(), anyInt(), anyInt());
+ 
++        doAnswer(new Answer<List<ResolveInfo>>() {
++            @Override
++            public List<ResolveInfo> answer(InvocationOnMock invocation) throws Throwable {
++                return doQueryIntentReceivers(
++                        (Intent) invocation.getArguments()[0],
++                        (Integer) invocation.getArguments()[1]);
++            }
++        }).when(mPackageManager).queryBroadcastReceivers((Intent) any(), anyInt());
++
++        doAnswer(new Answer<List<ResolveInfo>>() {
++            @Override
++            public List<ResolveInfo> answer(InvocationOnMock invocation) throws Throwable {
++                return doQueryIntentReceivers(
++                        (Intent) invocation.getArguments()[0],
++                        (Integer) invocation.getArguments()[1]);
++            }
++        }).when(mPackageManager).queryBroadcastReceiversAsUser((Intent) any(), anyInt(), anyInt());
++
+         // By default, tests use non-ui apps instead of 3rd party companion apps.
+         when(mPackageManager.checkPermission(
+                 matches(Manifest.permission.CALL_COMPANION_APP), anyString()))
+@@ -585,6 +612,14 @@ public class ComponentContextFixture implements TestFixture<Context> {
+                 eq(componentName.getPackageName()))).thenReturn(PackageManager.PERMISSION_GRANTED);
+     }
+ 
++    public void addIntentReceiver(String action, ComponentName name) {
++        mComponentNamesByAction.put(action, name);
++        ActivityInfo activityInfo = new ActivityInfo();
++        activityInfo.packageName = name.getPackageName();
++        activityInfo.name = name.getClassName();
++        mActivityInfoByComponentName.put(name, activityInfo);
++    }
++
+     public void putResource(int id, final String value) {
+         when(mResources.getText(eq(id))).thenReturn(value);
+         when(mResources.getString(eq(id))).thenReturn(value);
+@@ -635,4 +670,14 @@ public class ComponentContextFixture implements TestFixture<Context> {
+         }
+         return result;
+     }
++
++    private List<ResolveInfo> doQueryIntentReceivers(Intent intent, int flags) {
++        List<ResolveInfo> result = new ArrayList<>();
++        for (ComponentName componentName : mComponentNamesByAction.get(intent.getAction())) {
++            ResolveInfo resolveInfo = new ResolveInfo();
++            resolveInfo.activityInfo = mActivityInfoByComponentName.get(componentName);
++            result.add(resolveInfo);
++        }
++        return result;
++    }
+ }
+diff --git a/tests/src/com/android/server/telecom/tests/MissedCallNotifierImplTest.java b/tests/src/com/android/server/telecom/tests/MissedCallNotifierImplTest.java
+index 10a01949d..9dd90f52f 100644
+--- a/tests/src/com/android/server/telecom/tests/MissedCallNotifierImplTest.java
++++ b/tests/src/com/android/server/telecom/tests/MissedCallNotifierImplTest.java
+@@ -16,6 +16,10 @@
+ 
+ package com.android.server.telecom.tests;
+ 
++import static junit.framework.Assert.assertEquals;
++import static junit.framework.Assert.assertTrue;
++
++import android.app.BroadcastOptions;
+ import android.app.Notification;
+ import android.app.NotificationManager;
+ import android.app.PendingIntent;
+@@ -43,6 +47,7 @@ import android.telecom.CallerInfo;
+ import com.android.server.telecom.CallerInfoLookupHelper;
+ import com.android.server.telecom.Constants;
+ import com.android.server.telecom.DefaultDialerCache;
++import com.android.server.telecom.DeviceIdleControllerAdapter;
+ import com.android.server.telecom.MissedCallNotifier;
+ import com.android.server.telecom.PhoneAccountRegistrar;
+ import com.android.server.telecom.TelecomBroadcastIntentProcessor;
+@@ -67,6 +72,8 @@ import java.util.List;
+ 
+ import static org.junit.Assert.assertNotNull;
+ import static org.junit.Assert.assertNull;
++import static org.mockito.ArgumentMatchers.anyInt;
++import static org.mockito.ArgumentMatchers.anyLong;
+ import static org.mockito.ArgumentMatchers.nullable;
+ import static org.mockito.Matchers.any;
+ import static org.mockito.Matchers.anyString;
+@@ -143,6 +150,9 @@ public class MissedCallNotifierImplTest extends TelecomTestCase {
+     private static final UserHandle SECONARY_USER = UserHandle.of(12);
+     private static final int NO_CAPABILITY = 0;
+     private static final int TEST_TIMEOUT = 1000;
++    private static final long TEST_POWER_EXEMPT_TIME_MS = 1000;
++    private static final ComponentName COMPONENT_NAME = new ComponentName(
++            "com.anything", "com.whatever");
+ 
+     @Mock
+     private NotificationManager mNotificationManager;
+@@ -155,6 +165,7 @@ public class MissedCallNotifierImplTest extends TelecomTestCase {
+ 
+     @Mock TelecomSystem mTelecomSystem;
+     @Mock private DefaultDialerCache mDefaultDialerCache;
++    @Mock private DeviceIdleControllerAdapter mDeviceIdleControllerAdapter;
+ 
+     @Override
+     @Before
+@@ -246,7 +257,8 @@ public class MissedCallNotifierImplTest extends TelecomTestCase {
+                 makeNotificationBuilderFactory(builders);
+ 
+         MissedCallNotifier missedCallNotifier = new MissedCallNotifierImpl(mContext,
+-                mPhoneAccountRegistrar, mDefaultDialerCache, fakeBuilderFactory);
++                mPhoneAccountRegistrar, mDefaultDialerCache, fakeBuilderFactory,
++                mDeviceIdleControllerAdapter);
+ 
+         missedCallNotifier.showMissedCallNotification(fakeCall);
+         missedCallNotifier.showMissedCallNotification(fakeCall);
+@@ -401,7 +413,8 @@ public class MissedCallNotifierImplTest extends TelecomTestCase {
+                 makeNotificationBuilderFactory(builder1);
+ 
+         MissedCallNotifier missedCallNotifier = new MissedCallNotifierImpl(mContext,
+-                mPhoneAccountRegistrar, mDefaultDialerCache, fakeBuilderFactory);
++                mPhoneAccountRegistrar, mDefaultDialerCache, fakeBuilderFactory,
++                mDeviceIdleControllerAdapter);
+         PhoneAccount phoneAccount = makePhoneAccount(PRIMARY_USER, NO_CAPABILITY);
+ 
+         MissedCallNotifier.CallInfo fakeCall =
+@@ -461,7 +474,8 @@ public class MissedCallNotifierImplTest extends TelecomTestCase {
+                 makeNotificationBuilderFactory(builder1);
+ 
+         MissedCallNotifier missedCallNotifier = new MissedCallNotifierImpl(mContext,
+-                mPhoneAccountRegistrar, mDefaultDialerCache, fakeBuilderFactory);
++                mPhoneAccountRegistrar, mDefaultDialerCache, fakeBuilderFactory,
++                mDeviceIdleControllerAdapter);
+ 
+         // AsyncQueryHandler used in reloadFromDatabase interacts poorly with the below
+         // timeout-verify, so run this in a new handler to mitigate that.
+@@ -530,7 +544,8 @@ public class MissedCallNotifierImplTest extends TelecomTestCase {
+                 makeNotificationBuilderFactory(builder1);
+ 
+         MissedCallNotifier missedCallNotifier = new MissedCallNotifierImpl(mContext,
+-                mPhoneAccountRegistrar, mDefaultDialerCache, fakeBuilderFactory);
++                mPhoneAccountRegistrar, mDefaultDialerCache, fakeBuilderFactory,
++                mDeviceIdleControllerAdapter);
+ 
+         // AsyncQueryHandler used in reloadFromDatabase interacts poorly with the below
+         // timeout-verify, so run this in a new handler to mitigate that.
+@@ -560,6 +575,49 @@ public class MissedCallNotifierImplTest extends TelecomTestCase {
+                 nullable(Notification.class), eq(PRIMARY_USER));
+     }
+ 
++    @SmallTest
++    @Test
++    public void testDialerHandleMissedCall() {
++        // Configure Notifier to send missed call intent and let dialer handle
++        enableDialerHandlesMissedCall();
++
++        Notification.Builder builder1 = makeNotificationBuilder("builder1");
++        MissedCallNotifierImpl.NotificationBuilderFactory fakeBuilderFactory =
++                makeNotificationBuilderFactory(builder1);
++
++        MissedCallNotifier missedCallNotifier = new MissedCallNotifierImpl(mContext,
++                mPhoneAccountRegistrar, mDefaultDialerCache, fakeBuilderFactory,
++                mDeviceIdleControllerAdapter);
++        PhoneAccount phoneAccount = makePhoneAccount(PRIMARY_USER, NO_CAPABILITY);
++
++        MissedCallNotifier.CallInfo fakeCall =
++                makeFakeCallInfo(SIP_CALL_HANDLE, CALLER_NAME, CALL_TIMESTAMP,
++                        phoneAccount.getAccountHandle());
++        missedCallNotifier.showMissedCallNotification(fakeCall);
++
++        ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
++        ArgumentCaptor<Bundle> bundleCaptor =
++                ArgumentCaptor.forClass(Bundle.class);
++        verify(mDeviceIdleControllerAdapter).exemptAppTemporarilyForEvent(
++                eq(COMPONENT_NAME.getPackageName()), anyLong(), anyInt(), any());
++        verify(mContext).sendBroadcastAsUser(
++                intentCaptor.capture(),
++                any(),
++                eq(android.Manifest.permission.READ_PHONE_STATE), bundleCaptor.capture());
++        assertNotNull("Not expecting null intent", intentCaptor.getValue());
++        assertEquals("Incorrect intent received",
++                TelecomManager.ACTION_SHOW_MISSED_CALLS_NOTIFICATION,
++                intentCaptor.getValue().getAction());
++        assertNotNull("Not expecting null options bundle", bundleCaptor.getValue());
++        BroadcastOptions options = new BroadcastOptions(bundleCaptor.getValue());
++        assertTrue("App must have a temporary exemption set.",
++                options.getTemporaryAppWhitelistDuration() > 0);
++
++        // A notification should never be posted by Telecom
++        verify(mNotificationManager, never()).notifyAsUser(nullable(String.class), anyInt(),
++                nullable(Notification.class), eq(PRIMARY_USER));
++    }
++
+     private Notification.Builder makeNotificationBuilder(String label) {
+         Notification.Builder builder = spy(new Notification.Builder(mContext));
+         Notification notification = mock(Notification.class);
+@@ -592,14 +650,14 @@ public class MissedCallNotifierImplTest extends TelecomTestCase {
+     private MissedCallNotifier makeMissedCallNotifier(
+             NotificationBuilderFactory fakeBuilderFactory, UserHandle currentUser) {
+         MissedCallNotifier missedCallNotifier = new MissedCallNotifierImpl(mContext,
+-                mPhoneAccountRegistrar, mDefaultDialerCache, fakeBuilderFactory);
++                mPhoneAccountRegistrar, mDefaultDialerCache, fakeBuilderFactory,
++                mDeviceIdleControllerAdapter);
+         missedCallNotifier.setCurrentUserHandle(currentUser);
+         return missedCallNotifier;
+     }
+ 
+     private PhoneAccount makePhoneAccount(UserHandle userHandle, int capability) {
+-        ComponentName componentName = new ComponentName("com.anything", "com.whatever");
+-        PhoneAccountHandle phoneAccountHandle = new PhoneAccountHandle(componentName, "id",
++        PhoneAccountHandle phoneAccountHandle = new PhoneAccountHandle(COMPONENT_NAME, "id",
+                 userHandle);
+         PhoneAccount.Builder builder = new PhoneAccount.Builder(phoneAccountHandle, "test");
+         builder.setCapabilities(capability);
+@@ -609,6 +667,13 @@ public class MissedCallNotifierImplTest extends TelecomTestCase {
+         return phoneAccount;
+     }
+ 
++    private void enableDialerHandlesMissedCall() {
++        doReturn(COMPONENT_NAME.getPackageName()).when(mDefaultDialerCache).
++                getDefaultDialerApplication(anyInt());
++        mComponentContextFixture.addIntentReceiver(
++                TelecomManager.ACTION_SHOW_MISSED_CALLS_NOTIFICATION, COMPONENT_NAME);
++    }
++
+     private IContentProvider getContentProviderForUser(int userId) {
+         return mContext.getContentResolver().acquireProvider(userId + "@call_log");
+     }
+diff --git a/tests/src/com/android/server/telecom/tests/TelecomSystemTest.java b/tests/src/com/android/server/telecom/tests/TelecomSystemTest.java
+index 442c310b6..3fe41f448 100644
+--- a/tests/src/com/android/server/telecom/tests/TelecomSystemTest.java
++++ b/tests/src/com/android/server/telecom/tests/TelecomSystemTest.java
+@@ -78,6 +78,7 @@ import com.android.server.telecom.CallsManagerListenerBase;
+ import com.android.server.telecom.ClockProxy;
+ import com.android.server.telecom.ConnectionServiceFocusManager;
+ import com.android.server.telecom.ContactsAsyncHelper;
++import com.android.server.telecom.DeviceIdleControllerAdapter;
+ import com.android.server.telecom.HeadsetMediaButton;
+ import com.android.server.telecom.HeadsetMediaButtonFactory;
+ import com.android.server.telecom.InCallWakeLockController;
+@@ -207,6 +208,7 @@ public class TelecomSystemTest extends TelecomTestCase {
+     @Mock ClockProxy mClockProxy;
+     @Mock RoleManagerAdapter mRoleManagerAdapter;
+     @Mock ToneGenerator mToneGenerator;
++    @Mock DeviceIdleControllerAdapter mDeviceIdleControllerAdapter;
+ 
+     final ComponentName mInCallServiceComponentNameX =
+             new ComponentName(
+@@ -475,7 +477,8 @@ public class TelecomSystemTest extends TelecomTestCase {
+         when(mRoleManagerAdapter.getDefaultCallScreeningApp()).thenReturn(null);
+         mTelecomSystem = new TelecomSystem(
+                 mComponentContextFixture.getTestDouble(),
+-                (context, phoneAccountRegistrar, defaultDialerCache) -> mMissedCallNotifier,
++                (context, phoneAccountRegistrar, defaultDialerCache, mDeviceIdleControllerAdapter)
++                        -> mMissedCallNotifier,
+                 mCallerInfoAsyncQueryFactoryFixture.getTestDouble(),
+                 headsetMediaButtonFactory,
+                 proximitySensorManagerFactory,
+@@ -535,7 +538,7 @@ public class TelecomSystemTest extends TelecomTestCase {
+                             ContactsAsyncHelper.ContentResolverAdapter adapter) {
+                         return new ContactsAsyncHelper(adapter, mHandlerThread.getLooper());
+                     }
+-                });
++                }, mDeviceIdleControllerAdapter);
+ 
+         mComponentContextFixture.setTelecomManager(new TelecomManager(
+                 mComponentContextFixture.getTestDouble(),
+-- 
+2.35.1
+

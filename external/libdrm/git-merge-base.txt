@@ -1,0 +1,84 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/libdrm (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/libdrm (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit b68d87a4c9bc1deef2c58ccffcb5cbdb63d978ed
+Merge: d3fbd21e 9d5089ee
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:29:25 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/libdrm (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/libdrm (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit b68d87a4c9bc1deef2c58ccffcb5cbdb63d978ed
+Merge: d3fbd21e 9d5089ee
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:29:25 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/libdrm (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/libdrm (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit b68d87a4c9bc1deef2c58ccffcb5cbdb63d978ed
+Merge: d3fbd21e 9d5089ee
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:29:25 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/libdrm (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/libdrm (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit b68d87a4c9bc1deef2c58ccffcb5cbdb63d978ed
+Merge: d3fbd21e 9d5089ee
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:29:25 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/libdrm (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/libdrm (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit b68d87a4c9bc1deef2c58ccffcb5cbdb63d978ed
+Merge: d3fbd21e 9d5089ee
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:29:25 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/libdrm (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/libdrm (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit b68d87a4c9bc1deef2c58ccffcb5cbdb63d978ed
+Merge: d3fbd21e 9d5089ee
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:29:25 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28

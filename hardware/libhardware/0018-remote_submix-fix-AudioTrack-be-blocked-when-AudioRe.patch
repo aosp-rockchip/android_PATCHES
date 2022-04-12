@@ -1,0 +1,76 @@
+From 8626c9e33e2b62a341c7402bb5e6ab5b2f59a841 Mon Sep 17 00:00:00 2001
+From: hehua <hh@rock-chips.com>
+Date: Thu, 6 Sep 2018 11:09:45 +0800
+Subject: [PATCH 18/36] [remote_submix]: fix AudioTrack be blocked when
+ AudioRecord close(redmine:175895)
+
+Change-Id: Ie8795a0eb81f9a8eea99e7c5e6478059a1e08e8b
+Signed-off-by: hehua <hh@rock-chips.com>
+---
+ modules/audio_remote_submix/audio_hw.cpp | 30 ++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
+ mode change 100644 => 100755 modules/audio_remote_submix/audio_hw.cpp
+
+diff --git a/modules/audio_remote_submix/audio_hw.cpp b/modules/audio_remote_submix/audio_hw.cpp
+old mode 100644
+new mode 100755
+index 8c0c0971..346be010
+--- a/modules/audio_remote_submix/audio_hw.cpp
++++ b/modules/audio_remote_submix/audio_hw.cpp
+@@ -385,6 +385,19 @@ static void submix_audio_device_create_pipe_l(struct submix_audio_device * const
+             rsxadev->routes[route_idx].config.output_channel_mask = AUDIO_CHANNEL_OUT_STEREO;
+         }
+ #endif // ENABLE_RESAMPLING
++
++        {
++            /* hh@rock-chips.com
++             * MonoPipe may be shut down when rsxSource(AudioRecord) is closed(in function
++             * submix_audio_device_destroy_pipe_l we will shut down MonoPipe when rsxSource close).
++             * So if a new rsxadev->routes[route_idx].input create, we reopen MonoPipe here
++             */
++            sp<MonoPipe> sink = rsxadev->routes[route_idx].rsxSink;
++            if (sink != NULL && sink->isShutdown()) {
++                ALOGD("%s: open MonoPipe",__FUNCTION__);
++                sink->shutdown(false);
++            }
++        }
+     }
+     if (out) {
+         out->route_handle = route_idx;
+@@ -467,9 +480,11 @@ static void submix_audio_device_release_pipe_l(struct submix_audio_device * cons
+             rsxadev->routes[route_idx].address);
+     if (rsxadev->routes[route_idx].rsxSink != 0) {
+         rsxadev->routes[route_idx].rsxSink.clear();
++        rsxadev->routes[route_idx].rsxSink = NULL;
+     }
+     if (rsxadev->routes[route_idx].rsxSource != 0) {
+         rsxadev->routes[route_idx].rsxSource.clear();
++        rsxadev->routes[route_idx].rsxSource = NULL;
+     }
+     memset(rsxadev->routes[route_idx].address, 0, AUDIO_DEVICE_MAX_ADDRESS_LEN);
+ #ifdef ENABLE_RESAMPLING
+@@ -499,6 +514,21 @@ static void submix_audio_device_destroy_pipe_l(struct submix_audio_device * cons
+ #else
+         rsxadev->input = NULL;
+ #endif // ENABLE_LEGACY_INPUT_OPEN
++
++        /* hh@rock-chips.com
++         * rsxadev->routes[route_idx].input is closed, so shutdown the MonoPipe,
++         * because rsxadev->routes[route_idx].output may be blocked in
++         * out_write(see sink->write(buffer, frames) in out_write in this file, this happed
++         * when AudioRecord is pause/stop, so there no one to read datas in MonoPipe,
++         * and no space to write, this will lead to sink->write(buffer, frames) will be blocked)
++         */
++        if(rsxadev != NULL){
++            sp<MonoPipe> sink = rsxadev->routes[route_idx].rsxSink;
++            if (sink != NULL) {
++                ALOGD("%s: shutting down MonoPipe",__FUNCTION__);
++                sink->shutdown(true);
++            }
++        }
+     }
+     if (out != NULL) {
+         route_idx = out->route_handle;
+-- 
+2.35.1
+

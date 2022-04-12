@@ -1,0 +1,64 @@
+From aa6077c4a90a5ed89e6859a7d1ac004b6782626a Mon Sep 17 00:00:00 2001
+From: Longjian Lin <llj@rock-chips.com>
+Date: Sun, 7 Feb 2021 11:13:24 +0800
+Subject: [PATCH 297/297] Solve the problem of automatically turning on bt
+ after reboot
+
+Signed-off-by: Longjian Lin <llj@rock-chips.com>
+Change-Id: I795ca976cd7f11c9c751d9e95668c47c4980f94b
+---
+ .../server/connectivity/WifiSleepController.java  | 15 +++++++--------
+ 1 file changed, 7 insertions(+), 8 deletions(-)
+
+diff --git a/services/core/java/com/android/server/connectivity/WifiSleepController.java b/services/core/java/com/android/server/connectivity/WifiSleepController.java
+index 856809dac14..5414d0b52bb 100644
+--- a/services/core/java/com/android/server/connectivity/WifiSleepController.java
++++ b/services/core/java/com/android/server/connectivity/WifiSleepController.java
+@@ -91,7 +91,8 @@ public class WifiSleepController {
+             } else if (action.equals(Intent.ACTION_SCREEN_ON)) {
+                 mIsScreenON = true;
+                 exitSleepState();
+-		SystemProperties.set(PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG, "false");
++                SystemProperties.set(PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG, "false");
++                SystemProperties.set(PERSISTENT_PROPERTY_BT_SLEEP_FLAG, "false");
+             } else if (action.equals(Intent.ACTION_SCREEN_OFF)) {
+                 mIsScreenON = false;
+                 log("isScanAlwaysAvailable = " + mWifiManager.isScanAlwaysAvailable());
+@@ -103,10 +104,7 @@ public class WifiSleepController {
+                 mWifiIsOpened = getWifiIsEnabled();
+                 if (shouldStartWifiSleep()) {
+                     setWifiSleepAlarm();
+-                    if(mBtIsOpened)
+-                        SystemProperties.set(PERSISTENT_PROPERTY_BT_SLEEP_FLAG, "true");
+                 }else if(shouldStartBtSleep()){//check if only bt
+-                    SystemProperties.set(PERSISTENT_PROPERTY_BT_SLEEP_FLAG, "true");
+                     setWifiSleepAlarm();
+                 }
+             } else if (action.contains(ACTION_WIFI_SLEEP_TIMEOUT_ALARM)) {
+@@ -115,10 +113,12 @@ public class WifiSleepController {
+                 if(!mIsScreenON) {
+                     if(mWifiIsOpened) {
+                         setWifiEnabled(false);
+-			SystemProperties.set(PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG, "true");
+-		    }
+-                    if(mBtIsOpened && mBtPowerDownSetting)
++                        SystemProperties.set(PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG, "true");
++                    }
++                    if(mBtIsOpened && mBtPowerDownSetting){
+                         setBtEnabled(false);
++                        SystemProperties.set(PERSISTENT_PROPERTY_BT_SLEEP_FLAG, "true");;
++                    }
+                 }
+             } else if (action.equals(Intent.ACTION_BOOT_COMPLETED)) {
+                 boolean mWifiSleepFlag = SystemProperties.getBoolean(PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG, false);
+@@ -209,7 +209,6 @@ public class WifiSleepController {
+             }
+             if(mBtIsOpened && !getBtIsEnabled()){
+                 setBtEnabled(true);
+-                SystemProperties.set(PERSISTENT_PROPERTY_BT_SLEEP_FLAG, "false");
+             }
+             removeWifiSleepAlarm();
+         }
+-- 
+2.35.1
+

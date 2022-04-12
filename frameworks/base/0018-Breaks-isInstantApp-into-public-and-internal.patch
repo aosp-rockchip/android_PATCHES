@@ -1,0 +1,149 @@
+From fea2fb2cb011005e4ad53ee4a0b482c426399001 Mon Sep 17 00:00:00 2001
+From: Patrick Baumann <patb@google.com>
+Date: Fri, 20 Sep 2019 07:54:47 -0700
+Subject: [PATCH 018/297] Breaks isInstantApp into public and internal
+
+This change breaks isInstantApp up into a public and internal
+implementation so that internal interfaces have a means of calling
+without any permission checks that only apply to public callers.
+
+Fixes: 141288362
+Test: Work profile setup
+Change-Id: I2cb8338c2a68bc9c4a61c075398d767980c504ed
+(cherry picked from commit b6e729783e75184bd2712a6cfdb50cb4188321e6)
+---
+ .../content/pm/PackageManagerInternal.java    |  4 +--
+ .../com/android/server/am/ActiveServices.java |  4 +--
+ .../server/am/ActivityManagerService.java     |  4 +--
+ .../server/pm/PackageManagerService.java      | 26 ++++++++++++-------
+ .../android/server/wm/ActivityStarter.java    |  2 +-
+ 5 files changed, 23 insertions(+), 17 deletions(-)
+
+diff --git a/core/java/android/content/pm/PackageManagerInternal.java b/core/java/android/content/pm/PackageManagerInternal.java
+index 24ee21360ed..3e4649f786e 100644
+--- a/core/java/android/content/pm/PackageManagerInternal.java
++++ b/core/java/android/content/pm/PackageManagerInternal.java
+@@ -334,11 +334,11 @@ public abstract class PackageManagerInternal {
+      * <p>
+      * @param userId the user
+      * @param intent the intent that triggered the grant
+-     * @param callingAppId The app ID of the calling application
++     * @param callingUid The uid of the calling application
+      * @param targetAppId The app ID of the target application
+      */
+     public abstract void grantImplicitAccess(
+-            @UserIdInt int userId, Intent intent, @AppIdInt int callingAppId,
++            @UserIdInt int userId, Intent intent, int callingUid,
+             @AppIdInt int targetAppId);
+ 
+     public abstract boolean isInstantAppInstallerComponent(ComponentName component);
+diff --git a/services/core/java/com/android/server/am/ActiveServices.java b/services/core/java/com/android/server/am/ActiveServices.java
+index e7569bee239..08f75e600bc 100644
+--- a/services/core/java/com/android/server/am/ActiveServices.java
++++ b/services/core/java/com/android/server/am/ActiveServices.java
+@@ -1749,7 +1749,7 @@ public final class ActiveServices {
+             // Once the apps have become associated, if one of them is caller is ephemeral
+             // the target app should now be able to see the calling app
+             mAm.grantImplicitAccess(callerApp.userId, service,
+-                    UserHandle.getAppId(callerApp.uid), UserHandle.getAppId(s.appInfo.uid));
++                    callerApp.uid, UserHandle.getAppId(s.appInfo.uid));
+ 
+             AppBindRecord b = s.retrieveAppBindingLocked(service, callerApp);
+             ConnectionRecord c = new ConnectionRecord(b, activity,
+@@ -2802,7 +2802,7 @@ public final class ActiveServices {
+                 mAm.mUgmInternal.grantUriPermissionUncheckedFromIntent(si.neededGrants,
+                         si.getUriPermissionsLocked());
+             }
+-            mAm.grantImplicitAccess(r.userId, si.intent, UserHandle.getAppId(si.callingId),
++            mAm.grantImplicitAccess(r.userId, si.intent, si.callingId,
+                     UserHandle.getAppId(r.appInfo.uid)
+             );
+             bumpServiceExecutingLocked(r, execInFg, "start");
+diff --git a/services/core/java/com/android/server/am/ActivityManagerService.java b/services/core/java/com/android/server/am/ActivityManagerService.java
+index 3c7cb88174e..c07f67b902a 100644
+--- a/services/core/java/com/android/server/am/ActivityManagerService.java
++++ b/services/core/java/com/android/server/am/ActivityManagerService.java
+@@ -6118,9 +6118,9 @@ public class ActivityManagerService extends IActivityManager.Stub
+     }
+ 
+     @VisibleForTesting
+-    public void grantImplicitAccess(int userId, Intent intent, int callingAppId, int targetAppId) {
++    public void grantImplicitAccess(int userId, Intent intent, int callingUid, int targetAppId) {
+         getPackageManagerInternalLocked().
+-                grantImplicitAccess(userId, intent, callingAppId, targetAppId);
++                grantImplicitAccess(userId, intent, callingUid, targetAppId);
+     }
+ 
+     /**
+diff --git a/services/core/java/com/android/server/pm/PackageManagerService.java b/services/core/java/com/android/server/pm/PackageManagerService.java
+index 2a85c89fdcc..123e65e5b9a 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -8187,15 +8187,20 @@ public class PackageManagerService extends IPackageManager.Stub
+ 
+     @Override
+     public boolean isInstantApp(String packageName, int userId) {
+-        mPermissionManager.enforceCrossUserPermission(Binder.getCallingUid(), userId,
++        final int callingUid = Binder.getCallingUid();
++        mPermissionManager.enforceCrossUserPermission(callingUid, userId,
+                 true /* requireFullPermission */, false /* checkShell */,
+                 "isInstantApp");
++
++        return isInstantAppInternal(packageName, userId, callingUid);
++    }
++
++    private boolean isInstantAppInternal(String packageName, @UserIdInt int userId,
++            int callingUid) {
+         if (HIDE_EPHEMERAL_APIS) {
+             return false;
+         }
+-
+         synchronized (mLock) {
+-            int callingUid = Binder.getCallingUid();
+             if (Process.isIsolated(callingUid)) {
+                 callingUid = mIsolatedOwners.get(callingUid);
+             }
+@@ -23129,19 +23134,20 @@ public class PackageManagerService extends IPackageManager.Stub
+ 
+         @Override
+         public void grantImplicitAccess(int userId, Intent intent,
+-                int callingAppId, int targetAppId) {
++                int callingUid, int targetAppId) {
+             synchronized (mLock) {
+-                final PackageParser.Package callingPackage = getPackage(
+-                        UserHandle.getUid(userId, callingAppId));
+-                final PackageParser.Package targetPackage = getPackage(
+-                        UserHandle.getUid(userId, targetAppId));
++                final PackageParser.Package callingPackage = getPackage(callingUid);
++                final PackageParser.Package targetPackage =
++                        getPackage(UserHandle.getUid(userId, targetAppId));
+                 if (callingPackage == null || targetPackage == null) {
+                     return;
+                 }
+ 
+-                if (isInstantApp(callingPackage.packageName, userId)) {
++                final boolean instantApp = isInstantAppInternal(callingPackage.packageName, userId,
++                        callingUid);
++                if (instantApp) {
+                     mInstantAppRegistry.grantInstantAccessLPw(userId, intent,
+-                            callingAppId, targetAppId);
++                            UserHandle.getAppId(callingUid), targetAppId);
+                 } else {
+                     mAppsFilter.grantImplicitAccess(
+                             callingPackage.packageName, targetPackage.packageName, userId);
+diff --git a/services/core/java/com/android/server/wm/ActivityStarter.java b/services/core/java/com/android/server/wm/ActivityStarter.java
+index 47be792802a..dbf06a58028 100644
+--- a/services/core/java/com/android/server/wm/ActivityStarter.java
++++ b/services/core/java/com/android/server/wm/ActivityStarter.java
+@@ -1552,7 +1552,7 @@ class ActivityStarter {
+                 mIntent, mStartActivity.getUriPermissionsLocked(), mStartActivity.mUserId);
+         mService.getPackageManagerInternalLocked().grantImplicitAccess(
+                 mStartActivity.mUserId, mIntent,
+-                UserHandle.getAppId(mCallingUid),
++                mCallingUid,
+                 UserHandle.getAppId(mStartActivity.info.applicationInfo.uid)
+         );
+         if (newTask) {
+-- 
+2.35.1
+

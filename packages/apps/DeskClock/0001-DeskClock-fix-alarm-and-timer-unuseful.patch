@@ -1,0 +1,74 @@
+From 66695b7c70ae38195624376195f43f8859686e56 Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Wed, 30 Sep 2020 18:04:54 +0800
+Subject: [PATCH] DeskClock: fix alarm and timer unuseful
+
+1. add channel to make timer alarm usefully
+2. fix not trigger full intent action with alarm notificaion
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: I87c6c06169bbbdc7d5dd98e14e68ea4031674a60
+---
+ AndroidManifest.xml                                      | 3 +--
+ src/com/android/deskclock/alarms/AlarmNotifications.java | 4 ++--
+ src/com/android/deskclock/data/TimerModel.java           | 2 ++
+ 3 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 487361e38..45f718b99 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -22,14 +22,13 @@
+     <original-package android:name="com.android.alarmclock" />
+     <original-package android:name="com.android.deskclock" />
+ 
+-    <uses-sdk android:minSdkVersion="19" android:targetSdkVersion="25" />
+-
+     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+     <uses-permission android:name="android.permission.WAKE_LOCK" />
+     <uses-permission android:name="android.permission.VIBRATE" />
+     <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
+     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
++    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+ 
+     <!-- WRITE_SETTINGS is required to record the upcoming alarm prior to L -->
+     <uses-permission
+diff --git a/src/com/android/deskclock/alarms/AlarmNotifications.java b/src/com/android/deskclock/alarms/AlarmNotifications.java
+index 5dc44c915..1afc42d59 100644
+--- a/src/com/android/deskclock/alarms/AlarmNotifications.java
++++ b/src/com/android/deskclock/alarms/AlarmNotifications.java
+@@ -285,7 +285,7 @@ final class AlarmNotifications {
+             NotificationChannel channel = new NotificationChannel(
+                     ALARM_NOTIFICATION_CHANNEL_ID,
+                     context.getString(R.string.default_label),
+-                    NotificationManagerCompat.IMPORTANCE_DEFAULT);
++                    NotificationManagerCompat.IMPORTANCE_MAX);
+             nm.createNotificationChannel(channel);
+         }
+ 
+@@ -326,7 +326,7 @@ final class AlarmNotifications {
+             NotificationChannel channel = new NotificationChannel(
+                     ALARM_NOTIFICATION_CHANNEL_ID,
+                     context.getString(R.string.default_label),
+-                    NotificationManagerCompat.IMPORTANCE_DEFAULT);
++                    NotificationManagerCompat.IMPORTANCE_MAX);
+             nm.createNotificationChannel(channel);
+         }
+ 
+diff --git a/src/com/android/deskclock/data/TimerModel.java b/src/com/android/deskclock/data/TimerModel.java
+index 54dfeaba9..f9f6ba14b 100644
+--- a/src/com/android/deskclock/data/TimerModel.java
++++ b/src/com/android/deskclock/data/TimerModel.java
+@@ -803,6 +803,8 @@ final class TimerModel {
+         // Otherwise build and post a foreground notification reflecting the latest expired timers.
+         final Notification notification = mNotificationBuilder.buildHeadsUp(mContext, expired);
+         final int notificationId = mNotificationModel.getExpiredTimerNotificationId();
++        // channel maybe not create because app not in background sometime,so build again
++        mNotificationBuilder.buildChannel(mContext, mNotificationManager);
+         mService.startForeground(notificationId, notification);
+     }
+ 
+-- 
+2.35.1
+

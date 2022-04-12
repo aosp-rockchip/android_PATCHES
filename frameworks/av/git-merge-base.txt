@@ -23,3 +23,153 @@ Date:   Wed Nov 6 16:34:10 2019 +0800
     Change-Id: I5c7935befa72abe28c832b8022cac4bc9e4ae4ac
     Signed-off-by: Bin Yang <yangbin@rock-chips.com>
     (cherry picked from commit 8e1978aec719ba7de94687b36f346e78b8879fa5)
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/av (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/av (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit c4eb39966cfdc4696b263703f58f0ab8cecc7973
+Author: Bin Yang <yangbin@rock-chips.com>
+Date:   Wed Nov 6 16:34:10 2019 +0800
+
+    mtp: Define _FILE_OFFSET_BITS=64 to support 2~4G file
+    
+    File offset type "off_t" is a signed long integer, so the maximum
+    offset is 2GB. If the file size is bigger than 2GB, the file offset
+    will be type-cast to a negative number. And it will cause a file is
+    limited to 2GB or MTP transmission break.
+    
+    Test: manual - connect Android device to Windowns PC
+    Test: manual - select MTP/File Transfer in android device
+    Test: manual - copy a file which is bigger than 2GB from Windowns PC to
+                   the android device.
+    
+    Change-Id: I5c7935befa72abe28c832b8022cac4bc9e4ae4ac
+    Signed-off-by: Bin Yang <yangbin@rock-chips.com>
+    (cherry picked from commit 8e1978aec719ba7de94687b36f346e78b8879fa5)
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/av (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/av (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit c4eb39966cfdc4696b263703f58f0ab8cecc7973
+Author: Bin Yang <yangbin@rock-chips.com>
+Date:   Wed Nov 6 16:34:10 2019 +0800
+
+    mtp: Define _FILE_OFFSET_BITS=64 to support 2~4G file
+    
+    File offset type "off_t" is a signed long integer, so the maximum
+    offset is 2GB. If the file size is bigger than 2GB, the file offset
+    will be type-cast to a negative number. And it will cause a file is
+    limited to 2GB or MTP transmission break.
+    
+    Test: manual - connect Android device to Windowns PC
+    Test: manual - select MTP/File Transfer in android device
+    Test: manual - copy a file which is bigger than 2GB from Windowns PC to
+                   the android device.
+    
+    Change-Id: I5c7935befa72abe28c832b8022cac4bc9e4ae4ac
+    Signed-off-by: Bin Yang <yangbin@rock-chips.com>
+    (cherry picked from commit 8e1978aec719ba7de94687b36f346e78b8879fa5)
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/av (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/av (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit c4eb39966cfdc4696b263703f58f0ab8cecc7973
+Author: Bin Yang <yangbin@rock-chips.com>
+Date:   Wed Nov 6 16:34:10 2019 +0800
+
+    mtp: Define _FILE_OFFSET_BITS=64 to support 2~4G file
+    
+    File offset type "off_t" is a signed long integer, so the maximum
+    offset is 2GB. If the file size is bigger than 2GB, the file offset
+    will be type-cast to a negative number. And it will cause a file is
+    limited to 2GB or MTP transmission break.
+    
+    Test: manual - connect Android device to Windowns PC
+    Test: manual - select MTP/File Transfer in android device
+    Test: manual - copy a file which is bigger than 2GB from Windowns PC to
+                   the android device.
+    
+    Change-Id: I5c7935befa72abe28c832b8022cac4bc9e4ae4ac
+    Signed-off-by: Bin Yang <yangbin@rock-chips.com>
+    (cherry picked from commit 8e1978aec719ba7de94687b36f346e78b8879fa5)
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/av (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/av (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit c4eb39966cfdc4696b263703f58f0ab8cecc7973
+Author: Bin Yang <yangbin@rock-chips.com>
+Date:   Wed Nov 6 16:34:10 2019 +0800
+
+    mtp: Define _FILE_OFFSET_BITS=64 to support 2~4G file
+    
+    File offset type "off_t" is a signed long integer, so the maximum
+    offset is 2GB. If the file size is bigger than 2GB, the file offset
+    will be type-cast to a negative number. And it will cause a file is
+    limited to 2GB or MTP transmission break.
+    
+    Test: manual - connect Android device to Windowns PC
+    Test: manual - select MTP/File Transfer in android device
+    Test: manual - copy a file which is bigger than 2GB from Windowns PC to
+                   the android device.
+    
+    Change-Id: I5c7935befa72abe28c832b8022cac4bc9e4ae4ac
+    Signed-off-by: Bin Yang <yangbin@rock-chips.com>
+    (cherry picked from commit 8e1978aec719ba7de94687b36f346e78b8879fa5)
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/av (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/av (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit c4eb39966cfdc4696b263703f58f0ab8cecc7973
+Author: Bin Yang <yangbin@rock-chips.com>
+Date:   Wed Nov 6 16:34:10 2019 +0800
+
+    mtp: Define _FILE_OFFSET_BITS=64 to support 2~4G file
+    
+    File offset type "off_t" is a signed long integer, so the maximum
+    offset is 2GB. If the file size is bigger than 2GB, the file offset
+    will be type-cast to a negative number. And it will cause a file is
+    limited to 2GB or MTP transmission break.
+    
+    Test: manual - connect Android device to Windowns PC
+    Test: manual - select MTP/File Transfer in android device
+    Test: manual - copy a file which is bigger than 2GB from Windowns PC to
+                   the android device.
+    
+    Change-Id: I5c7935befa72abe28c832b8022cac4bc9e4ae4ac
+    Signed-off-by: Bin Yang <yangbin@rock-chips.com>
+    (cherry picked from commit 8e1978aec719ba7de94687b36f346e78b8879fa5)
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/av (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/av (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit c4eb39966cfdc4696b263703f58f0ab8cecc7973
+Author: Bin Yang <yangbin@rock-chips.com>
+Date:   Wed Nov 6 16:34:10 2019 +0800
+
+    mtp: Define _FILE_OFFSET_BITS=64 to support 2~4G file
+    
+    File offset type "off_t" is a signed long integer, so the maximum
+    offset is 2GB. If the file size is bigger than 2GB, the file offset
+    will be type-cast to a negative number. And it will cause a file is
+    limited to 2GB or MTP transmission break.
+    
+    Test: manual - connect Android device to Windowns PC
+    Test: manual - select MTP/File Transfer in android device
+    Test: manual - copy a file which is bigger than 2GB from Windowns PC to
+                   the android device.
+    
+    Change-Id: I5c7935befa72abe28c832b8022cac4bc9e4ae4ac
+    Signed-off-by: Bin Yang <yangbin@rock-chips.com>
+    (cherry picked from commit 8e1978aec719ba7de94687b36f346e78b8879fa5)

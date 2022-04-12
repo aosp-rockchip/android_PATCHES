@@ -1,0 +1,248 @@
+From 0052ecfb7255b1d5dbb7fdd02fe17b66df20b58b Mon Sep 17 00:00:00 2001
+From: Dan Sandler <dsandler@android.com>
+Date: Thu, 9 Jan 2020 10:14:34 -0500
+Subject: [PATCH 057/297] Revert "Move a bunch of row setters into an init
+ method."
+
+This reverts commit 8271c2726917e63885519be141d84557b4632f44.
+
+Bug: 147407617
+Change-Id: I330bdbbda20c007b433c8f06105fc5bb3bcc11ac
+(cherry picked from commit f107bd05acb35e510f6d331bbfde33c0cf35ab24)
+---
+ .../collection/NotificationRowBinderImpl.java | 38 ++++++------
+ .../row/ExpandableNotificationRow.java        | 59 +++++++++++--------
+ .../statusbar/NotificationTestHelper.java     | 20 ++-----
+ 3 files changed, 57 insertions(+), 60 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/NotificationRowBinderImpl.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/NotificationRowBinderImpl.java
+index 20f206b91f1..9d4c1d2c3a0 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/NotificationRowBinderImpl.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/NotificationRowBinderImpl.java
+@@ -159,6 +159,20 @@ public class NotificationRowBinderImpl implements NotificationRowBinder {
+     private void bindRow(NotificationEntry entry, PackageManager pmUser,
+             StatusBarNotification sbn, ExpandableNotificationRow row,
+             Runnable onDismissRunnable) {
++        row.setExpansionLogger(mExpansionLogger, entry.getSbn().getKey());
++        row.setBypassController(mKeyguardBypassController);
++        row.setStatusBarStateController(mStatusBarStateController);
++        row.setGroupManager(mGroupManager);
++        row.setHeadsUpManager(mHeadsUpManager);
++        row.setOnExpandClickListener(mPresenter);
++        row.setContentBinder(mRowContentBinder);
++        row.setInflationCallback(mInflationCallback);
++        if (mAllowLongPress) {
++            row.setLongPressListener(mGutsManager::openGuts);
++        }
++        mListContainer.bindRow(row);
++        getRemoteInputManager().bindRow(row);
++
+         // Get the app name.
+         // Note that Notification.Builder#bindHeaderAppName has similar logic
+         // but since this field is used in the guts, it must be accurate.
+@@ -176,33 +190,15 @@ public class NotificationRowBinderImpl implements NotificationRowBinder {
+         } catch (PackageManager.NameNotFoundException e) {
+             // Do nothing
+         }
+-
+-        row.initialize(
+-                appname,
+-                sbn.getKey(),
+-                mExpansionLogger,
+-                mKeyguardBypassController,
+-                mGroupManager,
+-                mHeadsUpManager,
+-                mRowContentBinder,
+-                mPresenter);
+-
+-        // TODO: Either move these into ExpandableNotificationRow#initialize or out of row entirely
+-        row.setStatusBarStateController(mStatusBarStateController);
+-        row.setInflationCallback(mInflationCallback);
+-        row.setAppOpsOnClickListener(mOnAppOpsClickListener);
+-        if (mAllowLongPress) {
+-            row.setLongPressListener(mGutsManager::openGuts);
+-        }
+-        mListContainer.bindRow(row);
+-        getRemoteInputManager().bindRow(row);
+-
++        row.setAppName(appname);
+         row.setOnDismissRunnable(onDismissRunnable);
+         row.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+         if (ENABLE_REMOTE_INPUT) {
+             row.setDescendantFocusability(ViewGroup.FOCUS_BEFORE_DESCENDANTS);
+         }
+ 
++        row.setAppOpsOnClickListener(mOnAppOpsClickListener);
++
+         mBindRowCallback.onBindRow(entry, pmUser, sbn, row);
+     }
+ 
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/ExpandableNotificationRow.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/ExpandableNotificationRow.java
+index a8a35d07b3f..50f21990eae 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/ExpandableNotificationRow.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/ExpandableNotificationRow.java
+@@ -741,10 +741,23 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+         return mIsHeadsUp || mHeadsupDisappearRunning;
+     }
+ 
++
++    public void setGroupManager(NotificationGroupManager groupManager) {
++        mGroupManager = groupManager;
++        mPrivateLayout.setGroupManager(groupManager);
++    }
++
+     public void setRemoteInputController(RemoteInputController r) {
+         mPrivateLayout.setRemoteInputController(r);
+     }
+ 
++    public void setAppName(String appName) {
++        mAppName = appName;
++        if (mMenuRow != null && mMenuRow.getMenuView() != null) {
++            mMenuRow.setAppName(mAppName);
++        }
++    }
++
+     public void addChildNotification(ExpandableNotificationRow row) {
+         addChildNotification(row, -1);
+     }
+@@ -1091,6 +1104,10 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+         return mPrivateLayout.getContractedNotificationHeader();
+     }
+ 
++    public void setOnExpandClickListener(OnExpandClickListener onExpandClickListener) {
++        mOnExpandClickListener = onExpandClickListener;
++    }
++
+     public void setLongPressListener(LongPressListener longPressListener) {
+         mLongPressListener = longPressListener;
+     }
+@@ -1113,6 +1130,10 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+         }
+     }
+ 
++    public void setHeadsUpManager(HeadsUpManager headsUpManager) {
++        mHeadsUpManager = headsUpManager;
++    }
++
+     public HeadsUpManager getHeadsUpManager() {
+         return mHeadsUpManager;
+     }
+@@ -1635,6 +1656,15 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+         }
+     }
+ 
++    /**
++     * Set the binder implementation for notification content views.
++     *
++     * @param contentBinder content binder
++     */
++    public void setContentBinder(NotificationRowContentBinder contentBinder) {
++        mNotificationContentBinder = contentBinder;
++    }
++
+     public interface ExpansionLogger {
+         void logNotificationExpansion(String key, boolean userAction, boolean expanded);
+     }
+@@ -1648,30 +1678,8 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+         initDimens();
+     }
+ 
+-    /**
+-     * Initialize row.
+-     */
+-    public void initialize(
+-            String appName,
+-            String notificationKey,
+-            ExpansionLogger logger,
+-            KeyguardBypassController bypassController,
+-            NotificationGroupManager groupManager,
+-            HeadsUpManager headsUpManager,
+-            NotificationRowContentBinder rowContentBinder,
+-            OnExpandClickListener onExpandClickListener) {
+-        mAppName = appName;
+-        if (mMenuRow != null && mMenuRow.getMenuView() != null) {
+-            mMenuRow.setAppName(mAppName);
+-        }
+-        mLogger = logger;
+-        mLoggingKey = notificationKey;
++    public void setBypassController(KeyguardBypassController bypassController) {
+         mBypassController = bypassController;
+-        mGroupManager = groupManager;
+-        mPrivateLayout.setGroupManager(groupManager);
+-        mHeadsUpManager = headsUpManager;
+-        mNotificationContentBinder = rowContentBinder;
+-        mOnExpandClickListener = onExpandClickListener;
+     }
+ 
+     public void setStatusBarStateController(StatusBarStateController statusBarStateController) {
+@@ -2910,6 +2918,11 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+         return 0;
+     }
+ 
++    public void setExpansionLogger(ExpansionLogger logger, String key) {
++        mLogger = logger;
++        mLoggingKey = key;
++    }
++
+     public void onExpandedByGesture(boolean userExpanded) {
+         int event = MetricsEvent.ACTION_NOTIFICATION_GESTURE_EXPANDER;
+         if (mGroupManager.isSummaryOfGroup(mEntry.getSbn())) {
+diff --git a/packages/SystemUI/tests/src/com/android/systemui/statusbar/NotificationTestHelper.java b/packages/SystemUI/tests/src/com/android/systemui/statusbar/NotificationTestHelper.java
+index 3fdbd3edfca..fbfd92314e6 100644
+--- a/packages/SystemUI/tests/src/com/android/systemui/statusbar/NotificationTestHelper.java
++++ b/packages/SystemUI/tests/src/com/android/systemui/statusbar/NotificationTestHelper.java
+@@ -47,8 +47,6 @@ import com.android.systemui.plugins.statusbar.StatusBarStateController;
+ import com.android.systemui.statusbar.notification.collection.NotificationEntry;
+ import com.android.systemui.statusbar.notification.collection.NotificationEntryBuilder;
+ import com.android.systemui.statusbar.notification.row.ExpandableNotificationRow;
+-import com.android.systemui.statusbar.notification.row.ExpandableNotificationRow.ExpansionLogger;
+-import com.android.systemui.statusbar.notification.row.ExpandableNotificationRow.OnExpandClickListener;
+ import com.android.systemui.statusbar.notification.row.NotifRemoteViewCache;
+ import com.android.systemui.statusbar.notification.row.NotificationContentInflater;
+ import com.android.systemui.statusbar.notification.row.NotificationRowContentBinder.InflationFlag;
+@@ -75,7 +73,6 @@ public class NotificationTestHelper {
+     public static final UserHandle USER_HANDLE = UserHandle.of(ActivityManager.getCurrentUser());
+ 
+     private static final String GROUP_KEY = "gruKey";
+-    private static final String APP_NAME = "appName";
+ 
+     private final Context mContext;
+     private int mId;
+@@ -307,6 +304,9 @@ public class NotificationTestHelper {
+                 null /* root */,
+                 false /* attachToRoot */);
+         ExpandableNotificationRow row = mRow;
++        row.setGroupManager(mGroupManager);
++        row.setHeadsUpManager(mHeadsUpManager);
++        row.setAboveShelfChangedListener(aboveShelf -> {});
+ 
+         final NotificationChannel channel =
+                 new NotificationChannel(
+@@ -330,23 +330,11 @@ public class NotificationTestHelper {
+         entry.setRow(row);
+         entry.createIcons(mContext, entry.getSbn());
+         row.setEntry(entry);
+-
+         NotificationContentInflater contentBinder = new NotificationContentInflater(
+                 mock(NotifRemoteViewCache.class),
+                 mock(NotificationRemoteInputManager.class));
+         contentBinder.setInflateSynchronously(true);
+-
+-        row.initialize(
+-                APP_NAME,
+-                entry.getKey(),
+-                mock(ExpansionLogger.class),
+-                mock(KeyguardBypassController.class),
+-                mGroupManager,
+-                mHeadsUpManager,
+-                contentBinder,
+-                mock(OnExpandClickListener.class));
+-        row.setAboveShelfChangedListener(aboveShelf -> { });
+-
++        row.setContentBinder(contentBinder);
+         row.setInflationFlags(extraInflationFlags);
+         inflateAndWait(row);
+ 
+-- 
+2.35.1
+

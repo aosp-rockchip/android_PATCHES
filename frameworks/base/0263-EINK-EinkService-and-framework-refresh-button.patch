@@ -1,0 +1,1408 @@
+From 22765c2a5c289ae6a2386d68b2e645c31f446b10 Mon Sep 17 00:00:00 2001
+From: zj <zj@rock-chips.com>
+Date: Wed, 2 Dec 2020 09:44:25 +0800
+Subject: [PATCH 263/297] EINK: EinkService and framework,refresh button
+
+Signed-off-by: zj <zj@rock-chips.com>
+Change-Id: I8479f3504abf07296647db8e0d4a39c0f0bfc178
+---
+ api/current.txt                               |  41 +++
+ core/java/android/app/ContextImpl.java        |   3 +
+ .../android/app/SystemServiceRegistry.java    |  20 ++
+ core/java/android/content/Context.java        |  11 +
+ .../android/content/pm/PackageManager.java    |   7 +
+ core/java/android/os/EinkManager.java         | 173 ++++++++++
+ core/java/android/os/IEinkManager.aidl        |  27 ++
+ non-updatable-api/current.txt                 |  41 +++
+ .../res/drawable/ic_sysbar_refresh_button.xml |   9 +
+ packages/SystemUI/res/layout/refresh.xml      |  30 ++
+ .../SystemUI/res/values-sw400dp/config.xml    |   2 +-
+ .../SystemUI/res/values-sw600dp/config.xml    |   2 +-
+ packages/SystemUI/res/values/config.xml       |   2 +-
+ packages/SystemUI/res/values/strings.xml      |   2 +
+ .../phone/NavigationBarFragment.java          |  38 ++-
+ .../phone/NavigationBarInflaterView.java      |   7 +-
+ .../statusbar/phone/NavigationBarView.java    |  17 +-
+ .../statusbar/policy/KeyButtonView.java       |  25 +-
+ .../com/android/server/eink/EinkService.java  | 141 +++++++++
+ .../server/wm/WindowManagerService.java       |   6 +
+ services/core/jni/Android.bp                  |  12 +
+ .../com_android_server_eink_EinkService.cpp   | 297 ++++++++++++++++++
+ services/core/jni/onload.cpp                  |   2 +
+ .../java/com/android/server/SystemServer.java |   7 +-
+ 24 files changed, 906 insertions(+), 16 deletions(-)
+ create mode 100644 core/java/android/os/EinkManager.java
+ create mode 100644 core/java/android/os/IEinkManager.aidl
+ create mode 100644 packages/SystemUI/res/drawable/ic_sysbar_refresh_button.xml
+ create mode 100644 packages/SystemUI/res/layout/refresh.xml
+ create mode 100644 services/core/java/com/android/server/eink/EinkService.java
+ create mode 100644 services/core/jni/com_android_server_eink_EinkService.cpp
+
+diff --git a/api/current.txt b/api/current.txt
+index 952ccdad992..9cd23ac2f26 100644
+--- a/api/current.txt
++++ b/api/current.txt
+@@ -10187,6 +10187,7 @@ package android.content {
+     field public static final String DISPLAY_SERVICE = "display";
+     field public static final String DOWNLOAD_SERVICE = "download";
+     field public static final String DROPBOX_SERVICE = "dropbox";
++    field public static final String EINK_SERVICE = "eink";
+     field public static final String EUICC_SERVICE = "euicc";
+     field public static final String FILE_INTEGRITY_SERVICE = "file_integrity";
+     field public static final String FINGERPRINT_SERVICE = "fingerprint";
+@@ -12099,6 +12100,7 @@ package android.content.pm {
+     field public static final String FEATURE_CONSUMER_IR = "android.hardware.consumerir";
+     field public static final String FEATURE_CONTROLS = "android.software.controls";
+     field public static final String FEATURE_DEVICE_ADMIN = "android.software.device_admin";
++    field public static final String FEATURE_EINK = "android.software.eink";
+     field public static final String FEATURE_EMBEDDED = "android.hardware.type.embedded";
+     field public static final String FEATURE_ETHERNET = "android.hardware.ethernet";
+     field public static final String FEATURE_FACE = "android.hardware.biometrics.face";
+@@ -36129,6 +36131,45 @@ package android.os {
+     field @NonNull public static final android.os.Parcelable.Creator<android.os.DropBoxManager.Entry> CREATOR;
+   }
+ 
++  public class EinkManager {
++    method @Nullable public String getMode();
++    method public int init();
++    method public int kill();
++    method public void sendOneFullFrame();
++    method public void setMode(@Nullable String);
++    field public static final boolean EINK = false;
++  }
++
++  public class EinkManager.EinkMode {
++    field public static final String EPD_A2 = "12";
++    field public static final String EPD_A2_DIRECT = "21";
++    field public static final String EPD_A2_DITHER = "13";
++    field public static final String EPD_AUTO = "0";
++    field public static final String EPD_AUTO_DIRECT = "23";
++    field public static final String EPD_DU = "14";
++    field public static final String EPD_DU_DIRECT = "22";
++    field public static final String EPD_FULL_DIRECT = "19";
++    field public static final String EPD_FULL_EINK = "26";
++    field public static final String EPD_FULL_GC16 = "2";
++    field public static final String EPD_FULL_GCC16 = "6";
++    field public static final String EPD_FULL_GL16 = "3";
++    field public static final String EPD_FULL_GLD16 = "5";
++    field public static final String EPD_FULL_GLR16 = "4";
++    field public static final String EPD_OVERLAY = "1";
++    field public static final String EPD_OVERLAY_DIRECT = "24";
++    field public static final String EPD_PART_DIRECT = "20";
++    field public static final String EPD_PART_EINK = "25";
++    field public static final String EPD_PART_GC16 = "7";
++    field public static final String EPD_PART_GCC16 = "11";
++    field public static final String EPD_PART_GL16 = "8";
++    field public static final String EPD_PART_GLD16 = "10";
++    field public static final String EPD_PART_GLR16 = "9";
++    field public static final String EPD_POWER_OFF = "18";
++    field public static final String EPD_RESET = "15";
++    field public static final String EPD_RESUME = "17";
++    field public static final String EPD_SUSPEND = "16";
++  }
++
+   public class Environment {
+     ctor public Environment();
+     method public static java.io.File getDataDirectory();
+diff --git a/core/java/android/app/ContextImpl.java b/core/java/android/app/ContextImpl.java
+index 505b498e3cf..ef566309834 100644
+--- a/core/java/android/app/ContextImpl.java
++++ b/core/java/android/app/ContextImpl.java
+@@ -70,6 +70,9 @@ import android.os.RemoteException;
+ import android.os.StrictMode;
+ import android.os.Trace;
+ import android.os.UserHandle;
++//zj add
++import android.os.IEinkManager;
++import android.os.EinkManager;
+ import android.os.UserManager;
+ import android.os.storage.StorageManager;
+ import android.permission.IPermissionManager;
+diff --git a/core/java/android/app/SystemServiceRegistry.java b/core/java/android/app/SystemServiceRegistry.java
+index e599a5ce81e..caec9a99802 100644
+--- a/core/java/android/app/SystemServiceRegistry.java
++++ b/core/java/android/app/SystemServiceRegistry.java
+@@ -146,6 +146,8 @@ import android.os.IBinder;
+ import android.os.IDumpstate;
+ import android.os.IHardwarePropertiesManager;
+ import android.os.IPowerManager;
++import android.os.IEinkManager;
++import android.os.EinkManager;
+ import android.os.IRecoverySystem;
+ import android.os.ISystemUpdateManager;
+ import android.os.IThermalService;
+@@ -583,6 +585,24 @@ public final class SystemServiceRegistry {
+                         ctx.mMainThread.getHandler());
+             }});
+ 
++//zj add b
++        registerService(Context.EINK_SERVICE, EinkManager.class,
++                new CachedServiceFetcher<EinkManager>() {
++            @Override
++            public EinkManager createService(ContextImpl ctx) {
++                IEinkManager service = null;
++                if (ctx.getPackageManager().hasSystemFeature(
++                    PackageManager.FEATURE_EINK)) {
++                        IBinder b = ServiceManager.getService(Context.EINK_SERVICE);
++                        service = IEinkManager.Stub.asInterface(b);
++                        if (service == null) {
++                            Log.wtf(TAG, "Failed to get Eink manager service.");
++                        }
++                }
++                return new EinkManager(ctx.getOuterContext(),
++                        service, ctx.mMainThread.getHandler());
++            }});
++//zj add e
+         registerService(Context.RECOVERY_SERVICE, RecoverySystem.class,
+                 new CachedServiceFetcher<RecoverySystem>() {
+             @Override
+diff --git a/core/java/android/content/Context.java b/core/java/android/content/Context.java
+index 8472144a92c..212bed14d3b 100644
+--- a/core/java/android/content/Context.java
++++ b/core/java/android/content/Context.java
+@@ -3382,6 +3382,7 @@ public abstract class Context {
+     /** @hide */
+     @StringDef(suffix = { "_SERVICE" }, value = {
+             POWER_SERVICE,
++            EINK_SERVICE,
+             WINDOW_SERVICE,
+             LAYOUT_INFLATER_SERVICE,
+             ACCOUNT_SERVICE,
+@@ -3525,6 +3526,8 @@ public abstract class Context {
+      *  visual bounds of an area on screen.
+      *  <dt> {@link #POWER_SERVICE} ("power")
+      *  <dd> A {@link android.os.PowerManager} for controlling power
++     *  <dt> {@link #EINK_SERVICE} ("eink")
++     *  <dd> A {@link android.os.EinkManager} for controlling eink
+      *  management.
+      *  <dt> {@link #ALARM_SERVICE} ("alarm")
+      *  <dd> A {@link android.app.AlarmManager} for receiving intents at the
+@@ -3607,6 +3610,8 @@ public abstract class Context {
+      * @see android.app.ActivityManager
+      * @see #POWER_SERVICE
+      * @see android.os.PowerManager
++     * @see #EINK_SERVICE
++     * @see android.os.EinkManager
+      * @see #ALARM_SERVICE
+      * @see android.app.AlarmManager
+      * @see #NOTIFICATION_SERVICE
+@@ -3663,6 +3668,7 @@ public abstract class Context {
+      * Currently available classes are:
+      * {@link android.view.WindowManager}, {@link android.view.LayoutInflater},
+      * {@link android.app.ActivityManager}, {@link android.os.PowerManager},
++     * {@link android.os.EinkManager},
+      * {@link android.app.AlarmManager}, {@link android.app.NotificationManager},
+      * {@link android.app.KeyguardManager}, {@link android.location.LocationManager},
+      * {@link android.app.SearchManager}, {@link android.os.Vibrator},
+@@ -3721,6 +3727,11 @@ public abstract class Context {
+      */
+     public static final String POWER_SERVICE = "power";
+ 
++    /**
++     * Use with {@link #getSystemService(String)} to retrieve a
++     * {@link android.os.EinkManager} for controlling eink management,
++     */
++    public static final String EINK_SERVICE = "eink";
+     /**
+      * Use with {@link #getSystemService(String)} to retrieve a
+      * {@link android.os.RecoverySystem} for accessing the recovery system
+diff --git a/core/java/android/content/pm/PackageManager.java b/core/java/android/content/pm/PackageManager.java
+index 5a93e8f0bcf..ba418972424 100644
+--- a/core/java/android/content/pm/PackageManager.java
++++ b/core/java/android/content/pm/PackageManager.java
+@@ -2870,6 +2870,13 @@ public abstract class PackageManager {
+     @SdkConstant(SdkConstantType.FEATURE)
+     public static final String FEATURE_BACKUP = "android.software.backup";
+ 
++    /**
++     * Feature for {@link #getSystemAvailableFeatures} and {@link #hasSystemFeature}:
++     * The device can support eink.
++     */
++    @SdkConstant(SdkConstantType.FEATURE)
++    public static final String FEATURE_EINK = "android.software.eink";
++
+     /**
+      * Feature for {@link #getSystemAvailableFeatures} and
+      * {@link #hasSystemFeature}: The device supports freeform window management.
+diff --git a/core/java/android/os/EinkManager.java b/core/java/android/os/EinkManager.java
+new file mode 100644
+index 00000000000..405c2a953fe
+--- /dev/null
++++ b/core/java/android/os/EinkManager.java
+@@ -0,0 +1,173 @@
++/*
++ * Copyright (C) 2007 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.os;
++import android.os.IBinder;
++import android.annotation.CallbackExecutor;
++import android.annotation.CurrentTimeMillisLong;
++import android.annotation.IntDef;
++import android.annotation.IntRange;
++import android.annotation.NonNull;
++import android.annotation.Nullable;
++import android.annotation.RequiresPermission;
++import android.annotation.SdkConstant;
++import android.annotation.SystemApi;
++import android.annotation.SystemService;
++import android.annotation.TestApi;
++import android.compat.annotation.UnsupportedAppUsage;
++import java.lang.annotation.Retention;
++import java.lang.annotation.RetentionPolicy;
++import android.annotation.SuppressLint;
++import android.content.Context;
++import android.util.Log;
++import android.os.IEinkManager;
++import android.os.SystemProperties;
++import android.os.IBinder;
++import android.os.Parcel;
++import android.os.ServiceManager;
++@SystemService(Context.EINK_SERVICE)
++
++public  class EinkManager {
++
++    private static final String TAG = "EinkManager";
++    private static final boolean DEBUG = true;
++    public static final boolean EINK = false;
++    private static int num =1;
++public class EinkMode {
++
++    private EinkMode(){
++    }
++
++    public static final String EPD_AUTO ="0";
++    public static final String EPD_OVERLAY ="1";
++    public static final String EPD_FULL_GC16 ="2";
++    public static final String EPD_FULL_GL16 ="3";
++    public static final String EPD_FULL_GLR16 ="4";
++    public static final String EPD_FULL_GLD16 ="5";
++    public static final String EPD_FULL_GCC16 ="6";
++    public static final String EPD_PART_GC16 ="7";
++    public static final String EPD_PART_GL16 ="8";
++    public static final String EPD_PART_GLR16 ="9";
++    public static final String EPD_PART_GLD16 ="10";
++    public static final String EPD_PART_GCC16 ="11";
++    public static final String EPD_A2 ="12";
++    public static final String EPD_A2_DITHER ="13";
++    public static final String EPD_DU ="14";
++    public static final String EPD_RESET ="15";
++    public static final String EPD_SUSPEND ="16";
++    public static final String EPD_RESUME ="17";
++    public static final String EPD_POWER_OFF ="18";
++    public static final String EPD_FULL_DIRECT ="19";
++    public static final String EPD_PART_DIRECT ="20";
++    public static final String EPD_A2_DIRECT ="21";
++    public static final String EPD_DU_DIRECT ="22";
++    public static final String EPD_AUTO_DIRECT ="23";
++    public static final String EPD_OVERLAY_DIRECT ="24";
++    public static final String EPD_PART_EINK ="25";
++    public static final String EPD_FULL_EINK ="26";
++}
++
++
++    private static void LOG(String msg) {
++        if ( DEBUG ) {
++            Log.d(TAG, msg);
++        }
++    }
++
++    /*-------------------------------------------------------*/
++    IEinkManager mService;
++    final Context mContext;
++    final Handler mHandler;
++
++    /*-------------------------------------------------------*/
++
++
++    /*
++    public EinkManager(IEinkManager service) {
++        mService = service;
++    }*/
++
++    /**
++     * {@hide}
++     */
++    public EinkManager(@Nullable Context context,@Nullable IEinkManager service,@Nullable Handler handler) {
++        LOG("EinkManager constructor");
++        mContext = context;
++        mService = service;
++        mHandler = handler;
++    }
++
++    public void sendOneFullFrame(){
++        try {
++            LOG("sendOneFullFrame");
++            num = ++num;
++            if(num > Integer.MAX_VALUE-100){
++                num =1;
++                }
++            String numStr = num +"";
++            mService.setProperty("sys.eink.one_full_mode_timeline",numStr);
++        } catch (RemoteException e) {
++            e.rethrowFromSystemServer();
++        }
++
++        try {
++            IBinder surfaceFlinger = ServiceManager.getService("SurfaceFlinger");
++            if (surfaceFlinger != null) {
++                Parcel data = Parcel.obtain();
++                data.writeInterfaceToken("android.ui.ISurfaceComposer");
++                surfaceFlinger.transact(1004, data, null, 0);
++                data.recycle();
++                Log.d(TAG, "system set einkMode to EPD_FULL");
++            }
++        } catch (Exception ex)
++        {
++            Log.e(TAG, "failed to transact SF_SETMODE.", ex);
++        }
++}
++    public void setMode(@Nullable String einkMode){
++        try {
++            LOG("EinkManager.setMode");
++            mService.setProperty("sys.eink.mode",einkMode);
++        } catch (RemoteException e) {
++            e.rethrowFromSystemServer();
++        }
++    }
++
++    @Nullable public String getMode(){
++		LOG("EinkManager.getMode");
++        return SystemProperties.get("sys.eink.mode",EinkMode.EPD_PART_GC16);
++    }
++
++    public int init(){
++        try {
++            LOG("EinkManager.init()");
++            return mService.init();
++        } catch (RemoteException e) {
++            e.rethrowFromSystemServer();
++            return -1;
++        }
++    }
++
++    public int kill(){
++        try {
++            LOG("EinkManager.kill()");
++            return mService.kill();
++        } catch (RemoteException e) {
++            e.rethrowFromSystemServer();
++            return -1;
++        }
++    }
++}
+diff --git a/core/java/android/os/IEinkManager.aidl b/core/java/android/os/IEinkManager.aidl
+new file mode 100644
+index 00000000000..a13d30c21c2
+--- /dev/null
++++ b/core/java/android/os/IEinkManager.aidl
+@@ -0,0 +1,27 @@
++/* //device/java/android/android/os/IPowerManager.aidl
++**
++** Copyright 2007, The Android Open Source Project
++**
++** Licensed under the Apache License, Version 2.0 (the "License");
++** you may not use this file except in compliance with the License.
++** You may obtain a copy of the License at
++**
++**     http://www.apache.org/licenses/LICENSE-2.0
++**
++** Unless required by applicable law or agreed to in writing, software
++** distributed under the License is distributed on an "AS IS" BASIS,
++** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++** See the License for the specific language governing permissions and
++** limitations under the License.
++*/
++package android.os;
++
++
++/** @hide */
++interface IEinkManager
++{
++    int init();
++    int kill();
++    void setProperty(String key, String value);
++}
++
+diff --git a/non-updatable-api/current.txt b/non-updatable-api/current.txt
+index 5f15216e840..39f95663091 100644
+--- a/non-updatable-api/current.txt
++++ b/non-updatable-api/current.txt
+@@ -10187,6 +10187,7 @@ package android.content {
+     field public static final String DISPLAY_SERVICE = "display";
+     field public static final String DOWNLOAD_SERVICE = "download";
+     field public static final String DROPBOX_SERVICE = "dropbox";
++    field public static final String EINK_SERVICE = "eink";
+     field public static final String EUICC_SERVICE = "euicc";
+     field public static final String FILE_INTEGRITY_SERVICE = "file_integrity";
+     field public static final String FINGERPRINT_SERVICE = "fingerprint";
+@@ -12099,6 +12100,7 @@ package android.content.pm {
+     field public static final String FEATURE_CONSUMER_IR = "android.hardware.consumerir";
+     field public static final String FEATURE_CONTROLS = "android.software.controls";
+     field public static final String FEATURE_DEVICE_ADMIN = "android.software.device_admin";
++    field public static final String FEATURE_EINK = "android.software.eink";
+     field public static final String FEATURE_EMBEDDED = "android.hardware.type.embedded";
+     field public static final String FEATURE_ETHERNET = "android.hardware.ethernet";
+     field public static final String FEATURE_FACE = "android.hardware.biometrics.face";
+@@ -34696,6 +34698,45 @@ package android.os {
+     field @NonNull public static final android.os.Parcelable.Creator<android.os.DropBoxManager.Entry> CREATOR;
+   }
+ 
++  public class EinkManager {
++    method @Nullable public String getMode();
++    method public int init();
++    method public int kill();
++    method public void sendOneFullFrame();
++    method public void setMode(@Nullable String);
++    field public static final boolean EINK = false;
++  }
++
++  public class EinkManager.EinkMode {
++    field public static final String EPD_A2 = "12";
++    field public static final String EPD_A2_DIRECT = "21";
++    field public static final String EPD_A2_DITHER = "13";
++    field public static final String EPD_AUTO = "0";
++    field public static final String EPD_AUTO_DIRECT = "23";
++    field public static final String EPD_DU = "14";
++    field public static final String EPD_DU_DIRECT = "22";
++    field public static final String EPD_FULL_DIRECT = "19";
++    field public static final String EPD_FULL_EINK = "26";
++    field public static final String EPD_FULL_GC16 = "2";
++    field public static final String EPD_FULL_GCC16 = "6";
++    field public static final String EPD_FULL_GL16 = "3";
++    field public static final String EPD_FULL_GLD16 = "5";
++    field public static final String EPD_FULL_GLR16 = "4";
++    field public static final String EPD_OVERLAY = "1";
++    field public static final String EPD_OVERLAY_DIRECT = "24";
++    field public static final String EPD_PART_DIRECT = "20";
++    field public static final String EPD_PART_EINK = "25";
++    field public static final String EPD_PART_GC16 = "7";
++    field public static final String EPD_PART_GCC16 = "11";
++    field public static final String EPD_PART_GL16 = "8";
++    field public static final String EPD_PART_GLD16 = "10";
++    field public static final String EPD_PART_GLR16 = "9";
++    field public static final String EPD_POWER_OFF = "18";
++    field public static final String EPD_RESET = "15";
++    field public static final String EPD_RESUME = "17";
++    field public static final String EPD_SUSPEND = "16";
++  }
++
+   public class Environment {
+     ctor public Environment();
+     method public static java.io.File getDataDirectory();
+diff --git a/packages/SystemUI/res/drawable/ic_sysbar_refresh_button.xml b/packages/SystemUI/res/drawable/ic_sysbar_refresh_button.xml
+new file mode 100644
+index 00000000000..5cdafd231d8
+--- /dev/null
++++ b/packages/SystemUI/res/drawable/ic_sysbar_refresh_button.xml
+@@ -0,0 +1,9 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++        android:width="24dp"
++        android:height="24dp"
++        android:viewportWidth="24.0"
++        android:viewportHeight="24.0">
++    <path
++        android:fillColor="?attr/singleToneColor"
++        android:pathData="M12,4L12,1L8,5l4,4L12,6c3.31,0 6,2.69 6,6 0,1.01 -0.25,1.97 -0.7,2.8l1.46,1.46C19.54,15.03 20,13.57 20,12c0,-4.42 -3.58,-8 -8,-8zM12,18c-3.31,0 -6,-2.69 -6,-6 0,-1.01 0.25,-1.97 0.7,-2.8L5.24,7.74C4.46,8.97 4,10.43 4,12c0,4.42 3.58,8 8,8v3l4,-4 -4,-4v3z"/>
++</vector>
+diff --git a/packages/SystemUI/res/layout/refresh.xml b/packages/SystemUI/res/layout/refresh.xml
+new file mode 100644
+index 00000000000..adc9acbfa46
+--- /dev/null
++++ b/packages/SystemUI/res/layout/refresh.xml
+@@ -0,0 +1,30 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Copyright (C) 2016 The Android Open Source Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++
++<com.android.systemui.statusbar.policy.KeyButtonView
++    xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:systemui="http://schemas.android.com/apk/res-auto"
++    android:id="@+id/refresh"
++    android:layout_width="@dimen/navigation_key_width"
++    android:layout_height="match_parent"
++    android:layout_weight="0"
++    systemui:keyCode="88"
++    android:scaleType="center"
++    android:contentDescription="@string/accessibility_refresh"
++    android:paddingStart="@dimen/navigation_key_padding"
++    android:paddingEnd="@dimen/navigation_key_padding"
++    />
++
+diff --git a/packages/SystemUI/res/values-sw400dp/config.xml b/packages/SystemUI/res/values-sw400dp/config.xml
+index de33fb57825..be18f2cfe0d 100644
+--- a/packages/SystemUI/res/values-sw400dp/config.xml
++++ b/packages/SystemUI/res/values-sw400dp/config.xml
+@@ -22,6 +22,6 @@
+ <resources>
+ 
+     <!-- Nav bar button default ordering/layout -->
+-    <string name="config_navBarLayout" translatable="false">left;volume_sub,back,home,recent,volume_add,screenshot;right</string>
++    <string name="config_navBarLayout" translatable="false">left;volume_sub,back,home,recent,volume_add,refresh,screenshot;right</string>
+ 
+ </resources>
+diff --git a/packages/SystemUI/res/values-sw600dp/config.xml b/packages/SystemUI/res/values-sw600dp/config.xml
+index 3c0ee9f8dd3..f4dd9609c05 100644
+--- a/packages/SystemUI/res/values-sw600dp/config.xml
++++ b/packages/SystemUI/res/values-sw600dp/config.xml
+@@ -27,7 +27,7 @@
+     <integer name="quick_settings_user_time_settings_tile_span">1</integer>
+ 
+     <!-- Nav bar button default ordering/layout -->
+-    <string name="config_navBarLayout" translatable="false">left;volume_sub,back,home,recent,volume_add,screenshot;right</string>
++    <string name="config_navBarLayout" translatable="false">left;volume_sub,back,home,recent,volume_add,refresh,screenshot;right</string>
+ 
+     <!-- Animation duration when using long press on recents to dock -->
+     <integer name="long_press_dock_anim_duration">290</integer>
+diff --git a/packages/SystemUI/res/values/config.xml b/packages/SystemUI/res/values/config.xml
+index 4a7727e730c..2f099c41873 100644
+--- a/packages/SystemUI/res/values/config.xml
++++ b/packages/SystemUI/res/values/config.xml
+@@ -317,7 +317,7 @@
+     </string-array>
+ 
+     <!-- Nav bar button default ordering/layout -->
+-    <string name="config_navBarLayout" translatable="false">left[.5W];volume_sub,back,home,recent,volume_add,screenshot;right[.5W]</string>
++    <string name="config_navBarLayout" translatable="false">left[.5W];volume_sub,back,home,recent,volume_add,refresh,screenshot;right[.5W]</string>
+     <string name="config_navBarLayoutQuickstep" translatable="false">back[1.7WC];home;contextual[1.7WC]</string>
+     <string name="config_navBarLayoutHandle" translatable="false">back[40AC];home_handle;ime_switcher[40AC]</string>
+ 
+diff --git a/packages/SystemUI/res/values/strings.xml b/packages/SystemUI/res/values/strings.xml
+index db45a60ab7c..38e5b69c226 100644
+--- a/packages/SystemUI/res/values/strings.xml
++++ b/packages/SystemUI/res/values/strings.xml
+@@ -304,6 +304,8 @@
+ 
+     <!-- Content description of the back button for accessibility (not shown on the screen). [CHAR LIMIT=NONE] -->
+     <string name="accessibility_back">Back</string>
++
++    <string name="accessibility_refresh">Refresh</string>
+     <!-- Content description of the home button for accessibility (not shown on the screen). [CHAR LIMIT=NONE] -->
+     <string name="accessibility_home">Home</string>
+     <!-- Content description of the menu button for accessibility (not shown on the screen). [CHAR LIMIT=NONE] -->
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
+index 8180c7f819c..423d782c97e 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
+@@ -140,7 +140,8 @@ import java.util.function.Consumer;
+ import javax.inject.Inject;
+ 
+ import dagger.Lazy;
+-
++import android.os.EinkManager;
++import android.content.pm.PackageManager;
+ /**
+  * Fragment containing the NavigationBarFragment. Contains logic for what happens
+  * on clicks and view states of the nav bar.
+@@ -229,6 +230,7 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+     private ViewTreeObserver.OnGlobalLayoutListener mOrientationHandleGlobalLayoutListener;
+     private UiEventLogger mUiEventLogger;
+     private boolean mShowOrientedHandleForImmersiveMode;
++    private static EinkManager mEinkManager;
+ 
+     @com.android.internal.annotations.VisibleForTesting
+     public enum NavBarActionEvent implements UiEventLogger.UiEventEnum {
+@@ -429,6 +431,9 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+         super.onCreate(savedInstanceState);
+         mCommandQueue.observe(getLifecycle(), this);
+         mWindowManager = getContext().getSystemService(WindowManager.class);
++        if (mEinkManager == null){
++            mEinkManager = (EinkManager)getContext().getSystemService(Context.EINK_SERVICE);
++        }
+         mAccessibilityManager = getContext().getSystemService(AccessibilityManager.class);
+         mContentResolver = getContext().getContentResolver();
+         mContentResolver.registerContentObserver(
+@@ -1002,7 +1007,19 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+ 
+         ButtonDispatcher backButton = mNavigationBarView.getBackButton();
+         backButton.setLongClickable(true);
+-
++        if (getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)) {
++            ButtonDispatcher refreshButton = mNavigationBarView.getRefreshButton();
++            refreshButton.setLongClickable(true);
++            refreshButton.setOnClickListener(this:: onRefreshClick);
++            refreshButton.setOnTouchListener(this:: onRefreshTouch);
++            refreshButton.setVisibility(View.VISIBLE);
++        } else{
++            ButtonDispatcher refreshButton = mNavigationBarView.getRefreshButton();
++            refreshButton.setLongClickable(true);
++            refreshButton.setOnClickListener(this:: onRefreshClick);
++            refreshButton.setOnTouchListener(this:: onRefreshTouch);
++            refreshButton.setVisibility(View.GONE);
++        }
+         ButtonDispatcher homeButton = mNavigationBarView.getHomeButton();
+         homeButton.setOnTouchListener(this::onHomeTouch);
+         homeButton.setOnLongClickListener(this::onHomeLongClick);
+@@ -1040,6 +1057,23 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+         }
+     }
+ 
++    private void onRefreshRepaintEverything(){
++        if (mEinkManager != null) {
++            mEinkManager.sendOneFullFrame();
++        }
++    }
++
++    private boolean onRefreshTouch(View v, MotionEvent event) {
++        if (event.getAction() == MotionEvent.ACTION_UP) {
++            onRefreshRepaintEverything();
++        }
++        return false;
++    }
++
++    private void onRefreshClick(View v) {
++            onRefreshRepaintEverything();
++    }
++
+     private boolean onHomeTouch(View v, MotionEvent event) {
+         if (mHomeBlockedThisTouch && event.getActionMasked() != MotionEvent.ACTION_DOWN) {
+             return true;
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarInflaterView.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarInflaterView.java
+index 70146739948..feb211e8621 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarInflaterView.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarInflaterView.java
+@@ -42,7 +42,7 @@ import com.android.systemui.statusbar.policy.KeyButtonView;
+ 
+ import java.io.PrintWriter;
+ import java.util.Objects;
+-
++import android.content.pm.PackageManager;
+ public class NavigationBarInflaterView extends FrameLayout
+         implements NavigationModeController.ModeChangedListener {
+ 
+@@ -66,6 +66,7 @@ public class NavigationBarInflaterView extends FrameLayout
+     public static final String IME_SWITCHER = "ime_switcher";
+     public static final String SCREENSHOT = "screenshot";
+     public static final String VOLUME_ADD = "volume_add";
++    public static final String REFRESH = "refresh";
+     public static final String VOLUME_SUB = "volume_sub";
+ 
+     public static final String GRAVITY_SEPARATOR = ";";
+@@ -403,6 +404,10 @@ public class NavigationBarInflaterView extends FrameLayout
+             v = inflater.inflate(R.layout.screenshot, parent, false);
+         } else if (VOLUME_ADD.equals(button)) {
+             v = inflater.inflate(R.layout.volume_add, parent, false);
++        } else if (REFRESH.equals(button)) {
++            if (getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)){
++                v = inflater.inflate(R.layout.refresh, parent, false);
++            }
+         } else if (VOLUME_SUB.equals(button)) {
+             v = inflater.inflate(R.layout.volume_sub, parent, false);
+         } else if (button.startsWith(KEY)) {
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarView.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarView.java
+index a6f4a1dabb1..7fcbb0bb4f9 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarView.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarView.java
+@@ -86,7 +86,7 @@ import com.android.systemui.statusbar.policy.KeyButtonDrawable;
+ import java.io.FileDescriptor;
+ import java.io.PrintWriter;
+ import java.util.function.Consumer;
+-
++import android.content.pm.PackageManager;
+ public class NavigationBarView extends FrameLayout implements
+         NavigationModeController.ModeChangedListener {
+     final static boolean DEBUG = false;
+@@ -126,6 +126,7 @@ public class NavigationBarView extends FrameLayout implements
+     private KeyButtonDrawable mRecentIcon;
+     private KeyButtonDrawable mDockedIcon;
+     private KeyButtonDrawable mVolumeAddIcon;
++    private KeyButtonDrawable mRefreshIcon;
+     private KeyButtonDrawable mVolumeSubIcon;
+     private KeyButtonDrawable mScreenshotIcon;
+ 
+@@ -336,6 +337,9 @@ public class NavigationBarView extends FrameLayout implements
+         mButtonDispatchers.put(R.id.menu_container, mContextualButtonGroup);
+         mButtonDispatchers.put(R.id.screenshot, new ButtonDispatcher(R.id.screenshot));
+         mButtonDispatchers.put(R.id.volume_add, new ButtonDispatcher(R.id.volume_add));
++        if (getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)) {
++            mButtonDispatchers.put(R.id.refresh, new ButtonDispatcher(R.id.refresh));
++        }
+         mButtonDispatchers.put(R.id.volume_sub, new ButtonDispatcher(R.id.volume_sub));
+         mDeadZone = new DeadZone(this);
+ 
+@@ -485,6 +489,10 @@ public class NavigationBarView extends FrameLayout implements
+         return mButtonDispatchers.get(R.id.volume_add);
+     }
+ 
++    public ButtonDispatcher getRefreshButton() {
++        return mButtonDispatchers.get(R.id.refresh);
++    }
++
+     public ButtonDispatcher getVolumeSubButton() {
+         return mButtonDispatchers.get(R.id.volume_sub);
+     }
+@@ -533,7 +541,9 @@ public class NavigationBarView extends FrameLayout implements
+         if (orientationChange || densityChange || dirChange) {
+             mBackIcon = getBackDrawable();
+         }
+-
++        if (getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)) {
++            mRefreshIcon = getDrawable(R.drawable.ic_sysbar_refresh_button);
++        }
+         mVolumeAddIcon = getDrawable(R.drawable.ic_sysbar_volume_add_button);
+         mVolumeSubIcon = getDrawable(R.drawable.ic_sysbar_volume_sub_button);
+         mScreenshotIcon = getDrawable(R.drawable.ic_sysbar_capture_button);
+@@ -690,6 +700,9 @@ public class NavigationBarView extends FrameLayout implements
+         }
+         getHomeButton().setImageDrawable(homeIcon);
+         getBackButton().setImageDrawable(backIcon);
++        if (getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)) {
++            getRefreshButton().setImageDrawable(mRefreshIcon);
++        }
+         getVolumeAddButton().setImageDrawable(mVolumeAddIcon);
+         getVolumeSubButton().setImageDrawable(mVolumeSubIcon);
+         getScreenshotButton().setImageDrawable(mScreenshotIcon);
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/policy/KeyButtonView.java b/packages/SystemUI/src/com/android/systemui/statusbar/policy/KeyButtonView.java
+index 8d7ecd09e76..0a11ee7205d 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/policy/KeyButtonView.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/policy/KeyButtonView.java
+@@ -62,6 +62,8 @@ import com.android.systemui.bubbles.BubbleController;
+ import com.android.systemui.recents.OverviewProxyService;
+ import com.android.systemui.shared.system.QuickStepContract;
+ import com.android.systemui.statusbar.phone.ButtonInterface;
++import android.content.pm.PackageManager;
++
+ 
+ public class KeyButtonView extends ImageView implements ButtonInterface {
+     private static final String TAG = KeyButtonView.class.getSimpleName();
+@@ -167,11 +169,12 @@ public class KeyButtonView extends ImageView implements ButtonInterface {
+ 
+         setClickable(true);
+         mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+-
+         mRipple = new KeyButtonRipple(context, this);
+         mOverviewProxyService = Dependency.get(OverviewProxyService.class);
+         mInputManager = manager;
+-        setBackground(mRipple);
++        if (!getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)) {
++            setBackground(mRipple);
++        }
+         setWillNotDraw(false);
+         forceHasOverlappingRendering(false);
+     }
+@@ -353,8 +356,10 @@ public class KeyButtonView extends ImageView implements ButtonInterface {
+         if (mHasOvalBg) {
+             mOvalBgPaint.setColor(keyButtonDrawable.getDrawableBackgroundColor());
+         }
+-        mRipple.setType(keyButtonDrawable.hasOvalBg() ? KeyButtonRipple.Type.OVAL
+-                : KeyButtonRipple.Type.ROUNDED_RECT);
++        if (!getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)) {
++            mRipple.setType(keyButtonDrawable.hasOvalBg() ? KeyButtonRipple.Type.OVAL
++                    : KeyButtonRipple.Type.ROUNDED_RECT);
++        }
+     }
+ 
+     public void playSoundEffect(int soundConstant) {
+@@ -443,7 +448,9 @@ public class KeyButtonView extends ImageView implements ButtonInterface {
+     public void abortCurrentGesture() {
+         Log.d("b/63783866", "KeyButtonView.abortCurrentGesture");
+         setPressed(false);
+-        mRipple.abortDelayedRipple();
++        if (!getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)) {
++            mRipple.abortDelayedRipple();
++        }
+         mGestureAborted = true;
+     }
+ 
+@@ -458,12 +465,16 @@ public class KeyButtonView extends ImageView implements ButtonInterface {
+             // manually.
+             invalidate();
+         }
+-        mRipple.setDarkIntensity(darkIntensity);
++        if (!getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)) {
++            mRipple.setDarkIntensity(darkIntensity);
++        }
+     }
+ 
+     @Override
+     public void setDelayTouchFeedback(boolean shouldDelay) {
+-        mRipple.setDelayTouchFeedback(shouldDelay);
++        if (!getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)) {
++            mRipple.setDelayTouchFeedback(shouldDelay);
++        }
+     }
+ 
+     @Override
+diff --git a/services/core/java/com/android/server/eink/EinkService.java b/services/core/java/com/android/server/eink/EinkService.java
+new file mode 100644
+index 00000000000..9944e982cdc
+--- /dev/null
++++ b/services/core/java/com/android/server/eink/EinkService.java
+@@ -0,0 +1,141 @@
++/*
++ * Copyright (C) 2018 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.server.eink;
++import android.os.IBinder;
++import android.content.Intent;
++import android.content.Context;
++import android.os.Handler;
++import android.os.HandlerThread;
++
++
++import android.os.IEinkManager;
++import android.os.EinkManager;
++
++import android.os.Looper;
++import android.os.Message;
++import android.util.Log;
++import android.os.RemoteException;
++import android.os.Message;
++import android.os.Handler;
++import android.os.SystemProperties;
++import android.text.TextUtils;
++
++public class EinkService extends IEinkManager.Stub {
++
++    static {
++        /*
++         * Load the library.  If it's already loaded, this does nothing.
++         */
++        //zj rm
++        //System.loadLibrary("rockchip_fm_jni");
++    }
++    private static final String TAG = "EinkService";
++    private static final boolean DEBUG = true;
++    private static final long delaytime = 10000;
++    private static void LOG(String msg) {
++        if ( DEBUG ) {
++            Log.d(TAG, msg);
++        }
++    }
++    private static final int SYSTEM_PROPERTY_MAX_LENGTH = 92;
++
++    private Context mContext;
++    private static final int SET_EINK = 1;
++    private static Handler mPolicyHandler;
++    private Listener binderListener;
++
++    public static IBinder  mBinder;
++    private class PolicyHandler extends Handler {
++        @Override
++        public void handleMessage(Message msg) {
++            switch (msg.what) {
++            case SET_EINK:
++
++            }
++        }
++    }
++    private Runnable mEinkTask = new Runnable() {
++        public void run() {
++            LOG("EinkTask runing");
++        }
++    };
++    private final class Listener implements IBinder.DeathRecipient {
++
++        public void binderDied() {
++            mBinder.unlinkToDeath(binderListener, 0);
++            binderListener = null;
++        }
++    }
++
++    public static IBinder getBinder() {
++        return mBinder;
++    }
++
++    /*-------------------------------------------------------*/
++
++    /**
++     * Ctor.
++     */
++    public EinkService(Context context) {
++        LOG("EinkService() : EinkService starting!.");
++        mContext = context;
++        mPolicyHandler = new PolicyHandler();
++        return;
++    }
++    public void setProperty(String key, String value) {
++        // Check if need to clear the property
++        if (value == null) {
++            // It's impossible to remove system property, therefore we check previous value to
++            // avoid setting an empty string if the property wasn't set.
++            if (TextUtils.isEmpty(SystemProperties.get(key))) {
++                return;
++            }
++            value = "";
++        } else if (value.length() > SYSTEM_PROPERTY_MAX_LENGTH) {
++            LOG(value + " exceeds system property max length.");
++            return;
++        }
++
++        try {
++            SystemProperties.set(key, value);
++        } catch (Exception e) {
++            // Failure to set a property can be caused by SELinux denial. This usually indicates
++            // that the property wasn't allowlisted in sepolicy.
++            // No need to report it on all user devices, only on debug builds.
++            LOG("Unable to set property " + key + " value '" + value + "'");
++        }
++    }
++
++    public int init() {
++        //mPolicyHandler.postDelayed(mEinkTask,delaytime);
++        //mPolicyHandler.post(mEinkTask);
++        init_native();
++        return 0;
++    }
++
++    public int kill() {
++        kill_native();
++        return 0;
++    }
++
++
++/*jni interface*/
++    public native int init_native();
++    public native int kill_native();
++}
++
++
+diff --git a/services/core/java/com/android/server/wm/WindowManagerService.java b/services/core/java/com/android/server/wm/WindowManagerService.java
+index 924d39d265f..017b4d2f2ca 100644
+--- a/services/core/java/com/android/server/wm/WindowManagerService.java
++++ b/services/core/java/com/android/server/wm/WindowManagerService.java
+@@ -1272,6 +1272,12 @@ public class WindowManagerService extends IWindowManager.Stub
+ 
+         final ContentResolver resolver = context.getContentResolver();
+         // Get persisted window scale setting
++        if (mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)) {
++            mWindowAnimationScaleSetting = 0.0f;
++            mTransitionAnimationScaleSetting = 0.0f;
++            mAnimatorDurationScaleSetting = 0.0f;
++            mAnimationsDisabled = true;
++        }
+         mWindowAnimationScaleSetting = Settings.Global.getFloat(resolver,
+                 Settings.Global.WINDOW_ANIMATION_SCALE, mWindowAnimationScaleSetting);
+         mTransitionAnimationScaleSetting = Settings.Global.getFloat(resolver,
+diff --git a/services/core/jni/Android.bp b/services/core/jni/Android.bp
+index b7d3e9ad410..35d801d8c81 100755
+--- a/services/core/jni/Android.bp
++++ b/services/core/jni/Android.bp
+@@ -7,6 +7,15 @@ cc_library_static {
+         "-Wall",
+         "-Werror",
+         "-Wno-unused-parameter",
++        "-Wno-unused-function",
++        "-Wformat=0",
++        "-Wno-multichar",
++        "-U_FORTIFY_SOURCE",
++        "-D_FORTIFY_SOURCE=0",
++        "-Wno-error=format-security",
++        "-Wno-unused-variable",
++        "-Wno-undefined-bool-conversion",
++
+         "-Wthread-safety",
+ 
+         "-DEGL_EGLEXT_PROTOTYPES",
+@@ -59,6 +68,7 @@ cc_library_static {
+         "com_android_server_am_CachedAppOptimizer.cpp",
+         "com_android_server_am_LowMemDetector.cpp",
+         "com_android_server_pm_PackageManagerShellCommandDataLoader.cpp",
++        "com_android_server_eink_EinkService.cpp",
+         "com_android_server_rkdisplay_RkDisplayModes.cpp",
+         "onload.cpp",
+         ":lib_networkStatsFactory_native",
+@@ -168,6 +178,7 @@ cc_defaults {
+         "android.system.suspend@1.0",
+         "service.incremental",
+         "suspend_control_aidl_interface-cpp",
++        "liblogwrap",
+     ],
+ 
+     static_libs: [
+@@ -189,6 +200,7 @@ cc_defaults {
+     }
+ }
+ 
++
+ filegroup {
+     name: "lib_networkStatsFactory_native",
+     srcs: [
+diff --git a/services/core/jni/com_android_server_eink_EinkService.cpp b/services/core/jni/com_android_server_eink_EinkService.cpp
+new file mode 100644
+index 00000000000..d069f5127ee
+--- /dev/null
++++ b/services/core/jni/com_android_server_eink_EinkService.cpp
+@@ -0,0 +1,297 @@
++/*
++ * Copyright (C) 2008 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#define LOG_TAG "com_android_server_eink_EinkService"
++
++#define LOG_NDEBUG 0
++#define DEBUG_EINK 1
++
++#include <stdlib.h>
++#include <stdio.h>
++#include <math.h>
++#include <ctype.h>
++#include <pthread.h>
++#include <errno.h>
++#include <sys/types.h>
++#include <dirent.h>
++#include <grp.h>
++#include <inttypes.h>
++#include <pwd.h>
++#include <time.h>
++#include <poll.h>
++#include <fcntl.h>
++
++#include <sys/stat.h>
++#include <sys/syscall.h>
++
++#include <string.h>
++#include <unistd.h>
++#include <assert.h>
++#include <hardware/hardware.h>
++#include <android_runtime/Log.h>
++#include <nativehelper/JNIHelp.h>
++#include "jni.h"
++#include <sched.h>
++#include <utils/Log.h>
++#include <logwrap/logwrap.h>
++#include <sys/types.h>
++#include <sys/wait.h>
++#include <errno.h>
++#include <unistd.h>
++#include <signal.h>
++#include <cutils/properties.h>
++// ----------------------------------------------------------------------------
++
++namespace android {
++
++	const char *args[1];
++	static pid_t pid;
++/*
++ * Field/method IDs and class object references.
++ *
++ * You should not need to store the JNIEnv pointer in here.  It is
++ * thread-specific and will be passed back in on every call.
++ */
++static struct {
++    jclass      platformLibraryClass;
++} gCachedState;
++
++// ----------------------------------------------------------------------------
++
++/*
++ * Helper function to throw an arbitrary exception.
++ *
++ * Takes the exception class name, a format string, and one optional integer
++ * argument (useful for including an error code, perhaps from errno).
++ */
++static void throwException(JNIEnv* env, const char* ex, const char* fmt,
++                           int data)
++{
++
++    if (jclass cls = env->FindClass(ex)) {
++        if (fmt != NULL) {
++            char msg[1000];
++            // snprintf(msg, sizeof(msg), fmt, data);
++            env->ThrowNew(cls, msg);
++        } else {
++            env->ThrowNew(cls, NULL);
++        }
++
++        /*
++         * This is usually not necessary -- local references are released
++         * automatically when the native code returns to the VM.  It's
++         * required if the code doesn't actually return, e.g. it's sitting
++         * in a native event loop.
++         */
++        env->DeleteLocalRef(cls);
++    }
++}
++
++int system(const char * cmdstring)
++{
++
++    int status;
++
++    if(cmdstring == NULL){      
++         return (1);
++    }
++
++    if((pid = fork())<0){
++            status = -1;
++    }
++    else if(pid == 0){
++	        execl("/bin/sh", "sh", "-c", cmdstring, (char *)0);
++	        exit(127);
++        }
++    else{
++           while(waitpid(pid, &status, 0) < 0){
++                if(errno != EINTR){
++                    status = -1;
++                    break;
++                }
++            }
++        }
++    return status;
++}
++
++jint com_android_server_eink_EinkService_init(JNIEnv *env, jclass clazz)
++{
++    int result=0;
++    ALOGV("com_android_server_eink_EinkService_init");
++	/*args[0] = "/system/bin/eink-drawpath";
++	result = logwrap_fork_execvp(1, (char **)args, NULL, false,1, false, NULL);
++	if (result) {
++          errno = EIO;
++          ALOGE("uibc sink start fail (unknown exit code %d)", result);
++      }*/
++      //system("/system/bin/eink-drawpath");
++ 
++      property_set("ctl.start","einkdrawpath");
++    return result;
++}
++
++jint com_android_server_eink_EinkService_kill(JNIEnv *env, jclass clazz)
++{
++    int result=0;
++    ALOGV("com_android_server_eink_EinkService_kill");
++    property_set("ctl.stop","einkdrawpath");
++    //kill(pid, SIGKILL);
++    return result;
++}
++
++// ----------------------------------------------------------------------------
++
++/*
++ * Array of methods.
++ *
++ * Each entry has three fields: the name of the method, the method
++ * signature, and a pointer to the native implementation.
++ */
++/****
++
++Android JNI 使用的数据结构JNINativeMethod详解Java&Android 2009-09-06 20:42:56 阅读234 评论0 字号：大中小
++Andoird 中使用了一种不同传统Java JNI的方式来定义其native的函数。其中很重要的区别是Andorid使用了一种Java 和 C 函数的映射表数组，并在其中描述了函数的参数和返回值。这个数组的类型是JNINativeMethod，定义如下：
++
++
++typedef struct {
++const char* name;
++const char* signature;
++void* fnPtr;
++} JNINativeMethod;
++
++第一个变量name是Java中函数的名字。
++
++第二个变量signature，用字符串是描述了函数的参数和返回值
++
++第三个变量fnPtr是函数指针，指向C函数。
++
++
++其中比较难以理解的是第二个参数，例如
++
++"()V"
++
++"(II)V"
++
++"(Ljava/lang/String;Ljava/lang/String;)V"
++
++
++实际上这些字符是与函数的参数类型一一对应的。
++
++"()" 中的字符表示参数，后面的则代表返回值。例如"()V" 就表示void Func();
++
++"(II)V" 表示 void Func(int, int);
++
++
++具体的每一个字符的对应关系如下
++
++
++字符 Java类型 C类型
++
++V		void			void
++Z		 jboolean	  boolean
++I		  jint				int
++J		 jlong			  long
++D		jdouble 	  double
++F		jfloat			  float
++B		jbyte			 byte
++C		jchar			char
++S		jshort			short
++
++
++数组则以"["开始，用两个字符表示
++
++
++[I 	  jintArray 	 int[]
++[F 	jfloatArray    float[]
++[B 	jbyteArray	  byte[]
++[C    jcharArray	 char[]
++[S    jshortArray	 short[]
++[D    jdoubleArray double[]
++[J 	jlongArray	   long[]
++[Z    jbooleanArray boolean[]
++
++
++上面的都是基本类型。如果Java函数的参数是class，则以"L"开头，以";"结尾中间是用"/" 隔开的包及类名。而其对应的C函数名的参数则为jobject. 一个例外是String类，其对应的类为jstring
++
++
++Ljava/lang/String; String jstring
++Ljava/net/Socket; Socket jobject
++
++
++如果JAVA函数位于一个嵌入类，则用$作为类名间的分隔符。
++
++例如 "(Ljava/lang/String;Landroid/os/FileUtils$FileStatus;)Z"
++****/
++
++static const JNINativeMethod gMethods[] = {
++    /* name,                        signature,      funcPtr */
++    { "init_native","()I",(void *)com_android_server_eink_EinkService_init  },
++    { "kill_native","()I",(void *)com_android_server_eink_EinkService_kill  },
++};
++
++/*
++ * Do some (slow-ish) lookups now and save the results.
++ *
++ * Returns 0 on success.
++ */
++static int cacheIds(JNIEnv* env, jclass clazz)
++{
++    /*
++     * Save the class in case we want to use it later.  Because this is a
++     * reference to the Class object, we need to convert it to a JNI global
++     * reference.
++     */
++    gCachedState.platformLibraryClass = (jclass) env->NewGlobalRef(clazz);      // .! : sample 中的实现, 就 HDMI 的实现, 不需要回调 Java.
++    if (clazz == NULL) {
++        ALOGE("Can't create new global ref\n");
++        return -1;
++    }
++
++    return 0;
++}
++
++/*
++ * Explicitly register all methods for our class.
++ *
++ * While we're at it, cache some class references and method/field IDs.
++ *
++ * Returns 0 on success.
++ */
++int register_android_server_EinkService(JNIEnv* env)
++{
++    static const char* const kClassName = "com/android/server/eink/EinkService";
++    jclass clazz;
++
++    /* look up the class */
++    clazz = env->FindClass(kClassName);
++    if (clazz == NULL) {
++        ALOGE("Can't find class %s\n", kClassName);
++        return -1;
++    }
++    ALOGI("have find class %s\n", kClassName);
++
++    /* register all the methods */
++    if (env->RegisterNatives(clazz, gMethods,
++                             sizeof(gMethods) / sizeof(gMethods[0])) != JNI_OK) {
++        ALOGE("Failed registering methods for %s\n", kClassName);
++        return -1;
++    }
++    ALOGI("registering methods for %s\n", kClassName);
++
++    /* fill out the rest of the ID cache */ // .! : 在 eink 实现中, 没有必要 cache Java 类 or field 的 ID.
++    return cacheIds(env, clazz);
++}
++};
+diff --git a/services/core/jni/onload.cpp b/services/core/jni/onload.cpp
+index 16e23fae7f1..bc748737074 100755
+--- a/services/core/jni/onload.cpp
++++ b/services/core/jni/onload.cpp
+@@ -30,6 +30,7 @@ int register_android_server_ConsumerIrService(JNIEnv *env);
+ int register_android_server_InputManager(JNIEnv* env);
+ int register_android_server_LightsService(JNIEnv* env);
+ int register_android_server_PowerManagerService(JNIEnv* env);
++int register_android_server_EinkService(JNIEnv* env);
+ int register_android_server_storage_AppFuse(JNIEnv* env);
+ int register_android_server_SerialService(JNIEnv* env);
+ int register_android_server_SystemServer(JNIEnv* env);
+@@ -83,6 +84,7 @@ extern "C" jint JNI_OnLoad(JavaVM* vm, void* /* reserved */)
+     register_android_server_broadcastradio_BroadcastRadioService(env);
+     register_android_server_broadcastradio_Tuner(vm, env);
+     register_android_server_PowerManagerService(env);
++    register_android_server_EinkService(env);
+     register_android_server_SerialService(env);
+     register_android_server_InputManager(env);
+     register_android_server_LightsService(env);
+diff --git a/services/java/com/android/server/SystemServer.java b/services/java/com/android/server/SystemServer.java
+index 179845a1d75..f4f5e21ae16 100755
+--- a/services/java/com/android/server/SystemServer.java
++++ b/services/java/com/android/server/SystemServer.java
+@@ -149,6 +149,7 @@ import com.android.server.policy.PermissionPolicyService;
+ import com.android.server.policy.PhoneWindowManager;
+ import com.android.server.policy.role.LegacyRoleResolutionPolicy;
+ import com.android.server.power.PowerManagerService;
++import com.android.server.eink.EinkService;
+ import com.android.server.power.ShutdownThread;
+ import com.android.server.power.ThermalManagerService;
+ import com.android.server.recoverysystem.RecoverySystemService;
+@@ -1134,7 +1135,11 @@ public final class SystemServer {
+             dynamicSystem = new DynamicSystemService(context);
+             ServiceManager.addService("dynamic_system", dynamicSystem);
+             t.traceEnd();
+-
++//zj add b
++            t.traceBegin("StartEinkService");
++            ServiceManager.addService(Context.EINK_SERVICE,new EinkService(context));
++            t.traceEnd();
++//zj add e
+             if (!isWatch) {
+                 t.traceBegin("StartConsumerIrService");
+                 consumerIr = new ConsumerIrService(context);
+-- 
+2.35.1
+

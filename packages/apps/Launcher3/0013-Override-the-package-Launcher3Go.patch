@@ -1,0 +1,30 @@
+From 9f2dc52e59ce1a22c88cde8657911953ab23e46e Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Mon, 25 Jan 2021 08:57:16 +0800
+Subject: [PATCH 13/13] Override the package Launcher3Go.
+
+Android R Go no longer supports Launcher3Go, use
+Launcher3GoQuickstep instead.
+
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+Change-Id: Ica87795495ba9d5d2e9ea6a6d2a70f19266e8366
+---
+ Android.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Android.mk b/Android.mk
+index ea609d452..f2cbcc8c6 100644
+--- a/Android.mk
++++ b/Android.mk
+@@ -239,7 +239,7 @@ ifneq ($(filter rk3566_eink rk3566_einkw6, $(strip $(TARGET_PRODUCT))), )
+ LOCAL_OVERRIDES_PACKAGES := Home Launcher2 Launcher3 Launcher3QuickStep \
+     Calendar Contacts Lightning QuickSearchBox RkExplorer
+ else
+-LOCAL_OVERRIDES_PACKAGES := Home Launcher2 Launcher3 Launcher3QuickStep
++LOCAL_OVERRIDES_PACKAGES := Home Launcher2 Launcher3 Launcher3QuickStep Launcher3Go PhotoTable
+ endif
+ 
+ LOCAL_REQUIRED_MODULES := privapp_whitelist_com.android.launcher3
+-- 
+2.35.1
+

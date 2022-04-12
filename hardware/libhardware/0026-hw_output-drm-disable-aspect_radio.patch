@@ -1,0 +1,39 @@
+From 833f99e5345a6634bf368438f2acda4cb90f49f3 Mon Sep 17 00:00:00 2001
+From: aisx <aisx@rock-chips.com>
+Date: Thu, 14 Nov 2019 18:58:40 +0800
+Subject: [PATCH 26/36] hw_output: drm disable aspect_radio 	   that ignore
+ aspect flags such as 16:9 4:3
+
+Change-Id: Iff40305d384cc4a3721efbf3d6fb071c38eab2e4
+Signed-off-by: aisx <aisx@rock-chips.com>
+---
+ modules/hw_output/rkdisplay/drmresources.cpp | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/modules/hw_output/rkdisplay/drmresources.cpp b/modules/hw_output/rkdisplay/drmresources.cpp
+index 1e66d1df..3d61cc7f 100644
+--- a/modules/hw_output/rkdisplay/drmresources.cpp
++++ b/modules/hw_output/rkdisplay/drmresources.cpp
+@@ -34,6 +34,7 @@
+ 
+ //you can define it in external/libdrm/include/drm/drm.h
+ #define DRM_CLIENT_CAP_SHARE_PLANES     4
++#define DRM_CLIENT_CAP_ASPECT_RADIO     4
+ 
+ namespace android {
+ 
+@@ -131,6 +132,11 @@ int DrmResources::Init() {
+     return ret;
+   }
+ #endif
++  ret = drmSetClientCap(fd(), DRM_CLIENT_CAP_ASPECT_RADIO, 0);
++  if (ret) {
++    ALOGE("Failed to disable aspect radio %d", ret);
++    return ret;
++  }
+ 
+   drmModeResPtr res = drmModeGetResources(fd());
+   if (!res) {
+-- 
+2.35.1
+

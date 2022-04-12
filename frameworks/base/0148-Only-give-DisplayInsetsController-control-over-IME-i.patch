@@ -1,0 +1,265 @@
+From 94891ea9623490eafc82be1c9cf1c11b50c66c45 Mon Sep 17 00:00:00 2001
+From: Jorim Jaggi <jjaggi@google.com>
+Date: Thu, 9 Apr 2020 14:54:13 +0200
+Subject: [PATCH 148/297] Only give DisplayInsetsController control over IME in
+ split-screen
+
+There is additional jank risk as well as animation curves aren't
+fully aligned with InsetsController, we should limit the scope
+where we use that controller for now. Once we have better
+alignment with InsetsController, we can expand it's usage again.
+
+Test: DisplayContentTests
+Test: Open IME in Bubbles
+Bug: 152197007
+Change-Id: Ic8e925842b28c08fc6ea9ba58c7c05627b5a4eaa
+(cherry picked from commit 54bf9cbaf858e1f30d4fc1ca17da4dacc2b50721)
+---
+ .../com/android/server/wm/DisplayContent.java | 57 +++++-------
+ .../server/wm/DisplayContentTests.java        | 87 ++++++++++++++-----
+ 2 files changed, 90 insertions(+), 54 deletions(-)
+
+diff --git a/services/core/java/com/android/server/wm/DisplayContent.java b/services/core/java/com/android/server/wm/DisplayContent.java
+index 2a676e1de5a..0064a5eea16 100644
+--- a/services/core/java/com/android/server/wm/DisplayContent.java
++++ b/services/core/java/com/android/server/wm/DisplayContent.java
+@@ -26,6 +26,7 @@ import static android.app.WindowConfiguration.WINDOWING_MODE_FREEFORM;
+ import static android.app.WindowConfiguration.WINDOWING_MODE_FULLSCREEN;
+ import static android.app.WindowConfiguration.WINDOWING_MODE_MULTI_WINDOW;
+ import static android.app.WindowConfiguration.WINDOWING_MODE_PINNED;
++import static android.app.WindowConfiguration.WINDOWING_MODE_SPLIT_SCREEN_PRIMARY;
+ import static android.app.WindowConfiguration.WINDOWING_MODE_SPLIT_SCREEN_SECONDARY;
+ import static android.app.WindowConfiguration.WINDOWING_MODE_UNDEFINED;
+ import static android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSET;
+@@ -141,6 +142,7 @@ import android.annotation.NonNull;
+ import android.annotation.Nullable;
+ import android.app.ActivityManager;
+ import android.app.ActivityManagerInternal;
++import android.app.WindowConfiguration;
+ import android.content.Context;
+ import android.content.pm.ActivityInfo;
+ import android.content.pm.ActivityInfo.ScreenOrientation;
+@@ -3370,34 +3372,18 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
+         }
+     }
+ 
++    private boolean isImeControlledByApp() {
++        return mInputMethodTarget != null && WindowConfiguration.isSplitScreenWindowingMode(
++                mInputMethodTarget.getWindowingMode());
++    }
++
+     boolean isImeAttachedToApp() {
+-        return (mInputMethodTarget != null && mInputMethodTarget.mActivityRecord != null
++        return isImeControlledByApp()
++                && mInputMethodTarget.mActivityRecord != null
+                 && mInputMethodTarget.getWindowingMode() == WINDOWING_MODE_FULLSCREEN
+                 // An activity with override bounds should be letterboxed inside its parent bounds,
+                 // so it doesn't fill the screen.
+-                && mInputMethodTarget.mActivityRecord.matchParentBounds());
+-    }
+-
+-    /**
+-     * Get IME target that should host IME when this display that is reparented to another
+-     * WindowState.
+-     * IME is never displayed in a child display.
+-     * Use {@link WindowState#getImeControlTarget()} when IME target window
+-     * which originally called
+-     * {@link android.view.inputmethod.InputMethodManager#showSoftInput(View, int)} is known.
+-     *
+-     * @return {@link WindowState} of host that controls IME.
+-     *         {@code null} when {@param dc} is not a virtual display.
+-     * @see DisplayContent#reparent
+-     */
+-    @Nullable
+-    WindowState getImeControlTarget() {
+-        WindowState imeTarget = mInputMethodTarget;
+-        if (imeTarget != null) {
+-            return imeTarget.getImeControlTarget();
+-        }
+-
+-        return getInsetsStateController().getImeSourceProvider().getControlTarget().getWindow();
++                && mInputMethodTarget.mActivityRecord.matchParentBounds();
+     }
+ 
+     /**
+@@ -3407,7 +3393,6 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
+      *
+      * @param target current IME target.
+      * @return {@link WindowState} that can host IME.
+-     * @see DisplayContent#getImeControlTarget()
+      */
+     WindowState getImeHostOrFallback(WindowState target) {
+         if (target != null && target.getDisplayContent().canShowIme()) {
+@@ -3448,8 +3433,6 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
+     /**
+      * The IME input target is the window which receives input from IME. It is also a candidate
+      * which controls the visibility and animation of the input method window.
+-     *
+-     * @param target the window that receives input from IME.
+      */
+     void setInputMethodInputTarget(WindowState target) {
+         if (mInputMethodInputTarget != target) {
+@@ -3459,12 +3442,7 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
+     }
+ 
+     private void updateImeControlTarget() {
+-        if (!isImeAttachedToApp() && mRemoteInsetsControlTarget != null) {
+-            mInputMethodControlTarget = mRemoteInsetsControlTarget;
+-        } else {
+-            // Otherwise, we just use the ime input target
+-            mInputMethodControlTarget = mInputMethodInputTarget;
+-        }
++        mInputMethodControlTarget = computeImeControlTarget(mInputMethodInputTarget);
+         mInsetsStateController.onImeControlTargetChanged(mInputMethodControlTarget);
+     }
+ 
+@@ -3476,6 +3454,19 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
+         }
+     }
+ 
++    /**
++     * Computes the window where we hand IME control to.
++     */
++    @VisibleForTesting
++    InsetsControlTarget computeImeControlTarget(InsetsControlTarget target) {
++        if (!isImeControlledByApp() && mRemoteInsetsControlTarget != null) {
++            return mRemoteInsetsControlTarget;
++        } else {
++            // Otherwise, we just use the ime target
++            return target;
++        }
++    }
++
+     /**
+      * Computes the window the IME should be attached to.
+      */
+diff --git a/services/tests/wmtests/src/com/android/server/wm/DisplayContentTests.java b/services/tests/wmtests/src/com/android/server/wm/DisplayContentTests.java
+index 3f47b8722a3..328d2a6342f 100644
+--- a/services/tests/wmtests/src/com/android/server/wm/DisplayContentTests.java
++++ b/services/tests/wmtests/src/com/android/server/wm/DisplayContentTests.java
+@@ -65,6 +65,7 @@ import static com.google.common.truth.Truth.assertThat;
+ import static org.hamcrest.Matchers.is;
+ import static org.junit.Assert.assertEquals;
+ import static org.junit.Assert.assertFalse;
++import static org.junit.Assert.assertNotEquals;
+ import static org.junit.Assert.assertNotNull;
+ import static org.junit.Assert.assertNull;
+ import static org.junit.Assert.assertThat;
+@@ -84,10 +85,13 @@ import android.platform.test.annotations.Presubmit;
+ import android.util.DisplayMetrics;
+ import android.view.DisplayCutout;
+ import android.view.Gravity;
++import android.view.IDisplayWindowInsetsController;
+ import android.view.IDisplayWindowRotationCallback;
+ import android.view.IDisplayWindowRotationController;
+ import android.view.ISystemGestureExclusionListener;
+ import android.view.IWindowManager;
++import android.view.InsetsSourceControl;
++import android.view.InsetsState;
+ import android.view.MotionEvent;
+ import android.view.Surface;
+ import android.view.ViewRootImpl;
+@@ -809,25 +813,19 @@ public class DisplayContentTests extends WindowTestsBase {
+ 
+     @Test
+     public void testComputeImeParent_app() throws Exception {
+-        try (final InsetsModeSession session =
+-                     new InsetsModeSession(ViewRootImpl.NEW_INSETS_MODE_IME)) {
+-            final DisplayContent dc = createNewDisplay();
+-            dc.mInputMethodTarget = createWindow(null, TYPE_BASE_APPLICATION, "app");
+-            assertEquals(dc.mInputMethodTarget.mActivityRecord.getSurfaceControl(),
+-                    dc.computeImeParent());
+-        }
++        final DisplayContent dc = createNewDisplay();
++        dc.mInputMethodTarget = createWindow(null, TYPE_BASE_APPLICATION, "app");
++        assertEquals(dc.mInputMethodTarget.mActivityRecord.getSurfaceControl(),
++                dc.computeImeParent());
+     }
+ 
+     @Test
+     public void testComputeImeParent_app_notFullscreen() throws Exception {
+-        try (final InsetsModeSession session =
+-                     new InsetsModeSession(ViewRootImpl.NEW_INSETS_MODE_IME)) {
+-            final DisplayContent dc = createNewDisplay();
+-            dc.mInputMethodTarget = createWindow(null, TYPE_STATUS_BAR, "app");
+-            dc.mInputMethodTarget.setWindowingMode(
+-                    WindowConfiguration.WINDOWING_MODE_SPLIT_SCREEN_PRIMARY);
+-            assertEquals(dc.getImeContainer().getParentSurfaceControl(), dc.computeImeParent());
+-        }
++        final DisplayContent dc = createNewDisplay();
++        dc.mInputMethodTarget = createWindow(null, TYPE_STATUS_BAR, "app");
++        dc.mInputMethodTarget.setWindowingMode(
++                WindowConfiguration.WINDOWING_MODE_SPLIT_SCREEN_PRIMARY);
++        assertEquals(dc.getImeContainer().getParentSurfaceControl(), dc.computeImeParent());
+     }
+ 
+     @Test
+@@ -842,12 +840,59 @@ public class DisplayContentTests extends WindowTestsBase {
+ 
+     @Test
+     public void testComputeImeParent_noApp() throws Exception {
+-        try (final InsetsModeSession session =
+-                     new InsetsModeSession(ViewRootImpl.NEW_INSETS_MODE_IME)) {
+-            final DisplayContent dc = createNewDisplay();
+-            dc.mInputMethodTarget = createWindow(null, TYPE_STATUS_BAR, "statusBar");
+-            assertEquals(dc.getImeContainer().getParentSurfaceControl(), dc.computeImeParent());
+-        }
++        final DisplayContent dc = createNewDisplay();
++        dc.mInputMethodTarget = createWindow(null, TYPE_STATUS_BAR, "statusBar");
++         assertEquals(dc.getImeContainer().getParentSurfaceControl(), dc.computeImeParent());
++    }
++
++    @Test
++    public void testComputeImeControlTarget() throws Exception {
++        final DisplayContent dc = createNewDisplay();
++        dc.setRemoteInsetsController(createDisplayWindowInsetsController());
++        dc.mInputMethodInputTarget = createWindow(null, TYPE_BASE_APPLICATION, "app");
++        assertEquals(dc.mInputMethodInputTarget, dc.computeImeControlTarget(dc.mInputMethodTarget));
++    }
++
++    @Test
++    public void testComputeImeControlTarget_splitscreen() throws Exception {
++        final DisplayContent dc = createNewDisplay();
++        dc.mInputMethodInputTarget = createWindow(null, TYPE_BASE_APPLICATION, "app");
++        dc.mInputMethodInputTarget.setWindowingMode(
++                WindowConfiguration.WINDOWING_MODE_SPLIT_SCREEN_PRIMARY);
++        dc.setRemoteInsetsController(createDisplayWindowInsetsController());
++        assertNotEquals(dc.mInputMethodInputTarget,
++                dc.computeImeControlTarget(dc.mInputMethodTarget));
++    }
++
++    @Test
++    public void testComputeImeControlTarget_notMatchParentBounds() throws Exception {
++        spyOn(mAppWindow.mActivityRecord);
++        doReturn(false).when(mAppWindow.mActivityRecord).matchParentBounds();
++        mDisplayContent.mInputMethodInputTarget = mAppWindow;
++        mDisplayContent.setRemoteInsetsController(createDisplayWindowInsetsController());
++        assertEquals(mAppWindow, mDisplayContent.computeImeControlTarget(mAppWindow));
++    }
++
++    private IDisplayWindowInsetsController createDisplayWindowInsetsController() {
++        return new IDisplayWindowInsetsController.Stub() {
++
++            @Override
++            public void insetsChanged(InsetsState insetsState) throws RemoteException {
++            }
++
++            @Override
++            public void insetsControlChanged(InsetsState insetsState,
++                    InsetsSourceControl[] insetsSourceControls) throws RemoteException {
++            }
++
++            @Override
++            public void showInsets(int i, boolean b) throws RemoteException {
++            }
++
++            @Override
++            public void hideInsets(int i, boolean b) throws RemoteException {
++            }
++        };
+     }
+ 
+     @Test
+-- 
+2.35.1
+

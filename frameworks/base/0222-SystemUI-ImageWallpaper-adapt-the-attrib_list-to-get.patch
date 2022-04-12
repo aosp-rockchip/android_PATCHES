@@ -1,0 +1,56 @@
+From ba5d8ed29f0dad2279bb1ced0fa4dff95973e21c Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Fri, 13 Nov 2020 14:37:10 +0800
+Subject: [PATCH 222/297] SystemUI: ImageWallpaper: adapt the attrib_list to
+ get egl_config with expected native format RGBx_8888.
+
+Especially for 3288 device with Bifrost DDK of r12 and later.
+Bifrost DDK r12 supports an new egl_config with native format of
+RGBA_1010102,
+ImageWallpaper before this commit would use that egl_config.
+While, rk_vop does not support to process a graphics buffer with that
+format,
+hwc_composition could not be used, resulting in poor performance.
+
+For the attrib_list modified, please refer to egl_1.4_spec, "3.4.1.2
+Sorting of EGLConfigs", "3. Special: ".
+
+Signed-off-by: chenzhen <chenzhen@rock-chips.com>
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+Change-Id: I035e479b03c8ecddec60a4b369bf0bde0f8d2b5f
+---
+ .../src/com/android/systemui/glwallpaper/EglHelper.java   | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/glwallpaper/EglHelper.java b/packages/SystemUI/src/com/android/systemui/glwallpaper/EglHelper.java
+index 11e215d0d35..ff575410a7b 100644
+--- a/packages/SystemUI/src/com/android/systemui/glwallpaper/EglHelper.java
++++ b/packages/SystemUI/src/com/android/systemui/glwallpaper/EglHelper.java
+@@ -18,6 +18,7 @@ package com.android.systemui.glwallpaper;
+ 
+ import static android.opengl.EGL14.EGL_ALPHA_SIZE;
+ import static android.opengl.EGL14.EGL_BLUE_SIZE;
++import static android.opengl.EGL14.EGL_BUFFER_SIZE;
+ import static android.opengl.EGL14.EGL_CONFIG_CAVEAT;
+ import static android.opengl.EGL14.EGL_CONTEXT_CLIENT_VERSION;
+ import static android.opengl.EGL14.EGL_DEFAULT_DISPLAY;
+@@ -183,12 +184,13 @@ public class EglHelper {
+ 
+     private int[] getConfig() {
+         return new int[] {
+-            EGL_RED_SIZE, 8,
+-            EGL_GREEN_SIZE, 8,
+-            EGL_BLUE_SIZE, 8,
++            EGL_RED_SIZE, 0,
++            EGL_GREEN_SIZE, 0,
++            EGL_BLUE_SIZE, 0,
+             EGL_ALPHA_SIZE, 0,
+             EGL_DEPTH_SIZE, 0,
+             EGL_STENCIL_SIZE, 0,
++            EGL_BUFFER_SIZE, 24,
+             EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+             EGL_CONFIG_CAVEAT, EGL_NONE,
+             EGL_NONE
+-- 
+2.35.1
+

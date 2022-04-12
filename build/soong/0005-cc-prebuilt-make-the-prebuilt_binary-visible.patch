@@ -1,0 +1,36 @@
+From 08feaca57dc8aa05e4e034df572503a211229416 Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Tue, 21 Jul 2020 09:39:48 +0800
+Subject: [PATCH 5/5] cc: prebuilt: make the prebuilt_binary visible.
+
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+Change-Id: I68860d65efe64639ba10ad22c6e25cb1d98cdde8
+---
+ cc/prebuilt.go | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/cc/prebuilt.go b/cc/prebuilt.go
+index b7c0bf2fd..9c4602e43 100644
+--- a/cc/prebuilt.go
++++ b/cc/prebuilt.go
+@@ -27,7 +27,7 @@ func RegisterPrebuiltBuildComponents(ctx android.RegistrationContext) {
+ 	ctx.RegisterModuleType("cc_prebuilt_library_shared", PrebuiltSharedLibraryFactory)
+ 	ctx.RegisterModuleType("cc_prebuilt_library_static", PrebuiltStaticLibraryFactory)
+ 	ctx.RegisterModuleType("cc_prebuilt_object", prebuiltObjectFactory)
+-	ctx.RegisterModuleType("cc_prebuilt_binary", prebuiltBinaryFactory)
++	ctx.RegisterModuleType("cc_prebuilt_binary", PrebuiltBinaryFactory)
+ }
+ 
+ type prebuiltLinkerInterface interface {
+@@ -316,7 +316,7 @@ func (p *prebuiltBinaryLinker) binary() bool {
+ 
+ // cc_prebuilt_binary installs a precompiled executable in srcs property in the
+ // device's directory.
+-func prebuiltBinaryFactory() android.Module {
++func PrebuiltBinaryFactory() android.Module {
+ 	module, _ := NewPrebuiltBinary(android.HostAndDeviceSupported)
+ 	return module.Init()
+ }
+-- 
+2.35.1
+

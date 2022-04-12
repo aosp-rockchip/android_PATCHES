@@ -1,0 +1,27 @@
+From 12111950c5934ce9dc8c71dbbef494409d7556b3 Mon Sep 17 00:00:00 2001
+From: Shunhua Lan <lsh@rock-chips.com>
+Date: Tue, 10 Mar 2020 17:03:31 +0800
+Subject: [PATCH 212/297] WiredAccessoryManager: don't update status mask when
+ state mismatching with name
+
+Signed-off-by: Shunhua Lan <lsh@rock-chips.com>
+Change-Id: Iea23d773f138523e997dae5c8be82a003d037c1c
+---
+ services/core/java/com/android/server/WiredAccessoryManager.java | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/WiredAccessoryManager.java b/services/core/java/com/android/server/WiredAccessoryManager.java
+index 2c274bcecbe..e77b22f541a 100644
+--- a/services/core/java/com/android/server/WiredAccessoryManager.java
++++ b/services/core/java/com/android/server/WiredAccessoryManager.java
+@@ -549,7 +549,6 @@ final class WiredAccessoryManager implements WiredAccessoryCallbacks {
+      * if {@code name=1}  or false if {}@code name=0} is contained in {@code state}.
+      */
+     private static void updateBit(int[] maskAndState, int position, String state, String name) {
+-        maskAndState[0] |= position;
+         if (state.contains(name + "=1")) {
+             maskAndState[0] |= position;
+             maskAndState[1] |= position;
+-- 
+2.35.1
+

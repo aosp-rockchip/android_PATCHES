@@ -1,0 +1,60 @@
+From d3b9baff62c82ccc34ee0573c2994cb7d51c9b8c Mon Sep 17 00:00:00 2001
+From: Derek Sollenberger <djsollen@google.com>
+Date: Fri, 21 Feb 2020 15:21:41 -0500
+Subject: [PATCH 078/297] Do not attempt to special case uncompressed font
+ assets.
+
+The logic to attempt to directly mmap uncompressed font assets
+has resulted in breakages for some applications and utilities.
+This CL disables this speculative optimzation until we can determine
+the problem with this approach and if such an optimization is required.
+
+Bug: 149780695
+Test: CtsTextTestCases and androidx.appcompat.widget.AppCompatTextViewTest
+Change-Id: I3b10a801a5600aefe8573fab1b28cd79c848c892
+(cherry picked from commit dd03a8ef81064241943ae1788cf1c63ed3df35b7)
+---
+ .../java/android/graphics/fonts/Font.java     | 20 -------------------
+ 1 file changed, 20 deletions(-)
+
+diff --git a/graphics/java/android/graphics/fonts/Font.java b/graphics/java/android/graphics/fonts/Font.java
+index 4899fbe431c..853165d4cf3 100644
+--- a/graphics/java/android/graphics/fonts/Font.java
++++ b/graphics/java/android/graphics/fonts/Font.java
+@@ -19,7 +19,6 @@ package android.graphics.fonts;
+ import android.annotation.IntRange;
+ import android.annotation.NonNull;
+ import android.annotation.Nullable;
+-import android.content.res.AssetFileDescriptor;
+ import android.content.res.AssetManager;
+ import android.content.res.Resources;
+ import android.os.LocaleList;
+@@ -220,25 +219,6 @@ public final class Font {
+             Preconditions.checkNotNull(am, "assetManager can not be null");
+             Preconditions.checkNotNull(path, "path can not be null");
+ 
+-            if (!isAsset) {
+-                // Attempt to open as FD, which should work unless the asset is compressed
+-                AssetFileDescriptor assetFD;
+-                try {
+-                    if (cookie > 0) {
+-                        assetFD = am.openNonAssetFd(cookie, path);
+-                    } else {
+-                        assetFD = am.openNonAssetFd(path);
+-                    }
+-
+-                    try (FileInputStream fis = assetFD.createInputStream()) {
+-                        final FileChannel fc = fis.getChannel();
+-                        return fc.map(FileChannel.MapMode.READ_ONLY, 0, fc.size());
+-                    }
+-                } catch (IOException e) {
+-                    // failed to open as FD so now we will attempt to open as an input stream
+-                }
+-            }
+-
+             try (InputStream assetStream = isAsset ? am.open(path, AssetManager.ACCESS_BUFFER)
+                     : am.openNonAsset(cookie, path, AssetManager.ACCESS_BUFFER)) {
+ 
+-- 
+2.35.1
+

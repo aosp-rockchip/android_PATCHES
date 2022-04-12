@@ -1,0 +1,48 @@
+From 47b81d290ac6e307c16fa2e31487c5e0dee5c9d8 Mon Sep 17 00:00:00 2001
+From: ZhuangXiaoLiang <zhuangxl@rock-chips.com>
+Date: Wed, 25 Oct 2017 11:57:57 +0800
+Subject: [PATCH 11/36] gralloc.h: Add flag to support hdr colorspace &
+ metadata.
+
+Change-Id: Ic63e98196222a1f4ee3a985ef1bd6d167ee55c4b
+Signed-off-by: ZhuangXiaoLiang <zhuangxl@rock-chips.com>
+---
+ include/hardware/gralloc.h | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
+
+diff --git a/include/hardware/gralloc.h b/include/hardware/gralloc.h
+index f6833013..217b72ae 100755
+--- a/include/hardware/gralloc.h
++++ b/include/hardware/gralloc.h
+@@ -214,6 +214,28 @@ enum {
+   GRALLOC_MODULE_PERFORM_GET_IMPORTER_PRIVATE = 0xffeeff02,
+ };
+ 
++//eotf type
++enum supported_eotf_type {
++        TRADITIONAL_GAMMA_SDR = 0,
++        TRADITIONAL_GAMMA_HDR,
++        SMPTE_ST2084,  /* HDR10*/
++        FUTURE_EOTF
++};
++
++struct hdr_static_metadata {
++       uint16_t eotf;
++       uint16_t type;
++       uint16_t display_primaries_x[3];
++       uint16_t display_primaries_y[3];
++       uint16_t white_point_x;
++       uint16_t white_point_y;
++       uint16_t max_mastering_display_luminance;
++       uint16_t min_mastering_display_luminance;
++       uint16_t max_fall;
++       uint16_t max_cll;
++       uint16_t min_cll;
++};
++
+ #define maxLayerNameLength		100
+ typedef struct rk_ashmem_t
+ {
+-- 
+2.35.1
+

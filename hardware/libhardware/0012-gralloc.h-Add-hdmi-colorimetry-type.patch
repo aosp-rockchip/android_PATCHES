@@ -1,0 +1,31 @@
+From 9e1f50f82c11608b3710e07082092cc66d2b4f68 Mon Sep 17 00:00:00 2001
+From: ZhuangXiaoLiang <zhuangxl@rock-chips.com>
+Date: Wed, 25 Oct 2017 11:58:44 +0800
+Subject: [PATCH 12/36] gralloc.h: Add hdmi colorimetry type.
+
+Change-Id: Ifd26e31172545a174b82177a8f19dcdd8cd14822
+Signed-off-by: ZhuangXiaoLiang <zhuangxl@rock-chips.com>
+---
+ include/hardware/gralloc.h | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/include/hardware/gralloc.h b/include/hardware/gralloc.h
+index 217b72ae..0396127b 100755
+--- a/include/hardware/gralloc.h
++++ b/include/hardware/gralloc.h
+@@ -222,6 +222,12 @@ enum supported_eotf_type {
+         FUTURE_EOTF
+ };
+ 
++//hdmi_output_colorimetry type
++enum supported_hdmi_colorimetry {
++	COLOR_METRY_NONE=0,
++	COLOR_METRY_ITU_2020=9
++};
++
+ struct hdr_static_metadata {
+        uint16_t eotf;
+        uint16_t type;
+-- 
+2.35.1
+

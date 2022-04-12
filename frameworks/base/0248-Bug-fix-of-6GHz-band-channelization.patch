@@ -1,0 +1,97 @@
+From 01847357980bc3c4015642384a0581beb6a1faca Mon Sep 17 00:00:00 2001
+From: Kai Shi <kaishi@google.com>
+Date: Wed, 9 Sep 2020 15:32:52 -0700
+Subject: [PATCH 248/297] Bug fix of 6GHz band channelization
+
+Move up 6GHz band start and end frequencies by 10MHz per IEEE 802.11ax
+draft 7.0 Annex E Table E-4.
+Add the special case of 6G band channel 2.
+
+Bug: 167426957
+Test: atest android.net.wifi
+Test: manual test with 6GHz capable STA and AP
+Change-Id: I24c9c4d38c74681cd7318a9b052d9c2cd4ddf87f
+Merged-In: I24c9c4d38c74681cd7318a9b052d9c2cd4ddf87f
+---
+ wifi/java/android/net/wifi/ScanResult.java    | 21 ++++++++++++++++---
+ .../src/android/net/wifi/ScanResultTest.java  |  7 ++++---
+ 2 files changed, 22 insertions(+), 6 deletions(-)
+
+diff --git a/wifi/java/android/net/wifi/ScanResult.java b/wifi/java/android/net/wifi/ScanResult.java
+index aa3a1392589..b276f2ed476 100644
+--- a/wifi/java/android/net/wifi/ScanResult.java
++++ b/wifi/java/android/net/wifi/ScanResult.java
+@@ -581,12 +581,18 @@ public final class ScanResult implements Parcelable {
+      * 6 GHz band frequency of first channel in MHz
+      * @hide
+      */
+-    public static final int BAND_6_GHZ_START_FREQ_MHZ = 5945;
++    public static final int BAND_6_GHZ_START_FREQ_MHZ = 5955;
+     /**
+      * 6 GHz band frequency of last channel in MHz
+      * @hide
+      */
+-    public static final int BAND_6_GHZ_END_FREQ_MHZ = 7105;
++    public static final int BAND_6_GHZ_END_FREQ_MHZ = 7115;
++
++    /**
++     * 6 GHz band operating class 136 channel 2 center frequency in MHz
++     * @hide
++     */
++    public static final int BAND_6_GHZ_OP_CLASS_136_CH_2_FREQ_MHZ = 5935;
+ 
+     /**
+      * Utility function to check if a frequency within 2.4 GHz band
+@@ -618,7 +624,10 @@ public final class ScanResult implements Parcelable {
+      * @hide
+      */
+     public static boolean is6GHz(int freqMhz) {
+-        return freqMhz >= BAND_6_GHZ_START_FREQ_MHZ && freqMhz <= BAND_6_GHZ_END_FREQ_MHZ;
++        if (freqMhz == BAND_6_GHZ_OP_CLASS_136_CH_2_FREQ_MHZ) {
++            return true;
++        }
++        return (freqMhz >= BAND_6_GHZ_START_FREQ_MHZ && freqMhz <= BAND_6_GHZ_END_FREQ_MHZ);
+     }
+ 
+     /**
+@@ -649,6 +658,9 @@ public final class ScanResult implements Parcelable {
+         }
+         if (band == WifiScanner.WIFI_BAND_6_GHZ) {
+             if (channel >= BAND_6_GHZ_FIRST_CH_NUM && channel <= BAND_6_GHZ_LAST_CH_NUM) {
++                if (channel == 2) {
++                    return BAND_6_GHZ_OP_CLASS_136_CH_2_FREQ_MHZ;
++                }
+                 return ((channel - BAND_6_GHZ_FIRST_CH_NUM) * 5) + BAND_6_GHZ_START_FREQ_MHZ;
+             } else {
+                 return UNSPECIFIED;
+@@ -673,6 +685,9 @@ public final class ScanResult implements Parcelable {
+         } else if (is5GHz(freqMhz)) {
+             return ((freqMhz - BAND_5_GHZ_START_FREQ_MHZ) / 5) + BAND_5_GHZ_FIRST_CH_NUM;
+         } else if (is6GHz(freqMhz)) {
++            if (freqMhz == BAND_6_GHZ_OP_CLASS_136_CH_2_FREQ_MHZ) {
++                return 2;
++            }
+             return ((freqMhz - BAND_6_GHZ_START_FREQ_MHZ) / 5) + BAND_6_GHZ_FIRST_CH_NUM;
+         }
+ 
+diff --git a/wifi/tests/src/android/net/wifi/ScanResultTest.java b/wifi/tests/src/android/net/wifi/ScanResultTest.java
+index 5516f433070..f1ec5e82931 100644
+--- a/wifi/tests/src/android/net/wifi/ScanResultTest.java
++++ b/wifi/tests/src/android/net/wifi/ScanResultTest.java
+@@ -102,9 +102,10 @@ public class ScanResultTest {
+             5845, WifiScanner.WIFI_BAND_5_GHZ, 169,
+             5865, WifiScanner.WIFI_BAND_5_GHZ, 173,
+             /* Now some 6GHz channels */
+-            5945, WifiScanner.WIFI_BAND_6_GHZ, 1,
+-            5960, WifiScanner.WIFI_BAND_6_GHZ, 4,
+-            6100, WifiScanner.WIFI_BAND_6_GHZ, 32
++            5955, WifiScanner.WIFI_BAND_6_GHZ, 1,
++            5935, WifiScanner.WIFI_BAND_6_GHZ, 2,
++            5970, WifiScanner.WIFI_BAND_6_GHZ, 4,
++            6110, WifiScanner.WIFI_BAND_6_GHZ, 32
+     };
+ 
+     /**
+-- 
+2.35.1
+

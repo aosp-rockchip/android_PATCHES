@@ -1,0 +1,31 @@
+From 7ea8bdaa6e18e9e8f3fbc6e13792cc7dabf70108 Mon Sep 17 00:00:00 2001
+From: Daulet Zhanguzin <dauletz@google.com>
+Date: Fri, 14 Aug 2020 13:03:38 +0100
+Subject: [PATCH 2/3] Fix reading large file offsets on 32-bit
+
+No 32 bit device on hand to verify, but this fix has been verified by
+partner.
+
+Test: Treehugger
+Bug: 156027158
+Change-Id: Ia604e7aac6cdd1cb46d5f2bcdf7f96cb56349954
+---
+ ojluni/src/main/native/zip_util.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ojluni/src/main/native/zip_util.c b/ojluni/src/main/native/zip_util.c
+index 6c02d2bc73..aa9c5cede9 100644
+--- a/ojluni/src/main/native/zip_util.c
++++ b/ojluni/src/main/native/zip_util.c
+@@ -156,7 +156,7 @@ ZFILE_read(ZFILE zfd, char *buf, jint nbytes, jlong offset) {
+      * JVM_IO_INTR is tricky and could cause undesired side effect. So we decided
+      * to simply call "read" on Solaris/Linux. See details in bug 6304463.
+      */
+-    return pread(zfd, buf, nbytes, offset);
++    return pread64(zfd, buf, nbytes, offset);
+ #endif
+ }
+ 
+-- 
+2.35.1
+

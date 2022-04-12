@@ -1,0 +1,45 @@
+From f5e879cda0479d829ead391d20420fc1cf77610f Mon Sep 17 00:00:00 2001
+From: "wanghang@rock-chips.com" <wanghang@rock-chips.com>
+Date: Fri, 15 Jan 2021 16:27:26 +0800
+Subject: [PATCH 286/297] Eink: set default animation value 0 and view
+ ScrollMode
+
+Change-Id: I7cc804f600a3c309c3e68c6d952d64885605b779
+Signed-off-by: wh <wanghang@rock-chips.com>
+---
+ core/java/android/view/View.java                             | 2 +-
+ .../src/com/android/providers/settings/DatabaseHelper.java   | 5 ++++-
+ 2 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/core/java/android/view/View.java b/core/java/android/view/View.java
+index ca424e79ed7..91b08cdd481 100644
+--- a/core/java/android/view/View.java
++++ b/core/java/android/view/View.java
+@@ -26832,7 +26832,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
+                 overScrollMode != OVER_SCROLL_NEVER) {
+             throw new IllegalArgumentException("Invalid overscroll mode " + overScrollMode);
+         }
+-        mOverScrollMode = overScrollMode;
++        mOverScrollMode = OVER_SCROLL_NEVER;//overScrollMode;
+     }
+ 
+     /**
+diff --git a/packages/SettingsProvider/src/com/android/providers/settings/DatabaseHelper.java b/packages/SettingsProvider/src/com/android/providers/settings/DatabaseHelper.java
+index 0a224ea6157..13a6b4641bf 100644
+--- a/packages/SettingsProvider/src/com/android/providers/settings/DatabaseHelper.java
++++ b/packages/SettingsProvider/src/com/android/providers/settings/DatabaseHelper.java
+@@ -2461,7 +2461,10 @@ class DatabaseHelper extends SQLiteOpenHelper {
+             loadSetting(stmt, Settings.Global.MODE_RINGER,
+                     AudioManager.RINGER_MODE_NORMAL);
+ 
+-            loadDefaultAnimationSettings(stmt);
++            //loadDefaultAnimationSettings(stmt);
++            loadSetting(stmt, Settings.System.WINDOW_ANIMATION_SCALE, "0");
++            loadSetting(stmt, Settings.System.TRANSITION_ANIMATION_SCALE, "0");
++            loadSetting(stmt, Settings.System.ANIMATOR_DURATION_SCALE, "0");
+ 
+             // --- Previously in 'secure'
+             loadBooleanSetting(stmt, Settings.Global.WIFI_ON,
+-- 
+2.35.1
+

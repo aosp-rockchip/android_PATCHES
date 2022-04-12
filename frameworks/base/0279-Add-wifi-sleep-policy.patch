@@ -1,0 +1,325 @@
+From a0794a985f667d921514205dc6c2c9e9e7198e3a Mon Sep 17 00:00:00 2001
+From: Alex Zhao <zzc@rock-chips.com>
+Date: Mon, 28 Dec 2020 16:39:31 +0800
+Subject: [PATCH 279/297] Add wifi sleep policy
+
+Signed-off-by: Alex Zhao <zzc@rock-chips.com>
+Change-Id: I1de8aae92195441e2835bf919965a7f3cfd07dc7
+(cherry picked from commit f450f3e8db6ab89a4baa29a65816ce582d560bc2)
+---
+ .../android/server/ConnectivityService.java   |  69 +-----
+ .../connectivity/WifiSleepController.java     | 201 ++++++++++++++++++
+ 2 files changed, 204 insertions(+), 66 deletions(-)
+ create mode 100644 services/core/java/com/android/server/connectivity/WifiSleepController.java
+
+diff --git a/services/core/java/com/android/server/ConnectivityService.java b/services/core/java/com/android/server/ConnectivityService.java
+index ad23f6f46d3..67ee0fa9ef6 100644
+--- a/services/core/java/com/android/server/ConnectivityService.java
++++ b/services/core/java/com/android/server/ConnectivityService.java
+@@ -57,8 +57,6 @@ import static android.os.Process.INVALID_UID;
+ import static android.system.OsConstants.IPPROTO_TCP;
+ import static android.system.OsConstants.IPPROTO_UDP;
+ 
+-import android.net.wifi.WifiManager;
+-
+ import static java.util.Map.Entry;
+ 
+ import android.Manifest;
+@@ -214,6 +212,7 @@ import com.android.server.connectivity.NetworkRanker;
+ import com.android.server.connectivity.PermissionMonitor;
+ import com.android.server.connectivity.ProxyTracker;
+ import com.android.server.connectivity.Vpn;
++import com.android.server.connectivity.WifiSleepController;
+ import com.android.server.net.BaseNetdEventCallback;
+ import com.android.server.net.BaseNetworkObserver;
+ import com.android.server.net.LockdownVpnTracker;
+@@ -598,12 +597,7 @@ public class ConnectivityService extends IConnectivityManager.Stub
+     private final DnsManager mDnsManager;
+     private final NetworkRanker mNetworkRanker;
+ 
+-    static final int WIFI_DISABLED = 0;
+-    static final int WIFI_ENABLED = 1;
+-    private boolean mWifiNeedToOpen = false;
+-    private PowerManager.WakeLock mWifiWakeLock;
+-    private WifiManager mWifiManager;
+-    private DataReceiver mDataReceiver = new DataReceiver();
++    private final WifiSleepController mWifiSleepController;
+ 
+     private boolean mSystemReady;
+     private Intent mInitialBroadcast;
+@@ -1176,64 +1170,7 @@ public class ConnectivityService extends IConnectivityManager.Stub
+         mDnsManager = new DnsManager(mContext, mDnsResolver, mSystemProperties);
+         registerPrivateDnsSettingsCallbacks();
+ 
+-	boolean mWifiSleepConfig = SystemProperties.getBoolean("ro.wifi.sleep.power.down", false);
+-	if(mWifiSleepConfig) {
+-		PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
+-		mWifiWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "WifiSleepPowerDown");
+-		mWifiManager = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
+-		IntentFilter filter = new IntentFilter();
+-		filter.addAction(Intent.ACTION_SCREEN_ON);
+-		filter.addAction(Intent.ACTION_SCREEN_OFF);
+-		mContext.registerReceiver(mDataReceiver, filter);
+-	}
+-    }
+-
+-    private class DataReceiver extends BroadcastReceiver {
+-	@Override
+-	public void onReceive(Context context, Intent intent) {
+-		String action = intent.getAction();
+-		log("onReceive, action=" + action);
+-		log("mWifiNeedToOpen =" + mWifiNeedToOpen);
+-		if (action.equals(Intent.ACTION_SCREEN_ON)) {
+-			if(mWifiNeedToOpen) {
+-				setWifiEnabled(true);
+-			}
+-		} else if (action.equals(Intent.ACTION_SCREEN_OFF)) {
+-			if(getWifiState() == WIFI_ENABLED) {
+-				mWifiNeedToOpen = true;
+-				setWifiEnabled(false);
+-			} else {
+-				mWifiNeedToOpen = false;
+-			}
+-		}
+-	}
+-    }
+-
+-    private int getWifiState() {
+-	final ContentResolver cr = mContext.getContentResolver();
+-	try {
+-		return Settings.Global.getInt(cr, Settings.Global.WIFI_ON);
+-	} catch (Settings.SettingNotFoundException e) {
+-		Settings.Global.putInt(cr, Settings.Global.WIFI_ON, WIFI_DISABLED);
+-		return WIFI_DISABLED;
+-	}
+-    }
+-
+-    private void setWifiEnabled(boolean enable) {
+-	log("setWifiEnabled " + enable);
+-	if (!mWifiWakeLock.isHeld()) {
+-		log("---- mWifiWakeLock.acquire ----");
+-		mWifiWakeLock.acquire();
+-	}
+-	mWifiManager.setWifiEnabled(enable);
+-	if (mWifiWakeLock.isHeld()) {
+-		try {
+-			Thread.sleep(2000);
+-		} catch (InterruptedException ignore) {
+-		}
+-		log("---- mWifiWakeLock.release ----");
+-		mWifiWakeLock.release();
+-	}
++	mWifiSleepController = new WifiSleepController(mContext);
+     }
+ 
+     private static NetworkCapabilities createDefaultNetworkCapabilitiesForUid(int uid) {
+diff --git a/services/core/java/com/android/server/connectivity/WifiSleepController.java b/services/core/java/com/android/server/connectivity/WifiSleepController.java
+new file mode 100644
+index 00000000000..d2f539537e9
+--- /dev/null
++++ b/services/core/java/com/android/server/connectivity/WifiSleepController.java
+@@ -0,0 +1,201 @@
++/*
++ * Copyright (C) 2020 Rock-Chips Corporation, All Rights Reserved.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.server.connectivity;
++
++import android.app.AlarmManager;
++import android.app.PendingIntent;
++import android.content.BroadcastReceiver;
++import android.content.Context;
++import android.content.ContentResolver;
++import android.content.Intent;
++import android.content.IntentFilter;
++import android.net.wifi.WifiManager;
++import android.os.BatteryManager;
++import android.os.PowerManager;
++import android.os.SystemProperties;
++import android.provider.Settings;
++
++import android.util.Log;
++
++public class WifiSleepController {
++    private static final String LOG_TAG = "WifiSleepController";
++    private static final boolean DBG = true;
++
++    private static final String ACTION_WIFI_SLEEP_TIMEOUT_ALARM =
++			"WifiSleepController.TimeoutForWifiSleep";
++
++    private static final String PERSISTENT_PROPERTY_WIFI_SLEEP_DELAY = "persist.wifi.sleep.delay.ms";
++    private static final String PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG = "persist.wifi.sleep.flag";
++
++    private static final int DEFAULT_WIFI_SLEEP_DELAY_MS = 15 * 60 * 1000;
++
++    static final int WIFI_DISABLED = 0;
++    static final int WIFI_ENABLED = 1;
++    static final int WIFI_ENABLED_AIRPLANE_OVERRIDE = 2;
++
++    private Context mContext;
++    private AlarmManager mAlarmManager;
++    private WifiManager mWifiManager;
++    private PowerManager.WakeLock mWifiWakeLock;
++    private WifiReceiver mWifiReceiver = new WifiReceiver();
++
++    private PendingIntent mWifiSleepIntent = null;
++    private boolean mCharging = false;
++    private boolean mIsScreenON = true;
++
++
++    public WifiSleepController(Context context) {
++        mContext = context;
++	PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
++	mWifiWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "WifiSleepPowerDown");
++	mWifiManager = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
++        mAlarmManager = (AlarmManager)mContext.getSystemService(Context.ALARM_SERVICE);
++        IntentFilter filter = new IntentFilter();
++	filter.addAction(Intent.ACTION_BOOT_COMPLETED);
++        filter.addAction(Intent.ACTION_BATTERY_CHANGED);
++        filter.addAction(Intent.ACTION_SCREEN_ON);
++        filter.addAction(Intent.ACTION_SCREEN_OFF);
++	filter.addAction(ACTION_WIFI_SLEEP_TIMEOUT_ALARM);
++        mContext.registerReceiver(mWifiReceiver, filter);
++    }
++
++    private class WifiReceiver extends BroadcastReceiver {
++        @Override
++        public void onReceive(Context context, Intent intent) {
++            String action = intent.getAction();
++            log("onReceive, action=" + action);
++            if (action.equals(Intent.ACTION_BATTERY_CHANGED)) {
++                updateChargingState(intent);
++            } else if (action.equals(Intent.ACTION_SCREEN_ON)) {
++                mIsScreenON = true;
++                exitSleepState();
++		SystemProperties.set(PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG, "false");
++            } else if (action.equals(Intent.ACTION_SCREEN_OFF)) {
++                mIsScreenON = false;
++		log("isScanAlwaysAvailable = " + mWifiManager.isScanAlwaysAvailable());
++		boolean mWifiSleepConfig = SystemProperties.getBoolean("ro.wifi.sleep.power.down", false);
++		if(mWifiSleepConfig && mWifiManager.isScanAlwaysAvailable()) {
++			mWifiManager.setScanAlwaysAvailable(false);
++		}
++                if (shouldStartWifiSleep()) {
++		    SystemProperties.set(PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG, "true");
++                    setWifiSleepAlarm();
++		}
++            } else if (action.contains(ACTION_WIFI_SLEEP_TIMEOUT_ALARM)) {
++                //Sometimes we receive this action after SCREEN_ON.
++                //Turn off wifi should only happen when SCREEN_OFF.
++                if(!mIsScreenON) {
++                    setWifiEnabled(false);
++                }
++            } else if (action.equals(Intent.ACTION_BOOT_COMPLETED)) {
++		boolean mWifiSleepFlag = SystemProperties.getBoolean(PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG, false);
++		log("mWifiSleepFlag is " + mWifiSleepFlag);
++		if(mWifiSleepFlag && !getWifiIsEnabled()) {
++			setWifiEnabled(true);
++		}
++	    }
++        }
++    }
++
++    private void updateChargingState(Intent batteryChangedIntent) {
++        final int status = batteryChangedIntent.getIntExtra(BatteryManager.EXTRA_STATUS,
++                BatteryManager.BATTERY_STATUS_UNKNOWN);
++        boolean charging = status == BatteryManager.BATTERY_STATUS_FULL ||
++                    status == BatteryManager.BATTERY_STATUS_CHARGING;
++	log("updateChargingState, mCharging: " + charging);
++        if (mCharging != charging) {
++            log("updateChargingState, mCharging: " + charging);
++            //no need update sleep state right now, because charge
++            //state changed will cause SCREEN_ON
++            mCharging = charging;
++        }
++    }
++
++    private int wifiSleepPolicyMode() {
++	return Settings.Global.getInt(mContext.getContentResolver(),
++			Settings.Global.WIFI_SLEEP_POLICY,
++			Settings.Global.WIFI_SLEEP_POLICY_NEVER);
++    }
++    private boolean shouldStartWifiSleep() {
++	boolean isWifiOpen = getWifiIsEnabled();
++	log("shouldStartWifiSleep: isWifiOpen = " + isWifiOpen);
++	if(isWifiOpen) {
++		if(wifiSleepPolicyMode() == Settings.Global.WIFI_SLEEP_POLICY_DEFAULT) {
++			return true;
++		} else if(wifiSleepPolicyMode() == Settings.Global.WIFI_SLEEP_POLICY_NEVER_WHILE_PLUGGED) {
++			if(!mCharging){
++				return true;
++			}
++		}
++	}
++        return false;
++    }
++
++    private boolean getWifiIsEnabled() {
++	final ContentResolver cr = mContext.getContentResolver();
++	return Settings.Global.getInt(cr, Settings.Global.WIFI_ON, WIFI_DISABLED) == WIFI_ENABLED
++	       || Settings.Global.getInt(cr, Settings.Global.WIFI_ON, WIFI_DISABLED) == WIFI_ENABLED_AIRPLANE_OVERRIDE;
++    }
++
++    private void setWifiSleepAlarm() {
++	long delayMs = SystemProperties.getInt(PERSISTENT_PROPERTY_WIFI_SLEEP_DELAY, DEFAULT_WIFI_SLEEP_DELAY_MS);
++        Intent intent = new Intent(ACTION_WIFI_SLEEP_TIMEOUT_ALARM);
++        mWifiSleepIntent = PendingIntent.getBroadcast(mContext, 0, intent,
++                PendingIntent.FLAG_UPDATE_CURRENT);
++        mAlarmManager.set(AlarmManager.RTC_WAKEUP,
++                System.currentTimeMillis() + delayMs, mWifiSleepIntent);
++        log("setWifiSleepAlarm: set alarm :" + delayMs + "ms");
++    }
++
++    private void setWifiEnabled(boolean enable) {
++	log("setWifiEnabled " + enable);
++	if (!mWifiWakeLock.isHeld()) {
++		log("---- mWifiWakeLock.acquire ----");
++		mWifiWakeLock.acquire();
++	}
++	mWifiManager.setWifiEnabled(enable);
++	if (mWifiWakeLock.isHeld()) {
++		try {
++			Thread.sleep(2000);
++		} catch (InterruptedException ignore) {
++		}
++		log("---- mWifiWakeLock.release ----");
++		mWifiWakeLock.release();
++	}
++    }
++
++    private void exitSleepState() {
++        log("exitSleepState()");
++        if (mWifiSleepIntent != null) {
++            setWifiEnabled(true);
++            removeWifiSleepAlarm();
++        }
++    }
++
++    private void removeWifiSleepAlarm() {
++        log("removeWifiSleepAlarm...");
++        if (mWifiSleepIntent != null) {
++            mAlarmManager.cancel(mWifiSleepIntent);
++            mWifiSleepIntent = null;
++        }
++    }
++
++    private static void log(String s) {
++        Log.d(LOG_TAG, s);
++    }
++}
++
+-- 
+2.35.1
+

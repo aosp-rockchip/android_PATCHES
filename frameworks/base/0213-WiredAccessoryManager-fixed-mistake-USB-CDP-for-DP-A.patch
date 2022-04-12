@@ -1,0 +1,32 @@
+From 9ebb63c9affa652500dd88d858c08a0ba0fb425f Mon Sep 17 00:00:00 2001
+From: XiaoTan Luo <lxt@rock-chips.com>
+Date: Thu, 24 Sep 2020 11:38:24 +0800
+Subject: [PATCH 213/297] WiredAccessoryManager: fixed mistake USB CDP for DP
+ Audio
+
+redmine id: 267997, It will make a mistake USB CDP for DP audio when USB connected
+
+Signed-off-by: XiaoTan Luo <lxt@rock-chips.com>
+Change-Id: Iff3205d11f0faa8c0bce3b4463364f17fedb9836
+---
+ .../core/java/com/android/server/WiredAccessoryManager.java   | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/services/core/java/com/android/server/WiredAccessoryManager.java b/services/core/java/com/android/server/WiredAccessoryManager.java
+index e77b22f541a..b96af153d68 100644
+--- a/services/core/java/com/android/server/WiredAccessoryManager.java
++++ b/services/core/java/com/android/server/WiredAccessoryManager.java
+@@ -549,6 +549,10 @@ final class WiredAccessoryManager implements WiredAccessoryCallbacks {
+      * if {@code name=1}  or false if {}@code name=0} is contained in {@code state}.
+      */
+     private static void updateBit(int[] maskAndState, int position, String state, String name) {
++        if (state.contains("CDP=")) {
++                Slog.d(TAG, "state.contains(CDP=) return");
++                return;
++        }
+         if (state.contains(name + "=1")) {
+             maskAndState[0] |= position;
+             maskAndState[1] |= position;
+-- 
+2.35.1
+

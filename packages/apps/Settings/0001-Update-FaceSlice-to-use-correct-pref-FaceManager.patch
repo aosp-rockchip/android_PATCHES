@@ -1,0 +1,174 @@
+From 079c6cace01de09c74683ffee9ca2c8fe0a9be0a Mon Sep 17 00:00:00 2001
+From: joshmccloskey <joshmccloskey@google.com>
+Date: Tue, 9 Jul 2019 15:34:55 -0700
+Subject: [PATCH 01/25] Update FaceSlice to use correct pref & FaceManager
+
+Fixes: 137137134
+Test: Manual.
+Change-Id: Idc707a7d2009975f81902867e4c37a8ee5775700
+(cherry picked from commit 365beaebdbf07017219d5e6db17ba6a7be86c16c)
+---
+ ...FaceProfileStatusPreferenceController.java |  2 +-
+ .../face/FaceStatusPreferenceController.java  |  2 +-
+ .../slices/FaceSetupSlice.java                | 15 +++-----
+ .../slices/FaceSetupSliceTest.java            | 37 +++++++------------
+ 4 files changed, 21 insertions(+), 35 deletions(-)
+
+diff --git a/src/com/android/settings/biometrics/face/FaceProfileStatusPreferenceController.java b/src/com/android/settings/biometrics/face/FaceProfileStatusPreferenceController.java
+index 5015fba439..eeb2cbf5f7 100644
+--- a/src/com/android/settings/biometrics/face/FaceProfileStatusPreferenceController.java
++++ b/src/com/android/settings/biometrics/face/FaceProfileStatusPreferenceController.java
+@@ -25,7 +25,7 @@ import androidx.preference.Preference;
+ 
+ public class FaceProfileStatusPreferenceController extends FaceStatusPreferenceController {
+ 
+-    public static final String KEY_FACE_SETTINGS = "face_settings_profile";
++    private static final String KEY_FACE_SETTINGS = "face_settings_profile";
+ 
+     public FaceProfileStatusPreferenceController(Context context) {
+         super(context, KEY_FACE_SETTINGS);
+diff --git a/src/com/android/settings/biometrics/face/FaceStatusPreferenceController.java b/src/com/android/settings/biometrics/face/FaceStatusPreferenceController.java
+index 8450577209..cb82b5e856 100644
+--- a/src/com/android/settings/biometrics/face/FaceStatusPreferenceController.java
++++ b/src/com/android/settings/biometrics/face/FaceStatusPreferenceController.java
+@@ -26,7 +26,7 @@ import com.android.settings.biometrics.BiometricStatusPreferenceController;
+ 
+ public class FaceStatusPreferenceController extends BiometricStatusPreferenceController {
+ 
+-    private static final String KEY_FACE_SETTINGS = "face_settings";
++    public static final String KEY_FACE_SETTINGS = "face_settings";
+ 
+     protected final FaceManager mFaceManager;
+ 
+diff --git a/src/com/android/settings/homepage/contextualcards/slices/FaceSetupSlice.java b/src/com/android/settings/homepage/contextualcards/slices/FaceSetupSlice.java
+index 128d76bba2..3153950335 100644
+--- a/src/com/android/settings/homepage/contextualcards/slices/FaceSetupSlice.java
++++ b/src/com/android/settings/homepage/contextualcards/slices/FaceSetupSlice.java
+@@ -25,7 +25,9 @@ import android.content.Context;
+ import android.content.Intent;
+ import android.content.pm.PackageManager;
+ import android.hardware.biometrics.BiometricManager;
++import android.hardware.face.FaceManager;
+ import android.net.Uri;
++import android.os.UserHandle;
+ 
+ import androidx.core.graphics.drawable.IconCompat;
+ import androidx.slice.Slice;
+@@ -36,7 +38,7 @@ import androidx.slice.builders.SliceAction;
+ import com.android.settings.R;
+ import com.android.settings.SubSettings;
+ import com.android.settings.Utils;
+-import com.android.settings.biometrics.face.FaceProfileStatusPreferenceController;
++import com.android.settings.biometrics.face.FaceStatusPreferenceController;
+ import com.android.settings.security.SecuritySettings;
+ import com.android.settings.slices.CustomSliceRegistry;
+ import com.android.settings.slices.CustomSliceable;
+@@ -52,13 +54,8 @@ public class FaceSetupSlice implements CustomSliceable {
+ 
+     @Override
+     public Slice getSlice() {
+-        final BiometricManager biometricManager = mContext.getSystemService(BiometricManager.class);
+-        final PackageManager packageManager = mContext.getPackageManager();
+-        if (!packageManager.hasSystemFeature(PackageManager.FEATURE_FACE)) {
+-            // no face hardware
+-            return null;
+-        } else if (biometricManager.canAuthenticate() == BIOMETRIC_SUCCESS) {
+-            // face hardware, and already enrolled
++        final FaceManager faceManager = mContext.getSystemService(FaceManager.class);
++        if (faceManager == null || faceManager.hasEnrolledTemplates(UserHandle.myUserId())) {
+             return null;
+         }
+ 
+@@ -84,7 +81,7 @@ public class FaceSetupSlice implements CustomSliceable {
+     public Intent getIntent() {
+         return SliceBuilderUtils.buildSearchResultPageIntent(mContext,
+                 SecuritySettings.class.getName(),
+-                FaceProfileStatusPreferenceController.KEY_FACE_SETTINGS,
++                FaceStatusPreferenceController.KEY_FACE_SETTINGS,
+                 mContext.getText(R.string.security_settings_face_settings_enroll).toString(),
+                 SettingsEnums.SLICE)
+                 .setClassName(mContext.getPackageName(), SubSettings.class.getName());
+diff --git a/tests/robotests/src/com/android/settings/homepage/contextualcards/slices/FaceSetupSliceTest.java b/tests/robotests/src/com/android/settings/homepage/contextualcards/slices/FaceSetupSliceTest.java
+index f6c1821f12..5e364c073f 100644
+--- a/tests/robotests/src/com/android/settings/homepage/contextualcards/slices/FaceSetupSliceTest.java
++++ b/tests/robotests/src/com/android/settings/homepage/contextualcards/slices/FaceSetupSliceTest.java
+@@ -16,19 +16,15 @@
+ 
+ package com.android.settings.homepage.contextualcards.slices;
+ 
+-import static android.hardware.biometrics.BiometricConstants.BIOMETRIC_ERROR_NO_BIOMETRICS;
+-import static android.hardware.biometrics.BiometricManager.BIOMETRIC_SUCCESS;
+-
+-import static org.mockito.Mockito.doReturn;
++import static org.mockito.Mockito.mock;
+ import static org.mockito.Mockito.spy;
+ import static org.mockito.Mockito.when;
+ 
+ import static com.google.common.truth.Truth.assertThat;
+ 
+ import android.content.Context;
+-import android.content.pm.PackageManager;
+-import android.hardware.biometrics.BiometricConstants;
+-import android.hardware.biometrics.BiometricManager;
++import android.hardware.face.FaceManager;
++import android.os.UserHandle;
+ 
+ import androidx.slice.Slice;
+ import androidx.slice.SliceProvider;
+@@ -46,43 +42,36 @@ import org.robolectric.RuntimeEnvironment;
+ @RunWith(RobolectricTestRunner.class)
+ public class FaceSetupSliceTest {
+ 
+-    private BiometricManager mBiometricManager;
+     private Context mContext;
+-    private PackageManager mPackageManager;
+ 
+     @Before
+     public void setUp() {
+         // Set-up specs for SliceMetadata.
+         SliceProvider.setSpecs(SliceLiveData.SUPPORTED_SPECS);
+         mContext = spy(RuntimeEnvironment.application);
+-        mPackageManager = spy(mContext.getPackageManager());
+-        mBiometricManager = spy(mContext.getSystemService(BiometricManager.class));
+     }
+ 
+     @Test
+-    public void getSlice_noFaceSupported_shouldReturnNull() {
+-        when(mPackageManager.hasSystemFeature(PackageManager.FEATURE_FACE)).thenReturn(false);
+-        when(mContext.getPackageManager()).thenReturn(mPackageManager);
++    public void getSlice_noFaceManager_shouldReturnNull() {
++        when(mContext.getSystemService(FaceManager.class)).thenReturn(null);
+         final FaceSetupSlice setupSlice = new FaceSetupSlice(mContext);
+         assertThat(setupSlice.getSlice()).isNull();
+     }
+ 
+     @Test
+-    public void getSlice_faceSupportedUserEnrolled_shouldReturnNull() {
+-        when(mBiometricManager.canAuthenticate()).thenReturn(BIOMETRIC_SUCCESS);
+-        when(mPackageManager.hasSystemFeature(PackageManager.FEATURE_FACE)).thenReturn(true);
+-        when(mContext.getPackageManager()).thenReturn(mPackageManager);
+-        when(mContext.getSystemService(BiometricManager.class)).thenReturn(mBiometricManager);
++    public void getSlice_faceEnrolled_shouldReturnNull() {
++        final FaceManager faceManager = mock(FaceManager.class);
++        when(mContext.getSystemService(FaceManager.class)).thenReturn(faceManager);
++        when(faceManager.hasEnrolledTemplates(UserHandle.myUserId())).thenReturn(true);
+         final FaceSetupSlice setupSlice = new FaceSetupSlice(mContext);
+         assertThat(setupSlice.getSlice()).isNull();
+     }
+ 
+     @Test
+-    public void getSlice_faceSupportedUserNotEnrolled_shouldReturnNonNull() {
+-        when(mBiometricManager.canAuthenticate()).thenReturn(BIOMETRIC_ERROR_NO_BIOMETRICS);
+-        when(mPackageManager.hasSystemFeature(PackageManager.FEATURE_FACE)).thenReturn(true);
+-        when(mContext.getPackageManager()).thenReturn(mPackageManager);
+-        when(mContext.getSystemService(BiometricManager.class)).thenReturn(mBiometricManager);
++    public void getSlice_faceNotEnrolled_shouldReturnNonNull() {
++        final FaceManager faceManager = mock(FaceManager.class);
++        when(mContext.getSystemService(FaceManager.class)).thenReturn(faceManager);
++        when(faceManager.hasEnrolledTemplates(UserHandle.myUserId())).thenReturn(false);
+         final FaceSetupSlice setupSlice = new FaceSetupSlice(mContext);
+         assertThat(setupSlice.getSlice()).isNotNull();
+     }
+-- 
+2.35.1
+

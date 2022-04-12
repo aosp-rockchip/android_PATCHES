@@ -1,0 +1,50 @@
+From 531de9aeb801accc58fbe382bed232d6de85ce5b Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Thu, 19 Nov 2020 20:15:41 +0800
+Subject: [PATCH 226/297] fix crash when switch unknown app install item with
+ rkexplorer
+
+1. fix the dialog icon with packageinstaller of rkexplorer is error
+2. not to kill rkexplorer when onAppOpsChanged of REQUEST_INSTALL_PACKAGES change:
+fix https://redmine.rock-chips.com/issues/276125
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: I7cbe0d99378a880d33de7b3b4c694cdd94a739ed
+---
+ .../src/com/android/packageinstaller/InstallStart.java        | 4 ++++
+ .../core/java/com/android/server/StorageManagerService.java   | 4 ++++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/packages/PackageInstaller/src/com/android/packageinstaller/InstallStart.java b/packages/PackageInstaller/src/com/android/packageinstaller/InstallStart.java
+index 6fbee16e3da..c412387a2a0 100644
+--- a/packages/PackageInstaller/src/com/android/packageinstaller/InstallStart.java
++++ b/packages/PackageInstaller/src/com/android/packageinstaller/InstallStart.java
+@@ -104,6 +104,10 @@ public class InstallStart extends Activity {
+             return;
+         }
+ 
++        if (null == callingPackage && null != intent.getDataString()
++                && intent.getDataString().startsWith("content://com.android.rk.")) {
++            callingPackage = "com.android.rk";
++        }
+         Intent nextActivity = new Intent(intent);
+         nextActivity.setFlags(Intent.FLAG_ACTIVITY_FORWARD_RESULT);
+ 
+diff --git a/services/core/java/com/android/server/StorageManagerService.java b/services/core/java/com/android/server/StorageManagerService.java
+index a8aaa5a2815..1edca4feadc 100644
+--- a/services/core/java/com/android/server/StorageManagerService.java
++++ b/services/core/java/com/android/server/StorageManagerService.java
+@@ -4761,6 +4761,10 @@ class StorageManagerService extends IStorageManager.Stub
+                     switch(code) {
+                         case OP_REQUEST_INSTALL_PACKAGES:
+                             // Always kill regardless of op change, to remount apps /storage
++
++                            if ("com.android.rk".equals(packageName)) {
++                                return;//use break;?
++                            }
+                             killAppForOpChange(code, uid);
+                             return;
+                         case OP_MANAGE_EXTERNAL_STORAGE:
+-- 
+2.35.1
+

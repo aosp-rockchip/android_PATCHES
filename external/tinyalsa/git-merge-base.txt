@@ -1,0 +1,90 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 9dc314842bb547381a7207585b1911fb156317f0
+Author: Chen Jinsen <kevin.chen@rock-chips.com>
+Date:   Wed Oct 30 11:38:17 2019 +0800
+
+    Add channel_fixed when channels = 2
+    
+    Change-Id: I48451ecd97df3a501486e0541e129f47283a3ddf
+    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
+    (cherry picked from commit 020639e0a0e305c50976375158be4e9bc430d777)
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 9dc314842bb547381a7207585b1911fb156317f0
+Author: Chen Jinsen <kevin.chen@rock-chips.com>
+Date:   Wed Oct 30 11:38:17 2019 +0800
+
+    Add channel_fixed when channels = 2
+    
+    Change-Id: I48451ecd97df3a501486e0541e129f47283a3ddf
+    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
+    (cherry picked from commit 020639e0a0e305c50976375158be4e9bc430d777)
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 9dc314842bb547381a7207585b1911fb156317f0
+Author: Chen Jinsen <kevin.chen@rock-chips.com>
+Date:   Wed Oct 30 11:38:17 2019 +0800
+
+    Add channel_fixed when channels = 2
+    
+    Change-Id: I48451ecd97df3a501486e0541e129f47283a3ddf
+    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
+    (cherry picked from commit 020639e0a0e305c50976375158be4e9bc430d777)
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 9dc314842bb547381a7207585b1911fb156317f0
+Author: Chen Jinsen <kevin.chen@rock-chips.com>
+Date:   Wed Oct 30 11:38:17 2019 +0800
+
+    Add channel_fixed when channels = 2
+    
+    Change-Id: I48451ecd97df3a501486e0541e129f47283a3ddf
+    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
+    (cherry picked from commit 020639e0a0e305c50976375158be4e9bc430d777)
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 9dc314842bb547381a7207585b1911fb156317f0
+Author: Chen Jinsen <kevin.chen@rock-chips.com>
+Date:   Wed Oct 30 11:38:17 2019 +0800
+
+    Add channel_fixed when channels = 2
+    
+    Change-Id: I48451ecd97df3a501486e0541e129f47283a3ddf
+    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
+    (cherry picked from commit 020639e0a0e305c50976375158be4e9bc430d777)
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 9dc314842bb547381a7207585b1911fb156317f0
+Author: Chen Jinsen <kevin.chen@rock-chips.com>
+Date:   Wed Oct 30 11:38:17 2019 +0800
+
+    Add channel_fixed when channels = 2
+    
+    Change-Id: I48451ecd97df3a501486e0541e129f47283a3ddf
+    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
+    (cherry picked from commit 020639e0a0e305c50976375158be4e9bc430d777)

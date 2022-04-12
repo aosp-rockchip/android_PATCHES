@@ -1,0 +1,103 @@
+From 5956788ef732bc124926a862e28cf688ed1b5987 Mon Sep 17 00:00:00 2001
+From: Patrick Baumann <patb@google.com>
+Date: Wed, 29 Jul 2020 14:21:00 -0700
+Subject: [PATCH 252/297] Expose grantImplicitAccess in IPackageManager
+
+This change exposes the method to grant implicit visibility access via
+IPackageManager and as a hidden API in PackageManager. This variant of
+the method takes a recipient UID and the authority that it should see
+and limits access to only the contacts provider on device.
+
+Bug: 158688602
+Test: PackageManagerTests
+Change-Id: I0050593e4aa734af1a69a40a60746f7cf0ea72df
+---
+ .../android/content/pm/IPackageManager.aidl   |  2 ++
+ .../android/content/pm/PackageManager.java    | 14 ++++++++++
+ .../server/pm/PackageManagerService.java      | 27 +++++++++++++++++++
+ 3 files changed, 43 insertions(+)
+
+diff --git a/core/java/android/content/pm/IPackageManager.aidl b/core/java/android/content/pm/IPackageManager.aidl
+index a6056e2bd1f..0aa6652dc3f 100644
+--- a/core/java/android/content/pm/IPackageManager.aidl
++++ b/core/java/android/content/pm/IPackageManager.aidl
+@@ -787,4 +787,6 @@ interface IPackageManager {
+     List<String> getMimeGroup(String packageName, String group);
+ 
+     boolean isAutoRevokeWhitelisted(String packageName);
++
++    void grantImplicitAccess(int queryingUid, String visibleAuthority);
+ }
+diff --git a/core/java/android/content/pm/PackageManager.java b/core/java/android/content/pm/PackageManager.java
+index 5d9e5c3ccec..5a93e8f0bcf 100644
+--- a/core/java/android/content/pm/PackageManager.java
++++ b/core/java/android/content/pm/PackageManager.java
+@@ -8024,6 +8024,20 @@ public abstract class PackageManager {
+                 "getMimeGroup not implemented in subclass");
+     }
+ 
++    /**
++     * Grants implicit visibility of the package that provides an authority to a querying UID.
++     *
++     * @throws SecurityException when called by a package other than the contacts provider
++     * @hide
++     */
++    public void grantImplicitAccess(int queryingUid, String visibleAuthority) {
++        try {
++            ActivityThread.getPackageManager().grantImplicitAccess(queryingUid, visibleAuthority);
++        } catch (RemoteException e) {
++            throw e.rethrowFromSystemServer();
++        }
++    }
++
+     // Some of the flags don't affect the query result, but let's be conservative and cache
+     // each combination of flags separately.
+ 
+diff --git a/services/core/java/com/android/server/pm/PackageManagerService.java b/services/core/java/com/android/server/pm/PackageManagerService.java
+index 6496cd31031..33eecf1bded 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -284,6 +284,7 @@ import android.os.storage.StorageManagerInternal;
+ import android.os.storage.VolumeInfo;
+ import android.os.storage.VolumeRecord;
+ import android.permission.IPermissionManager;
++import android.provider.ContactsContract;
+ import android.provider.DeviceConfig;
+ import android.provider.Settings.Global;
+ import android.provider.Settings.Secure;
+@@ -25539,6 +25540,32 @@ public class PackageManagerService extends IPackageManager.Stub
+         }
+     }
+ 
++    @Override
++    public void grantImplicitAccess(int recipientUid, String visibleAuthority) {
++        // This API is exposed temporarily to only the contacts provider. (b/158688602)
++        final int callingUid = Binder.getCallingUid();
++        ProviderInfo contactsProvider = resolveContentProviderInternal(
++                        ContactsContract.AUTHORITY, 0, UserHandle.USER_SYSTEM);
++        if (contactsProvider == null || contactsProvider.applicationInfo == null
++                || !UserHandle.isSameApp(contactsProvider.applicationInfo.uid, callingUid)) {
++            throw new SecurityException(callingUid + " is not allow to call grantImplicitAccess");
++        }
++        final int userId = UserHandle.getUserId(recipientUid);
++        final long token = Binder.clearCallingIdentity();
++        final ProviderInfo providerInfo;
++        try {
++            providerInfo = resolveContentProvider(visibleAuthority, 0 /*flags*/, userId);
++        } finally {
++            Binder.restoreCallingIdentity(token);
++        }
++        if (providerInfo == null) {
++            return;
++        }
++        int visibleUid = providerInfo.applicationInfo.uid;
++        mPmInternal.grantImplicitAccess(userId, null /*Intent*/, UserHandle.getAppId(recipientUid),
++                visibleUid, false);
++    }
++
+     boolean canHaveOatDir(String packageName) {
+         synchronized (mLock) {
+             AndroidPackage p = mPackages.get(packageName);
+-- 
+2.35.1
+

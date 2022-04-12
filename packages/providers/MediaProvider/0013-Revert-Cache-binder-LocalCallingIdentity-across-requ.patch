@@ -1,0 +1,260 @@
+From 6b852cfc3da0ba2299ea75e10d1b14af4332a6da Mon Sep 17 00:00:00 2001
+From: Zimuzo Ezeozue <zezeozue@google.com>
+Date: Thu, 19 Mar 2020 20:26:37 +0000
+Subject: [PATCH 13/26] Revert "Cache binder LocalCallingIdentity across
+ requests"
+
+This reverts commit 0eeb19b89d8c4b09450abde4c6716cf0920d79c9.
+
+Reason for revert: Likely culprit for b/151756262 and b/151696203
+
+Bug: 151696203
+Change-Id: Icdf21a210f3108a53f8b7dddb4c0bdc2a2a9cead
+(cherry picked from commit ee10fb778021b5837c0a896bf20b683f9809d233)
+---
+ .../providers/media/MediaProvider.java        | 79 ++++++++-----------
+ .../tests/fused/FilePathAccessTestHelper.java |  9 +--
+ .../android/tests/fused/lib/TestUtils.java    | 23 +-----
+ 3 files changed, 37 insertions(+), 74 deletions(-)
+
+diff --git a/src/com/android/providers/media/MediaProvider.java b/src/com/android/providers/media/MediaProvider.java
+index 7507c0b5..79357c7c 100644
+--- a/src/com/android/providers/media/MediaProvider.java
++++ b/src/com/android/providers/media/MediaProvider.java
+@@ -259,8 +259,6 @@ public class MediaProvider extends ContentProvider {
+     private static final String INCLUDED_DEFAULT_DIRECTORIES =
+             "android:included-default-directories";
+ 
+-    private static final int UNKNOWN_UID = -1;
+-
+     /**
+      * Set of {@link Cursor} columns that refer to raw filesystem paths.
+      */
+@@ -348,8 +346,8 @@ public class MediaProvider extends ContentProvider {
+ 
+     /**
+      * Map from UID to cached {@link LocalCallingIdentity}. Values are only
+-     * maintained in this map until there's any change in the appops needed or packages
+-     * used in the {@link LocalCallingIdentity}.
++     * maintained in this map while the UID is actively working with a
++     * performance-critical component, such as camera.
+      */
+     @GuardedBy("mCachedCallingIdentity")
+     private final SparseArray<LocalCallingIdentity> mCachedCallingIdentity = new SparseArray<>();
+@@ -367,28 +365,24 @@ public class MediaProvider extends ContentProvider {
+         }
+     };
+ 
++    /**
++     * Map from UID to cached {@link LocalCallingIdentity}. Values are only
++     * maintained in this map until there's any change in the appops needed or packages
++     * used in the {@link LocalCallingIdentity}.
++     */
++    @GuardedBy("mCachedCallingIdentityForFuse")
++    private final SparseArray<LocalCallingIdentity> mCachedCallingIdentityForFuse =
++            new SparseArray<>();
++
+     private OnOpChangedListener mModeListener =
+-            (op, packageName) -> invalidateLocalCallingIdentityCache(UNKNOWN_UID, packageName,
+-                    "op " + op);
++            (op, packageName) -> invalidateLocalCallingIdentityCache(packageName, "op " + op);
+ 
+     private LocalCallingIdentity getCachedCallingIdentityForFuse(int uid) {
+-        synchronized (mCachedCallingIdentity) {
+-            LocalCallingIdentity ident = mCachedCallingIdentity.get(uid);
+-            if (ident == null) {
+-                ident = LocalCallingIdentity.fromExternal(getContext(), uid);
+-                mCachedCallingIdentity.put(uid, ident);
+-            }
+-            return ident;
+-        }
+-    }
+-
+-    private LocalCallingIdentity getCachedCallingIdentityForBinder() {
+-        int uid = Binder.getCallingUid();
+-        synchronized (mCachedCallingIdentity) {
+-            LocalCallingIdentity ident = mCachedCallingIdentity.get(uid);
++        synchronized (mCachedCallingIdentityForFuse) {
++            LocalCallingIdentity ident = mCachedCallingIdentityForFuse.get(uid);
+             if (ident == null) {
+-                ident = LocalCallingIdentity.fromBinder(getContext(), this);
+-                mCachedCallingIdentity.put(uid, ident);
++               ident = LocalCallingIdentity.fromExternal(getContext(), uid);
++               mCachedCallingIdentityForFuse.put(uid, ident);
+             }
+             return ident;
+         }
+@@ -400,7 +394,14 @@ public class MediaProvider extends ContentProvider {
+      * call is finished.
+      */
+     private final ThreadLocal<LocalCallingIdentity> mCallingIdentity = ThreadLocal
+-            .withInitial(this::getCachedCallingIdentityForBinder);
++            .withInitial(() -> {
++                synchronized (mCachedCallingIdentity) {
++                    final LocalCallingIdentity cached = mCachedCallingIdentity
++                            .get(Binder.getCallingUid());
++                    return (cached != null) ? cached
++                            : LocalCallingIdentity.fromBinder(getContext(), this);
++                }
++            });
+ 
+     /**
+      * We simply propagate the UID that is being tracked by
+@@ -482,9 +483,7 @@ public class MediaProvider extends ContentProvider {
+                     Uri uri = intent.getData();
+                     String pkg = uri != null ? uri.getSchemeSpecificPart() : null;
+                     if (pkg != null) {
+-                        int uid = intent.getIntExtra(Intent.EXTRA_UID, UNKNOWN_UID);
+-                        invalidateLocalCallingIdentityCache(uid, pkg,
+-                                "package " + intent.getAction());
++                        invalidateLocalCallingIdentityCache(pkg, "package " + intent.getAction());
+                     } else {
+                         Log.w(TAG, "Failed to retrieve package from intent: " + intent.getAction());
+                     }
+@@ -493,21 +492,15 @@ public class MediaProvider extends ContentProvider {
+         }
+     };
+ 
+-    private void invalidateLocalCallingIdentityCache(int uid, String packageName, String reason) {
+-        try {
+-            if (uid == UNKNOWN_UID) {
+-                uid = getContext().getPackageManager().getPackageUid(packageName, 0);
++    private void invalidateLocalCallingIdentityCache(String packageName, String reason) {
++        synchronized (mCachedCallingIdentityForFuse) {
++            try {
++                Log.i(TAG, "Invalidating LocalCallingIdentity cache for package " + packageName
++                        + ". Reason: " + reason);
++                mCachedCallingIdentityForFuse.remove(
++                        getContext().getPackageManager().getPackageUid(packageName, 0));
++            } catch (NameNotFoundException ignored) {
+             }
+-        } catch (NameNotFoundException e) {
+-            Log.wtf(TAG, "Failed to invalidate LocalCallingIdentity cache for package: "
+-                    + packageName, e);
+-            return;
+-        }
+-
+-        synchronized (mCachedCallingIdentity) {
+-            Log.i(TAG, "Invalidating LocalCallingIdentity cache for package " + packageName
+-                    + ". Uid: " + uid + ". Reason: " + reason);
+-            mCachedCallingIdentity.remove(uid);
+         }
+     }
+ 
+@@ -826,6 +819,7 @@ public class MediaProvider extends ContentProvider {
+                 AppOpsManager.OPSTR_CAMERA
+         }, context.getMainExecutor(), mActiveListener);
+ 
++
+         mAppOpsManager.startWatchingMode(AppOpsManager.OPSTR_READ_EXTERNAL_STORAGE,
+                 null /* all packages */, mModeListener);
+         mAppOpsManager.startWatchingMode(AppOpsManager.OPSTR_WRITE_EXTERNAL_STORAGE,
+@@ -971,11 +965,6 @@ public class MediaProvider extends ContentProvider {
+             mDirectoryCache.clear();
+         }
+ 
+-        // Purge any per uid caches
+-        synchronized (mCachedCallingIdentity) {
+-            mCachedCallingIdentity.clear();
+-        }
+-
+         final long durationMillis = (SystemClock.elapsedRealtime() - startTime);
+         Metrics.logIdleMaintenance(MediaStore.VOLUME_EXTERNAL, helper.getItemCount(),
+                 durationMillis, staleThumbnails, expiredMedia);
+diff --git a/tests/jni/FuseDaemonTest/FilePathAccessTestHelper/src/com/android/tests/fused/FilePathAccessTestHelper.java b/tests/jni/FuseDaemonTest/FilePathAccessTestHelper/src/com/android/tests/fused/FilePathAccessTestHelper.java
+index d13886ab..f7af146c 100644
+--- a/tests/jni/FuseDaemonTest/FilePathAccessTestHelper/src/com/android/tests/fused/FilePathAccessTestHelper.java
++++ b/tests/jni/FuseDaemonTest/FilePathAccessTestHelper/src/com/android/tests/fused/FilePathAccessTestHelper.java
+@@ -25,9 +25,7 @@ import static com.android.tests.fused.lib.TestUtils.INTENT_EXTRA_PATH;
+ import static com.android.tests.fused.lib.TestUtils.OPEN_FILE_FOR_READ_QUERY;
+ import static com.android.tests.fused.lib.TestUtils.OPEN_FILE_FOR_WRITE_QUERY;
+ import static com.android.tests.fused.lib.TestUtils.QUERY_TYPE;
+-import static com.android.tests.fused.lib.TestUtils.canOpenWithMediaProvider;
+ import static com.android.tests.fused.lib.TestUtils.canOpen;
+-import static com.android.tests.fused.lib.TestUtils.setContext;
+ 
+ import android.app.Activity;
+ import android.content.Intent;
+@@ -51,7 +49,6 @@ public class FilePathAccessTestHelper extends Activity {
+     @Override
+     public void onCreate(Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+-        setContext(this);
+         String queryType = getIntent().getStringExtra(QUERY_TYPE);
+         queryType = queryType == null ? "null" : queryType;
+         switch (queryType) {
+@@ -118,11 +115,9 @@ public class FilePathAccessTestHelper extends Activity {
+                 } else if (queryType.equals(DELETE_FILE_QUERY)) {
+                     returnStatus = file.delete();
+                 } else if (queryType.equals(OPEN_FILE_FOR_READ_QUERY)) {
+-                    returnStatus = canOpen(file, /* forWrite */ false)
+-                            && canOpenWithMediaProvider(file, /* forWrite */ false);
++                    returnStatus = canOpen(file, false /* forWrite */);
+                 } else if (queryType.equals(OPEN_FILE_FOR_WRITE_QUERY)) {
+-                    returnStatus = canOpen(file, /* forWrite */ true)
+-                            && canOpenWithMediaProvider(file, /* forWrite */ true);
++                    returnStatus = canOpen(file, true /* forWrite */);
+                 }
+             } catch(IOException e) {
+                 Log.e(TAG, "Failed to access file: " + filePath + ". Query type: " + queryType, e);
+diff --git a/tests/jni/FuseDaemonTest/libs/FuseDaemonTestLib/src/com/android/tests/fused/lib/TestUtils.java b/tests/jni/FuseDaemonTest/libs/FuseDaemonTestLib/src/com/android/tests/fused/lib/TestUtils.java
+index 2bbb4b3b..97e39d4e 100644
+--- a/tests/jni/FuseDaemonTest/libs/FuseDaemonTestLib/src/com/android/tests/fused/lib/TestUtils.java
++++ b/tests/jni/FuseDaemonTest/libs/FuseDaemonTestLib/src/com/android/tests/fused/lib/TestUtils.java
+@@ -93,8 +93,6 @@ public class TestUtils {
+     private static final long POLLING_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(10);
+     private static final long POLLING_SLEEP_MILLIS = 100;
+ 
+-    @Nullable private static Context sContext;
+-
+     /**
+      * Grants {@link Manifest.permission#GRANT_RUNTIME_PERMISSIONS} to the given package.
+      */
+@@ -257,16 +255,9 @@ public class TestUtils {
+     }
+ 
+     public static ContentResolver getContentResolver() {
+-        if (sContext != null) {
+-            return sContext.getContentResolver();
+-        }
+         return getContext().getContentResolver();
+     }
+ 
+-    public static void setContext(Context context) {
+-        sContext = context;
+-    }
+-
+     /**
+      * Queries {@link ContentResolver} for a file and returns the corresponding {@link Uri} for its
+      * entry in the database. Returns {@code null} if file doesn't exist in the database.
+@@ -390,6 +381,7 @@ public class TestUtils {
+         assertThat(fileUri).isNotNull();
+         Log.i(TAG, "Uri: " + fileUri + ". Data: " + file.getPath());
+         ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(fileUri, mode);
++        assertThat(pfd).isNotNull();
+         return pfd;
+     }
+ 
+@@ -494,19 +486,6 @@ public class TestUtils {
+         }
+     }
+ 
+-    public static boolean canOpenWithMediaProvider(File file, boolean forWrite) {
+-        try {
+-            final Uri fileUri = getFileUri(file);
+-            if (fileUri == null) {
+-                return false;
+-            }
+-            getContentResolver().openFileDescriptor(fileUri, forWrite ? "w" : "r");
+-            return true;
+-        } catch (Exception e) {
+-            return false;
+-        }
+-    }
+-
+     public static void pollForExternalStorageState() throws Exception {
+         for (int i = 0; i < POLLING_TIMEOUT_MILLIS / POLLING_SLEEP_MILLIS; i++) {
+             if(Environment.getExternalStorageState(Environment.getExternalStorageDirectory())
+-- 
+2.35.1
+

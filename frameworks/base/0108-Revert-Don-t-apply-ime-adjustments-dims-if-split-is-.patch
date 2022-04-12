@@ -1,0 +1,169 @@
+From 5e2545ffc34c989e616ddb57c8d22c579a1ea68f Mon Sep 17 00:00:00 2001
+From: Wale Ogunwale <ogunwale@google.com>
+Date: Tue, 10 Mar 2020 13:46:27 +0000
+Subject: [PATCH 108/297] Revert "Don't apply ime adjustments/dims if split is
+ not active"
+
+Revert submission 10602670
+
+Reason for revert: Breaks WM pre-submit
+Reverted Changes:
+I68f1b47e0:Some clean-up of divider code in preparation for b...
+Ifcac72f0f:Don't apply ime adjustments/dims if split is not a...
+
+Bug: 151053107
+Change-Id: Ie599188debabc3e58ad37141edaba7fab7f7d8eb
+(cherry picked from commit fae5d6e315fdfa1bd6aaee4b6d64251cbf1d6a0c)
+---
+ .../systemui/stackdivider/Divider.java        | 36 ++++++++-----------
+ .../systemui/stackdivider/DividerView.java    | 14 +-------
+ 2 files changed, 15 insertions(+), 35 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/stackdivider/Divider.java b/packages/SystemUI/src/com/android/systemui/stackdivider/Divider.java
+index 04d53627d0c..ce45b035851 100644
+--- a/packages/SystemUI/src/com/android/systemui/stackdivider/Divider.java
++++ b/packages/SystemUI/src/com/android/systemui/stackdivider/Divider.java
+@@ -148,8 +148,6 @@ public class Divider extends SystemUI implements DividerView.DividerCallbacks,
+          * regardless of what has focus.
+          */
+         private boolean mTargetShown = false;
+-        private float mTargetPrimaryDim = 0.f;
+-        private float mTargetSecondaryDim = 0.f;
+ 
+         // The following are the current (most recent) states set during animation
+         /** {@code true} if the secondary split has IME focus. */
+@@ -188,12 +186,8 @@ public class Divider extends SystemUI implements DividerView.DividerCallbacks,
+         @Override
+         public void onImeStartPositioning(int displayId, int hiddenTop, int shownTop,
+                 boolean imeShouldShow, SurfaceControl.Transaction t) {
+-            if (!inSplitMode()) {
+-                return;
+-            }
+-            final boolean splitIsVisible = !mView.isHidden();
+             mSecondaryHasFocus = getSecondaryHasFocus(displayId);
+-            mTargetAdjusted = splitIsVisible && imeShouldShow && mSecondaryHasFocus
++            mTargetAdjusted = imeShouldShow && mSecondaryHasFocus
+                     && !mSplitLayout.mDisplayLayout.isLandscape();
+             mHiddenTop = hiddenTop;
+             mShownTop = shownTop;
+@@ -201,10 +195,6 @@ public class Divider extends SystemUI implements DividerView.DividerCallbacks,
+             if (mLastAdjustTop < 0) {
+                 mLastAdjustTop = imeShouldShow ? hiddenTop : shownTop;
+             }
+-            mTargetPrimaryDim = (mSecondaryHasFocus && mTargetShown && splitIsVisible)
+-                    ? ADJUSTED_NONFOCUS_DIM : 0.f;
+-            mTargetSecondaryDim = (!mSecondaryHasFocus && mTargetShown && splitIsVisible)
+-                    ? ADJUSTED_NONFOCUS_DIM : 0.f;
+             if (mAnimation != null || (mImeWasShown && imeShouldShow
+                     && mTargetAdjusted != mAdjusted)) {
+                 // We need to animate adjustment independently of the IME position, so
+@@ -212,11 +202,7 @@ public class Divider extends SystemUI implements DividerView.DividerCallbacks,
+                 // different split's editor has gained focus while the IME is still visible.
+                 startAsyncAnimation();
+             }
+-            if (splitIsVisible) {
+-                // If split is hidden, we don't want to trigger any relayouts that would cause the
+-                // divider to show again.
+-                updateImeAdjustState();
+-            }
++            updateImeAdjustState();
+         }
+ 
+         private void updateImeAdjustState() {
+@@ -259,7 +245,7 @@ public class Divider extends SystemUI implements DividerView.DividerCallbacks,
+         @Override
+         public void onImePositionChanged(int displayId, int imeTop,
+                 SurfaceControl.Transaction t) {
+-            if (mAnimation != null || !inSplitMode()) {
++            if (mAnimation != null) {
+                 // Not synchronized with IME anymore, so return.
+                 return;
+             }
+@@ -271,7 +257,7 @@ public class Divider extends SystemUI implements DividerView.DividerCallbacks,
+         @Override
+         public void onImeEndPositioning(int displayId, boolean cancelled,
+                 SurfaceControl.Transaction t) {
+-            if (mAnimation != null || !inSplitMode()) {
++            if (mAnimation != null) {
+                 // Not synchronized with IME anymore, so return.
+                 return;
+             }
+@@ -287,10 +273,14 @@ public class Divider extends SystemUI implements DividerView.DividerCallbacks,
+                         mSplitLayout.mAdjustedSecondary);
+             }
+             final float invProg = 1.f - progress;
++            final float targetPrimaryDim =
++                    (mSecondaryHasFocus && mTargetShown) ? ADJUSTED_NONFOCUS_DIM : 0.f;
++            final float targetSecondaryDim =
++                    (!mSecondaryHasFocus && mTargetShown) ? ADJUSTED_NONFOCUS_DIM : 0.f;
+             mView.setResizeDimLayer(t, true /* primary */,
+-                    mLastPrimaryDim * invProg + progress * mTargetPrimaryDim);
++                    mLastPrimaryDim * invProg + progress * targetPrimaryDim);
+             mView.setResizeDimLayer(t, false /* primary */,
+-                    mLastSecondaryDim * invProg + progress * mTargetSecondaryDim);
++                    mLastSecondaryDim * invProg + progress * targetSecondaryDim);
+         }
+ 
+         private void onEnd(boolean cancelled, SurfaceControl.Transaction t) {
+@@ -299,8 +289,10 @@ public class Divider extends SystemUI implements DividerView.DividerCallbacks,
+                 mAdjusted = mTargetAdjusted;
+                 mImeWasShown = mTargetShown;
+                 mLastAdjustTop = mAdjusted ? mShownTop : mHiddenTop;
+-                mLastPrimaryDim = mTargetPrimaryDim;
+-                mLastSecondaryDim = mTargetSecondaryDim;
++                mLastPrimaryDim =
++                        (mSecondaryHasFocus && mTargetShown) ? ADJUSTED_NONFOCUS_DIM : 0.f;
++                mLastSecondaryDim =
++                        (!mSecondaryHasFocus && mTargetShown) ? ADJUSTED_NONFOCUS_DIM : 0.f;
+             }
+         }
+ 
+diff --git a/packages/SystemUI/src/com/android/systemui/stackdivider/DividerView.java b/packages/SystemUI/src/com/android/systemui/stackdivider/DividerView.java
+index 4114bb9d055..477cbb7c7ad 100644
+--- a/packages/SystemUI/src/com/android/systemui/stackdivider/DividerView.java
++++ b/packages/SystemUI/src/com/android/systemui/stackdivider/DividerView.java
+@@ -165,10 +165,6 @@ public class DividerView extends FrameLayout implements OnTouchListener,
+     // The view is removed or in the process of been removed from the system.
+     private boolean mRemoved;
+ 
+-    // Whether the surface for this view has been hidden regardless of actual visibility. This is
+-    // used interact with keyguard.
+-    private boolean mSurfaceHidden = false;
+-
+     private final Handler mHandler = new Handler() {
+         @Override
+         public void handleMessage(Message msg) {
+@@ -418,10 +414,6 @@ public class DividerView extends FrameLayout implements OnTouchListener,
+ 
+     /** Unlike setVisible, this directly hides the surface without changing view visibility. */
+     void setHidden(boolean hidden) {
+-        if (mSurfaceHidden == hidden) {
+-            return;
+-        }
+-        mSurfaceHidden = hidden;
+         post(() -> {
+             final SurfaceControl sc = getWindowSurfaceControl();
+             if (sc == null) {
+@@ -438,10 +430,6 @@ public class DividerView extends FrameLayout implements OnTouchListener,
+         });
+     }
+ 
+-    boolean isHidden() {
+-        return mSurfaceHidden;
+-    }
+-
+     public boolean startDragging(boolean animate, boolean touching) {
+         cancelFlingAnimation();
+         if (touching) {
+@@ -1083,7 +1071,7 @@ public class DividerView extends FrameLayout implements OnTouchListener,
+ 
+     void setResizeDimLayer(Transaction t, boolean primary, float alpha) {
+         SurfaceControl dim = primary ? mTiles.mPrimaryDim : mTiles.mSecondaryDim;
+-        if (alpha <= 0.001f) {
++        if (alpha <= 0.f) {
+             t.hide(dim);
+         } else {
+             t.setAlpha(dim, alpha);
+-- 
+2.35.1
+

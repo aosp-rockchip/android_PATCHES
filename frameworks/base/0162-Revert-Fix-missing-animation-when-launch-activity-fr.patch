@@ -1,0 +1,130 @@
+From 20d4c6e969fae55b9c8c5055291b8567a7f98b66 Mon Sep 17 00:00:00 2001
+From: Tracy Zhou <tracyzhou@google.com>
+Date: Tue, 12 May 2020 18:37:43 +0000
+Subject: [PATCH 162/297] Revert "Fix missing animation when launch activity
+ from notification."
+
+This reverts commit 2065eb7d28c258b0315881511c17cdf23b05b4e7.
+
+Reason for revert: droidfood blocker b/156322538
+
+Bug: 156322538
+
+Change-Id: I2b63893b95040c17b9dbe8ce9771f57ab7a90ad3
+(cherry picked from commit fe40c85543c86e1e7c098e2b983ab793837b7b9f)
+---
+ .../phone/NotificationShadeWindowController.java         | 9 +--------
+ .../phone/NotificationShadeWindowViewController.java     | 8 +-------
+ .../com/android/systemui/statusbar/phone/StatusBar.java  | 2 +-
+ .../statusbar/phone/NotificationShadeWindowViewTest.java | 3 +--
+ 4 files changed, 4 insertions(+), 18 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationShadeWindowController.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationShadeWindowController.java
+index 2e4a929ded5..926c1bd7c27 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationShadeWindowController.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationShadeWindowController.java
+@@ -321,8 +321,7 @@ public class NotificationShadeWindowController implements Callback, Dumpable,
+                 || state.mPanelVisible || state.mKeyguardFadingAway || state.mBouncerShowing
+                 || state.mHeadsUpShowing
+                 || state.mScrimsVisibility != ScrimController.TRANSPARENT)
+-                || state.mBackgroundBlurRadius > 0
+-                || state.mLaunchingActivity;
++                || state.mBackgroundBlurRadius > 0;
+     }
+ 
+     private void applyFitsSystemWindows(State state) {
+@@ -486,11 +485,6 @@ public class NotificationShadeWindowController implements Callback, Dumpable,
+         apply(mCurrentState);
+     }
+ 
+-    void setLaunchingActivity(boolean launching) {
+-        mCurrentState.mLaunchingActivity = launching;
+-        apply(mCurrentState);
+-    }
+-
+     public void setScrimsVisibility(int scrimsVisibility) {
+         mCurrentState.mScrimsVisibility = scrimsVisibility;
+         apply(mCurrentState);
+@@ -651,7 +645,6 @@ public class NotificationShadeWindowController implements Callback, Dumpable,
+         boolean mForceCollapsed;
+         boolean mForceDozeBrightness;
+         boolean mForceUserActivity;
+-        boolean mLaunchingActivity;
+         boolean mBackdropShowing;
+         boolean mWallpaperSupportsAmbientMode;
+         boolean mNotTouchable;
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationShadeWindowViewController.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationShadeWindowViewController.java
+index 0d2589847bc..596a607bb8a 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationShadeWindowViewController.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationShadeWindowViewController.java
+@@ -93,7 +93,6 @@ public class NotificationShadeWindowViewController {
+     private PhoneStatusBarView mStatusBarView;
+     private PhoneStatusBarTransitions mBarTransitions;
+     private StatusBar mService;
+-    private NotificationShadeWindowController mNotificationShadeWindowController;
+     private DragDownHelper mDragDownHelper;
+     private boolean mDoubleTapEnabled;
+     private boolean mSingleTapEnabled;
+@@ -431,14 +430,10 @@ public class NotificationShadeWindowViewController {
+ 
+     public void setExpandAnimationPending(boolean pending) {
+         mExpandAnimationPending = pending;
+-        mNotificationShadeWindowController
+-                .setLaunchingActivity(mExpandAnimationPending | mExpandAnimationRunning);
+     }
+ 
+     public void setExpandAnimationRunning(boolean running) {
+         mExpandAnimationRunning = running;
+-        mNotificationShadeWindowController
+-                .setLaunchingActivity(mExpandAnimationPending | mExpandAnimationRunning);
+     }
+ 
+     public void cancelExpandHelper() {
+@@ -461,9 +456,8 @@ public class NotificationShadeWindowViewController {
+         }
+     }
+ 
+-    public void setService(StatusBar statusBar, NotificationShadeWindowController controller) {
++    public void setService(StatusBar statusBar) {
+         mService = statusBar;
+-        mNotificationShadeWindowController = controller;
+     }
+ 
+     @VisibleForTesting
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBar.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBar.java
+index dd54a3d800f..bbf83bc2057 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBar.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBar.java
+@@ -1001,7 +1001,7 @@ public class StatusBar extends SystemUI implements DemoMode,
+         updateTheme();
+ 
+         inflateStatusBarWindow();
+-        mNotificationShadeWindowViewController.setService(this, mNotificationShadeWindowController);
++        mNotificationShadeWindowViewController.setService(this);
+         mNotificationShadeWindowView.setOnTouchListener(getStatusBarWindowTouchListener());
+ 
+         // TODO: Deal with the ugliness that comes from having some of the statusbar broken out
+diff --git a/packages/SystemUI/tests/src/com/android/systemui/statusbar/phone/NotificationShadeWindowViewTest.java b/packages/SystemUI/tests/src/com/android/systemui/statusbar/phone/NotificationShadeWindowViewTest.java
+index e04d25b17c7..cc2d1c25de3 100644
+--- a/packages/SystemUI/tests/src/com/android/systemui/statusbar/phone/NotificationShadeWindowViewTest.java
++++ b/packages/SystemUI/tests/src/com/android/systemui/statusbar/phone/NotificationShadeWindowViewTest.java
+@@ -83,7 +83,6 @@ public class NotificationShadeWindowViewTest extends SysuiTestCase {
+     @Mock private NotificationStackScrollLayout mNotificationStackScrollLayout;
+     @Mock private NotificationShadeDepthController mNotificationShadeDepthController;
+     @Mock private SuperStatusBarViewFactory mStatusBarViewFactory;
+-    @Mock private NotificationShadeWindowController mNotificationShadeWindowController;
+ 
+     @Before
+     public void setUp() {
+@@ -122,7 +121,7 @@ public class NotificationShadeWindowViewTest extends SysuiTestCase {
+                 mNotificationPanelViewController,
+                 mStatusBarViewFactory);
+         mController.setupExpandedStatusBar();
+-        mController.setService(mStatusBar, mNotificationShadeWindowController);
++        mController.setService(mStatusBar);
+         mController.setDragDownHelper(mDragDownHelper);
+ 
+     }
+-- 
+2.35.1
+

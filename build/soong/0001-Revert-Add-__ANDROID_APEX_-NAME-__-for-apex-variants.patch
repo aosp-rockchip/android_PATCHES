@@ -1,0 +1,74 @@
+From f131c58e5e4119ee3a818573b7ef461503955a08 Mon Sep 17 00:00:00 2001
+From: Jooyung Han <jooyung@google.com>
+Date: Wed, 16 Oct 2019 22:41:16 +0000
+Subject: [PATCH 1/5] Revert "Add __ANDROID_APEX_<NAME>__ for apex variants"
+
+This reverts commit d29e551efd6c2520ba1b92fa58894cb6a85a9002.
+
+Reason for revert: some targets are broken
+
+Bug: 142773030
+Change-Id: I50ac6842ab8aa572c11262ee0ec965ddbe903b0e
+(cherry picked from commit 12f629b26d13012049fe4778669c4e4a822d8940)
+---
+ apex/apex_test.go | 6 ------
+ cc/compiler.go    | 8 --------
+ 2 files changed, 14 deletions(-)
+
+diff --git a/apex/apex_test.go b/apex/apex_test.go
+index a420c1492..a20ead063 100644
+--- a/apex/apex_test.go
++++ b/apex/apex_test.go
+@@ -1209,22 +1209,16 @@ func TestMacro(t *testing.T) {
+ 	mylibCFlags := ctx.ModuleForTests("mylib", "android_arm64_armv8-a_core_static").Rule("cc").Args["cFlags"]
+ 	ensureNotContains(t, mylibCFlags, "-D__ANDROID_APEX__=myapex")
+ 	ensureNotContains(t, mylibCFlags, "-D__ANDROID_APEX__=otherapex")
+-	ensureNotContains(t, mylibCFlags, "-D__ANDROID_APEX_MYAPEX__")
+-	ensureNotContains(t, mylibCFlags, "-D__ANDROID_APEX_OTHERAPEX__")
+ 
+ 	// APEX variant has __ANDROID_APEX__=<apexname> defined
+ 	mylibCFlags = ctx.ModuleForTests("mylib", "android_arm64_armv8-a_core_static_myapex").Rule("cc").Args["cFlags"]
+ 	ensureContains(t, mylibCFlags, "-D__ANDROID_APEX__=myapex")
+ 	ensureNotContains(t, mylibCFlags, "-D__ANDROID_APEX__=otherapex")
+-	ensureContains(t, mylibCFlags, "-D__ANDROID_APEX_MYAPEX__")
+-	ensureNotContains(t, mylibCFlags, "-D__ANDROID_APEX_OTHERAPEX__")
+ 
+ 	// APEX variant has __ANDROID_APEX__=<apexname> defined
+ 	mylibCFlags = ctx.ModuleForTests("mylib", "android_arm64_armv8-a_core_static_otherapex").Rule("cc").Args["cFlags"]
+ 	ensureNotContains(t, mylibCFlags, "-D__ANDROID_APEX__=myapex")
+ 	ensureContains(t, mylibCFlags, "-D__ANDROID_APEX__=otherapex")
+-	ensureNotContains(t, mylibCFlags, "-D__ANDROID_APEX_MYAPEX__")
+-	ensureContains(t, mylibCFlags, "-D__ANDROID_APEX_OTHERAPEX__")
+ }
+ 
+ func TestHeaderLibsDependency(t *testing.T) {
+diff --git a/cc/compiler.go b/cc/compiler.go
+index 438dee701..ffb6ad210 100644
+--- a/cc/compiler.go
++++ b/cc/compiler.go
+@@ -320,9 +320,7 @@ func (compiler *baseCompiler) compilerFlags(ctx ModuleContext, flags Flags, deps
+ 	}
+ 
+ 	if ctx.apexName() != "" {
+-		// TODO(b/142582178): remove the value for __ANDROID_APEX__
+ 		flags.GlobalFlags = append(flags.GlobalFlags, "-D__ANDROID_APEX__="+ctx.apexName())
+-		flags.GlobalFlags = append(flags.GlobalFlags, "-D__ANDROID_APEX_"+makeDefineString(ctx.apexName())+"__")
+ 	}
+ 
+ 	instructionSet := String(compiler.Properties.Instruction_set)
+@@ -530,12 +528,6 @@ func (compiler *baseCompiler) hasSrcExt(ext string) bool {
+ 	return false
+ }
+ 
+-// makeDefineString transforms a name of an APEX module into a value to be used as value for C define
+-// For example, com.android.foo => COM_ANDROID_FOO
+-func makeDefineString(name string) string {
+-	return strings.ReplaceAll(strings.ToUpper(name), ".", "_")
+-}
+-
+ var gnuToCReplacer = strings.NewReplacer("gnu", "c")
+ 
+ func ndkPathDeps(ctx ModuleContext) android.Paths {
+-- 
+2.35.1
+

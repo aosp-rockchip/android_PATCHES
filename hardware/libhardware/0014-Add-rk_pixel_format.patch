@@ -1,0 +1,58 @@
+From 330c225e7536fdd46336505679f9e4c51a695ddb Mon Sep 17 00:00:00 2001
+From: libin <bin.li@rock-chips.com>
+Date: Wed, 25 Jul 2018 16:16:50 +0800
+Subject: [PATCH 14/36] Add rk_pixel_format
+
+Change-Id: Ia86eabca0e48c7560ab0e911774b782b53cc36e7
+---
+ include/hardware/hardware.h | 31 +++++++++++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
+ mode change 100644 => 100755 include/hardware/hardware.h
+
+diff --git a/include/hardware/hardware.h b/include/hardware/hardware.h
+old mode 100644
+new mode 100755
+index bf076f6c..308cb736
+--- a/include/hardware/hardware.h
++++ b/include/hardware/hardware.h
+@@ -201,6 +201,37 @@ typedef struct hw_device_t {
+ 
+ } hw_device_t;
+ 
++typedef enum {
++
++    /*
++     * sRGB color pixel formats:
++     *
++     * The red, green and blue components are stored in sRGB space, and converted
++     * to linear space when read, using the standard sRGB to linear equation:
++     *
++     * Clinear = Csrgb / 12.92                  for Csrgb <= 0.04045
++     *         = (Csrgb + 0.055 / 1.055)^2.4    for Csrgb >  0.04045
++     *
++     * When written the inverse transformation is performed:
++     *
++     * Csrgb = 12.92 * Clinear                  for Clinear <= 0.0031308
++     *       = 1.055 * Clinear^(1/2.4) - 0.055  for Clinear >  0.0031308
++     *
++     *
++     *  The alpha component, if present, is always stored in linear space and
++     *  is left unmodified when read or written.
++     *
++     */
++    HAL_PIXEL_FORMAT_sRGB_A_8888        = 0xC,
++    HAL_PIXEL_FORMAT_sRGB_X_8888        = 0xD,
++
++    HAL_PIXEL_FORMAT_YCrCb_NV12         = 0x15, // YUY2
++    HAL_PIXEL_FORMAT_YCrCb_NV12_VIDEO   = 0x16,
++    HAL_PIXEL_FORMAT_YCrCb_NV12_10      = 0x17, // YUY2_1obit
++    HAL_PIXEL_FORMAT_YCbCr_422_SP_10    = 0x18, //
++    HAL_PIXEL_FORMAT_YCrCb_420_SP_10    = 0x19, //
++}rk_pixel_format_t;
++
+ #ifdef __cplusplus
+ #define TO_HW_DEVICE_T_OPEN(x) reinterpret_cast<struct hw_device_t**>(x)
+ #else
+-- 
+2.35.1
+

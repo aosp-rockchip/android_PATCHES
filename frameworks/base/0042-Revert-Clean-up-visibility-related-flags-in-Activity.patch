@@ -1,0 +1,317 @@
+From c0f7c425f19b9710a5330828d6eaf35e2418a5c3 Mon Sep 17 00:00:00 2001
+From: Issei Suzuki <issei@google.com>
+Date: Thu, 14 Nov 2019 15:59:15 +0100
+Subject: [PATCH 042/297] Revert "Clean up visibility related flags in
+ ActivityRecord"
+
+This reverts commit c0edbbb521d354d4a93f9dec863c903706f0a5c4.
+
+Reason for revert: broke dev test (com.roidapp.photogrid)
+Fixes: 144403961
+
+Change-Id: I71ef435cfbdab46d2e57f2ed68af3eff04958a99
+(cherry picked from commit e63eac7a99f239fc396b0c9b04019a9fcbdf868d)
+---
+ .../android/server/windowmanagerservice.proto |  2 +-
+ data/etc/services.core.protolog.json          | 12 +++---
+ .../com/android/server/wm/ActivityRecord.java | 39 +++++++++----------
+ .../com/android/server/wm/DisplayContent.java |  2 +-
+ .../core/java/com/android/server/wm/Task.java |  9 +++--
+ .../server/wm/WindowManagerService.java       |  4 +-
+ .../com/android/server/wm/WindowState.java    | 12 +++---
+ 7 files changed, 40 insertions(+), 40 deletions(-)
+
+diff --git a/core/proto/android/server/windowmanagerservice.proto b/core/proto/android/server/windowmanagerservice.proto
+index 23566a6df84..553fc73380d 100644
+--- a/core/proto/android/server/windowmanagerservice.proto
++++ b/core/proto/android/server/windowmanagerservice.proto
+@@ -236,7 +236,7 @@ message AppWindowTokenProto {
+     optional bool fills_parent = 7;
+     optional bool app_stopped = 8;
+     optional bool visible_requested = 9;
+-    optional bool client_visible = 10;
++    optional bool client_hidden = 10;
+     optional bool defer_hiding_client = 11;
+     optional bool reported_drawn = 12;
+     optional bool reported_visible = 13;
+diff --git a/data/etc/services.core.protolog.json b/data/etc/services.core.protolog.json
+index 3c89bfd43f1..b9a1346b722 100644
+--- a/data/etc/services.core.protolog.json
++++ b/data/etc/services.core.protolog.json
+@@ -55,12 +55,6 @@
+       "group": "WM_DEBUG_REMOTE_ANIMATIONS",
+       "at": "com\/android\/server\/wm\/RemoteAnimationController.java"
+     },
+-    "-2006946193": {
+-      "message": "setClientVisible: %s clientVisible=%b Callers=%s",
+-      "level": "VERBOSE",
+-      "group": "WM_DEBUG_APP_TRANSITIONS",
+-      "at": "com\/android\/server\/wm\/ActivityRecord.java"
+-    },
+     "-2002500255": {
+       "message": "Defer removing snapshot surface in %dms",
+       "level": "VERBOSE",
+@@ -313,6 +307,12 @@
+       "group": "WM_DEBUG_ADD_REMOVE",
+       "at": "com\/android\/server\/wm\/ActivityRecord.java"
+     },
++    "-1456549051": {
++      "message": "setClientHidden: %s clientHidden=%b Callers=%s",
++      "level": "VERBOSE",
++      "group": "WM_DEBUG_APP_TRANSITIONS",
++      "at": "com\/android\/server\/wm\/ActivityRecord.java"
++    },
+     "-1455600136": {
+       "message": "Attempted to add Dream window with unknown token %s.  Aborting.",
+       "level": "WARN",
+diff --git a/services/core/java/com/android/server/wm/ActivityRecord.java b/services/core/java/com/android/server/wm/ActivityRecord.java
+index 2162bdeead0..5b5ea216a0a 100644
+--- a/services/core/java/com/android/server/wm/ActivityRecord.java
++++ b/services/core/java/com/android/server/wm/ActivityRecord.java
+@@ -173,7 +173,7 @@ import static com.android.server.wm.ActivityTaskManagerService.RELAUNCH_REASON_W
+ import static com.android.server.wm.ActivityTaskManagerService.getInputDispatchingTimeoutLocked;
+ import static com.android.server.wm.AppWindowTokenProto.ALL_DRAWN;
+ import static com.android.server.wm.AppWindowTokenProto.APP_STOPPED;
+-import static com.android.server.wm.AppWindowTokenProto.CLIENT_VISIBLE;
++import static com.android.server.wm.AppWindowTokenProto.CLIENT_HIDDEN;
+ import static com.android.server.wm.AppWindowTokenProto.DEFER_HIDING_CLIENT;
+ import static com.android.server.wm.AppWindowTokenProto.FILLS_PARENT;
+ import static com.android.server.wm.AppWindowTokenProto.FROZEN_BOUNDS;
+@@ -465,13 +465,13 @@ final class ActivityRecord extends WindowToken implements WindowManagerService.A
+     private boolean mVisible;        // Should this token's windows be visible?
+     boolean visibleIgnoringKeyguard; // is this activity visible, ignoring the fact that Keyguard
+                                      // might hide this activity?
+-    // True if the visible state of this token was forced to true due to a transferred starting
++    // True if the hidden state of this token was forced to false due to a transferred starting
+     // window.
+     private boolean mVisibleSetFromTransferredStartingWindow;
+     // TODO: figure out how to consolidate with the same variable in ActivityRecord.
+     private boolean mDeferHidingClient; // If true we told WM to defer reporting to the client
+                                         // process that it is hidden.
+-    private boolean mLastDeferHidingClient; // If true we will defer setting mClientVisible to false
++    private boolean mLastDeferHidingClient; // If true we will defer setting mClientHidden to true
+                                            // and reporting to the client that it is hidden.
+     boolean sleeping;       // have we told the activity to sleep?
+     boolean nowVisible;     // is this activity's window visible?
+@@ -536,8 +536,8 @@ final class ActivityRecord extends WindowToken implements WindowManagerService.A
+ 
+     private Task mLastParent;
+ 
+-    // Have we told the window clients to show themselves?
+-    private boolean mClientVisible;
++    // Have we told the window clients to hide themselves?
++    private boolean mClientHidden;
+ 
+     boolean firstWindowDrawn;
+     // Last drawn state we reported to the app token.
+@@ -861,7 +861,7 @@ final class ActivityRecord extends WindowToken implements WindowManagerService.A
+         pw.print(prefix); pw.print(" mOccludesParent="); pw.print(mOccludesParent);
+         pw.print(" mOrientation="); pw.println(mOrientation);
+         pw.println(prefix + "mVisibleRequested=" + mVisibleRequested
+-                + " mClientVisible=" + mClientVisible
++                + " mClientHidden=" + mClientHidden
+                 + ((mDeferHidingClient) ? " mDeferHidingClient=" + mDeferHidingClient : "")
+                 + " reportedDrawn=" + reportedDrawn + " reportedVisible=" + reportedVisible);
+         if (paused) {
+@@ -1520,7 +1520,6 @@ final class ActivityRecord extends WindowToken implements WindowManagerService.A
+         inHistory = false;
+         nowVisible = false;
+         mDrawn = false;
+-        mClientVisible = true;
+         idle = false;
+         hasBeenLaunched = false;
+         mStackSupervisor = supervisor;
+@@ -3231,7 +3230,7 @@ final class ActivityRecord extends WindowToken implements WindowManagerService.A
+                     mVisibleRequested = true;
+                     mVisibleSetFromTransferredStartingWindow = true;
+                 }
+-                setClientVisible(fromActivity.mClientVisible);
++                setClientHidden(fromActivity.mClientHidden);
+ 
+                 transferAnimation(fromActivity);
+ 
+@@ -3886,7 +3885,7 @@ final class ActivityRecord extends WindowToken implements WindowManagerService.A
+                 // We previously deferred telling the client to hide itself when visibility was
+                 // initially set to false. Now we would like it to hide, so go ahead and set it.
+                 mLastDeferHidingClient = deferHidingClient;
+-                setClientVisible(false);
++                setClientHidden(true);
+             }
+             return;
+         }
+@@ -3931,7 +3930,7 @@ final class ActivityRecord extends WindowToken implements WindowManagerService.A
+                     waitingToShow = true;
+ 
+                     // If the client isn't hidden, we don't need to reset the drawing state.
+-                    if (!isClientVisible()) {
++                    if (isClientHidden()) {
+                         // Let's reset the draw state in order to prevent the starting window to be
+                         // immediately dismissed when the app still has the surface.
+                         forAllWindows(w -> {
+@@ -3951,7 +3950,7 @@ final class ActivityRecord extends WindowToken implements WindowManagerService.A
+             // we still need to tell the client to make its windows visible so they get drawn.
+             // Otherwise, we will wait on performing the transition until all windows have been
+             // drawn, they never will be, and we are sad.
+-            setClientVisible(true);
++            setClientHidden(false);
+ 
+             requestUpdateWallpaperIfNeeded();
+ 
+@@ -4099,7 +4098,7 @@ final class ActivityRecord extends WindowToken implements WindowManagerService.A
+             // If we're becoming invisible, update the client visibility if we are not running an
+             // animation. Otherwise, we'll update client visibility in onAnimationFinished.
+             if (visible || !isAnimating()) {
+-                setClientVisible(visible);
++                setClientHidden(!visible);
+             }
+ 
+             if (!displayContent.mClosingApps.contains(this)
+@@ -5131,18 +5130,18 @@ final class ActivityRecord extends WindowToken implements WindowManagerService.A
+         }
+     }
+ 
+-    boolean isClientVisible() {
+-        return mClientVisible;
++    boolean isClientHidden() {
++        return mClientHidden;
+     }
+ 
+-    void setClientVisible(boolean clientVisible) {
+-        if (mClientVisible == clientVisible || (!clientVisible && mDeferHidingClient)) {
++    void setClientHidden(boolean hideClient) {
++        if (mClientHidden == hideClient || (hideClient && mDeferHidingClient)) {
+             return;
+         }
+         ProtoLog.v(WM_DEBUG_APP_TRANSITIONS,
+-                "setClientVisible: %s clientVisible=%b Callers=%s", this, clientVisible,
++                "setClientHidden: %s clientHidden=%b Callers=%s", this, hideClient,
+                 Debug.getCallers(5));
+-        mClientVisible = clientVisible;
++        mClientHidden = hideClient;
+         sendAppVisibilityToClients();
+     }
+ 
+@@ -5925,7 +5924,7 @@ final class ActivityRecord extends WindowToken implements WindowManagerService.A
+                 "AppWindowToken");
+ 
+         clearThumbnail();
+-        setClientVisible(isVisible() || mVisibleRequested);
++        setClientHidden(!isVisible() && !mVisibleRequested);
+ 
+         getDisplayContent().computeImeTargetIfNeeded(this);
+ 
+@@ -7347,7 +7346,7 @@ final class ActivityRecord extends WindowToken implements WindowManagerService.A
+         proto.write(FILLS_PARENT, mOccludesParent);
+         proto.write(APP_STOPPED, mAppStopped);
+         proto.write(com.android.server.wm.AppWindowTokenProto.VISIBLE_REQUESTED, mVisibleRequested);
+-        proto.write(CLIENT_VISIBLE, mClientVisible);
++        proto.write(CLIENT_HIDDEN, mClientHidden);
+         proto.write(DEFER_HIDING_CLIENT, mDeferHidingClient);
+         proto.write(REPORTED_DRAWN, reportedDrawn);
+         proto.write(REPORTED_VISIBLE, reportedVisible);
+diff --git a/services/core/java/com/android/server/wm/DisplayContent.java b/services/core/java/com/android/server/wm/DisplayContent.java
+index 6eb9dba254d..e78e3024813 100644
+--- a/services/core/java/com/android/server/wm/DisplayContent.java
++++ b/services/core/java/com/android/server/wm/DisplayContent.java
+@@ -3061,7 +3061,7 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
+                 wsa.destroySurface();
+                 mWmService.mForceRemoves.add(w);
+                 mTmpWindow = w;
+-            } else if (w.mActivityRecord != null && !w.mActivityRecord.isClientVisible()) {
++            } else if (w.mActivityRecord != null && w.mActivityRecord.isClientHidden()) {
+                 Slog.w(TAG_WM, "LEAKED SURFACE (app token hidden): "
+                         + w + " surface=" + wsa.mSurfaceController
+                         + " token=" + w.mActivityRecord);
+diff --git a/services/core/java/com/android/server/wm/Task.java b/services/core/java/com/android/server/wm/Task.java
+index 520c26e65fe..85f3f20ff5d 100644
+--- a/services/core/java/com/android/server/wm/Task.java
++++ b/services/core/java/com/android/server/wm/Task.java
+@@ -2520,7 +2520,7 @@ class Task extends WindowContainer<ActivityRecord> implements ConfigurationConta
+         for (int i = mChildren.size() - 1; i >= 0; i--) {
+             final ActivityRecord token = mChildren.get(i);
+             // skip hidden (or about to hide) apps
+-            if (token.mIsExiting || !token.isClientVisible() || !token.mVisibleRequested) {
++            if (token.mIsExiting || token.isClientHidden() || !token.mVisibleRequested) {
+                 continue;
+             }
+             final WindowState win = token.findMainWindow();
+@@ -2738,9 +2738,10 @@ class Task extends WindowContainer<ActivityRecord> implements ConfigurationConta
+ 
+     ActivityRecord getTopVisibleActivity() {
+         for (int i = mChildren.size() - 1; i >= 0; i--) {
+-            final ActivityRecord activity = mChildren.get(i);
+-            if (!activity.mIsExiting && activity.isClientVisible() && activity.mVisibleRequested) {
+-                return activity;
++            final ActivityRecord token = mChildren.get(i);
++            // skip hidden (or about to hide) apps
++            if (!token.mIsExiting && !token.isClientHidden() && token.mVisibleRequested) {
++                return token;
+             }
+         }
+         return null;
+diff --git a/services/core/java/com/android/server/wm/WindowManagerService.java b/services/core/java/com/android/server/wm/WindowManagerService.java
+index 6e4f1ee29a6..88c0fad6a6c 100644
+--- a/services/core/java/com/android/server/wm/WindowManagerService.java
++++ b/services/core/java/com/android/server/wm/WindowManagerService.java
+@@ -1702,7 +1702,7 @@ public class WindowManagerService extends IWindowManager.Stub
+             if (mInTouchMode) {
+                 res |= WindowManagerGlobal.ADD_FLAG_IN_TOUCH_MODE;
+             }
+-            if (win.mActivityRecord == null || win.mActivityRecord.isClientVisible()) {
++            if (win.mActivityRecord == null || !win.mActivityRecord.isClientHidden()) {
+                 res |= WindowManagerGlobal.ADD_FLAG_APP_VISIBLE;
+             }
+ 
+@@ -2235,7 +2235,7 @@ public class WindowManagerService extends IWindowManager.Stub
+             // associated appToken is not hidden.
+             final boolean shouldRelayout = viewVisibility == View.VISIBLE &&
+                     (win.mActivityRecord == null || win.mAttrs.type == TYPE_APPLICATION_STARTING
+-                            || win.mActivityRecord.isClientVisible());
++                            || !win.mActivityRecord.isClientHidden());
+ 
+             // If we are not currently running the exit animation, we need to see about starting
+             // one.
+diff --git a/services/core/java/com/android/server/wm/WindowState.java b/services/core/java/com/android/server/wm/WindowState.java
+index b8168319dd2..fb6b7c127c0 100644
+--- a/services/core/java/com/android/server/wm/WindowState.java
++++ b/services/core/java/com/android/server/wm/WindowState.java
+@@ -2574,7 +2574,7 @@ class WindowState extends WindowContainer<WindowState> implements WindowManagerP
+      * interacts with it.
+      */
+     private boolean shouldKeepVisibleDeadAppWindow() {
+-        if (!isWinVisibleLw() || mActivityRecord == null || !mActivityRecord.isClientVisible()) {
++        if (!isWinVisibleLw() || mActivityRecord == null || mActivityRecord.isClientHidden()) {
+             // Not a visible app window or the app isn't dead.
+             return false;
+         }
+@@ -2886,13 +2886,13 @@ class WindowState extends WindowContainer<WindowState> implements WindowManagerP
+     void sendAppVisibilityToClients() {
+         super.sendAppVisibilityToClients();
+ 
+-        final boolean clientVisible = mActivityRecord.isClientVisible();
+-        if (mAttrs.type == TYPE_APPLICATION_STARTING && !clientVisible) {
++        final boolean clientHidden = mActivityRecord.isClientHidden();
++        if (mAttrs.type == TYPE_APPLICATION_STARTING && clientHidden) {
+             // Don't hide the starting window.
+             return;
+         }
+ 
+-        if (!clientVisible) {
++        if (clientHidden) {
+             // Once we are notifying the client that it's visibility has changed, we need to prevent
+             // it from destroying child surfaces until the animation has finished. We do this by
+             // detaching any surface control the client added from the client.
+@@ -2906,8 +2906,8 @@ class WindowState extends WindowContainer<WindowState> implements WindowManagerP
+ 
+         try {
+             if (DEBUG_VISIBILITY) Slog.v(TAG,
+-                    "Setting visibility of " + this + ": " + clientVisible);
+-            mClient.dispatchAppVisibility(clientVisible);
++                    "Setting visibility of " + this + ": " + (!clientHidden));
++            mClient.dispatchAppVisibility(!clientHidden);
+         } catch (RemoteException e) {
+         }
+     }
+-- 
+2.35.1
+

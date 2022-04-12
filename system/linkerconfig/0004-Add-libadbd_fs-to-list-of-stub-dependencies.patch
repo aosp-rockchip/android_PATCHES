@@ -1,0 +1,27 @@
+From 1b3b7e0d52ccd72396b05b1f5e12d88c81d02be3 Mon Sep 17 00:00:00 2001
+From: Josh Gao <jmgao@google.com>
+Date: Thu, 20 Feb 2020 20:43:55 -0800
+Subject: [PATCH 4/6] Add libadbd_fs to list of stub dependencies.
+
+Test: treehugger
+Change-Id: Iebb108c212ace8470efef6c2838eaefdd4b4be70
+(cherry picked from commit c96d815c0a621355fae3e03949fbecc18b5c27b5)
+---
+ generator/variableloader.cc | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/generator/variableloader.cc b/generator/variableloader.cc
+index 82cbaab..f7be9af 100644
+--- a/generator/variableloader.cc
++++ b/generator/variableloader.cc
+@@ -48,6 +48,7 @@ std::vector<std::string> stub_libraries = {
+     "libRS.so",
+     "libaaudio.so",
+     "libadbd_auth.so",
++    "libadbd_fs.so",
+     "libandroid.so",
+     "libandroid_net.so",
+     "libbinder_ndk.so",
+-- 
+2.35.1
+

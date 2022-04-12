@@ -1,0 +1,91 @@
+From 95004885f89d4118d3525acd1b312795879eea12 Mon Sep 17 00:00:00 2001
+From: Taran Singh <tarandeep@google.com>
+Date: Tue, 21 Jul 2020 14:30:25 -0700
+Subject: [PATCH 185/297] Fix NavigationBarColorTest
+
+Manually partially revert I4910c2a06cc67b0470477b245fc1de54b75f10f9 so
+that we don't use a window that's animating away as control target.
+
+Fix: 161659326
+Bug: 153145997
+Test: atest NavigationBarColorTest#testSetNavigationBarColor
+
+Change-Id: I68db516c91da69e0f4dcbdfab6d6a757c4cdc75b
+(cherry picked from commit 588fa46cf4d6604b9050d67cbe2a596d52d4f6c3)
+---
+ .../com/android/server/wm/DisplayContent.java | 12 -----------
+ .../com/android/server/wm/WindowState.java    |  3 ---
+ .../server/wm/DisplayContentTests.java        | 20 -------------------
+ 3 files changed, 35 deletions(-)
+
+diff --git a/services/core/java/com/android/server/wm/DisplayContent.java b/services/core/java/com/android/server/wm/DisplayContent.java
+index 5d3f3c0401e..06c0c465633 100644
+--- a/services/core/java/com/android/server/wm/DisplayContent.java
++++ b/services/core/java/com/android/server/wm/DisplayContent.java
+@@ -3606,18 +3606,6 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
+                                 == mRemoteInsetsControlTarget)) {
+             return mRemoteInsetsControlTarget;
+         } else {
+-            // Now, a special case -- if the last target's window is in the process of exiting, but
+-            // not removed, keep on the last target to avoid IME flicker.
+-            final WindowState cur = InsetsControlTarget.asWindowOrNull(mInputMethodControlTarget);
+-            if (cur != null && !cur.mRemoved && cur.isDisplayedLw() && cur.isClosing()
+-                    && !cur.isActivityTypeHome()) {
+-                if (DEBUG_INPUT_METHOD) {
+-                    Slog.v(TAG_WM, "Not changing control while current window"
+-                            + " is closing and not removed");
+-                }
+-                return cur;
+-            }
+-            // Otherwise, we just use the ime target as received from IME.
+             return mInputMethodInputTarget;
+         }
+     }
+diff --git a/services/core/java/com/android/server/wm/WindowState.java b/services/core/java/com/android/server/wm/WindowState.java
+index f0c2a74958d..11db705f4e0 100644
+--- a/services/core/java/com/android/server/wm/WindowState.java
++++ b/services/core/java/com/android/server/wm/WindowState.java
+@@ -2173,9 +2173,6 @@ class WindowState extends WindowContainer<WindowState> implements WindowManagerP
+         if (dc.mInputMethodInputTarget == this) {
+             dc.setInputMethodInputTarget(null);
+         }
+-        if (dc.mInputMethodControlTarget == this) {
+-            dc.updateImeControlTarget();
+-        }
+ 
+         final int type = mAttrs.type;
+         if (WindowManagerService.excludeWindowTypeFromTapOutTask(type)) {
+diff --git a/services/tests/wmtests/src/com/android/server/wm/DisplayContentTests.java b/services/tests/wmtests/src/com/android/server/wm/DisplayContentTests.java
+index d6e038d8d02..66dfbfdda60 100644
+--- a/services/tests/wmtests/src/com/android/server/wm/DisplayContentTests.java
++++ b/services/tests/wmtests/src/com/android/server/wm/DisplayContentTests.java
+@@ -913,26 +913,6 @@ public class DisplayContentTests extends WindowTestsBase {
+         assertEquals(dc.mInputMethodInputTarget, dc.computeImeControlTarget());
+     }
+ 
+-    @Test
+-    public void testComputeImeControlTarget_exitingApp() throws Exception {
+-        final DisplayContent dc = createNewDisplay();
+-
+-        WindowState exitingWin = createWindow(null, TYPE_BASE_APPLICATION, "exiting app");
+-        makeWindowVisible(exitingWin);
+-        exitingWin.mWinAnimator.mDrawState = WindowStateAnimator.HAS_DRAWN;
+-        exitingWin.mAnimatingExit = true;
+-
+-        dc.mInputMethodControlTarget = exitingWin;
+-        dc.mInputMethodTarget = dc.mInputMethodInputTarget =
+-                createWindow(null, TYPE_BASE_APPLICATION, "starting app");
+-
+-        assertEquals(exitingWin, dc.computeImeControlTarget());
+-
+-        exitingWin.removeImmediately();
+-
+-        assertEquals(dc.mInputMethodInputTarget, dc.computeImeControlTarget());
+-    }
+-
+     @Test
+     public void testComputeImeControlTarget_splitscreen() throws Exception {
+         final DisplayContent dc = createNewDisplay();
+-- 
+2.35.1
+

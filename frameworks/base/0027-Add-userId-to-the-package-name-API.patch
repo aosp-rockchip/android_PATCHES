@@ -1,0 +1,186 @@
+From aa13034ef89be6802b5302516da79cd8948ce0bf Mon Sep 17 00:00:00 2001
+From: atrost <atrost@google.com>
+Date: Tue, 22 Oct 2019 15:26:16 +0100
+Subject: [PATCH 027/297] Add userId to the package name API.
+
+The service would query package manager with the provided userId, and
+will return true if the package is not visible.
+
+Bug: 142942524
+Bug: 143129258
+Test: m, treehugger
+Change-Id: I92ea650b49743c388bff9943a7ec620e3d61a5d6
+(cherry picked from commit 53bca9377da58f31e0eb21bbcef16cffc5b1f687)
+---
+ .../internal/compat/IPlatformCompat.aidl       |  8 +++++---
+ .../internal/compat/IPlatformCompatNative.aidl |  6 ++++--
+ .../android/server/compat/PlatformCompat.java  | 18 +++++++++---------
+ .../server/compat/PlatformCompatNative.java    |  8 ++++----
+ .../DevicePolicyManagerService.java            |  2 +-
+ 5 files changed, 23 insertions(+), 19 deletions(-)
+
+diff --git a/core/java/com/android/internal/compat/IPlatformCompat.aidl b/core/java/com/android/internal/compat/IPlatformCompat.aidl
+index 4099cfa51b3..8391ad2f12c 100644
+--- a/core/java/com/android/internal/compat/IPlatformCompat.aidl
++++ b/core/java/com/android/internal/compat/IPlatformCompat.aidl
+@@ -49,9 +49,10 @@ interface IPlatformCompat
+      * you do not need to call this API directly. The change will be reported for you.
+      *
+      * @param changeId    The ID of the compatibility change taking effect.
++     * @param userId      The ID of the user that the operation is done for.
+      * @param packageName The package name of the app in question.
+      */
+-     void reportChangeByPackageName(long changeId, in String packageName);
++     void reportChangeByPackageName(long changeId, in String packageName, int userId);
+ 
+     /**
+      * Reports that a compatibility change is affecting an app process now.
+@@ -86,7 +87,7 @@ interface IPlatformCompat
+      * be called when implementing functionality on behalf of the affected app.
+      *
+      * <p>Same as {@link #isChangeEnabled(long, ApplicationInfo)}, except it receives a package name
+-     * instead of an {@link ApplicationInfo}
++     * and userId instead of an {@link ApplicationInfo}
+      * object, and finds an app info object based on the package name. Returns {@code true} if
+      * there is no installed package by that name.
+      *
+@@ -100,9 +101,10 @@ interface IPlatformCompat
+      *
+      * @param changeId    The ID of the compatibility change in question.
+      * @param packageName The package name of the app in question.
++     * @param userId      The ID of the user that the operation is done for.
+      * @return {@code true} if the change is enabled for the current app.
+      */
+-    boolean isChangeEnabledByPackageName(long changeId, in String packageName);
++    boolean isChangeEnabledByPackageName(long changeId, in String packageName, int userId);
+ 
+     /**
+      * Query if a given compatibility change is enabled for an app process. This method should
+diff --git a/native/android/aidl/com/android/internal/compat/IPlatformCompatNative.aidl b/native/android/aidl/com/android/internal/compat/IPlatformCompatNative.aidl
+index c022388e0aa..347e4e8ebe4 100644
+--- a/native/android/aidl/com/android/internal/compat/IPlatformCompatNative.aidl
++++ b/native/android/aidl/com/android/internal/compat/IPlatformCompatNative.aidl
+@@ -33,9 +33,10 @@ interface IPlatformCompatNative
+      * you do not need to call this API directly. The change will be reported for you.
+      *
+      * @param changeId    The ID of the compatibility change taking effect.
++     * @param userId      The ID of the user that the operation is done for.
+      * @param packageName The package name of the app in question.
+      */
+-     void reportChangeByPackageName(long changeId, @utf8InCpp String packageName);
++     void reportChangeByPackageName(long changeId, @utf8InCpp String packageName, int userId);
+ 
+     /**
+      * Reports that a compatibility change is affecting an app process now.
+@@ -64,9 +65,10 @@ interface IPlatformCompatNative
+      *
+      * @param changeId    The ID of the compatibility change in question.
+      * @param packageName The package name of the app in question.
++     * @param userId      The ID of the user that the operation is done for.
+      * @return {@code true} if the change is enabled for the current app.
+      */
+-    boolean isChangeEnabledByPackageName(long changeId, @utf8InCpp String packageName);
++    boolean isChangeEnabledByPackageName(long changeId, @utf8InCpp String packageName, int userId);
+ 
+     /**
+      * Query if a given compatibility change is enabled for an app process. This method should
+diff --git a/services/core/java/com/android/server/compat/PlatformCompat.java b/services/core/java/com/android/server/compat/PlatformCompat.java
+index 854f16aeb54..9ac9955493c 100644
+--- a/services/core/java/com/android/server/compat/PlatformCompat.java
++++ b/services/core/java/com/android/server/compat/PlatformCompat.java
+@@ -19,7 +19,7 @@ package com.android.server.compat;
+ import android.content.Context;
+ import android.content.pm.ApplicationInfo;
+ import android.content.pm.PackageManager;
+-import android.os.Process;
++import android.os.UserHandle;
+ import android.util.Slog;
+ import android.util.StatsLog;
+ 
+@@ -54,8 +54,8 @@ public class PlatformCompat extends IPlatformCompat.Stub {
+     }
+ 
+     @Override
+-    public void reportChangeByPackageName(long changeId, String packageName) {
+-        ApplicationInfo appInfo = getApplicationInfo(packageName);
++    public void reportChangeByPackageName(long changeId, String packageName, int userId) {
++        ApplicationInfo appInfo = getApplicationInfo(packageName, userId);
+         if (appInfo == null) {
+             return;
+         }
+@@ -80,8 +80,8 @@ public class PlatformCompat extends IPlatformCompat.Stub {
+     }
+ 
+     @Override
+-    public boolean isChangeEnabledByPackageName(long changeId, String packageName) {
+-        ApplicationInfo appInfo = getApplicationInfo(packageName);
++    public boolean isChangeEnabledByPackageName(long changeId, String packageName, int userId) {
++        ApplicationInfo appInfo = getApplicationInfo(packageName, userId);
+         if (appInfo == null) {
+             return true;
+         }
+@@ -96,7 +96,8 @@ public class PlatformCompat extends IPlatformCompat.Stub {
+         }
+         boolean enabled = true;
+         for (String packageName : packages) {
+-            enabled = enabled && isChangeEnabledByPackageName(changeId, packageName);
++            enabled = enabled && isChangeEnabledByPackageName(changeId, packageName,
++                    UserHandle.getUserId(uid));
+         }
+         return enabled;
+     }
+@@ -127,10 +128,9 @@ public class PlatformCompat extends IPlatformCompat.Stub {
+         mChangeReporter.resetReportedChanges(appInfo.uid);
+     }
+ 
+-    private ApplicationInfo getApplicationInfo(String packageName) {
++    private ApplicationInfo getApplicationInfo(String packageName, int userId) {
+         try {
+-            return mContext.getPackageManager().getApplicationInfoAsUser(packageName, 0,
+-                    Process.myUid());
++            return mContext.getPackageManager().getApplicationInfoAsUser(packageName, 0, userId);
+         } catch (PackageManager.NameNotFoundException e) {
+             Slog.e(TAG, "No installed package " + packageName);
+         }
+diff --git a/services/core/java/com/android/server/compat/PlatformCompatNative.java b/services/core/java/com/android/server/compat/PlatformCompatNative.java
+index 839967139ba..85dfbf41166 100644
+--- a/services/core/java/com/android/server/compat/PlatformCompatNative.java
++++ b/services/core/java/com/android/server/compat/PlatformCompatNative.java
+@@ -29,8 +29,8 @@ public class PlatformCompatNative extends IPlatformCompatNative.Stub {
+     }
+ 
+     @Override
+-    public void reportChangeByPackageName(long changeId, String packageName) {
+-        mPlatformCompat.reportChangeByPackageName(changeId, packageName);
++    public void reportChangeByPackageName(long changeId, String packageName, int userId) {
++        mPlatformCompat.reportChangeByPackageName(changeId, packageName, userId);
+     }
+ 
+     @Override
+@@ -39,8 +39,8 @@ public class PlatformCompatNative extends IPlatformCompatNative.Stub {
+     }
+ 
+     @Override
+-    public boolean isChangeEnabledByPackageName(long changeId, String packageName) {
+-        return mPlatformCompat.isChangeEnabledByPackageName(changeId, packageName);
++    public boolean isChangeEnabledByPackageName(long changeId, String packageName, int userId) {
++        return mPlatformCompat.isChangeEnabledByPackageName(changeId, packageName, userId);
+     }
+ 
+     @Override
+diff --git a/services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java b/services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java
+index c4adc035d61..21bcaa87431 100644
+--- a/services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java
++++ b/services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java
+@@ -4178,7 +4178,7 @@ public class DevicePolicyManagerService extends BaseIDevicePolicyManager {
+     private boolean passwordQualityInvocationOrderCheckEnabled(String packageName, int userId) {
+         try {
+             return mIPlatformCompat.isChangeEnabledByPackageName(ADMIN_APP_PASSWORD_COMPLEXITY,
+-                    packageName);
++                    packageName, userId);
+         } catch (RemoteException e) {
+             Log.e(LOG_TAG, "Failed to get a response from PLATFORM_COMPAT_SERVICE", e);
+         }
+-- 
+2.35.1
+

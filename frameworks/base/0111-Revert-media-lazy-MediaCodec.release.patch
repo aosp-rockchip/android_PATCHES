@@ -1,0 +1,74 @@
+From ea1a0ea8c207258d309b5211c15c03078809fa2c Mon Sep 17 00:00:00 2001
+From: Lajos Molnar <lajos@google.com>
+Date: Mon, 9 Mar 2020 21:22:44 +0000
+Subject: [PATCH 111/297] Revert "media: lazy MediaCodec.release()"
+
+Revert submission 10446783-mediacodec-lazy-release
+
+Reason for revert: back-to-back video playback jitters
+Reverted Changes:
+I119945684:stagefright: MediaCodec::releaseAsync()
+Ieb4c0b2e1:media: lazy MediaCodec.release()
+
+Bug: 150662913
+Change-Id: I9388f90ab7befe8415afa82b6b349318c5bdc2f8
+(cherry picked from commit 5b610e26eb1be054aa144c39ae3045d5f2c3d29c)
+---
+ media/jni/android_media_MediaCodec.cpp | 14 ++------------
+ media/jni/android_media_MediaCodec.h   |  1 -
+ 2 files changed, 2 insertions(+), 13 deletions(-)
+
+diff --git a/media/jni/android_media_MediaCodec.cpp b/media/jni/android_media_MediaCodec.cpp
+index 737c95d73e6..893e51654b6 100644
+--- a/media/jni/android_media_MediaCodec.cpp
++++ b/media/jni/android_media_MediaCodec.cpp
+@@ -242,13 +242,6 @@ void JMediaCodec::release() {
+     });
+ }
+ 
+-void JMediaCodec::releaseAsync() {
+-    if (mCodec != NULL) {
+-        mCodec->releaseAsync();
+-    }
+-    mInitStatus = NO_INIT;
+-}
+-
+ JMediaCodec::~JMediaCodec() {
+     if (mLooper != NULL) {
+         /* MediaCodec and looper should have been released explicitly already
+@@ -1131,10 +1124,7 @@ static sp<JMediaCodec> getMediaCodec(JNIEnv *env, jobject thiz) {
+ }
+ 
+ static void android_media_MediaCodec_release(JNIEnv *env, jobject thiz) {
+-    sp<JMediaCodec> codec = getMediaCodec(env, thiz);
+-    if (codec != NULL) {
+-        codec->releaseAsync();
+-    }
++    setMediaCodec(env, thiz, NULL);
+ }
+ 
+ static void throwCodecException(JNIEnv *env, status_t err, int32_t actionCode, const char *msg) {
+@@ -2807,7 +2797,7 @@ static void android_media_MediaCodec_native_setup(
+ 
+ static void android_media_MediaCodec_native_finalize(
+         JNIEnv *env, jobject thiz) {
+-    setMediaCodec(env, thiz, NULL);
++    android_media_MediaCodec_release(env, thiz);
+ }
+ 
+ // MediaCodec.LinearBlock
+diff --git a/media/jni/android_media_MediaCodec.h b/media/jni/android_media_MediaCodec.h
+index 400ce1bc98e..8899fee7a73 100644
+--- a/media/jni/android_media_MediaCodec.h
++++ b/media/jni/android_media_MediaCodec.h
+@@ -61,7 +61,6 @@ struct JMediaCodec : public AHandler {
+ 
+     void registerSelf();
+     void release();
+-    void releaseAsync();
+ 
+     status_t enableOnFrameRenderedListener(jboolean enable);
+ 
+-- 
+2.35.1
+

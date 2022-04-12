@@ -1,0 +1,33 @@
+From f046dc37f8607619fd9528c742654def243993a1 Mon Sep 17 00:00:00 2001
+From: Daniel Chapin <chapin@google.com>
+Date: Tue, 14 Apr 2020 15:47:48 +0000
+Subject: [PATCH 12/25] Revert "Don't write user_switcher_enabled value when
+ enter this Settings"
+
+This reverts commit 898d6b4d73f40b08a91f69dbdf3b67550f1df198.
+
+Reason for revert: Causing a regression
+Bug: 153944718
+
+Change-Id: If96441618d32a65b0bae4c5c26fb3b278556cc8c
+(cherry picked from commit 77c41c1a5ab0f9ea1a4f55f41ade1e3193bc6532)
+---
+ .../android/settings/users/MultiUserSwitchBarController.java    | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/com/android/settings/users/MultiUserSwitchBarController.java b/src/com/android/settings/users/MultiUserSwitchBarController.java
+index 58de14963f..a5fdf9b327 100644
+--- a/src/com/android/settings/users/MultiUserSwitchBarController.java
++++ b/src/com/android/settings/users/MultiUserSwitchBarController.java
+@@ -52,6 +52,8 @@ public class MultiUserSwitchBarController implements SwitchWidgetController.OnSw
+         mListener = listener;
+         mUserCapabilities = UserCapabilities.create(context);
+         mSwitchBar.setChecked(mUserCapabilities.mUserSwitcherEnabled);
++        Settings.Global.putInt(mContext.getContentResolver(),
++                Settings.Global.USER_SWITCHER_ENABLED, mSwitchBar.isChecked() ? 1 : 0);
+ 
+         if (mUserCapabilities.mDisallowSwitchUser) {
+             mSwitchBar.setDisabledByAdmin(RestrictedLockUtilsInternal
+-- 
+2.35.1
+

@@ -1,0 +1,273 @@
+From b9e3b61ba374688c55220b4c6dcfbb0fdf5953c1 Mon Sep 17 00:00:00 2001
+From: Weixin Zhou <zwx@rock-chips.com>
+Date: Fri, 15 Jan 2021 09:44:06 +0800
+Subject: [PATCH 19/21] libsuspend: replace the command 'mem' with 'idle' in
+ autosuspend loop
+
+Signed-off-by: Weixin Zhou <zwx@rock-chips.com>
+Change-Id: I2cb593e4cc6408b69e17265fa1e0d4443042c2ec
+---
+ libsuspend/autosuspend.c                | 37 +++++-----------
+ libsuspend/autosuspend_wakeup_count.cpp | 57 ++++++++++++++++++-------
+ 2 files changed, 52 insertions(+), 42 deletions(-)
+
+diff --git a/libsuspend/autosuspend.c b/libsuspend/autosuspend.c
+index be86e06f5..bb6b9fc6b 100644
+--- a/libsuspend/autosuspend.c
++++ b/libsuspend/autosuspend.c
+@@ -25,7 +25,6 @@
+ #include "autosuspend_ops.h"
+ 
+ static struct autosuspend_ops* autosuspend_ops = NULL;
+-static bool autosuspend_enabled;
+ 
+ static int autosuspend_init(void) {
+     if (autosuspend_ops != NULL) {
+@@ -38,7 +37,7 @@ static int autosuspend_init(void) {
+         return -1;
+     }
+ 
+-    ALOGV("autosuspend initialized");
++    ALOGE("autosuspend initialized");
+     return 0;
+ }
+ 
+@@ -50,18 +49,13 @@ int autosuspend_enable(void) {
+         return ret;
+     }
+ 
+-    ALOGV("autosuspend_enable");
+-
+-    if (autosuspend_enabled) {
+-        return 0;
+-    }
++    ALOGE("autosuspend_enable");
+ 
+     ret = autosuspend_ops->enable();
+     if (ret) {
+         return ret;
+     }
+ 
+-    autosuspend_enabled = true;
+     return 0;
+ }
+ 
+@@ -73,18 +67,13 @@ int autosuspend_disable(void) {
+         return ret;
+     }
+ 
+-    ALOGV("autosuspend_disable");
+-
+-    if (!autosuspend_enabled) {
+-        return 0;
+-    }
++    ALOGE("autosuspend_disable");
+ 
+     ret = autosuspend_ops->disable();
+     if (ret) {
+         return ret;
+     }
+ 
+-    autosuspend_enabled = false;
+     return 0;
+ }
+ 
+@@ -96,7 +85,7 @@ int autosuspend_force_suspend(int timeout_ms) {
+         return ret;
+     }
+ 
+-    ALOGV("autosuspend_force_suspend");
++    ALOGE("autosuspend_force_suspend");
+ 
+     return autosuspend_ops->force_suspend(timeout_ms);
+ }
+@@ -109,24 +98,20 @@ void autosuspend_set_wakeup_callback(void (*func)(bool success)) {
+         return;
+     }
+ 
+-    ALOGV("set_wakeup_callback");
++    ALOGE("set_wakeup_callback");
+ 
+     autosuspend_ops->set_wakeup_callback(func);
+ }
+ 
+-int autosuspend_idle(int screen_on)
++int autosuspend_idle(int on)
+ {
+     int ret;
++   
++    ALOGE("======autosuspend_idle screen_on %d", on);
++    autosuspend_ops->idle(on);
+ 
+-    ret = autosuspend_init();
+-    if (ret) {
+-        return ret;
+-    }
+-
+-    ret = autosuspend_ops->idle(screen_on);
+-    if (ret) {
+-        return ret;
+-    }
++    if (on)
++	    autosuspend_enable();
+ 
+     return 0;
+ }
+diff --git a/libsuspend/autosuspend_wakeup_count.cpp b/libsuspend/autosuspend_wakeup_count.cpp
+index 24ad5c405..699302b2c 100644
+--- a/libsuspend/autosuspend_wakeup_count.cpp
++++ b/libsuspend/autosuspend_wakeup_count.cpp
+@@ -58,6 +58,8 @@ static constexpr char ac_online_state[] = "/sys/class/power_supply/ac/online";
+ static constexpr char bt_state[] = "/sys/class/rfkill/rfkill0/state";
+ static constexpr char wifi_state[] = "/sys/class/net/wlan0/carrier";
+ static bool autosuspend_is_init = false;
++static int start_idle;
++static bool autosuspend_enabled;
+ 
+ static void update_sleep_time(bool success) {
+     if (success) {
+@@ -70,14 +72,17 @@ static void update_sleep_time(bool success) {
+ 
+ static void* suspend_thread_func(void* arg __attribute__((unused))) {
+     bool success = true;
++    int ret;
+ 
+     while (true) {
+         update_sleep_time(success);
+         usleep(sleep_time);
+-        success = false;
+-        LOG(VERBOSE) << "read wakeup_count";
++	success = false;
++        LOG(ERROR) << "read wakeup_count";
+         lseek(wakeup_count_fd, 0, SEEK_SET);
+         std::string wakeup_count;
++
++
+         if (!ReadFdToString(wakeup_count_fd, &wakeup_count)) {
+             PLOG(ERROR) << "error reading from " << sys_power_wakeup_count;
+             continue;
+@@ -89,27 +94,32 @@ static void* suspend_thread_func(void* arg __attribute__((unused))) {
+             continue;
+         }
+ 
+-        LOG(VERBOSE) << "wait";
+-        int ret = sem_wait(&suspend_lockout);
++        LOG(ERROR) << "wait";
++        ret = sem_wait(&suspend_lockout);
+         if (ret < 0) {
+             PLOG(ERROR) << "error waiting on semaphore";
+             continue;
+         }
+ 
+-        LOG(VERBOSE) << "write " << wakeup_count << " to wakeup_count";
+-        if (WriteStringToFd(wakeup_count, wakeup_count_fd)) {
+-            LOG(VERBOSE) << "write " << sleep_state << " to " << sys_power_state;
+-            success = WriteStringToFd(sleep_state, state_fd);
++        LOG(ERROR) << "write " << wakeup_count << " to wakeup_count " << start_idle;
++        if (WriteStringToFd(wakeup_count, wakeup_count_fd) && start_idle) {
++            LOG(ERROR) << "write " << idle_state << " to " << sys_power_state;
++            success = WriteStringToFd(idle_state, state_fd);
+ 
++	    if (success) {
++		    LOG(ERROR) << "v1 ===========last idle success, goto wait next enable sleep";
++		    autosuspend_enabled = false;
++		    continue;
++	    }
+             void (*func)(bool success) = wakeup_func;
+             if (func != NULL) {
+                 (*func)(success);
+             }
+         } else {
+-            PLOG(ERROR) << "error writing to " << sys_power_wakeup_count;
++            PLOG(ERROR) << "error writing to " << sys_power_wakeup_count << " screen= " << start_idle;
+         }
+ 
+-        LOG(VERBOSE) << "release sem";
++        LOG(ERROR) << "release sem";
+         ret = sem_post(&suspend_lockout);
+         if (ret < 0) {
+             PLOG(ERROR) << "error releasing semaphore";
+@@ -162,7 +172,7 @@ static int autosuspend_init(void) {
+         goto err_pthread_create;
+     }
+ 
+-    LOG(VERBOSE) << "autosuspend_init success";
++    LOG(ERROR) << "autosuspend_init success";
+     autosuspend_is_init = true;
+     return 0;
+ 
+@@ -175,7 +185,7 @@ err_open_wakeup_count:
+ }
+ 
+ static int autosuspend_wakeup_count_enable(void) {
+-    LOG(VERBOSE) << "autosuspend_wakeup_count_enable";
++    LOG(ERROR) << "autosuspend_wakeup_count_enable";
+ 
+     int ret = autosuspend_init();
+     if (ret < 0) {
+@@ -183,36 +193,46 @@ static int autosuspend_wakeup_count_enable(void) {
+         return ret;
+     }
+ 
++    if (autosuspend_enabled) {
++        return 0;
++    }
++
+     ret = sem_post(&suspend_lockout);
+     if (ret < 0) {
+         PLOG(ERROR) << "error changing semaphore";
+     }
+ 
+-    LOG(VERBOSE) << "autosuspend_wakeup_count_enable done";
++    autosuspend_enabled = true;
++    LOG(ERROR) << "autosuspend_wakeup_count_enable done";
+ 
+     return ret;
+ }
+ 
+ static int autosuspend_wakeup_count_disable(void) {
+-    LOG(VERBOSE) << "autosuspend_wakeup_count_disable";
++    LOG(ERROR) << "autosuspend_wakeup_count_disable";
+ 
+     if (!autosuspend_is_init) {
+         return 0;  // always successful if no thread is running yet
+     }
+ 
++    if (!autosuspend_enabled) {
++        return 0;
++    }
++
+     int ret = sem_wait(&suspend_lockout);
+ 
+     if (ret < 0) {
+         PLOG(ERROR) << "error changing semaphore";
+     }
+ 
+-    LOG(VERBOSE) << "autosuspend_wakeup_count_disable done";
++    autosuspend_enabled = false;
++    LOG(ERROR) << "autosuspend_wakeup_count_disable done";
+ 
+     return ret;
+ }
+ 
+ static int force_suspend(int timeout_ms) {
+-    LOG(VERBOSE) << "force_suspend called with timeout: " << timeout_ms;
++    LOG(ERROR) << "force_suspend called with timeout: " << timeout_ms;
+ 
+     int ret = init_state_fd();
+     if (ret < 0) {
+@@ -348,6 +368,11 @@ static int autosuspend_wakeup_count_idle(int screen_on)
+         return ret;
+     }
+ 
++    start_idle =  screen_on;
++
++    return 0;
++
++
+     ebc_state = get_ebc_state();
+     charge_state = get_charge_state();
+     wifi_state = get_wifi_state();
+-- 
+2.35.1
+

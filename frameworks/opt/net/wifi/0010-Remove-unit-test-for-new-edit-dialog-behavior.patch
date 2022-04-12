@@ -1,0 +1,50 @@
+From 49ebde931944a9797e69697ba15ce154ca362387 Mon Sep 17 00:00:00 2001
+From: Quang Luong <qal@google.com>
+Date: Tue, 15 Sep 2020 19:04:38 -0700
+Subject: [PATCH 10/13] Remove unit test for new edit dialog behavior
+
+Removing unit test for showing edit dialog for never-connected secured
+networks, since this behavior does not happen anymore.
+
+Bug: 160727383
+Test: atest WifiTrackerLibTests
+Change-Id: I7d13141ad4ef8ebe9166cf26d00fb22e74d1af32
+---
+ .../wifitrackerlib/StandardWifiEntryTest.java | 21 -------------------
+ 1 file changed, 21 deletions(-)
+
+diff --git a/libs/WifiTrackerLib/tests/src/com/android/wifitrackerlib/StandardWifiEntryTest.java b/libs/WifiTrackerLib/tests/src/com/android/wifitrackerlib/StandardWifiEntryTest.java
+index b9a0ca12b..02fedf118 100644
+--- a/libs/WifiTrackerLib/tests/src/com/android/wifitrackerlib/StandardWifiEntryTest.java
++++ b/libs/WifiTrackerLib/tests/src/com/android/wifitrackerlib/StandardWifiEntryTest.java
+@@ -721,27 +721,6 @@ public class StandardWifiEntryTest {
+         assertThat(entry.shouldEditBeforeConnect()).isFalse();
+     }
+ 
+-    @Test
+-    public void testShouldEditBeforeConnect_securedNetwork_returnTrueIfNeverConnected() {
+-        // Test never connected.
+-        WifiConfiguration wifiConfig = spy(new WifiConfiguration());
+-        wifiConfig.SSID = "\"ssid\"";
+-        wifiConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+-        StandardWifiEntry entry = new StandardWifiEntry(mMockContext, mTestHandler,
+-                ssidAndSecurityToStandardWifiEntryKey("ssid", SECURITY_PSK),
+-                wifiConfig, mMockWifiManager, mMockScoreCache, false /* forSavedNetworksPage */);
+-        NetworkSelectionStatus networkSelectionStatus =
+-                spy(new NetworkSelectionStatus.Builder().build());
+-        doReturn(networkSelectionStatus).when(wifiConfig).getNetworkSelectionStatus();
+-
+-        assertThat(entry.shouldEditBeforeConnect()).isTrue();
+-
+-        // Test ever connected.
+-        doReturn(true).when(networkSelectionStatus).hasEverConnected();
+-
+-        assertThat(entry.shouldEditBeforeConnect()).isFalse();
+-    }
+-
+     @Test
+     public void testShouldEditBeforeConnect_authenticationFailure_returnTrue() {
+         // Test DISABLED_AUTHENTICATION_FAILURE.
+-- 
+2.35.1
+

@@ -1,0 +1,61 @@
+From 916f901137080d51a46c6971f7d9cc6670a54463 Mon Sep 17 00:00:00 2001
+From: Daniel Chapin <chapin@google.com>
+Date: Sat, 22 Feb 2020 00:12:50 +0000
+Subject: [PATCH 079/297] Revert "Avoid creating new instance on top when
+ started for resu..."
+
+Revert "Add tests for start singleTop/singleInstance activity fo..."
+
+Revert submission 10112771-single-for-result
+
+Reason for revert: b/149877125
+Reverted Changes:
+I923a0d9aa:Avoid creating new instance on top when started fo...
+I7d47580f8:Add tests for start singleTop/singleInstance activ...
+
+Change-Id: Ice262d1b8cada3b6c6fe0a5e8000bb59e0536596
+(cherry picked from commit e0012bda2adf8f00c6f159a5210b43c0bc692272)
+---
+ .../core/java/com/android/server/wm/ActivityStarter.java  | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/services/core/java/com/android/server/wm/ActivityStarter.java b/services/core/java/com/android/server/wm/ActivityStarter.java
+index 600a125cdf4..8878dee6b47 100644
+--- a/services/core/java/com/android/server/wm/ActivityStarter.java
++++ b/services/core/java/com/android/server/wm/ActivityStarter.java
+@@ -1813,12 +1813,12 @@ class ActivityStarter {
+      */
+     private int deliverToCurrentTopIfNeeded(ActivityStack topStack) {
+         final ActivityRecord top = topStack.topRunningNonDelayedActivityLocked(mNotTop);
+-        final boolean dontStart = top != null
++        final boolean dontStart = top != null && mStartActivity.resultTo == null
+                 && top.mActivityComponent.equals(mStartActivity.mActivityComponent)
+                 && top.mUserId == mStartActivity.mUserId
+                 && top.attachedToProcess()
+                 && ((mLaunchFlags & FLAG_ACTIVITY_SINGLE_TOP) != 0
+-                    || isLaunchModeOneOf(LAUNCH_SINGLE_TOP, LAUNCH_SINGLE_TASK))
++                || isLaunchModeOneOf(LAUNCH_SINGLE_TOP, LAUNCH_SINGLE_TASK))
+                 // This allows home activity to automatically launch on secondary display when
+                 // display added, if home was the top activity on default display, instead of
+                 // sending new intent to the home activity on default display.
+@@ -2049,6 +2049,8 @@ class ActivityStarter {
+                 && !isLaunchModeOneOf(LAUNCH_SINGLE_TASK, LAUNCH_SINGLE_INSTANCE)
+                 && (mLaunchFlags & FLAG_ACTIVITY_NEW_DOCUMENT) != 0;
+ 
++        sendNewTaskResultRequestIfNeeded();
++
+         if ((mLaunchFlags & FLAG_ACTIVITY_NEW_DOCUMENT) != 0 && r.resultTo == null) {
+             mLaunchFlags |= FLAG_ACTIVITY_NEW_TASK;
+         }
+@@ -2230,8 +2232,6 @@ class ActivityStarter {
+                 mLaunchFlags |= FLAG_ACTIVITY_NEW_TASK;
+             }
+         }
+-
+-        sendNewTaskResultRequestIfNeeded();
+     }
+ 
+     private void computeSourceStack() {
+-- 
+2.35.1
+

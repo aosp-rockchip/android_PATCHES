@@ -1,0 +1,44 @@
+From 711a648cb7e5adad3ac484ba4b2f0279a23a4693 Mon Sep 17 00:00:00 2001
+From: Dayao Ji <jdy@rock-chips.com>
+Date: Tue, 29 Sep 2020 17:34:26 +0800
+Subject: [PATCH 05/11] install: optimize update process for sideload
+
+Signed-off-by: Dayao Ji <jdy@rock-chips.com>
+Change-Id: I3a218c7f858373f937391c26f0093e83d2032289
+---
+ install/fuse_install.cpp | 4 ++--
+ recovery_utils/roots.cpp | 1 -
+ 2 files changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/install/fuse_install.cpp b/install/fuse_install.cpp
+index 177e9d27..3caa672c 100644
+--- a/install/fuse_install.cpp
++++ b/install/fuse_install.cpp
+@@ -181,10 +181,10 @@ InstallResult InstallWithFuseFromPath(std::string_view path, RecoveryUI* ui) {
+       }
+     }
+     auto package =
+-        Package::CreateFilePackage(/*FUSE_SIDELOAD_HOST_PATHNAME*/"/mnt/external_sd/update.zip",
++        Package::CreateFilePackage(FUSE_SIDELOAD_HOST_PATHNAME,
+                                    std::bind(&RecoveryUI::SetProgress, ui, std::placeholders::_1));
+     result =
+-        InstallPackage(package.get(), /*FUSE_SIDELOAD_HOST_PATHNAME*/"/mnt/external_sd/update.zip", false, 0 /* retry_count */, ui);
++        InstallPackage(package.get(), FUSE_SIDELOAD_HOST_PATHNAME, false, 0 /* retry_count */, ui);
+     break;
+   }
+ 
+diff --git a/recovery_utils/roots.cpp b/recovery_utils/roots.cpp
+index ea6c567b..4c70917d 100644
+--- a/recovery_utils/roots.cpp
++++ b/recovery_utils/roots.cpp
+@@ -100,7 +100,6 @@ int ensure_path_mounted(const std::string& path) {
+       return -1;
+     }
+ 
+-    printf("ensure_path_mounted fs_mgr mount failed, path=%s, volume_for_mount_point can get Volumne  \n", path.c_str());
+     if (strcmp((v->fs_type).c_str(), (const char*)"ramdisk") == 0) {
+       // The ramdisk is always mounted.
+       return 0;
+-- 
+2.35.1
+

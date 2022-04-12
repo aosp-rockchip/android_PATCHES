@@ -1,0 +1,54 @@
+From 493cfb59b2f287cb834b06a0d5429c7026e7737c Mon Sep 17 00:00:00 2001
+From: Shunhua Lan <lsh@rock-chips.com>
+Date: Thu, 28 May 2020 15:04:35 +0800
+Subject: [PATCH 214/297] WiredAccessoryManager: Use extcon to change dp audio
+ status regard dp audio as spdif device
+
+Signed-off-by: Shunhua Lan <lsh@rock-chips.com>
+Change-Id: I2d2020df0febc85f708065ffe56908635390be04
+---
+ .../java/com/android/server/WiredAccessoryManager.java     | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/WiredAccessoryManager.java b/services/core/java/com/android/server/WiredAccessoryManager.java
+index b96af153d68..c7e84ea7dfc 100644
+--- a/services/core/java/com/android/server/WiredAccessoryManager.java
++++ b/services/core/java/com/android/server/WiredAccessoryManager.java
+@@ -63,14 +63,16 @@ final class WiredAccessoryManager implements WiredAccessoryCallbacks {
+     private static final int BIT_USB_HEADSET_DGTL = (1 << 3);
+     private static final int BIT_HDMI_AUDIO = (1 << 4);
+     private static final int BIT_LINEOUT = (1 << 5);
++    private static final int BIT_DP_AUDIO = (1 << 6);
+     private static final int SUPPORTED_HEADSETS = (BIT_HEADSET | BIT_HEADSET_NO_MIC |
+             BIT_USB_HEADSET_ANLG | BIT_USB_HEADSET_DGTL |
+-            BIT_HDMI_AUDIO | BIT_LINEOUT);
++            BIT_HDMI_AUDIO | BIT_LINEOUT | BIT_DP_AUDIO);
+ 
+     private static final String NAME_H2W = "h2w";
+     private static final String NAME_USB_AUDIO = "usb_audio";
+     private static final String NAME_HDMI_AUDIO = "hdmi_audio";
+     private static final String NAME_HDMI = "hdmi";
++    private static final String NAME_DP = "dp";
+ 
+     private static final int MSG_NEW_DEVICE_STATE = 1;
+     private static final int MSG_SYSTEM_READY = 2;
+@@ -299,6 +301,8 @@ final class WiredAccessoryManager implements WiredAccessoryCallbacks {
+                 outDevice = AudioManager.DEVICE_OUT_DGTL_DOCK_HEADSET;
+             } else if (headset == BIT_HDMI_AUDIO) {
+                 outDevice = AudioManager.DEVICE_OUT_HDMI;
++            } else if (headset == BIT_DP_AUDIO) {
++                outDevice = AudioManager.DEVICE_OUT_SPDIF;
+             } else {
+                 Slog.e(TAG, "setDeviceState() invalid headset type: " + headset);
+                 return;
+@@ -527,6 +531,7 @@ final class WiredAccessoryManager implements WiredAccessoryCallbacks {
+             updateBit(maskAndState, BIT_HEADSET_NO_MIC, status, "HEADPHONE") ;
+             updateBit(maskAndState, BIT_HEADSET, status,"MICROPHONE") ;
+             updateBit(maskAndState, BIT_HDMI_AUDIO, status,"HDMI") ;
++            updateBit(maskAndState, BIT_DP_AUDIO, status,"DP");
+             updateBit(maskAndState, BIT_LINEOUT, status,"LINE-OUT") ;
+             if (LOG) Slog.v(TAG, "mask " + maskAndState[0] + " state " + maskAndState[1]);
+             return Pair.create(maskAndState[0],maskAndState[1]);
+-- 
+2.35.1
+

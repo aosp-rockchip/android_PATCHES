@@ -1,0 +1,50 @@
+From 84f13c8658f2daef6042a2542e6a224b3dd69e89 Mon Sep 17 00:00:00 2001
+From: Todd Kennedy <toddke@google.com>
+Date: Fri, 25 Sep 2020 08:39:57 -0700
+Subject: [PATCH 255/297] Handling removing <original-package> tag
+
+Fixes: 169414761
+Test: Manual
+Test: Add package A
+Test: Verify package A exists
+Test: Remove A, add package B w/ original-package A
+Test: Verify package A exists, but codepath is to package B
+Test: Replace package B w/o original-package A
+Test: Verify package A removed and package B added
+Change-Id: Ib0dbd18fa2f44c2a6b64cc3731d891c44d8d90ab
+---
+ .../java/com/android/server/pm/PackageManagerService.java     | 2 ++
+ services/core/java/com/android/server/pm/Settings.java        | 4 ++++
+ 2 files changed, 6 insertions(+)
+
+diff --git a/services/core/java/com/android/server/pm/PackageManagerService.java b/services/core/java/com/android/server/pm/PackageManagerService.java
+index 33eecf1bded..da4a019d5d1 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -11190,6 +11190,8 @@ public class PackageManagerService extends IPackageManager.Stub
+                 mSettings.addRenamedPackageLPw(parsedPackage.getRealPackage(),
+                         originalPkgSetting.name);
+                 mTransferredPackages.add(originalPkgSetting.name);
++            } else {
++                mSettings.removeRenamedPackageLPw(parsedPackage.getPackageName());
+             }
+         }
+         if (pkgSetting.sharedUser != null) {
+diff --git a/services/core/java/com/android/server/pm/Settings.java b/services/core/java/com/android/server/pm/Settings.java
+index 7fd39aec1ce..531bd2bf91a 100644
+--- a/services/core/java/com/android/server/pm/Settings.java
++++ b/services/core/java/com/android/server/pm/Settings.java
+@@ -536,6 +536,10 @@ public final class Settings {
+         return mRenamedPackages.put(pkgName, origPkgName);
+     }
+ 
++    void removeRenamedPackageLPw(String pkgName) {
++        mRenamedPackages.remove(pkgName);
++    }
++
+     public boolean canPropagatePermissionToInstantApp(String permName) {
+         return mPermissions.canPropagatePermissionToInstantApp(permName);
+     }
+-- 
+2.35.1
+

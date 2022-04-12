@@ -1,0 +1,37 @@
+From 32b55f2cf38f652c2ceb452d5f5555936f537578 Mon Sep 17 00:00:00 2001
+From: joshmccloskey <joshmccloskey@google.com>
+Date: Thu, 11 Jul 2019 13:08:02 -0700
+Subject: [PATCH 02/25] Ensure feature is supported and enabled.
+
+Fixes: 137285390
+Test: Verified that SecuritySettings no longer crashes.
+Test: Verified that this PrefenceController no longer shows up
+if the device does not support it.
+Test: Verified that this PreferenceController no longer
+shows up when the work profile is disabled.
+
+Change-Id: I10f015e18491b203db6f942f07034d55f620cfe5
+(cherry picked from commit a96a84e2565394dba671478a1a105ae41f38cd2f)
+---
+ .../face/FaceProfileStatusPreferenceController.java          | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/src/com/android/settings/biometrics/face/FaceProfileStatusPreferenceController.java b/src/com/android/settings/biometrics/face/FaceProfileStatusPreferenceController.java
+index eeb2cbf5f7..56b325bdf8 100644
+--- a/src/com/android/settings/biometrics/face/FaceProfileStatusPreferenceController.java
++++ b/src/com/android/settings/biometrics/face/FaceProfileStatusPreferenceController.java
+@@ -33,6 +33,11 @@ public class FaceProfileStatusPreferenceController extends FaceStatusPreferenceC
+ 
+     @Override
+     public int getAvailabilityStatus() {
++        // Check if Face for Profile is available.
++        final int isAvailable = super.getAvailabilityStatus();
++        if (isAvailable != AVAILABLE) {
++            return isAvailable;
++        }
+         // Make the profile unsearchable so the user preference controller gets highlighted
+         // when searched for.
+         return AVAILABLE_UNSEARCHABLE;
+-- 
+2.35.1
+

@@ -1,0 +1,50 @@
+From 4a1455c08349ec94c4068c55376b0a14b75ede21 Mon Sep 17 00:00:00 2001
+From: Winson Chung <winsonc@google.com>
+Date: Mon, 8 Jun 2020 11:19:59 -0700
+Subject: [PATCH 176/297] Ensure we always bind to overview service when
+ starting up
+
+- Previously, the registration of the device provisioned callback
+  triggered the overview service to be started, but the switch
+  to current user tracker removed that path
+
+Bug: 158321453
+Test: Kill sysui and verify we start the service
+Change-Id: I9221389b0b1ef3298a93ed8daae7e026bcf772e8
+(cherry picked from commit d0f407aacb2c2f83623be19ac8aa4d138d1f0a14)
+---
+ .../systemui/recents/OverviewProxyService.java        | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/recents/OverviewProxyService.java b/packages/SystemUI/src/com/android/systemui/recents/OverviewProxyService.java
+index baa2dfdcebf..8a012b8b06f 100644
+--- a/packages/SystemUI/src/com/android/systemui/recents/OverviewProxyService.java
++++ b/packages/SystemUI/src/com/android/systemui/recents/OverviewProxyService.java
+@@ -577,10 +577,6 @@ public class OverviewProxyService extends CurrentUserTracker implements
+         // Listen for nav bar mode changes
+         mNavBarMode = navModeController.addListener(this);
+ 
+-        // Listen for device provisioned/user setup
+-        updateEnabledState();
+-        startTracking();
+-
+         // Listen for launcher package changes
+         IntentFilter filter = new IntentFilter(Intent.ACTION_PACKAGE_ADDED);
+         filter.addDataScheme("package");
+@@ -601,6 +597,13 @@ public class OverviewProxyService extends CurrentUserTracker implements
+                         .commitUpdate(mContext.getDisplayId());
+             }
+         });
++
++        // Listen for user setup
++        startTracking();
++
++        // Connect to the service
++        updateEnabledState();
++        startConnectionToCurrentUser();
+     }
+ 
+     @Override
+-- 
+2.35.1
+

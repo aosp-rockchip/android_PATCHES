@@ -1,0 +1,59 @@
+From c48de7c610c6edcd950c2f0f6868d1abee235bb7 Mon Sep 17 00:00:00 2001
+From: Weixin Zhou <zwx@rock-chips.com>
+Date: Fri, 25 Dec 2020 08:41:54 +0800
+Subject: [PATCH 5/6] temp: vdso_clock_gettime/vdso_gettimeofday callback to
+ system call
+
+fix gettimeofday error after deepsleep test for 20-50 times
+
+Signed-off-by: Weixin Zhou <zwx@rock-chips.com>
+Change-Id: Ia1d3a06fa2036b31b546981ad3b9cb3dc79a19c9
+---
+ libc/bionic/vdso.cpp | 24 ++++++++++++++----------
+ 1 file changed, 14 insertions(+), 10 deletions(-)
+
+diff --git a/libc/bionic/vdso.cpp b/libc/bionic/vdso.cpp
+index dbca9c013..033e07b00 100644
+--- a/libc/bionic/vdso.cpp
++++ b/libc/bionic/vdso.cpp
+@@ -34,11 +34,13 @@ static inline int vdso_return(int result) {
+ }
+ 
+ int clock_gettime(int clock_id, timespec* tp) {
+-  auto vdso_clock_gettime = reinterpret_cast<decltype(&clock_gettime)>(
+-    __libc_globals->vdso[VDSO_CLOCK_GETTIME].fn);
+-  if (__predict_true(vdso_clock_gettime)) {
+-    return vdso_return(vdso_clock_gettime(clock_id, tp));
+-  }
++  /*
++   *auto vdso_clock_gettime = reinterpret_cast<decltype(&clock_gettime)>(
++   *  __libc_globals->vdso[VDSO_CLOCK_GETTIME].fn);
++   *if (__predict_true(vdso_clock_gettime)) {
++   *  return vdso_return(vdso_clock_gettime(clock_id, tp));
++   *}
++   */
+   return __clock_gettime(clock_id, tp);
+ }
+ 
+@@ -52,11 +54,13 @@ int clock_getres(int clock_id, timespec* tp) {
+ }
+ 
+ int gettimeofday(timeval* tv, struct timezone* tz) {
+-  auto vdso_gettimeofday = reinterpret_cast<decltype(&gettimeofday)>(
+-    __libc_globals->vdso[VDSO_GETTIMEOFDAY].fn);
+-  if (__predict_true(vdso_gettimeofday)) {
+-    return vdso_return(vdso_gettimeofday(tv, tz));
+-  }
++  /*
++   *auto vdso_gettimeofday = reinterpret_cast<decltype(&gettimeofday)>(
++   *  __libc_globals->vdso[VDSO_GETTIMEOFDAY].fn);
++   *if (__predict_true(vdso_gettimeofday)) {
++   *  return vdso_return(vdso_gettimeofday(tv, tz));
++   *}
++   */
+   return __gettimeofday(tv, tz);
+ }
+ 
+-- 
+2.35.1
+

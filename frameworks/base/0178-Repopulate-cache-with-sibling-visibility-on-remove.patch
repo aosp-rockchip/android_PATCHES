@@ -1,0 +1,46 @@
+From c6985445ad7cc3c355102f5023d574e1346f0bcf Mon Sep 17 00:00:00 2001
+From: Patrick Baumann <patb@google.com>
+Date: Wed, 17 Jun 2020 16:13:41 -0700
+Subject: [PATCH 178/297] Repopulate cache with sibling visibility on remove
+
+This change ensures that we re-add the visibility state of a shared user
+id when one of its members is removed. Prior to this change, we were
+removing the app ID (and thus all other members of the shared uid) but
+only recomputing on the removed setting, which we ignore in the update
+(essentially an expensive no-op). This change ensures that we run
+through the shared settings and re-compute with them instead.
+
+Fixes: 159197157
+Test: atest AppEnumerationTests SharedUidPermissionsTest
+Change-Id: I85250e4264888ac8583a2b4798ff6a2f93d6a74d
+(cherry picked from commit 5c5ac45ea00d469954752c276fa32e7fd0cc1b63)
+---
+ .../core/java/com/android/server/pm/AppsFilter.java  | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/services/core/java/com/android/server/pm/AppsFilter.java b/services/core/java/com/android/server/pm/AppsFilter.java
+index ccda5875d9f..83a1ddc2ce8 100644
+--- a/services/core/java/com/android/server/pm/AppsFilter.java
++++ b/services/core/java/com/android/server/pm/AppsFilter.java
+@@ -819,9 +819,15 @@ public class AppsFilter {
+             mOverlayReferenceMapper.removePkg(setting.name);
+             mFeatureConfig.updatePackageState(setting, true /*removed*/);
+ 
+-            if (mShouldFilterCache != null) {
+-                updateShouldFilterCacheForPackage(
+-                        setting.name, setting, settings, users, settings.size());
++            if (mShouldFilterCache != null && setting.sharedUser != null) {
++                for (int i = setting.sharedUser.packages.size() - 1; i >= 0; i--) {
++                    PackageSetting siblingSetting = setting.sharedUser.packages.valueAt(i);
++                    if (siblingSetting == setting) {
++                        continue;
++                    }
++                    updateShouldFilterCacheForPackage(
++                            setting.name, siblingSetting, settings, users, settings.size());
++                }
+             }
+         });
+         mForceQueryable.remove(setting.appId);
+-- 
+2.35.1
+

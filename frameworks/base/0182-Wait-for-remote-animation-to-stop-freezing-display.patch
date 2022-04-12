@@ -1,0 +1,152 @@
+From 7b5cd95fa69fe83ff63411ec5cab3d522a4777b5 Mon Sep 17 00:00:00 2001
+From: Riddle Hsu <riddlehsu@google.com>
+Date: Tue, 30 Jun 2020 01:22:08 +0800
+Subject: [PATCH 182/297] Wait for remote animation to stop freezing display
+
+If display is rotated 180 degree, the display might not have
+configuration change. And if there is remote rotation and it hasn't
+done, the rotation of display is still the old one. Once there is
+a path calls stop-freezing-display, the rotation animation will be
+executed directly with 0 degree delta. And if the activity needs to
+relaunch, there will be obvious flickering.
+
+Fixes: 160107205
+Test: atest DisplayContentTests#testRemoteRotation
+Change-Id: I66a02b67f7066abafd65c2c282144222701feaae
+(cherry picked from commit 96ed092b109907b9e094dcffbd81a5d44021b0f4)
+---
+ data/etc/services.core.protolog.json          | 18 ++++-------
+ .../server/wm/WindowManagerService.java       | 30 ++++++++++++-------
+ .../server/wm/DisplayContentTests.java        | 12 ++++++--
+ 3 files changed, 36 insertions(+), 24 deletions(-)
+
+diff --git a/data/etc/services.core.protolog.json b/data/etc/services.core.protolog.json
+index bfc623faeae..33ab16de790 100644
+--- a/data/etc/services.core.protolog.json
++++ b/data/etc/services.core.protolog.json
+@@ -1663,12 +1663,6 @@
+       "group": "WM_SHOW_SURFACE_ALLOC",
+       "at": "com\/android\/server\/wm\/ScreenRotationAnimation.java"
+     },
+-    "1108406230": {
+-      "message": "stopFreezingDisplayLocked: Returning mWaitingForConfig=%b, mAppsFreezingScreen=%d, mWindowsFreezingScreen=%d, mClientFreezingScreen=%b, mOpeningApps.size()=%d",
+-      "level": "DEBUG",
+-      "group": "WM_DEBUG_ORIENTATION",
+-      "at": "com\/android\/server\/wm\/WindowManagerService.java"
+-    },
+     "1112047265": {
+       "message": "finishDrawingWindow: %s mDrawState=%s",
+       "level": "DEBUG",
+@@ -1729,6 +1723,12 @@
+       "group": "WM_DEBUG_BOOT",
+       "at": "com\/android\/server\/wm\/WindowManagerService.java"
+     },
++    "1246035185": {
++      "message": "stopFreezingDisplayLocked: Returning waitingForConfig=%b, waitingForRemoteRotation=%b, mAppsFreezingScreen=%d, mWindowsFreezingScreen=%d, mClientFreezingScreen=%b, mOpeningApps.size()=%d",
++      "level": "DEBUG",
++      "group": "WM_DEBUG_ORIENTATION",
++      "at": "com\/android\/server\/wm\/WindowManagerService.java"
++    },
+     "1254403969": {
+       "message": "Surface returned was null: %s",
+       "level": "VERBOSE",
+@@ -1951,12 +1951,6 @@
+       "group": "WM_DEBUG_APP_TRANSITIONS_ANIM",
+       "at": "com\/android\/server\/wm\/AppTransition.java"
+     },
+-    "1591969812": {
+-      "message": "updateImeControlTarget %s",
+-      "level": "INFO",
+-      "group": "WM_DEBUG_IME",
+-      "at": "com\/android\/server\/wm\/DisplayContent.java"
+-    },
+     "1628345525": {
+       "message": "Now opening app %s",
+       "level": "VERBOSE",
+diff --git a/services/core/java/com/android/server/wm/WindowManagerService.java b/services/core/java/com/android/server/wm/WindowManagerService.java
+index b1756b07ad8..f4281fc0caf 100644
+--- a/services/core/java/com/android/server/wm/WindowManagerService.java
++++ b/services/core/java/com/android/server/wm/WindowManagerService.java
+@@ -5606,17 +5606,28 @@ public class WindowManagerService extends IWindowManager.Stub
+         }
+ 
+         final DisplayContent displayContent = mRoot.getDisplayContent(mFrozenDisplayId);
+-        final boolean waitingForConfig = displayContent != null && displayContent.mWaitingForConfig;
+-        final int numOpeningApps = displayContent != null ? displayContent.mOpeningApps.size() : 0;
+-        if (waitingForConfig || mAppsFreezingScreen > 0
++        final int numOpeningApps;
++        final boolean waitingForConfig;
++        final boolean waitingForRemoteRotation;
++        if (displayContent != null) {
++            numOpeningApps = displayContent.mOpeningApps.size();
++            waitingForConfig = displayContent.mWaitingForConfig;
++            waitingForRemoteRotation =
++                    displayContent.getDisplayRotation().isWaitingForRemoteRotation();
++        } else {
++            waitingForConfig = waitingForRemoteRotation = false;
++            numOpeningApps = 0;
++        }
++        if (waitingForConfig || waitingForRemoteRotation || mAppsFreezingScreen > 0
+                 || mWindowsFreezingScreen == WINDOWS_FREEZING_SCREENS_ACTIVE
+                 || mClientFreezingScreen || numOpeningApps > 0) {
+-            ProtoLog.d(WM_DEBUG_ORIENTATION,
+-                                "stopFreezingDisplayLocked: Returning mWaitingForConfig=%b, "
+-                                        + "mAppsFreezingScreen=%d, mWindowsFreezingScreen=%d, "
+-                                        + "mClientFreezingScreen=%b, mOpeningApps.size()=%d",
+-                                waitingForConfig, mAppsFreezingScreen, mWindowsFreezingScreen,
+-                                mClientFreezingScreen, numOpeningApps);
++            ProtoLog.d(WM_DEBUG_ORIENTATION, "stopFreezingDisplayLocked: Returning "
++                    + "waitingForConfig=%b, waitingForRemoteRotation=%b, "
++                    + "mAppsFreezingScreen=%d, mWindowsFreezingScreen=%d, "
++                    + "mClientFreezingScreen=%b, mOpeningApps.size()=%d",
++                    waitingForConfig, waitingForRemoteRotation,
++                    mAppsFreezingScreen, mWindowsFreezingScreen,
++                    mClientFreezingScreen, numOpeningApps);
+             return;
+         }
+ 
+@@ -5627,7 +5638,6 @@ public class WindowManagerService extends IWindowManager.Stub
+         // We must make a local copy of the displayId as it can be potentially overwritten later on
+         // in this method. For example, {@link startFreezingDisplayLocked} may be called as a result
+         // of update rotation, but we reference the frozen display after that call in this method.
+-        final int displayId = mFrozenDisplayId;
+         mFrozenDisplayId = INVALID_DISPLAY;
+         mDisplayFrozen = false;
+         mInputManagerCallback.thawInputDispatchingLw();
+diff --git a/services/tests/wmtests/src/com/android/server/wm/DisplayContentTests.java b/services/tests/wmtests/src/com/android/server/wm/DisplayContentTests.java
+index 30af1d34f55..ddb186a1d2d 100644
+--- a/services/tests/wmtests/src/com/android/server/wm/DisplayContentTests.java
++++ b/services/tests/wmtests/src/com/android/server/wm/DisplayContentTests.java
+@@ -1328,9 +1328,10 @@ public class DisplayContentTests extends WindowTestsBase {
+ 
+         final DisplayRotation dr = dc.getDisplayRotation();
+         doCallRealMethod().when(dr).updateRotationUnchecked(anyBoolean());
+-        Mockito.doReturn(ROTATION_90).when(dr).rotationForOrientation(anyInt(), anyInt());
++        // Rotate 180 degree so the display doesn't have configuration change. This condition is
++        // used for the later verification of stop-freezing (without setting mWaitingForConfig).
++        doReturn((dr.getRotation() + 2) % 4).when(dr).rotationForOrientation(anyInt(), anyInt());
+         final boolean[] continued = new boolean[1];
+-        // TODO(display-merge): Remove cast
+         doAnswer(
+                 invocation -> {
+                     continued[0] = true;
+@@ -1356,9 +1357,16 @@ public class DisplayContentTests extends WindowTestsBase {
+         dc.setRotationAnimation(null);
+ 
+         mWm.updateRotation(true /* alwaysSendConfiguration */, false /* forceRelayout */);
++        // If remote rotation is not finished, the display should not be able to unfreeze.
++        mWm.stopFreezingDisplayLocked();
++        assertTrue(mWm.mDisplayFrozen);
++
+         assertTrue(called[0]);
+         waitUntilHandlersIdle();
+         assertTrue(continued[0]);
++
++        mWm.stopFreezingDisplayLocked();
++        assertFalse(mWm.mDisplayFrozen);
+     }
+ 
+     @Test
+-- 
+2.35.1
+

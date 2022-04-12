@@ -1,0 +1,46 @@
+From 52e8024832891faa251ce2326316bd5f89a73446 Mon Sep 17 00:00:00 2001
+From: Alex Zhao <zzc@rock-chips.com>
+Date: Fri, 20 Nov 2020 11:50:32 +0800
+Subject: [PATCH 09/10] update realtek wifi hal to v1.0.4
+
+Signed-off-by: Alex Zhao <zzc@rock-chips.com>
+Change-Id: I6b92d2e0b6ab682b6c0e640990578b6a22e8c1e8
+---
+ bcmdhd/wifi_hal/link_layer_stats.cpp | 2 +-
+ bcmdhd/wifi_hal/version.h            | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+ mode change 100644 => 100755 bcmdhd/wifi_hal/link_layer_stats.cpp
+ mode change 100644 => 100755 bcmdhd/wifi_hal/version.h
+
+diff --git a/bcmdhd/wifi_hal/link_layer_stats.cpp b/bcmdhd/wifi_hal/link_layer_stats.cpp
+old mode 100644
+new mode 100755
+index 8a3ec31..f33f71e
+--- a/bcmdhd/wifi_hal/link_layer_stats.cpp
++++ b/bcmdhd/wifi_hal/link_layer_stats.cpp
+@@ -236,7 +236,7 @@ protected:
+             return NL_SKIP;
+         }
+  		wifi_iface_stat *iface_stat = NULL;
+- 		iface_stat = (wifi_iface_stat *)((char* )data + sizeof(wifi_radio_stat));
++ 		iface_stat = (wifi_iface_stat *)((char* )data + sizeof(wifi_radio_stat_internal));
+ 
+ 		if(*mHandler.on_link_stats_results == NULL) {
+ 			ALOGE("*mHandler.on_link_stats_results is NULL");
+diff --git a/bcmdhd/wifi_hal/version.h b/bcmdhd/wifi_hal/version.h
+old mode 100644
+new mode 100755
+index ad2e795..82ed669
+--- a/bcmdhd/wifi_hal/version.h
++++ b/bcmdhd/wifi_hal/version.h
+@@ -1,6 +1,6 @@
+ #ifndef VERSION_H
+ #define VERSION_H
+ 
+-#define RTW_WIFI_HAL_VERSION "v1.0.3"
++#define RTW_WIFI_HAL_VERSION "v1.0.4"
+ 
+ #endif /* VERSION_H */
+-- 
+2.35.1
+

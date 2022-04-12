@@ -1,0 +1,313 @@
+From 281d9a4c756baf79e67d8d485549b431713da3ad Mon Sep 17 00:00:00 2001
+From: android-autoroll
+ <android-autoroll@skia-corp.google.com.iam.gserviceaccount.com>
+Date: Thu, 11 Jul 2019 01:06:05 +0000
+Subject: [PATCH 2/5] Roll external/skia 49d32524f..4e9cde863 (4 commits)
+
+https://skia.googlesource.com/skia.git/+log/49d32524f..4e9cde863
+
+2019-07-11 bsalomon@google.com Blacklist GrTestingBackendTextureUploadTest on MoltenVk.
+2019-07-10 bsalomon@google.com Third land of "Restore GL_UNPACK_ROW_LENGTH to 0 between MIP levles"
+2019-07-10 egdaniel@google.com Add missing RGB_888x colorType to GL RGBA format.
+2019-07-10 recipe-mega-autoroller@chops-service-accounts.iam.gserviceaccount.com Roll recipe dependencies (trivial).
+
+The AutoRoll server is located here: https://skia-autoroll.corp.goog/r/android-master-autoroll
+
+Documentation for the AutoRoller is here:
+https://skia.googlesource.com/buildbot/+/master/autoroll/README.md
+
+If the roll is causing failures, please contact the current sheriff, who should
+be CC'd on the roll, and stop the roller if necessary.
+
+Test: Presubmit checks will test this change.
+Exempt-From-Owner-Approval: The autoroll bot does not require owner approval.
+
+Bug: 137017906
+Change-Id: I992ff95adc4313f4739a883cf64175217e6e0f14
+(cherry picked from commit c7dcffa771cb07cbe08bb2d15983e308953dda98)
+---
+ gm/asyncrescaleandread.cpp                    |  6 +--
+ gm/wacky_yuv_formats.cpp                      | 33 +++++++------
+ ...0M-x86_64-Release-All-MoltenVK_Vulkan.json |  1 +
+ infra/bots/recipes/test.py                    |  1 +
+ infra/config/recipes.cfg                      |  4 +-
+ src/gpu/gl/GrGLCaps.cpp                       |  7 ++-
+ src/gpu/gl/GrGLGpu.cpp                        | 46 ++++++++++++-------
+ 7 files changed, 63 insertions(+), 35 deletions(-)
+
+diff --git a/gm/asyncrescaleandread.cpp b/gm/asyncrescaleandread.cpp
+index cc2abac290..723212ad60 100644
+--- a/gm/asyncrescaleandread.cpp
++++ b/gm/asyncrescaleandread.cpp
+@@ -101,14 +101,14 @@ static sk_sp<SkImage> do_read_and_scale_yuv(SkSurface* surface, SkYUVColorSpace
+     GrBackendFormat format =
+             gr->priv().caps()->getBackendFormatFromColorType(GrColorType::kAlpha_8);
+     backendTextures[0] = gr->priv().getGpu()->createBackendTexture(
+-            dstW, dstH, format, GrMipMapped::kNo, GrRenderable::kNo, yData.get(), 0, nullptr,
++            dstW, dstH, format, GrMipMapped::kNo, GrRenderable::kNo, yData.get(), dstW, nullptr,
+             GrProtected::kNo);
+     backendTextures[1] = gr->priv().getGpu()->createBackendTexture(
+             dstW / 2, dstH / 2, format, GrMipMapped::kNo, GrRenderable::kNo,
+-            uData.get(), 0, nullptr, GrProtected::kNo);
++            uData.get(), dstW / 2, nullptr, GrProtected::kNo);
+     backendTextures[2] = gr->priv().getGpu()->createBackendTexture(
+             dstW / 2, dstH / 2, format, GrMipMapped::kNo, GrRenderable::kNo,
+-            vData.get(), 0, nullptr, GrProtected::kNo);
++            vData.get(), dstW / 2, nullptr, GrProtected::kNo);
+     auto config = gr->priv().caps()->getConfigFromBackendFormat(format, GrColorType::kAlpha_8);
+     SkColorChannel channel;
+     if (config == kAlpha_8_as_Red_GrPixelConfig) {
+diff --git a/gm/wacky_yuv_formats.cpp b/gm/wacky_yuv_formats.cpp
+index 37b174c9a8..d7c9682237 100644
+--- a/gm/wacky_yuv_formats.cpp
++++ b/gm/wacky_yuv_formats.cpp
+@@ -917,11 +917,12 @@ static void draw_row_label(SkCanvas* canvas, int y, int yuvFormat) {
+ static void make_RG_88(const GrCaps* caps,
+                        const SkBitmap& bm, YUVFormat yuvFormat,
+                        SkAutoTMalloc<uint8_t>* pixels,
+-                       GrBackendFormat* format) {
++                       GrBackendFormat* format, size_t* rowBytes) {
+     SkASSERT(kNV12_YUVFormat == yuvFormat || kNV21_YUVFormat == yuvFormat);
+     SkASSERT(kRGBA_8888_SkColorType == bm.colorType());     // uv stored in rg
+ 
+-    pixels->reset(2 * sizeof(uint8_t) * bm.width() * bm.height());
++    *rowBytes = bm.width() * 2 * sizeof(uint8_t);
++    pixels->reset(*rowBytes * bm.height());
+     uint8_t* currPixel = pixels->get();
+     for (int y = 0; y < bm.height(); ++y) {
+         for (int x = 0; x < bm.width(); ++x) {
+@@ -940,12 +941,13 @@ static void make_RG_88(const GrCaps* caps,
+ static void make_RG_1616(const GrCaps* caps,
+                          const SkBitmap& bm, YUVFormat yuvFormat,
+                          SkAutoTMalloc<uint8_t>* pixels,
+-                         GrBackendFormat* format) {
++                         GrBackendFormat* format, size_t* rowBytes) {
+     SkASSERT(kP016_YUVFormat == yuvFormat || kP010_YUVFormat == yuvFormat);
+     SkASSERT(kRGBA_8888_SkColorType == bm.colorType());     // uv stored in rg
+ 
+     uint16_t u16, v16;
+-    pixels->reset(2 * sizeof(uint16_t) * bm.width() * bm.height());
++    *rowBytes = bm.width() * 2 * sizeof(uint16_t);
++    pixels->reset(*rowBytes * bm.height());
+     uint16_t* currPixel = (uint16_t*) pixels->get();
+     for (int y = 0; y < bm.height(); ++y) {
+         for (int x = 0; x < bm.width(); ++x) {
+@@ -974,12 +976,14 @@ static void make_RGBA_16(const GrCaps* caps,
+                          const SkBitmap& bm,
+                          YUVFormat yuvFormat,
+                          SkAutoTMalloc<uint8_t>* pixels,
+-                         GrBackendFormat* format) {
++                         GrBackendFormat* format,
++                         size_t* rowBytes) {
+     SkASSERT(kY416_YUVFormat == yuvFormat);
+     SkASSERT(kRGBA_8888_SkColorType == bm.colorType());
+ 
+     uint16_t y16, u16, v16, a16;
+-    pixels->reset(4 * sizeof(uint16_t) * bm.width() * bm.height());
++    *rowBytes = 4 * sizeof(uint16_t) * bm.width();
++    pixels->reset(*rowBytes * bm.height());
+     uint16_t* currPixel = (uint16_t*) pixels->get();
+     for (int y = 0; y < bm.height(); ++y) {
+         for (int x = 0; x < bm.width(); ++x) {
+@@ -1006,12 +1010,14 @@ static void make_R_16(const GrCaps* caps,
+                       const SkBitmap& bm,
+                       YUVFormat yuvFormat,
+                       SkAutoTMalloc<uint8_t>* pixels,
+-                      GrBackendFormat* format) {
++                      GrBackendFormat* format,
++                      size_t* rowBytes) {
+     SkASSERT(kP016_YUVFormat == yuvFormat || kP010_YUVFormat == yuvFormat);
+     SkASSERT(kAlpha_8_SkColorType == bm.colorType());
+ 
+     uint16_t y16;
+-    pixels->reset(sizeof(uint16_t) * bm.width() * bm.height());
++    *rowBytes = sizeof(uint16_t) * bm.width();
++    pixels->reset(*rowBytes * bm.height());
+     uint16_t* currPixel = (uint16_t*) pixels->get();
+     for (int y = 0; y < bm.height(); ++y) {
+         for (int x = 0; x < bm.width(); ++x) {
+@@ -1052,24 +1058,25 @@ static GrBackendTexture create_yuva_texture(GrContext* context, const SkBitmap&
+ 
+         SkAutoTMalloc<uint8_t> pixels;
+         GrBackendFormat format;
++        size_t rowBytes;
+ 
+         if (2 == channelCount) {
+             if (format_uses_16_bpp(yuvFormat)) {
+-                make_RG_1616(caps, bm, yuvFormat, &pixels, &format);
++                make_RG_1616(caps, bm, yuvFormat, &pixels, &format, &rowBytes);
+             } else {
+-                make_RG_88(caps, bm, yuvFormat, &pixels, &format);
++                make_RG_88(caps, bm, yuvFormat, &pixels, &format, &rowBytes);
+             }
+         } else {
+             if (kRGBA_8888_SkColorType == bm.colorType()) {
+-                make_RGBA_16(caps, bm, yuvFormat, &pixels, &format);
++                make_RGBA_16(caps, bm, yuvFormat, &pixels, &format, &rowBytes);
+             } else {
+-                make_R_16(caps, bm, yuvFormat, &pixels, &format);
++                make_R_16(caps, bm, yuvFormat, &pixels, &format, &rowBytes);
+             }
+         }
+ 
+         tex = gpu->createBackendTexture(bm.width(), bm.height(), format,
+                                         GrMipMapped::kNo, GrRenderable::kNo,
+-                                        pixels, 0, nullptr, GrProtected::kNo);
++                                        pixels, rowBytes, nullptr, GrProtected::kNo);
+     } else {
+         tex = context->priv().createBackendTexture(&bm.pixmap(), 1,
+                                                    GrRenderable::kNo, GrProtected::kNo);
+diff --git a/infra/bots/recipes/test.expected/Test-Mac10.13-Clang-MacBookPro11.5-GPU-RadeonHD8870M-x86_64-Release-All-MoltenVK_Vulkan.json b/infra/bots/recipes/test.expected/Test-Mac10.13-Clang-MacBookPro11.5-GPU-RadeonHD8870M-x86_64-Release-All-MoltenVK_Vulkan.json
+index dc6380c1b7..02c335af4a 100644
+--- a/infra/bots/recipes/test.expected/Test-Mac10.13-Clang-MacBookPro11.5-GPU-RadeonHD8870M-x86_64-Release-All-MoltenVK_Vulkan.json
++++ b/infra/bots/recipes/test.expected/Test-Mac10.13-Clang-MacBookPro11.5-GPU-RadeonHD8870M-x86_64-Release-All-MoltenVK_Vulkan.json
+@@ -522,6 +522,7 @@
+       "~^AsyncReadPixels$",
+       "~^VkBackendAllocationTest$",
+       "~^ColorTypeBackendAllocationTest$",
++      "~^GrTestingBackendTextureUploadTest$",
+       "--nonativeFonts",
+       "--verbose"
+     ],
+diff --git a/infra/bots/recipes/test.py b/infra/bots/recipes/test.py
+index 5328c45d5a..b4f2e3dc61 100644
+--- a/infra/bots/recipes/test.py
++++ b/infra/bots/recipes/test.py
+@@ -740,6 +740,7 @@ def dm_flags(api, bot):
+     match.append('~^AsyncReadPixels$')
+     match.append('~^VkBackendAllocationTest$')
+     match.append('~^ColorTypeBackendAllocationTest$')
++    match.append('~^GrTestingBackendTextureUploadTest$')
+ 
+   if 'ANGLE' in bot:
+     # skia:7835
+diff --git a/infra/config/recipes.cfg b/infra/config/recipes.cfg
+index f15b1f6bbb..99fd6e13fe 100644
+--- a/infra/config/recipes.cfg
++++ b/infra/config/recipes.cfg
+@@ -14,12 +14,12 @@
+   "deps": {
+     "depot_tools": {
+       "branch": "master",
+-      "revision": "986505f4893ae4c0cd11f0f2a6ea4a2cc27f9488",
++      "revision": "d3f699407f75b20a39ae15fc02a64914d6f994e2",
+       "url": "https://chromium.googlesource.com/chromium/tools/depot_tools.git"
+     },
+     "recipe_engine": {
+       "branch": "master",
+-      "revision": "acbc4da8bc664d35bab3ba890bab1c01646d1aba",
++      "revision": "4cf2107dcc2dd67bb3e84154700ee5023eea02b3",
+       "url": "https://chromium.googlesource.com/infra/luci/recipes-py.git"
+     }
+   },
+diff --git a/src/gpu/gl/GrGLCaps.cpp b/src/gpu/gl/GrGLCaps.cpp
+index ad5741862d..e4bd6c6cb9 100644
+--- a/src/gpu/gl/GrGLCaps.cpp
++++ b/src/gpu/gl/GrGLCaps.cpp
+@@ -113,7 +113,6 @@ void GrGLCaps::init(const GrContextOptions& contextOptions,
+         fWritePixelsRowBytesSupport = version >= GR_GL_VER(2, 0);
+         fReadPixelsRowBytesSupport = version >= GR_GL_VER(2, 0);
+     }
+-
+     if (fDriverBugWorkarounds.pack_parameters_workaround_with_pack_buffer) {
+         // In some cases drivers handle copying the last row incorrectly
+         // when using GL_PACK_ROW_LENGTH.  Chromium handles this by iterating
+@@ -1536,6 +1535,12 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+                 }
+             }
+         }
++
++        // kRGB_888x
++        {
++            uint32_t flags = ColorTypeInfo::kUploadData_Flag;
++            info.fColorTypeInfos.emplace_back(GrColorType::kRGB_888x, flags);
++        }
+     }
+ 
+     // R8
+diff --git a/src/gpu/gl/GrGLGpu.cpp b/src/gpu/gl/GrGLGpu.cpp
+index cad7f79acf..44b522816d 100644
+--- a/src/gpu/gl/GrGLGpu.cpp
++++ b/src/gpu/gl/GrGLGpu.cpp
+@@ -1010,7 +1010,7 @@ static bool allocate_and_populate_texture(GrPixelConfig config,
+                                           int mipLevelCount,
+                                           int baseWidth,
+                                           int baseHeight,
+-                                          bool* changedUpackRowLength) {
++                                          bool* changedUnpackRowLength) {
+     CLEAR_ERROR_BEFORE_ALLOC(&interface);
+ 
+     if (caps.configSupportsTexStorage(config)) {
+@@ -1031,13 +1031,20 @@ static bool allocate_and_populate_texture(GrPixelConfig config,
+                 int twoToTheMipLevel = 1 << currentMipLevel;
+                 const int currentWidth = SkTMax(1, baseWidth / twoToTheMipLevel);
+                 const int currentHeight = SkTMax(1, baseHeight / twoToTheMipLevel);
+-                const size_t trimRowBytes = currentWidth * bpp;
+-                const size_t rowBytes = texels[currentMipLevel].fRowBytes;
+ 
+-                if (caps.writePixelsRowBytesSupport() && rowBytes != trimRowBytes) {
+-                    GrGLint rowLength = static_cast<GrGLint>(rowBytes / bpp);
+-                    GR_GL_CALL(&interface, PixelStorei(GR_GL_UNPACK_ROW_LENGTH, rowLength));
+-                    *changedUpackRowLength = true;
++                if (texels[currentMipLevel].fPixels) {
++                    const size_t trimRowBytes = currentWidth * bpp;
++                    const size_t rowBytes = texels[currentMipLevel].fRowBytes;
++                    if (rowBytes != trimRowBytes) {
++                        SkASSERT(caps.writePixelsRowBytesSupport());
++                        GrGLint rowLength = static_cast<GrGLint>(rowBytes / bpp);
++                        GR_GL_CALL(&interface, PixelStorei(GR_GL_UNPACK_ROW_LENGTH, rowLength));
++                        *changedUnpackRowLength = true;
++                    } else if (*changedUnpackRowLength) {
++                        SkASSERT(caps.writePixelsRowBytesSupport());
++                        GR_GL_CALL(&interface, PixelStorei(GR_GL_UNPACK_ROW_LENGTH, 0));
++                        *changedUnpackRowLength = false;
++                    }
+                 }
+ 
+                 GR_GL_CALL(&interface,
+@@ -1073,13 +1080,20 @@ static bool allocate_and_populate_texture(GrPixelConfig config,
+                 int twoToTheMipLevel = 1 << currentMipLevel;
+                 const int currentWidth = SkTMax(1, baseWidth / twoToTheMipLevel);
+                 const int currentHeight = SkTMax(1, baseHeight / twoToTheMipLevel);
+-                const size_t trimRowBytes = currentWidth * bpp;
+-                const size_t rowBytes = texels[currentMipLevel].fRowBytes;
+ 
+-                if (caps.writePixelsRowBytesSupport() && rowBytes != trimRowBytes) {
+-                    GrGLint rowLength = static_cast<GrGLint>(rowBytes / bpp);
+-                    GR_GL_CALL(&interface, PixelStorei(GR_GL_UNPACK_ROW_LENGTH, rowLength));
+-                    *changedUpackRowLength = true;
++                if (texels[currentMipLevel].fPixels) {
++                    const size_t trimRowBytes = currentWidth * bpp;
++                    const size_t rowBytes = texels[currentMipLevel].fRowBytes;
++                    if (rowBytes != trimRowBytes) {
++                        SkASSERT(caps.writePixelsRowBytesSupport());
++                        GrGLint rowLength = static_cast<GrGLint>(rowBytes / bpp);
++                        GR_GL_CALL(&interface, PixelStorei(GR_GL_UNPACK_ROW_LENGTH, rowLength));
++                        *changedUnpackRowLength = true;
++                    } else if (*changedUnpackRowLength) {
++                        SkASSERT(caps.writePixelsRowBytesSupport());
++                        GR_GL_CALL(&interface, PixelStorei(GR_GL_UNPACK_ROW_LENGTH, 0));
++                        *changedUnpackRowLength = false;
++                    }
+                 }
+ 
+                 const void* currentMipData = texels[currentMipLevel].fPixels;
+@@ -1464,12 +1478,12 @@ sk_sp<GrTexture> GrGLGpu::onCreateTexture(const GrSurfaceDesc& desc,
+     std::unique_ptr<uint8_t[]> zeros;
+     if (performClear && !this->glCaps().clearTextureSupport() &&
+         !this->glCaps().canConfigBeFBOColorAttachment(desc.fConfig)) {
+-        size_t rowSize = GrGLBytesPerFormat(glFormat) * desc.fWidth;
+-        size_t size = rowSize * desc.fHeight;
++        size_t rowBytes = GrGLBytesPerFormat(glFormat) * desc.fWidth;
++        size_t size = rowBytes * desc.fHeight;
+         zeros.reset(new uint8_t[size]);
+         memset(zeros.get(), 0, size);
+         zeroLevel.fPixels = zeros.get();
+-        zeroLevel.fRowBytes = 0;
++        zeroLevel.fRowBytes = rowBytes;
+         texels = &zeroLevel;
+         mipLevelCount = 1;
+         performClear = false;
+-- 
+2.35.1
+

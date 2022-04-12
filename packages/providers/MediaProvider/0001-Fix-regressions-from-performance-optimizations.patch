@@ -1,0 +1,67 @@
+From c6597a3cc935860af274f71253db5adf82b96ce9 Mon Sep 17 00:00:00 2001
+From: Jeff Sharkey <jsharkey@android.com>
+Date: Mon, 20 May 2019 09:45:40 -0600
+Subject: [PATCH 01/26] Fix regressions from performance optimizations.
+
+getType() can be called from UID 1000 during intent resolution.  When
+detecting IS_PENDING state we need to query the resolved Uri.
+
+Bug: 133118408
+Test: atest --test-mapping packages/providers/MediaProvider
+Change-Id: I53e4675c5dd88f498f3cbba80ab99ee16d4b4a7b
+(cherry picked from commit 95ee8965c857485059fc8ae6329358d12265dec3)
+---
+ src/com/android/providers/media/LocalCallingIdentity.java | 4 ++++
+ src/com/android/providers/media/MediaProvider.java        | 6 +++---
+ 2 files changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/src/com/android/providers/media/LocalCallingIdentity.java b/src/com/android/providers/media/LocalCallingIdentity.java
+index 0874e899..584a8d68 100644
+--- a/src/com/android/providers/media/LocalCallingIdentity.java
++++ b/src/com/android/providers/media/LocalCallingIdentity.java
+@@ -193,6 +193,10 @@ public class LocalCallingIdentity {
+     }
+ 
+     private boolean isSystemInternal() {
++        if (uid == android.os.Process.SYSTEM_UID) {
++            return true;
++        }
++
+         // Special case to speed up when MediaProvider is calling itself; we
+         // know it always has system permissions
+         if (uid == android.os.Process.myUid()) {
+diff --git a/src/com/android/providers/media/MediaProvider.java b/src/com/android/providers/media/MediaProvider.java
+index 41a44f26..98cbf29c 100644
+--- a/src/com/android/providers/media/MediaProvider.java
++++ b/src/com/android/providers/media/MediaProvider.java
+@@ -4443,7 +4443,6 @@ public class MediaProvider extends ContentProvider {
+ 
+     private int updateInternal(Uri uri, ContentValues initialValues, String userWhere,
+             String[] userWhereArgs) {
+-        final Uri originalUri = uri;
+         if ("com.google.android.GoogleCamera".equals(getCallingPackageOrSelf())) {
+             if (matchUri(uri, false) == IMAGES_MEDIA_ID) {
+                 Log.w(TAG, "Working around app bug in b/111966296");
+@@ -4513,8 +4512,9 @@ public class MediaProvider extends ContentProvider {
+                 // We default to filtering mutable columns, except when we know
+                 // the single item being updated is pending; when it's finally
+                 // published we'll overwrite these values.
++                final Uri finalUri = uri;
+                 final Supplier<Boolean> isPending = new CachedSupplier<>(() -> {
+-                    return isPending(originalUri);
++                    return isPending(finalUri);
+                 });
+ 
+                 // Column values controlled by media scanner aren't writable by
+@@ -4597,7 +4597,7 @@ public class MediaProvider extends ContentProvider {
+             }
+ 
+             final LocalCallingIdentity token = clearLocalCallingIdentity();
+-            try (Cursor c = queryForSingleItem(originalUri,
++            try (Cursor c = queryForSingleItem(uri,
+                     sPlacementColumns.toArray(EmptyArray.STRING), userWhere, userWhereArgs, null)) {
+                 for (int i = 0; i < c.getColumnCount(); i++) {
+                     final String column = c.getColumnName(i);
+-- 
+2.35.1
+

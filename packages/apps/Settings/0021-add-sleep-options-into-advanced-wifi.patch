@@ -1,0 +1,1961 @@
+From cd55f97a3e1b7cebbb50e12b4646908b29a915cd Mon Sep 17 00:00:00 2001
+From: Alex Zhao <zzc@rock-chips.com>
+Date: Wed, 6 Jan 2021 10:57:01 +0800
+Subject: [PATCH 21/25] add sleep options into advanced wifi
+
+Signed-off-by: Alex Zhao <zzc@rock-chips.com>
+Change-Id: Ieeb070b3e8482dde2b4bf3b063794e58401204e3
+---
+ res/values-af/arrays.xml                      |  10 ++
+ res/values-am/arrays.xml                      |  10 ++
+ res/values-ar/arrays.xml                      |  10 ++
+ res/values-az/arrays.xml                      |  10 ++
+ res/values-b+sr+Latn/arrays.xml               |  10 ++
+ res/values-be/arrays.xml                      |  10 ++
+ res/values-bg/arrays.xml                      |  10 ++
+ res/values-bn/arrays.xml                      |  10 ++
+ res/values-bs/arrays.xml                      |  10 ++
+ res/values-ca/arrays.xml                      |  10 ++
+ res/values-cs/arrays.xml                      |  10 ++
+ res/values-da/arrays.xml                      |  10 ++
+ res/values-de/arrays.xml                      |  10 ++
+ res/values-el/arrays.xml                      |  10 ++
+ res/values-en-rAU/arrays.xml                  |  10 ++
+ res/values-en-rGB/arrays.xml                  |  10 ++
+ res/values-en-rIN/arrays.xml                  |  10 ++
+ res/values-es-rUS/arrays.xml                  |  10 ++
+ res/values-es/arrays.xml                      |  10 ++
+ res/values-et/arrays.xml                      |  10 ++
+ res/values-eu/arrays.xml                      |  10 ++
+ res/values-fa/arrays.xml                      |  10 ++
+ res/values-fi/arrays.xml                      |  10 ++
+ res/values-fr-rCA/arrays.xml                  |  10 ++
+ res/values-fr/arrays.xml                      |  10 ++
+ res/values-gl/arrays.xml                      |  10 ++
+ res/values-gu/arrays.xml                      |  10 ++
+ res/values-hi/arrays.xml                      |  10 ++
+ res/values-hr/arrays.xml                      |  10 ++
+ res/values-hu/arrays.xml                      |  10 ++
+ res/values-hy/arrays.xml                      |  10 ++
+ res/values-is/arrays.xml                      |  10 ++
+ res/values-it/arrays.xml                      |  10 ++
+ res/values-iw/arrays.xml                      |  10 ++
+ res/values-ja/arrays.xml                      |  10 ++
+ res/values-ka/arrays.xml                      |  10 ++
+ res/values-kk/arrays.xml                      |  10 ++
+ res/values-km/arrays.xml                      |  10 ++
+ res/values-kn/arrays.xml                      |  10 ++
+ res/values-ko/arrays.xml                      |  10 ++
+ res/values-ky/arrays.xml                      |  10 ++
+ res/values-lo/arrays.xml                      |  10 ++
+ res/values-lt/arrays.xml                      |  10 ++
+ res/values-lv/arrays.xml                      |  10 ++
+ res/values-mk/arrays.xml                      |  10 ++
+ res/values-ml/arrays.xml                      |  10 ++
+ res/values-mn/arrays.xml                      |  10 ++
+ res/values-mr/arrays.xml                      |  10 ++
+ res/values-ms/arrays.xml                      |  10 ++
+ res/values-my/arrays.xml                      |  10 ++
+ res/values-nb/arrays.xml                      |  10 ++
+ res/values-ne/arrays.xml                      |  10 ++
+ res/values-nl/arrays.xml                      |  10 ++
+ res/values-pa/arrays.xml                      |  10 ++
+ res/values-pl/arrays.xml                      |  10 ++
+ res/values-pt-rBR/arrays.xml                  |  10 ++
+ res/values-pt-rPT/arrays.xml                  |  10 ++
+ res/values-pt/arrays.xml                      |  10 ++
+ res/values-ro/arrays.xml                      |  10 ++
+ res/values-ru/arrays.xml                      |  10 ++
+ res/values-si/arrays.xml                      |  10 ++
+ res/values-sk/arrays.xml                      |  10 ++
+ res/values-sl/arrays.xml                      |  10 ++
+ res/values-sq/arrays.xml                      |  10 ++
+ res/values-sr/arrays.xml                      |  10 ++
+ res/values-sv/arrays.xml                      |  10 ++
+ res/values-sw/arrays.xml                      |  10 ++
+ res/values-ta/arrays.xml                      |  10 ++
+ res/values-te/arrays.xml                      |  10 ++
+ res/values-th/arrays.xml                      |  10 ++
+ res/values-tl/arrays.xml                      |  10 ++
+ res/values-tr/arrays.xml                      |  10 ++
+ res/values-uk/arrays.xml                      |  10 ++
+ res/values-ur/arrays.xml                      |  10 ++
+ res/values-uz/arrays.xml                      |  10 ++
+ res/values-vi/arrays.xml                      |  10 ++
+ res/values-zh-rCN/arrays.xml                  |  10 ++
+ res/values-zh-rHK/arrays.xml                  |  10 ++
+ res/values-zh-rTW/arrays.xml                  |  10 ++
+ res/values-zu/arrays.xml                      |  10 ++
+ res/values/arrays.xml                         |  32 ++++++
+ res/xml/wifi_configure_settings.xml           |   6 +
+ .../settings/wifi/ConfigureWifiSettings.java  |   1 +
+ .../WifiSleepPolicyPreferenceController.java  | 105 ++++++++++++++++++
+ 84 files changed, 944 insertions(+)
+ create mode 100644 src/com/android/settings/wifi/WifiSleepPolicyPreferenceController.java
+
+diff --git a/res/values-af/arrays.xml b/res/values-af/arrays.xml
+index 5b8ed28439..aacf8551e6 100644
+--- a/res/values-af/arrays.xml
++++ b/res/values-af/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Goed"</item>
+     <item msgid="202124107702016530">"Uitstekend"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Altyd"</item>
++    <item msgid="844721238536786870">"Slegs wanneer ingeprop"</item>
++    <item msgid="1986753720941888596">"Nooit"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Altyd"</item>
++    <item msgid="7433294150916905997">"Slegs wanneer ingeprop"</item>
++    <item msgid="1390404486722375028">"Nooit"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Afgelope 30 dae"</item>
+     <item msgid="3356834403629955571">"Stel gebruiksiklus …"</item>
+diff --git a/res/values-am/arrays.xml b/res/values-am/arrays.xml
+index f44cb4809e..c4ed0967f2 100644
+--- a/res/values-am/arrays.xml
++++ b/res/values-am/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"ጥሩ"</item>
+     <item msgid="202124107702016530">"እጅግ በጣም ጥሩ"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"ሁልጊዜ"</item>
++    <item msgid="844721238536786870">"ሲሰካ ብቻ"</item>
++    <item msgid="1986753720941888596">"በፍፁም"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"ሁልጊዜ"</item>
++    <item msgid="7433294150916905997">"ሲሰካ ብቻ"</item>
++    <item msgid="1390404486722375028">"ፈፅሞ"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"የመጨረሻዎቹ 30 ቀኖች"</item>
+     <item msgid="3356834403629955571">"የአጠቃቀም ዑደት አዘጋጅ..."</item>
+diff --git a/res/values-ar/arrays.xml b/res/values-ar/arrays.xml
+index 4218a24b19..a2865ccfaa 100644
+--- a/res/values-ar/arrays.xml
++++ b/res/values-ar/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"جيدة"</item>
+     <item msgid="202124107702016530">"ممتازة"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"دومًا"</item>
++    <item msgid="844721238536786870">"عند التوصيل فقط"</item>
++    <item msgid="1986753720941888596">"مطلقًا"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"دومًا"</item>
++    <item msgid="7433294150916905997">"عند التوصيل فقط"</item>
++    <item msgid="1390404486722375028">"مطلقًا"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"آخر ۳۰ يومًا"</item>
+     <item msgid="3356834403629955571">"تعيين دورة الاستخدام..."</item>
+diff --git a/res/values-az/arrays.xml b/res/values-az/arrays.xml
+index 1a73dd637e..d7e9a975b6 100644
+--- a/res/values-az/arrays.xml
++++ b/res/values-az/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Yaxşı"</item>
+     <item msgid="202124107702016530">"Əla"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Həmişə"</item>
++    <item msgid="844721238536786870">"Yalnız taxılı olduğu zaman"</item>
++    <item msgid="1986753720941888596">"Heç vaxt"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Həmişə"</item>
++    <item msgid="7433294150916905997">"Yalnız qoşulan zaman"</item>
++    <item msgid="1390404486722375028">"Heç vaxt"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Son 30 gün"</item>
+     <item msgid="3356834403629955571">"İstifadə siklini əldə edin..."</item>
+diff --git a/res/values-b+sr+Latn/arrays.xml b/res/values-b+sr+Latn/arrays.xml
+index 65beb054b1..a7bee1d1e7 100644
+--- a/res/values-b+sr+Latn/arrays.xml
++++ b/res/values-b+sr+Latn/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Dobra"</item>
+     <item msgid="202124107702016530">"Odlična"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Uvek"</item>
++    <item msgid="844721238536786870">"Samo kad se puni"</item>
++    <item msgid="1986753720941888596">"Nikad"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Uvek"</item>
++    <item msgid="7433294150916905997">"Samo kad se puni"</item>
++    <item msgid="1390404486722375028">"Nikada"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Poslednjih 30 dana"</item>
+     <item msgid="3356834403629955571">"Podesi ciklus potrošnje..."</item>
+diff --git a/res/values-be/arrays.xml b/res/values-be/arrays.xml
+index 0e22b482df..734963a6f0 100644
+--- a/res/values-be/arrays.xml
++++ b/res/values-be/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Добры"</item>
+     <item msgid="202124107702016530">"Выдатны"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Заўсёды"</item>
++    <item msgid="844721238536786870">"Толькі калі падлучаны"</item>
++    <item msgid="1986753720941888596">"Ніколі"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Заўсёды"</item>
++    <item msgid="7433294150916905997">"Толькі калі падлучаны"</item>
++    <item msgid="1390404486722375028">"Ніколі"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Апошнія 30 дзён"</item>
+     <item msgid="3356834403629955571">"Заданне цыклу расходу..."</item>
+diff --git a/res/values-bg/arrays.xml b/res/values-bg/arrays.xml
+index 6960746676..214af4b75a 100644
+--- a/res/values-bg/arrays.xml
++++ b/res/values-bg/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Добър"</item>
+     <item msgid="202124107702016530">"Отличен"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Винаги"</item>
++    <item msgid="844721238536786870">"Само при включено захранване"</item>
++    <item msgid="1986753720941888596">"Никога"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Винаги"</item>
++    <item msgid="7433294150916905997">"Само при включено захранване"</item>
++    <item msgid="1390404486722375028">"Никога"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Последните 30 дни"</item>
+     <item msgid="3356834403629955571">"Цикъл на пренос..."</item>
+diff --git a/res/values-bn/arrays.xml b/res/values-bn/arrays.xml
+index 8b5aaa17c6..8cf2ceb1fd 100644
+--- a/res/values-bn/arrays.xml
++++ b/res/values-bn/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"ভাল"</item>
+     <item msgid="202124107702016530">"খুব ভাল"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"সবসময়"</item>
++    <item msgid="844721238536786870">"কেবলমাত্র যখন প্লাগ ইন তখন"</item>
++    <item msgid="1986753720941888596">"কখনো নয়"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"সবসময়"</item>
++    <item msgid="7433294150916905997">"কেবলমাত্র যখন প্লাগ ইন তখন"</item>
++    <item msgid="1390404486722375028">"কখনই নয়"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"গত ৩০ দিন"</item>
+     <item msgid="3356834403629955571">"ব্যবহার চক্র সেট করুন..."</item>
+diff --git a/res/values-bs/arrays.xml b/res/values-bs/arrays.xml
+index 154723bf37..8ab804aee0 100644
+--- a/res/values-bs/arrays.xml
++++ b/res/values-bs/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Dobra"</item>
+     <item msgid="202124107702016530">"Odlična"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Uvijek"</item>
++    <item msgid="844721238536786870">"Samo kada je priključen na napajanje"</item>
++    <item msgid="1986753720941888596">"Nikada"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Uvijek"</item>
++    <item msgid="7433294150916905997">"Samo kada je priključen na napajanje"</item>
++    <item msgid="1390404486722375028">"Nikada"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Posljednjih 30 dana"</item>
+     <item msgid="3356834403629955571">"Podesi ciklus korištenja…"</item>
+diff --git a/res/values-ca/arrays.xml b/res/values-ca/arrays.xml
+index ac0e8bd0bb..ce63f09dbe 100644
+--- a/res/values-ca/arrays.xml
++++ b/res/values-ca/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Bona"</item>
+     <item msgid="202124107702016530">"Excel·lent"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Sempre"</item>
++    <item msgid="844721238536786870">"Només quan s\'estigui carregant"</item>
++    <item msgid="1986753720941888596">"Mai"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Sempre"</item>
++    <item msgid="7433294150916905997">"Només quan s\'estigui carregant"</item>
++    <item msgid="1390404486722375028">"Mai"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"30 darrers dies"</item>
+     <item msgid="3356834403629955571">"Defineix el cicle d\'ús..."</item>
+diff --git a/res/values-cs/arrays.xml b/res/values-cs/arrays.xml
+index a28e701229..5cbdd61137 100644
+--- a/res/values-cs/arrays.xml
++++ b/res/values-cs/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Dobrý"</item>
+     <item msgid="202124107702016530">"Vynikající"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Vždy"</item>
++    <item msgid="844721238536786870">"Pouze při nabíjení"</item>
++    <item msgid="1986753720941888596">"Nikdy"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Vždy"</item>
++    <item msgid="7433294150916905997">"Pouze při nabíjení"</item>
++    <item msgid="1390404486722375028">"Nikdy"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Posledních 30 dní"</item>
+     <item msgid="3356834403629955571">"Zadat cyklus počítání..."</item>
+diff --git a/res/values-da/arrays.xml b/res/values-da/arrays.xml
+index 2aa7c34f16..123a3edfe4 100644
+--- a/res/values-da/arrays.xml
++++ b/res/values-da/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"God"</item>
+     <item msgid="202124107702016530">"Fremragende"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Altid"</item>
++    <item msgid="844721238536786870">"Kun når tilsluttet strøm"</item>
++    <item msgid="1986753720941888596">"Aldrig"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Altid"</item>
++    <item msgid="7433294150916905997">"Kun når tilsluttet strøm"</item>
++    <item msgid="1390404486722375028">"Aldrig"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Seneste 30 dage"</item>
+     <item msgid="3356834403629955571">"Angiv cyklus for brug..."</item>
+diff --git a/res/values-de/arrays.xml b/res/values-de/arrays.xml
+index 4c32e978b6..bd7cd1008f 100644
+--- a/res/values-de/arrays.xml
++++ b/res/values-de/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Gut"</item>
+     <item msgid="202124107702016530">"Sehr gut"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Immer"</item>
++    <item msgid="844721238536786870">"Nur wenn angeschlossen"</item>
++    <item msgid="1986753720941888596">"Nie"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Immer"</item>
++    <item msgid="7433294150916905997">"Nur wenn angeschlossen"</item>
++    <item msgid="1390404486722375028">"Nie"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Letzte 30 Tage"</item>
+     <item msgid="3356834403629955571">"Nutzungszyklus wählen…"</item>
+diff --git a/res/values-el/arrays.xml b/res/values-el/arrays.xml
+index e0d0aa777e..547618531e 100644
+--- a/res/values-el/arrays.xml
++++ b/res/values-el/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Καλό"</item>
+     <item msgid="202124107702016530">"Εξαιρετικό"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Πάντα"</item>
++    <item msgid="844721238536786870">"Μόνο όταν είναι συνδεδεμένο"</item>
++    <item msgid="1986753720941888596">"Ποτέ"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Πάντα"</item>
++    <item msgid="7433294150916905997">"Μόνο όταν είναι συνδεδεμένο"</item>
++    <item msgid="1390404486722375028">"Ποτέ"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"30 τελευταίες ημέρες"</item>
+     <item msgid="3356834403629955571">"Ορισμός κύκλου χρήσης…"</item>
+diff --git a/res/values-en-rAU/arrays.xml b/res/values-en-rAU/arrays.xml
+index ec8510a50e..327d5db608 100644
+--- a/res/values-en-rAU/arrays.xml
++++ b/res/values-en-rAU/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Good"</item>
+     <item msgid="202124107702016530">"Excellent"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Always"</item>
++    <item msgid="844721238536786870">"Only when plugged in"</item>
++    <item msgid="1986753720941888596">"Never"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Always"</item>
++    <item msgid="7433294150916905997">"Only when plugged in"</item>
++    <item msgid="1390404486722375028">"Never"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Last 30 days"</item>
+     <item msgid="3356834403629955571">"Set usage cycle..."</item>
+diff --git a/res/values-en-rGB/arrays.xml b/res/values-en-rGB/arrays.xml
+index ec8510a50e..327d5db608 100644
+--- a/res/values-en-rGB/arrays.xml
++++ b/res/values-en-rGB/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Good"</item>
+     <item msgid="202124107702016530">"Excellent"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Always"</item>
++    <item msgid="844721238536786870">"Only when plugged in"</item>
++    <item msgid="1986753720941888596">"Never"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Always"</item>
++    <item msgid="7433294150916905997">"Only when plugged in"</item>
++    <item msgid="1390404486722375028">"Never"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Last 30 days"</item>
+     <item msgid="3356834403629955571">"Set usage cycle..."</item>
+diff --git a/res/values-en-rIN/arrays.xml b/res/values-en-rIN/arrays.xml
+index ec8510a50e..327d5db608 100644
+--- a/res/values-en-rIN/arrays.xml
++++ b/res/values-en-rIN/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Good"</item>
+     <item msgid="202124107702016530">"Excellent"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Always"</item>
++    <item msgid="844721238536786870">"Only when plugged in"</item>
++    <item msgid="1986753720941888596">"Never"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Always"</item>
++    <item msgid="7433294150916905997">"Only when plugged in"</item>
++    <item msgid="1390404486722375028">"Never"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Last 30 days"</item>
+     <item msgid="3356834403629955571">"Set usage cycle..."</item>
+diff --git a/res/values-es-rUS/arrays.xml b/res/values-es-rUS/arrays.xml
+index e1c0b858ee..19a0341c09 100644
+--- a/res/values-es-rUS/arrays.xml
++++ b/res/values-es-rUS/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Buena"</item>
+     <item msgid="202124107702016530">"Excelente"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Siempre"</item>
++    <item msgid="844721238536786870">"Sólo cuando está conectado"</item>
++    <item msgid="1986753720941888596">"Nunca"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Siempre"</item>
++    <item msgid="7433294150916905997">"Sólo cuando está conectado"</item>
++    <item msgid="1390404486722375028">"Nunca"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Últimos 30 días"</item>
+     <item msgid="3356834403629955571">"Configurar ciclo de uso…"</item>
+diff --git a/res/values-es/arrays.xml b/res/values-es/arrays.xml
+index 1f2dc1ad43..56c3548d59 100644
+--- a/res/values-es/arrays.xml
++++ b/res/values-es/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Buena"</item>
+     <item msgid="202124107702016530">"Excelente"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Siempre"</item>
++    <item msgid="844721238536786870">"Solo si se está cargando"</item>
++    <item msgid="1986753720941888596">"Nunca"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Siempre"</item>
++    <item msgid="7433294150916905997">"Solo si se está cargando"</item>
++    <item msgid="1390404486722375028">"Nunca"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Últimos 30 días"</item>
+     <item msgid="3356834403629955571">"Establecer ciclo uso..."</item>
+diff --git a/res/values-et/arrays.xml b/res/values-et/arrays.xml
+index 036cf5fa1c..ec78d04106 100644
+--- a/res/values-et/arrays.xml
++++ b/res/values-et/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Hea"</item>
+     <item msgid="202124107702016530">"Suurepärane"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Alati"</item>
++    <item msgid="844721238536786870">"Ainult siis, kui on ühendatud"</item>
++    <item msgid="1986753720941888596">"Mitte kunagi"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Alati"</item>
++    <item msgid="7433294150916905997">"Ainult siis, kui on ühendatud"</item>
++    <item msgid="1390404486722375028">"Mitte kunagi"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Viimased 30 päeva"</item>
+     <item msgid="3356834403629955571">"Kas. tsükli määramine ..."</item>
+diff --git a/res/values-eu/arrays.xml b/res/values-eu/arrays.xml
+index 7bbff21415..8c4f03bb67 100644
+--- a/res/values-eu/arrays.xml
++++ b/res/values-eu/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Ona"</item>
+     <item msgid="202124107702016530">"Bikaina"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Beti"</item>
++    <item msgid="844721238536786870">"Entxufatuta dagoenean soilik"</item>
++    <item msgid="1986753720941888596">"Inoiz ez"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Beti"</item>
++    <item msgid="7433294150916905997">"Entxufatuta dagoenean soilik"</item>
++    <item msgid="1390404486722375028">"Inoiz ez"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Azken 30 egunak"</item>
+     <item msgid="3356834403629955571">"Erabilera-zikloa…"</item>
+diff --git a/res/values-fa/arrays.xml b/res/values-fa/arrays.xml
+index bc7c51d65b..032d9a75ba 100644
+--- a/res/values-fa/arrays.xml
++++ b/res/values-fa/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"خوب"</item>
+     <item msgid="202124107702016530">"عالی"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"همیشه"</item>
++    <item msgid="844721238536786870">"تنها زمانی که وصل است"</item>
++    <item msgid="1986753720941888596">"هیچ‌وقت"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"همیشه"</item>
++    <item msgid="7433294150916905997">"تنها زمانی که وصل است"</item>
++    <item msgid="1390404486722375028">"هیچ‌وقت"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"۳۰ روز گذشته"</item>
+     <item msgid="3356834403629955571">"تنظیم چرخه مصرف..."</item>
+diff --git a/res/values-fi/arrays.xml b/res/values-fi/arrays.xml
+index 92a3668e0b..dda8e70c26 100644
+--- a/res/values-fi/arrays.xml
++++ b/res/values-fi/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Hyvä"</item>
+     <item msgid="202124107702016530">"Erinomainen"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Aina"</item>
++    <item msgid="844721238536786870">"Vain, kun laturi on kytketty"</item>
++    <item msgid="1986753720941888596">"Ei koskaan"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Aina"</item>
++    <item msgid="7433294150916905997">"Vain, kun laturi on kytketty"</item>
++    <item msgid="1390404486722375028">"Ei koskaan"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"30 viime päivää"</item>
+     <item msgid="3356834403629955571">"Aseta käyttöjakso…"</item>
+diff --git a/res/values-fr-rCA/arrays.xml b/res/values-fr-rCA/arrays.xml
+index 70688e9f99..7e0d80695d 100644
+--- a/res/values-fr-rCA/arrays.xml
++++ b/res/values-fr-rCA/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Bonne"</item>
+     <item msgid="202124107702016530">"Excellente"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Toujours"</item>
++    <item msgid="844721238536786870">"Uniquement si l\'appareil ebranché"</item>
++    <item msgid="1986753720941888596">"Jamais"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Toujours"</item>
++    <item msgid="7433294150916905997">"Uniquement si l\'appareil ebranché"</item>
++    <item msgid="1390404486722375028">"Jamais"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"30 derniers jours"</item>
+     <item msgid="3356834403629955571">"Défin. du cycle d\'util..."</item>
+diff --git a/res/values-fr/arrays.xml b/res/values-fr/arrays.xml
+index 93d84fd69b..47b9689d47 100644
+--- a/res/values-fr/arrays.xml
++++ b/res/values-fr/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Bonne"</item>
+     <item msgid="202124107702016530">"Excellente"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Toujours"</item>
++    <item msgid="844721238536786870">"Uniquement si l\'appareil est branché"</item>
++    <item msgid="1986753720941888596">"Jamais"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Toujours"</item>
++    <item msgid="7433294150916905997">"Uniquement si appareil branché"</item>
++    <item msgid="1390404486722375028">"Jamais"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"30 derniers jours"</item>
+     <item msgid="3356834403629955571">"Définir cycle conso..."</item>
+diff --git a/res/values-gl/arrays.xml b/res/values-gl/arrays.xml
+index 7aa91b8205..a5a0c2be46 100644
+--- a/res/values-gl/arrays.xml
++++ b/res/values-gl/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Boa"</item>
+     <item msgid="202124107702016530">"Excelente"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Sempre"</item>
++    <item msgid="844721238536786870">"Só cando está conectada"</item>
++    <item msgid="1986753720941888596">"Nunca"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Sempre"</item>
++    <item msgid="7433294150916905997">"Só cando está conectada"</item>
++    <item msgid="1390404486722375028">"Nunca"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Últimos 30 días"</item>
+     <item msgid="3356834403629955571">"Definir ciclo de uso..."</item>
+diff --git a/res/values-gu/arrays.xml b/res/values-gu/arrays.xml
+index f019fd546e..e54ed2e561 100644
+--- a/res/values-gu/arrays.xml
++++ b/res/values-gu/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"સારી"</item>
+     <item msgid="202124107702016530">"ઉત્તમ"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"હંમેશા"</item>
++    <item msgid="844721238536786870">"ફક્ત પ્લગ ઇન હોય ત્યારે"</item>
++    <item msgid="1986753720941888596">"ક્યારેય નહીં"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"હંમેશા"</item>
++    <item msgid="7433294150916905997">"ફક્ત પ્લગ ઇન હોય ત્યારે"</item>
++    <item msgid="1390404486722375028">"ક્યારેય નહીં"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"છેલ્લા 30 દિવસ"</item>
+     <item msgid="3356834403629955571">"વપરાશ સાયકલ સેટ કરો..."</item>
+diff --git a/res/values-hi/arrays.xml b/res/values-hi/arrays.xml
+index 1b2569ab23..ed3af724d5 100644
+--- a/res/values-hi/arrays.xml
++++ b/res/values-hi/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"अच्छा"</item>
+     <item msgid="202124107702016530">"बेहतरीन"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"हमेशा"</item>
++    <item msgid="844721238536786870">"केवल प्‍लग इन करने पर"</item>
++    <item msgid="1986753720941888596">"कभी नहीं"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"हमेशा"</item>
++    <item msgid="7433294150916905997">"केवल प्‍लग इन करने पर"</item>
++    <item msgid="1390404486722375028">"कभी नहीं"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"पिछले 30 दिन"</item>
+     <item msgid="3356834403629955571">"उपयोग चक्र सेट करें..."</item>
+diff --git a/res/values-hr/arrays.xml b/res/values-hr/arrays.xml
+index 5c322b27b2..4e25b02857 100644
+--- a/res/values-hr/arrays.xml
++++ b/res/values-hr/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Dobra"</item>
+     <item msgid="202124107702016530">"Izvrsna"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Uvijek"</item>
++    <item msgid="844721238536786870">"Samo kad je uključeno"</item>
++    <item msgid="1986753720941888596">"Nikad"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Uvijek"</item>
++    <item msgid="7433294150916905997">"Samo kad je priključen na napajanje"</item>
++    <item msgid="1390404486722375028">"Nikad"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Posljednjih 30 dana"</item>
+     <item msgid="3356834403629955571">"Postavi ciklus uporabe..."</item>
+diff --git a/res/values-hu/arrays.xml b/res/values-hu/arrays.xml
+index 8ea94c5485..9e8a15204b 100644
+--- a/res/values-hu/arrays.xml
++++ b/res/values-hu/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Jó"</item>
+     <item msgid="202124107702016530">"Kiváló"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Mindig"</item>
++    <item msgid="844721238536786870">"Csak ha töltőn van"</item>
++    <item msgid="1986753720941888596">"Soha"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Mindig"</item>
++    <item msgid="7433294150916905997">"Csak ha töltőn van"</item>
++    <item msgid="1390404486722375028">"Soha"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Legutóbbi 30 nap"</item>
+     <item msgid="3356834403629955571">"Ciklus beállítása…"</item>
+diff --git a/res/values-hy/arrays.xml b/res/values-hy/arrays.xml
+index 50238b9472..2d70a4325c 100644
+--- a/res/values-hy/arrays.xml
++++ b/res/values-hy/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Լավ"</item>
+     <item msgid="202124107702016530">"Գերազանց"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Միշտ"</item>
++    <item msgid="844721238536786870">"Միայն երբ միացված է"</item>
++    <item msgid="1986753720941888596">"Երբեք"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Միշտ"</item>
++    <item msgid="7433294150916905997">"Միայն երբ միացված է"</item>
++    <item msgid="1390404486722375028">"Երբեք"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Վերջին 30 օրում"</item>
+     <item msgid="3356834403629955571">"Սահմանել օգտագործման ցիկլը..."</item>
+diff --git a/res/values-is/arrays.xml b/res/values-is/arrays.xml
+index 90d6b3be01..5df7f8a2a3 100644
+--- a/res/values-is/arrays.xml
++++ b/res/values-is/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Góður"</item>
+     <item msgid="202124107702016530">"Frábær"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Alltaf"</item>
++    <item msgid="844721238536786870">"Aðeins þegar tækið er í sambandi"</item>
++    <item msgid="1986753720941888596">"Aldrei"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Alltaf"</item>
++    <item msgid="7433294150916905997">"Aðeins þegar tækið er í sambandi"</item>
++    <item msgid="1390404486722375028">"Aldrei"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Síðustu 30 dagar"</item>
+     <item msgid="3356834403629955571">"Velja notkunartímabil..."</item>
+diff --git a/res/values-it/arrays.xml b/res/values-it/arrays.xml
+index 5a9f87f85c..e94c9a7d2d 100644
+--- a/res/values-it/arrays.xml
++++ b/res/values-it/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Buona"</item>
+     <item msgid="202124107702016530">"Ottima"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Sempre"</item>
++    <item msgid="844721238536786870">"Solo quando collegato"</item>
++    <item msgid="1986753720941888596">"Mai"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Sempre"</item>
++    <item msgid="7433294150916905997">"Solo quando collegato"</item>
++    <item msgid="1390404486722375028">"Mai"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Ultimi 30 giorni"</item>
+     <item msgid="3356834403629955571">"Imp. ciclo di utilizzo..."</item>
+diff --git a/res/values-iw/arrays.xml b/res/values-iw/arrays.xml
+index f71da6d6d2..5d8c6c0419 100644
+--- a/res/values-iw/arrays.xml
++++ b/res/values-iw/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"טובה"</item>
+     <item msgid="202124107702016530">"מצוינת"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"תמיד"</item>
++    <item msgid="844721238536786870">"רק כאשר המכשיר מחובר"</item>
++    <item msgid="1986753720941888596">"אף פעם"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"תמיד"</item>
++    <item msgid="7433294150916905997">"רק כאשר המכשיר מחובר"</item>
++    <item msgid="1390404486722375028">"לעולם לא"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"30 הימים האחרונים"</item>
+     <item msgid="3356834403629955571">"הגדר מחזור שימוש..."</item>
+diff --git a/res/values-ja/arrays.xml b/res/values-ja/arrays.xml
+index a73bef3548..3c7a72589f 100644
+--- a/res/values-ja/arrays.xml
++++ b/res/values-ja/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"強"</item>
+     <item msgid="202124107702016530">"非常に強い"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"常に接続"</item>
++    <item msgid="844721238536786870">"電源接続時にのみ接続"</item>
++    <item msgid="1986753720941888596">"接続しない"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"常に使用"</item>
++    <item msgid="7433294150916905997">"電源接続時にのみ接続"</item>
++    <item msgid="1390404486722375028">"使用しない"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"過去30日間"</item>
+     <item msgid="3356834403629955571">"使用サイクルを設定..."</item>
+diff --git a/res/values-ka/arrays.xml b/res/values-ka/arrays.xml
+index 077403f35f..68d578b499 100644
+--- a/res/values-ka/arrays.xml
++++ b/res/values-ka/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"კარგი"</item>
+     <item msgid="202124107702016530">"შესანიშნავი"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"ყოველთვის"</item>
++    <item msgid="844721238536786870">"მხოლოდ ქსელიდან კვების მიღების დროს"</item>
++    <item msgid="1986753720941888596">"არასოდეს"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"ყოველთვის"</item>
++    <item msgid="7433294150916905997">"მხოლოდ მაშინ, როცა მიერთებულია"</item>
++    <item msgid="1390404486722375028">"არასოდეს"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"ბოლო 30 დღე"</item>
+     <item msgid="3356834403629955571">"გამოყენების ციკლის დაყენება..."</item>
+diff --git a/res/values-kk/arrays.xml b/res/values-kk/arrays.xml
+index 4c744df47c..02fd7235e5 100644
+--- a/res/values-kk/arrays.xml
++++ b/res/values-kk/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Жақсы"</item>
+     <item msgid="202124107702016530">"Өте жақсы"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Әрқашан"</item>
++    <item msgid="844721238536786870">"Жалғанып тұрғанда"</item>
++    <item msgid="1986753720941888596">"Ешқашан"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Үнемі"</item>
++    <item msgid="7433294150916905997">"Жалғанып тұрғанда ғана"</item>
++    <item msgid="1390404486722375028">"Ешқашан"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Соңғы 30 күн"</item>
+     <item msgid="3356834403629955571">"Пайдалану циклын орнату…"</item>
+diff --git a/res/values-km/arrays.xml b/res/values-km/arrays.xml
+index d074efd436..534348d6b8 100644
+--- a/res/values-km/arrays.xml
++++ b/res/values-km/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"ខ្លាំង"</item>
+     <item msgid="202124107702016530">"ខ្លាំងណាស់"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"ជា​និច្ច"</item>
++    <item msgid="844721238536786870">"តែ​ពេល​ដោតប៉ុណ្ណោះ"</item>
++    <item msgid="1986753720941888596">"កុំ"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"ជា​និច្ច"</item>
++    <item msgid="7433294150916905997">"តែ​ពេល​ដោត"</item>
++    <item msgid="1390404486722375028">"កុំ"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"30 ថ្ងៃ​មុន"</item>
+     <item msgid="3356834403629955571">"កំណត់រង្វង់ប្រើប្រាស់..."</item>
+diff --git a/res/values-kn/arrays.xml b/res/values-kn/arrays.xml
+index e858ca660f..0d99fb4a5f 100644
+--- a/res/values-kn/arrays.xml
++++ b/res/values-kn/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"ಉತ್ತಮ"</item>
+     <item msgid="202124107702016530">"ಉತ್ಕೃಷ್ಟ"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"ಯಾವಾಗಲೂ"</item>
++    <item msgid="844721238536786870">"ಕೇವಲ ಪ್ಲಗ್ ಇನ್ ಮಾಡಿದಾಗ"</item>
++    <item msgid="1986753720941888596">"ಎಂದಿಗೂ ಬೇಡ"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"ಯಾವಾಗಲೂ"</item>
++    <item msgid="7433294150916905997">"ಕೇವಲ ಪ್ಲಗ್ ಇನ್ ಮಾಡಿದಾಗ"</item>
++    <item msgid="1390404486722375028">"ಎಂದಿಗೂ ಇಲ್ಲ"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"ಕಳೆದ 30 ದಿನಗಳು"</item>
+     <item msgid="3356834403629955571">"ಬಳಕೆಯ ಆವರ್ತನೆಯನ್ನು ಹೊಂದಿಸಿ..."</item>
+diff --git a/res/values-ko/arrays.xml b/res/values-ko/arrays.xml
+index 8c61c6b50b..b0bab8fe9e 100644
+--- a/res/values-ko/arrays.xml
++++ b/res/values-ko/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"좋음"</item>
+     <item msgid="202124107702016530">"우수함"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"항상"</item>
++    <item msgid="844721238536786870">"충전 중인 경우에만"</item>
++    <item msgid="1986753720941888596">"안함"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"항상"</item>
++    <item msgid="7433294150916905997">"충전 중인 경우에만"</item>
++    <item msgid="1390404486722375028">"안함"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"최근 30일"</item>
+     <item msgid="3356834403629955571">"사용 주기 설정..."</item>
+diff --git a/res/values-ky/arrays.xml b/res/values-ky/arrays.xml
+index 0cd420ac62..4b302a048b 100644
+--- a/res/values-ky/arrays.xml
++++ b/res/values-ky/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Жакшы"</item>
+     <item msgid="202124107702016530">"Эң жакшы"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Дайыма"</item>
++    <item msgid="844721238536786870">"Дүрмөттөө учурунда гана"</item>
++    <item msgid="1986753720941888596">"Эч качан"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Дайыма"</item>
++    <item msgid="7433294150916905997">"Бир гана дүрмөттөө учурунда"</item>
++    <item msgid="1390404486722375028">"Эч качан"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Акыркы 30 күн"</item>
+     <item msgid="3356834403629955571">"Колдонуу мерчимин коюу…"</item>
+diff --git a/res/values-lo/arrays.xml b/res/values-lo/arrays.xml
+index 2568a52c76..8cfc0bdbbc 100644
+--- a/res/values-lo/arrays.xml
++++ b/res/values-lo/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"ດີ"</item>
+     <item msgid="202124107702016530">"ດີເລີດ"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"ຕະຫຼອດເວລາ"</item>
++    <item msgid="844721238536786870">"ສະເພາະເມື່ອສຽບສາຍສາກ"</item>
++    <item msgid="1986753720941888596">"ບໍ່ໃຊ້"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"ຕະຫຼອດເວລາ"</item>
++    <item msgid="7433294150916905997">"ສະເພາະເມື່ອສຽບສາຍສາກເທົ່ານັ້ນ"</item>
++    <item msgid="1390404486722375028">"ບໍ່ໃຊ້"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"30 ມື້ທີ່ຜ່ານມາ"</item>
+     <item msgid="3356834403629955571">"ຕັ້ງ​ຮອບ​ການ​ນຳ​ໃຊ້..."</item>
+diff --git a/res/values-lt/arrays.xml b/res/values-lt/arrays.xml
+index d423cd5cea..626d2328d7 100644
+--- a/res/values-lt/arrays.xml
++++ b/res/values-lt/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Geras"</item>
+     <item msgid="202124107702016530">"Puikus"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Visada"</item>
++    <item msgid="844721238536786870">"Tik kai įjungtas į lizdą"</item>
++    <item msgid="1986753720941888596">"Niekada"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Visada"</item>
++    <item msgid="7433294150916905997">"Tik kai įjungtas į lizdą"</item>
++    <item msgid="1390404486722375028">"Niekada"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Pastarosios 30 dienų"</item>
+     <item msgid="3356834403629955571">"Nustatyti naudojimo ciklą..."</item>
+diff --git a/res/values-lv/arrays.xml b/res/values-lv/arrays.xml
+index f3d5006230..668e08ccc8 100644
+--- a/res/values-lv/arrays.xml
++++ b/res/values-lv/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Labs"</item>
+     <item msgid="202124107702016530">"Teicams"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Vienmēr"</item>
++    <item msgid="844721238536786870">"Tikai ja pieslēgts pie strāvas"</item>
++    <item msgid="1986753720941888596">"Nekad"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Vienmēr"</item>
++    <item msgid="7433294150916905997">"Tikai ja pieslēgts pie strāvas"</item>
++    <item msgid="1390404486722375028">"Nekad"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Pēdējās 30 dienas"</item>
+     <item msgid="3356834403629955571">"Iestatīt lietojuma ciklu…"</item>
+diff --git a/res/values-mk/arrays.xml b/res/values-mk/arrays.xml
+index 1517863d68..2ce57332d3 100644
+--- a/res/values-mk/arrays.xml
++++ b/res/values-mk/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Добар"</item>
+     <item msgid="202124107702016530">"Одличен"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Секогаш"</item>
++    <item msgid="844721238536786870">"Само кога е вклучено"</item>
++    <item msgid="1986753720941888596">"Никогаш"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Секогаш"</item>
++    <item msgid="7433294150916905997">"Само кога е вклучено"</item>
++    <item msgid="1390404486722375028">"Никогаш"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Минатите 30 дена"</item>
+     <item msgid="3356834403629955571">"Пост. цикл. на корист...."</item>
+diff --git a/res/values-ml/arrays.xml b/res/values-ml/arrays.xml
+index 2edb09ed8e..139ebc89a8 100644
+--- a/res/values-ml/arrays.xml
++++ b/res/values-ml/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"നല്ലത്"</item>
+     <item msgid="202124107702016530">"മികച്ചത്"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"എല്ലായ്പ്പോഴും"</item>
++    <item msgid="844721238536786870">"പ്ലഗ്ഗുചെയ്‌തിരിക്കവേ"</item>
++    <item msgid="1986753720941888596">"ഒരിക്കലും"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"എല്ലായ്പ്പോഴും"</item>
++    <item msgid="7433294150916905997">"പ്ലഗ്ഗുചെയ്‌തിരിക്കവേ"</item>
++    <item msgid="1390404486722375028">"ഒരിക്കലും"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"കഴിഞ്ഞ 30 ദിവസം"</item>
+     <item msgid="3356834403629955571">"ഉപയോഗ സൈക്കിൾ സജ്ജമാക്കുക..."</item>
+diff --git a/res/values-mn/arrays.xml b/res/values-mn/arrays.xml
+index 33349a5ad6..28cb0460c6 100644
+--- a/res/values-mn/arrays.xml
++++ b/res/values-mn/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Сайн"</item>
+     <item msgid="202124107702016530">"Маш сайн"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Байнга"</item>
++    <item msgid="844721238536786870">"Зөвхөн залгасан үед"</item>
++    <item msgid="1986753720941888596">"Хэзээ ч үгүй"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Байнга"</item>
++    <item msgid="7433294150916905997">"Зөвхөн залгасан үед"</item>
++    <item msgid="1390404486722375028">"Хэзээ ч үгүй"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Сүүлийн 30 өдөр"</item>
+     <item msgid="3356834403629955571">"Ашиглалтын циклийг тохируулах..."</item>
+diff --git a/res/values-mr/arrays.xml b/res/values-mr/arrays.xml
+index 290c61f00a..131794c9a5 100644
+--- a/res/values-mr/arrays.xml
++++ b/res/values-mr/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"उत्तम"</item>
+     <item msgid="202124107702016530">"उत्कृष्ट"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"नेहमी"</item>
++    <item msgid="844721238536786870">"फक्त प्लग इन केलेले असते तेव्हा"</item>
++    <item msgid="1986753720941888596">"कधीही नाही"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"नेहमी"</item>
++    <item msgid="7433294150916905997">"फक्त प्लग इन केलेले असते तेव्हा"</item>
++    <item msgid="1390404486722375028">"कधीही नाही"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"अंतिम 30 दिवस"</item>
+     <item msgid="3356834403629955571">"वापर चक्र सेट करा..."</item>
+diff --git a/res/values-ms/arrays.xml b/res/values-ms/arrays.xml
+index 9a9aadc48a..c901340002 100644
+--- a/res/values-ms/arrays.xml
++++ b/res/values-ms/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Bagus"</item>
+     <item msgid="202124107702016530">"Sangat baik"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Sentiasa"</item>
++    <item msgid="844721238536786870">"Hanya apabila dipalamkan"</item>
++    <item msgid="1986753720941888596">"Jangan sekali-kali"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Sentiasa"</item>
++    <item msgid="7433294150916905997">"Hanya apabila dipasang"</item>
++    <item msgid="1390404486722375028">"Jangan sekali-kali"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"30 hari terakhir"</item>
+     <item msgid="3356834403629955571">"Ttpkn kitar penggunaan..."</item>
+diff --git a/res/values-my/arrays.xml b/res/values-my/arrays.xml
+index 60f8af9a28..8e2fbf7e19 100644
+--- a/res/values-my/arrays.xml
++++ b/res/values-my/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"ကောင်းသည်"</item>
+     <item msgid="202124107702016530">"အလွန်ကောင်းသည်"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"အမြဲတမ်း"</item>
++    <item msgid="844721238536786870">"ကြိုးဖြင့်ဆက်ထားသည့်အခါသာ"</item>
++    <item msgid="1986753720941888596">"ဘယ်တော့မှ"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"အမြဲတမ်း"</item>
++    <item msgid="7433294150916905997">"ကြိုးဖြင့်ဆက်ထားသည့်အခါသာ"</item>
++    <item msgid="1390404486722375028">"ဘယ်တော့မှ"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"နောက်ဆုံး ရက် ၃၀"</item>
+     <item msgid="3356834403629955571">"သုံးစွဲမှု စက်ဝန်း သတ်မှတ်ရန်..."</item>
+diff --git a/res/values-nb/arrays.xml b/res/values-nb/arrays.xml
+index 951578c2c0..ef7115dbfd 100644
+--- a/res/values-nb/arrays.xml
++++ b/res/values-nb/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Bra"</item>
+     <item msgid="202124107702016530">"Utmerket"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Alltid"</item>
++    <item msgid="844721238536786870">"Bare når tilkoblet strøm"</item>
++    <item msgid="1986753720941888596">"Aldri"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Alltid"</item>
++    <item msgid="7433294150916905997">"Bare når tilkoblet strøm"</item>
++    <item msgid="1390404486722375028">"Aldri"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"De siste 30 dagene"</item>
+     <item msgid="3356834403629955571">"Angi brukssyklus"</item>
+diff --git a/res/values-ne/arrays.xml b/res/values-ne/arrays.xml
+index 51516453b4..b5886b1d61 100644
+--- a/res/values-ne/arrays.xml
++++ b/res/values-ne/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"राम्रो"</item>
+     <item msgid="202124107702016530">"उत्कृष्ट"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"सधैं"</item>
++    <item msgid="844721238536786870">"प्लग इन भएपछि मात्र"</item>
++    <item msgid="1986753720941888596">"कहिल्यै पनि होइन"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"सधैँ"</item>
++    <item msgid="7433294150916905997">"केवल प्लग गरेको बेलामा मात्र"</item>
++    <item msgid="1390404486722375028">"कहिल्यै पनि होइन"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"अन्तिम ३० दिन"</item>
+     <item msgid="3356834403629955571">"प्रयोग चक्र सेट..."</item>
+diff --git a/res/values-nl/arrays.xml b/res/values-nl/arrays.xml
+index ab296780b8..3613d7fd4b 100644
+--- a/res/values-nl/arrays.xml
++++ b/res/values-nl/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Goed"</item>
+     <item msgid="202124107702016530">"Uitstekend"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Altijd"</item>
++    <item msgid="844721238536786870">"Alleen tijdens laden"</item>
++    <item msgid="1986753720941888596">"Nooit"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Altijd"</item>
++    <item msgid="7433294150916905997">"Alleen tijdens laden"</item>
++    <item msgid="1390404486722375028">"Nooit"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Afgelopen 30 dagen"</item>
+     <item msgid="3356834403629955571">"Gebruikscyclus instellen…"</item>
+diff --git a/res/values-pa/arrays.xml b/res/values-pa/arrays.xml
+index 8ae37b2846..ed12d03f9a 100644
+--- a/res/values-pa/arrays.xml
++++ b/res/values-pa/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"ਵਧੀਆ"</item>
+     <item msgid="202124107702016530">"ਸ਼ਾਨਦਾਰ"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"ਹਮੇਸ਼ਾਂ"</item>
++    <item msgid="844721238536786870">"ਕੇਵਲ ਉਦੋਂ ਜਦੋਂ ਪਲਗ ਇਨ ਕੀਤਾ ਹੋਵੇ"</item>
++    <item msgid="1986753720941888596">"ਕਦੇ ਵੀ ਨਹੀਂ"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"ਹਮੇਸ਼ਾਂ"</item>
++    <item msgid="7433294150916905997">"ਕੇਵਲ ਉਦੋਂ ਜਦੋਂ ਪਲਗ ਇਨ ਕੀਤਾ ਹੋਵੇ"</item>
++    <item msgid="1390404486722375028">"ਕਦੇ ਵੀ ਨਹੀਂ"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"ਪਿਛਲੇ 30 ਦਿਨ"</item>
+     <item msgid="3356834403629955571">"ਵਰਤੋਂ ਸਾਈਕਲ ਸੈੱਟ ਕਰੋ..."</item>
+diff --git a/res/values-pl/arrays.xml b/res/values-pl/arrays.xml
+index c2c4ed0f2a..fd47c8cfc7 100644
+--- a/res/values-pl/arrays.xml
++++ b/res/values-pl/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Dobra"</item>
+     <item msgid="202124107702016530">"Doskonała"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Zawsze"</item>
++    <item msgid="844721238536786870">"Tylko, gdy podłączony"</item>
++    <item msgid="1986753720941888596">"Nigdy"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Zawsze"</item>
++    <item msgid="7433294150916905997">"Tylko, gdy podłączony"</item>
++    <item msgid="1390404486722375028">"Nigdy"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Ostatnie 30 dni"</item>
+     <item msgid="3356834403629955571">"Ustaw cykl danych..."</item>
+diff --git a/res/values-pt-rBR/arrays.xml b/res/values-pt-rBR/arrays.xml
+index 389a7d8265..ee4df4098e 100644
+--- a/res/values-pt-rBR/arrays.xml
++++ b/res/values-pt-rBR/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Boa"</item>
+     <item msgid="202124107702016530">"Excelente"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Sempre"</item>
++    <item msgid="844721238536786870">"Somente quando conectado"</item>
++    <item msgid="1986753720941888596">"Nunca"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Sempre"</item>
++    <item msgid="7433294150916905997">"Somente quando conectado"</item>
++    <item msgid="1390404486722375028">"Nunca"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Últimos 30 dias"</item>
+     <item msgid="3356834403629955571">"Definir ciclo de uso..."</item>
+diff --git a/res/values-pt-rPT/arrays.xml b/res/values-pt-rPT/arrays.xml
+index 319ef23b12..19ee26b3a6 100644
+--- a/res/values-pt-rPT/arrays.xml
++++ b/res/values-pt-rPT/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Boa"</item>
+     <item msgid="202124107702016530">"Excelente"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Sempre"</item>
++    <item msgid="844721238536786870">"Apenas quando estiver ligado"</item>
++    <item msgid="1986753720941888596">"Nunca"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Sempre"</item>
++    <item msgid="7433294150916905997">"Apenas quando estiver ligado"</item>
++    <item msgid="1390404486722375028">"Nunca"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Últimos 30 dias"</item>
+     <item msgid="3356834403629955571">"Def. ciclo utilização..."</item>
+diff --git a/res/values-pt/arrays.xml b/res/values-pt/arrays.xml
+index 389a7d8265..ee4df4098e 100644
+--- a/res/values-pt/arrays.xml
++++ b/res/values-pt/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Boa"</item>
+     <item msgid="202124107702016530">"Excelente"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Sempre"</item>
++    <item msgid="844721238536786870">"Somente quando conectado"</item>
++    <item msgid="1986753720941888596">"Nunca"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Sempre"</item>
++    <item msgid="7433294150916905997">"Somente quando conectado"</item>
++    <item msgid="1390404486722375028">"Nunca"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Últimos 30 dias"</item>
+     <item msgid="3356834403629955571">"Definir ciclo de uso..."</item>
+diff --git a/res/values-ro/arrays.xml b/res/values-ro/arrays.xml
+index e069752b51..9e8cd14fd5 100644
+--- a/res/values-ro/arrays.xml
++++ b/res/values-ro/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Bun"</item>
+     <item msgid="202124107702016530">"Excelent"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Întotdeauna"</item>
++    <item msgid="844721238536786870">"Doar atunci când este conectat"</item>
++    <item msgid="1986753720941888596">"Niciodată"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Întotdeauna"</item>
++    <item msgid="7433294150916905997">"Doar atunci când este conectat"</item>
++    <item msgid="1390404486722375028">"Niciodată"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Ultimele 30 de zile"</item>
+     <item msgid="3356834403629955571">"Setați ciclu utilizare..."</item>
+diff --git a/res/values-ru/arrays.xml b/res/values-ru/arrays.xml
+index c78d052c71..6f3c190170 100644
+--- a/res/values-ru/arrays.xml
++++ b/res/values-ru/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Хороший"</item>
+     <item msgid="202124107702016530">"Отличный"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Не выключать"</item>
++    <item msgid="844721238536786870">"Только при питании от сети"</item>
++    <item msgid="1986753720941888596">"Всегда выключать"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Не выключать"</item>
++    <item msgid="7433294150916905997">"Только при питании от сети"</item>
++    <item msgid="1390404486722375028">"Всегда выключать"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"За последние 30 дней"</item>
+     <item msgid="3356834403629955571">"Цикл использования данных"</item>
+diff --git a/res/values-si/arrays.xml b/res/values-si/arrays.xml
+index e67cd3c1b4..5638cbc953 100644
+--- a/res/values-si/arrays.xml
++++ b/res/values-si/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"හොඳ"</item>
+     <item msgid="202124107702016530">"ඉතා හොඳ"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"සැමවිටම"</item>
++    <item msgid="844721238536786870">"පේනුව ගත කළ විට පමණක්"</item>
++    <item msgid="1986753720941888596">"කවදාවත් නොවේ"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"සැමවිටම"</item>
++    <item msgid="7433294150916905997">"පේනුව සක්‍රිය කලවිට පමණක්"</item>
++    <item msgid="1390404486722375028">"කවදාවත් නොවේ"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"අවසන් දින 30"</item>
+     <item msgid="3356834403629955571">"භාවිත කිරීමේ කවය සකසන්න..."</item>
+diff --git a/res/values-sk/arrays.xml b/res/values-sk/arrays.xml
+index 3c68c3389d..645383f743 100644
+--- a/res/values-sk/arrays.xml
++++ b/res/values-sk/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Dobrá"</item>
+     <item msgid="202124107702016530">"Vynikajúce"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Vždy"</item>
++    <item msgid="844721238536786870">"Iba počas napájania"</item>
++    <item msgid="1986753720941888596">"Nikdy"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Vždy"</item>
++    <item msgid="7433294150916905997">"Iba počas napájania"</item>
++    <item msgid="1390404486722375028">"Nikdy"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Posledných 30 dní"</item>
+     <item msgid="3356834403629955571">"Nastaviť cyklus spotreby"</item>
+diff --git a/res/values-sl/arrays.xml b/res/values-sl/arrays.xml
+index 635df4dfda..a3154410ba 100644
+--- a/res/values-sl/arrays.xml
++++ b/res/values-sl/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Dobra"</item>
+     <item msgid="202124107702016530">"Odlična"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Vedno"</item>
++    <item msgid="844721238536786870">"Samo, ko je priključen"</item>
++    <item msgid="1986753720941888596">"Nikoli"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Vedno"</item>
++    <item msgid="7433294150916905997">"Samo, ko je priključen"</item>
++    <item msgid="1390404486722375028">"Nikoli"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Zadnjih 30 dni"</item>
+     <item msgid="3356834403629955571">"Nastav. cikla porabe ..."</item>
+diff --git a/res/values-sq/arrays.xml b/res/values-sq/arrays.xml
+index 305b0721a5..e6bce5dfdd 100644
+--- a/res/values-sq/arrays.xml
++++ b/res/values-sq/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"I mirë"</item>
+     <item msgid="202124107702016530">"I shkëlqyer"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Gjithmonë!"</item>
++    <item msgid="844721238536786870">"Vetëm kur është i futur në prizë"</item>
++    <item msgid="1986753720941888596">"Asnjëherë!"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Gjithmonë"</item>
++    <item msgid="7433294150916905997">"Vetëm kur është në prizë"</item>
++    <item msgid="1390404486722375028">"Asnjëherë!"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"30 ditët e fundit"</item>
+     <item msgid="3356834403629955571">"Cakto ciklin e përdorimit..."</item>
+diff --git a/res/values-sr/arrays.xml b/res/values-sr/arrays.xml
+index 97ed707523..c841f1387f 100644
+--- a/res/values-sr/arrays.xml
++++ b/res/values-sr/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Добра"</item>
+     <item msgid="202124107702016530">"Одлична"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Увек"</item>
++    <item msgid="844721238536786870">"Само кад се пуни"</item>
++    <item msgid="1986753720941888596">"Никад"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Увек"</item>
++    <item msgid="7433294150916905997">"Само кад се пуни"</item>
++    <item msgid="1390404486722375028">"Никада"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Последњих 30 дана"</item>
+     <item msgid="3356834403629955571">"Подеси циклус потрошње..."</item>
+diff --git a/res/values-sv/arrays.xml b/res/values-sv/arrays.xml
+index ef7ebca8eb..5a94b0283b 100644
+--- a/res/values-sv/arrays.xml
++++ b/res/values-sv/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Bra"</item>
+     <item msgid="202124107702016530">"Utmärkt"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Alltid"</item>
++    <item msgid="844721238536786870">"Endast när den är inkopplad"</item>
++    <item msgid="1986753720941888596">"Aldrig"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Alltid"</item>
++    <item msgid="7433294150916905997">"Endast när den är inkopplad"</item>
++    <item msgid="1390404486722375028">"Aldrig"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Senaste 30 dagarna"</item>
+     <item msgid="3356834403629955571">"Ange användningscykel ..."</item>
+diff --git a/res/values-sw/arrays.xml b/res/values-sw/arrays.xml
+index 53006c7a29..6b13cc5845 100644
+--- a/res/values-sw/arrays.xml
++++ b/res/values-sw/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Thabiti"</item>
+     <item msgid="202124107702016530">"Bora zaidi"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Daima"</item>
++    <item msgid="844721238536786870">"Wakati inachaji pekee"</item>
++    <item msgid="1986753720941888596">"Katu"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Daima"</item>
++    <item msgid="7433294150916905997">"Wakati inachaji pekee"</item>
++    <item msgid="1390404486722375028">"kamwe"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Siku 30 zilizopita"</item>
+     <item msgid="3356834403629955571">"Weka mzunguko wa matumizi..."</item>
+diff --git a/res/values-ta/arrays.xml b/res/values-ta/arrays.xml
+index 737d835e6f..7bb0c5a10f 100644
+--- a/res/values-ta/arrays.xml
++++ b/res/values-ta/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"நன்று"</item>
+     <item msgid="202124107702016530">"பிரமாதம்"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"எப்போதும்"</item>
++    <item msgid="844721238536786870">"செருகப்பட்டிருக்கும்போது மட்டும்"</item>
++    <item msgid="1986753720941888596">"எப்போதும் வேண்டாம்"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"எப்போதும்"</item>
++    <item msgid="7433294150916905997">"செருகப்பட்டிருக்கும்போது மட்டும்"</item>
++    <item msgid="1390404486722375028">"ஒருபோதும் வேண்டாம்"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"கடந்த 30 நாட்கள்"</item>
+     <item msgid="3356834403629955571">"பயன்பாட்டு சுழற்சியை அமை..."</item>
+diff --git a/res/values-te/arrays.xml b/res/values-te/arrays.xml
+index 68d5427461..60937b8981 100644
+--- a/res/values-te/arrays.xml
++++ b/res/values-te/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"బాగుంది"</item>
+     <item msgid="202124107702016530">"అద్భుతం"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"ఎల్లప్పుడూ"</item>
++    <item msgid="844721238536786870">"ప్లగిన్ చేయబడినప్పుడు మాత్రమే"</item>
++    <item msgid="1986753720941888596">"ఎప్పటికీ వద్దు"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"ఎల్లప్పుడూ"</item>
++    <item msgid="7433294150916905997">"ప్లగిన్ చేయబడినప్పుడు మాత్రమే"</item>
++    <item msgid="1390404486722375028">"ఎప్పటికీ వద్దు"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"గత 30 రోజులు"</item>
+     <item msgid="3356834403629955571">"విని. పునరా. సెట్ చేయి..."</item>
+diff --git a/res/values-th/arrays.xml b/res/values-th/arrays.xml
+index e7549a66cd..8f42a08446 100644
+--- a/res/values-th/arrays.xml
++++ b/res/values-th/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"ดี"</item>
+     <item msgid="202124107702016530">"ยอดเยี่ยม"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"ทุกครั้ง"</item>
++    <item msgid="844721238536786870">"เมื่อเสียบปลั๊กเท่านั้น"</item>
++    <item msgid="1986753720941888596">"ไม่ต้องเลย"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"ทุกครั้ง"</item>
++    <item msgid="7433294150916905997">"เมื่อเสียบปลั๊กเท่านั้น"</item>
++    <item msgid="1390404486722375028">"ไม่เลย"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"30 วันที่ผ่านมา"</item>
+     <item msgid="3356834403629955571">"ตั้งรอบการใช้..."</item>
+diff --git a/res/values-tl/arrays.xml b/res/values-tl/arrays.xml
+index a8cef12dcd..bd098b2f73 100644
+--- a/res/values-tl/arrays.xml
++++ b/res/values-tl/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Malakas"</item>
+     <item msgid="202124107702016530">"Napakalakas"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Palagi"</item>
++    <item msgid="844721238536786870">"Kapag naka-plug in lamang"</item>
++    <item msgid="1986753720941888596">"Hindi Kailanman"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Palagi"</item>
++    <item msgid="7433294150916905997">"Kapag naka-plug in lamang"</item>
++    <item msgid="1390404486722375028">"Hindi Kailanman"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Nakalipas na 30 araw"</item>
+     <item msgid="3356834403629955571">"Itakda ang usage cycle..."</item>
+diff --git a/res/values-tr/arrays.xml b/res/values-tr/arrays.xml
+index e193a59ed7..157ffeec01 100644
+--- a/res/values-tr/arrays.xml
++++ b/res/values-tr/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"İyi"</item>
+     <item msgid="202124107702016530">"Mükemmel"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Her zaman"</item>
++    <item msgid="844721238536786870">"Yalnızca prize takılıyken"</item>
++    <item msgid="1986753720941888596">"Hiçbir zaman"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Her zaman"</item>
++    <item msgid="7433294150916905997">"Yalnızca prize takılıyken"</item>
++    <item msgid="1390404486722375028">"Hiçbir zaman"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Son 30 gün"</item>
+     <item msgid="3356834403629955571">"Kullanım döngüsünü ayarla..."</item>
+diff --git a/res/values-uk/arrays.xml b/res/values-uk/arrays.xml
+index ae6d1cf968..302c7d2310 100644
+--- a/res/values-uk/arrays.xml
++++ b/res/values-uk/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Хороший"</item>
+     <item msgid="202124107702016530">"Відмінний"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Завжди"</item>
++    <item msgid="844721238536786870">"Лише в підключеному стані"</item>
++    <item msgid="1986753720941888596">"Ніколи"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Завжди"</item>
++    <item msgid="7433294150916905997">"Лише в підключеному стані"</item>
++    <item msgid="1390404486722375028">"Ніколи"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Останні 30 днів"</item>
+     <item msgid="3356834403629955571">"Цикл використання даних…"</item>
+diff --git a/res/values-ur/arrays.xml b/res/values-ur/arrays.xml
+index cee2d51999..8ff303cd75 100644
+--- a/res/values-ur/arrays.xml
++++ b/res/values-ur/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"اچھا"</item>
+     <item msgid="202124107702016530">"عمدہ"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"ہمیشہ"</item>
++    <item msgid="844721238536786870">"صرف پلگ ان ہونے پر"</item>
++    <item msgid="1986753720941888596">"کبھی نہیں"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"ہمیشہ"</item>
++    <item msgid="7433294150916905997">"صرف پلگ ان ہونے پر"</item>
++    <item msgid="1390404486722375028">"کبھی نہیں"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"آخری 30 دن"</item>
+     <item msgid="3356834403629955571">"استعمال کا دور سیٹ کریں…"</item>
+diff --git a/res/values-uz/arrays.xml b/res/values-uz/arrays.xml
+index 7b0af9436d..5f4e569411 100644
+--- a/res/values-uz/arrays.xml
++++ b/res/values-uz/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Yaxshi"</item>
+     <item msgid="202124107702016530">"A’lo"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"O‘chirilmasin"</item>
++    <item msgid="844721238536786870">"Faqat quvvat olayotganda"</item>
++    <item msgid="1986753720941888596">"Hech qachon"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"O‘chirilmasin"</item>
++    <item msgid="7433294150916905997">"Faqat quvvat olayotganda"</item>
++    <item msgid="1390404486722375028">"Hech qachon"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"So‘nggi 30 kun"</item>
+     <item msgid="3356834403629955571">"Internetdan foyd-sh davri…"</item>
+diff --git a/res/values-vi/arrays.xml b/res/values-vi/arrays.xml
+index ced3b5a777..1007f2c74c 100644
+--- a/res/values-vi/arrays.xml
++++ b/res/values-vi/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Tốt"</item>
+     <item msgid="202124107702016530">"Tuyệt vời"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Luôn luôn"</item>
++    <item msgid="844721238536786870">"Chỉ khi cắm vào nguồn điện"</item>
++    <item msgid="1986753720941888596">"Không bao giờ"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Luôn luôn"</item>
++    <item msgid="7433294150916905997">"Chỉ khi cắm vào nguồn điện"</item>
++    <item msgid="1390404486722375028">"Không bao giờ"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"30 ngày qua"</item>
+     <item msgid="3356834403629955571">"Đặt chu kỳ sử dụng..."</item>
+diff --git a/res/values-zh-rCN/arrays.xml b/res/values-zh-rCN/arrays.xml
+index bb96438c03..811911b3da 100644
+--- a/res/values-zh-rCN/arrays.xml
++++ b/res/values-zh-rCN/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"良好"</item>
+     <item msgid="202124107702016530">"极佳"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"始终"</item>
++    <item msgid="844721238536786870">"仅限充电时"</item>
++    <item msgid="1986753720941888596">"永不"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"始终"</item>
++    <item msgid="7433294150916905997">"仅限充电时"</item>
++    <item msgid="1390404486722375028">"永不"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"过去30天"</item>
+     <item msgid="3356834403629955571">"设置流量周期…"</item>
+diff --git a/res/values-zh-rHK/arrays.xml b/res/values-zh-rHK/arrays.xml
+index c4ed3db89b..8a3640719f 100644
+--- a/res/values-zh-rHK/arrays.xml
++++ b/res/values-zh-rHK/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"強"</item>
+     <item msgid="202124107702016530">"非常強"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"永遠"</item>
++    <item msgid="844721238536786870">"只在充電時"</item>
++    <item msgid="1986753720941888596">"永不"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"永遠"</item>
++    <item msgid="7433294150916905997">"只在充電時"</item>
++    <item msgid="1390404486722375028">"永不"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"最近 30 天"</item>
+     <item msgid="3356834403629955571">"設定用量週期…"</item>
+diff --git a/res/values-zh-rTW/arrays.xml b/res/values-zh-rTW/arrays.xml
+index eac14e3100..90cd6307bc 100644
+--- a/res/values-zh-rTW/arrays.xml
++++ b/res/values-zh-rTW/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"良好"</item>
+     <item msgid="202124107702016530">"極佳"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"一律"</item>
++    <item msgid="844721238536786870">"僅限充電時"</item>
++    <item msgid="1986753720941888596">"永不"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"一律"</item>
++    <item msgid="7433294150916905997">"僅限充電時"</item>
++    <item msgid="1390404486722375028">"永不採用"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"最近 30 天"</item>
+     <item msgid="3356834403629955571">"設定用量週期..."</item>
+diff --git a/res/values-zu/arrays.xml b/res/values-zu/arrays.xml
+index 81a602b4fb..a9bccc6648 100644
+--- a/res/values-zu/arrays.xml
++++ b/res/values-zu/arrays.xml
+@@ -137,6 +137,16 @@
+     <item msgid="7468449584777730187">"Kuhle"</item>
+     <item msgid="202124107702016530">"Kuhle kakhulu"</item>
+   </string-array>
++  <string-array name="wifi_sleep_policy_entries">
++    <item msgid="3269131034472904310">"Njalo"</item>
++    <item msgid="844721238536786870">"Uma ixhunyiwe kuphela"</item>
++    <item msgid="1986753720941888596">"Akusoze"</item>
++  </string-array>
++  <string-array name="wifi_sleep_policy_entries_wifi_only">
++    <item msgid="2124319326282651391">"Njalo"</item>
++    <item msgid="7433294150916905997">"Uma ixhunyiwe kuphela"</item>
++    <item msgid="1390404486722375028">"Akusoze"</item>
++  </string-array>
+   <string-array name="data_usage_data_range">
+     <item msgid="3528385925116637939">"Izinsuku zokugcina ezingu-30"</item>
+     <item msgid="3356834403629955571">"Isetha umjikelezo wokusebenzisa..."</item>
+diff --git a/res/values/arrays.xml b/res/values/arrays.xml
+index 3bfcd59bdb..3e0a4349cd 100644
+--- a/res/values/arrays.xml
++++ b/res/values/arrays.xml
+@@ -355,6 +355,38 @@
+         <item>Excellent</item>
+     </string-array>
+ 
++    <!-- Wi-Fi settings. Presented as a list dialog to the user to choose the Wi-Fi sleep policy. -->
++    <string-array name="wifi_sleep_policy_entries">
++        <!-- Always keep Wi-Fi on when screen turns off. -->
++        <item>Always</item>
++        <!-- Keep Wi-Fi on when screen turns off and plugged in.  When on battery, go to sleep when screen turns off. -->
++        <item>Only when plugged in</item>
++        <!-- Do not keep Wi-Fi on when screen turns off.  [CHAR LIMIT=40] -->
++        <item>Never</item>
++    </string-array>
++
++    <!-- Wi-Fi settings. Presented as a list dialog to the user to choose the Wi-Fi sleep policy. Used when
++         the device is Wi-Fi-only. [CHAR LIMIT=30] -->
++    <string-array name="wifi_sleep_policy_entries_wifi_only">
++        <!-- Always keep Wi-Fi on when screen turns off. -->
++        <item>Always</item>
++        <!-- Keep Wi-Fi on when screen turns off and plugged in.  When on battery, go to sleep when screen turns off. -->
++        <item>Only when plugged in</item>
++        <!-- Do not keep Wi-Fi on when screen turns off, for Wi-Fi-only devices, no other data connection -->
++        <item>Never</item>
++    </string-array>
++
++    <!-- Match with wifi_sleep_policy_entries and the values of the settings in Settings class. --> <skip />
++    <!-- Do not translate. -->
++    <string-array name="wifi_sleep_policy_values">
++        <!-- Do not translate. -->
++        <item>2</item>
++        <!-- Do not translate. -->
++        <item>1</item>
++        <!-- Do not translate. -->
++        <item>0</item>
++    </string-array>
++
+     <!-- Data Usage settings. Range of data usage. -->
+     <string-array name="data_usage_data_range">
+         <!-- Last 30 days [CHAR LIMIT=25]-->
+diff --git a/res/xml/wifi_configure_settings.xml b/res/xml/wifi_configure_settings.xml
+index cc281fa876..b90f1523b4 100644
+--- a/res/xml/wifi_configure_settings.xml
++++ b/res/xml/wifi_configure_settings.xml
+@@ -47,6 +47,12 @@
+         android:summary="@string/wifi_cellular_data_fallback_summary"
+         settings:controller="com.android.settings.wifi.CellularFallbackPreferenceController" />
+ 
++    <ListPreference
++            android:key="sleep_policy"
++            android:title="@string/wifi_setting_sleep_policy_title"
++            android:entries="@array/wifi_sleep_policy_entries"
++            android:entryValues="@array/wifi_sleep_policy_values" />
++
+     <Preference
+         android:key="install_credentials"
+         android:title="@string/wifi_install_credentials">
+diff --git a/src/com/android/settings/wifi/ConfigureWifiSettings.java b/src/com/android/settings/wifi/ConfigureWifiSettings.java
+index 3009ae72f8..2b4228e9e7 100644
+--- a/src/com/android/settings/wifi/ConfigureWifiSettings.java
++++ b/src/com/android/settings/wifi/ConfigureWifiSettings.java
+@@ -72,6 +72,7 @@ public class ConfigureWifiSettings extends DashboardFragment {
+         final List<AbstractPreferenceController> controllers = new ArrayList<>();
+         controllers.add(new WifiP2pPreferenceController(context, getSettingsLifecycle(),
+                 wifiManager));
++	controllers.add(new WifiSleepPolicyPreferenceController(context));
+         return controllers;
+     }
+ 
+diff --git a/src/com/android/settings/wifi/WifiSleepPolicyPreferenceController.java b/src/com/android/settings/wifi/WifiSleepPolicyPreferenceController.java
+new file mode 100644
+index 0000000000..faac2f05d9
+--- /dev/null
++++ b/src/com/android/settings/wifi/WifiSleepPolicyPreferenceController.java
+@@ -0,0 +1,105 @@
++/*
++ * Copyright (C) 2017 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.wifi;
++
++import android.content.Context;
++import android.provider.Settings;
++import androidx.preference.ListPreference;
++import androidx.preference.Preference;
++import android.util.Log;
++import android.widget.Toast;
++
++import com.android.settings.R;
++import com.android.settings.Utils;
++import com.android.settings.core.PreferenceControllerMixin;
++import com.android.settingslib.core.AbstractPreferenceController;
++
++import static com.android.internal.os.MemoryPowerCalculator.TAG;
++
++public class WifiSleepPolicyPreferenceController extends AbstractPreferenceController
++	implements PreferenceControllerMixin, Preference.OnPreferenceChangeListener {
++
++    private static final String KEY_SLEEP_POLICY = "sleep_policy";
++
++    public WifiSleepPolicyPreferenceController(Context context) {
++        super(context);
++    }
++
++    @Override
++    public boolean isAvailable() {
++        return true;
++    }
++
++    @Override
++    public String getPreferenceKey() {
++        return KEY_SLEEP_POLICY;
++    }
++
++    @Override
++    public void updateState(Preference preference) {
++        ListPreference sleepPolicyPref = (ListPreference) preference;
++        if (sleepPolicyPref != null) {
++            if (Utils.isWifiOnly(mContext)) {
++                sleepPolicyPref.setEntries(R.array.wifi_sleep_policy_entries_wifi_only);
++            }
++            int value = Settings.Global.getInt(mContext.getContentResolver(),
++                    Settings.Global.WIFI_SLEEP_POLICY,
++                    Settings.Global.WIFI_SLEEP_POLICY_NEVER);
++            String stringValue = String.valueOf(value);
++            sleepPolicyPref.setValue(stringValue);
++            updateSleepPolicySummary(sleepPolicyPref, stringValue);
++        }
++    }
++
++    @Override
++    public boolean onPreferenceChange(Preference preference, Object newValue) {
++        try {
++            String stringValue = (String) newValue;
++            Settings.Global.putInt(mContext.getContentResolver(), Settings.Global.WIFI_SLEEP_POLICY,
++                    Integer.parseInt(stringValue));
++            updateSleepPolicySummary(preference, stringValue);
++        } catch (NumberFormatException e) {
++            Toast.makeText(mContext, R.string.wifi_setting_sleep_policy_error,
++                    Toast.LENGTH_SHORT).show();
++            return false;
++        }
++        return true;
++    }
++
++    private void updateSleepPolicySummary(Preference sleepPolicyPref, String value) {
++        if (value != null) {
++            String[] values = mContext.getResources().getStringArray(R.array
++                    .wifi_sleep_policy_values);
++            final int summaryArrayResId = Utils.isWifiOnly(mContext)
++                    ? R.array.wifi_sleep_policy_entries_wifi_only
++                    : R.array.wifi_sleep_policy_entries;
++            String[] summaries = mContext.getResources().getStringArray(summaryArrayResId);
++            for (int i = 0; i < values.length; i++) {
++                if (value.equals(values[i])) {
++                    if (i < summaries.length) {
++                        sleepPolicyPref.setSummary(summaries[i]);
++                        return;
++                    }
++                }
++            }
++        }
++
++        sleepPolicyPref.setSummary("");
++        Log.e(TAG, "Invalid sleep policy value: " + value);
++    }
++
++}
+-- 
+2.35.1
+

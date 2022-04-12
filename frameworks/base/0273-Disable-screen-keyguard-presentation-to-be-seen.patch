@@ -1,0 +1,29 @@
+From 7e7029935474cc4698c1497d39596c8d6a4f8f8c Mon Sep 17 00:00:00 2001
+From: dzy <dzy@rock-chips.com>
+Date: Tue, 29 Dec 2020 15:07:49 +0800
+Subject: [PATCH 273/297] Disable screen keyguard presentation to be seen.
+
+Change-Id: I24f56df1e47aa0fcfe25d422196e2b1874bfc49a
+---
+ .../core/java/com/android/server/wm/RootWindowContainer.java  | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/services/core/java/com/android/server/wm/RootWindowContainer.java b/services/core/java/com/android/server/wm/RootWindowContainer.java
+index 206560770cb..674c8e578f0 100644
+--- a/services/core/java/com/android/server/wm/RootWindowContainer.java
++++ b/services/core/java/com/android/server/wm/RootWindowContainer.java
+@@ -1145,9 +1145,9 @@ class RootWindowContainer extends WindowContainer<DisplayContent>
+                 displayHasContent = true;
+             } else if (displayContent != null &&
+                     (!mObscureApplicationContentOnSecondaryDisplays
+-                            || (obscured && type == TYPE_KEYGUARD_DIALOG))) {
++                            /*|| (obscured && type == TYPE_KEYGUARD_DIALOG)*/)) {
+                 // Allow full screen keyguard presentation dialogs to be seen.
+-                displayHasContent = true;
++                displayHasContent = !(obscured && type == TYPE_KEYGUARD_DIALOG);
+             }
+             if ((privateflags & PRIVATE_FLAG_SUSTAINED_PERFORMANCE_MODE) != 0) {
+                 mSustainedPerformanceModeCurrent = true;
+-- 
+2.35.1
+

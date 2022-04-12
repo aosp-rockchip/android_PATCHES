@@ -1,0 +1,456 @@
+From 240e81094bc7891f65fd9a9519502ff51dddeaf2 Mon Sep 17 00:00:00 2001
+From: Jeff Sharkey <jsharkey@android.com>
+Date: Tue, 2 Jun 2020 11:10:35 -0600
+Subject: [PATCH 18/26] Improve robustness of updateVolumes().
+
+We've seen evidence from the wild that the local caches populated
+by updateVolumes() can end up stale, where we know a specific volume
+has been "attached", but we're missing metadata like scan paths.
+
+This change borrows the strategy from getVolumePath() where we're
+willing to populate these caches on the fly if the data we're looking
+for is missing.  This change also improves updateVolumes() to recover
+and process any remaining volumes when we have trouble populating the
+cache, instead of bailing entirely.
+
+We also continue to try making progress on fixing flaky tests by
+waiting for storage to be mounted and idle *twice*, since we've
+seen evidence that clearing the data on a package can asynchronously
+perform a vold reset, which can make us think storage is ready and
+mounted when it's moments away from being torn down.  We also consult
+statvfs() to catch any ENOTCONN errors where an old stale FUSE daemon
+hasn't been remounted yet.
+
+Bug: 157990507, 157219547
+Test: atest MediaProviderClientTests:com.android.providers.media.client.LegacyProviderMigrationTest --rerun-until-failure 100
+Change-Id: Ia7e4565c3102ec7a3b75f0649f958ba071be87a8
+(cherry picked from commit f95b06feed0d9f3ac238f4fb7b0d49da1ab5f4d1)
+---
+ .../providers/media/MediaProvider.java        | 122 ++++++++----------
+ .../providers/media/util/FileUtils.java       |   7 +-
+ .../client/LegacyProviderMigrationTest.java   |  45 +++++--
+ .../providers/media/MediaProviderTest.java    |   4 +-
+ 4 files changed, 92 insertions(+), 86 deletions(-)
+
+diff --git a/src/com/android/providers/media/MediaProvider.java b/src/com/android/providers/media/MediaProvider.java
+index ae3cf930..42f7bfe7 100644
+--- a/src/com/android/providers/media/MediaProvider.java
++++ b/src/com/android/providers/media/MediaProvider.java
+@@ -312,17 +312,21 @@ public class MediaProvider extends ContentProvider {
+             try {
+                 sCachedVolumeScanPaths.put(MediaStore.VOLUME_INTERNAL,
+                         FileUtils.getVolumeScanPaths(getContext(), MediaStore.VOLUME_INTERNAL));
+-                for (String volumeName : sCachedExternalVolumeNames) {
++            } catch (FileNotFoundException e) {
++                Log.wtf(TAG, "Failed to update volume " + MediaStore.VOLUME_INTERNAL, e);
++            }
++
++            for (String volumeName : sCachedExternalVolumeNames) {
++                try {
+                     final Uri uri = MediaStore.Files.getContentUri(volumeName);
+                     final StorageVolume volume = mStorageManager.getStorageVolume(uri);
+-
+                     sCachedVolumePaths.put(volumeName, volume.getDirectory());
+                     sCachedVolumeScanPaths.put(volumeName,
+                             FileUtils.getVolumeScanPaths(getContext(), volumeName));
+                     sCachedVolumePathToId.put(volume.getDirectory(), volume.getId());
++                } catch (IllegalStateException | FileNotFoundException e) {
++                    Log.wtf(TAG, "Failed to update volume " + volumeName, e);
+                 }
+-            } catch (FileNotFoundException e) {
+-                throw new IllegalStateException(e.getMessage());
+             }
+         }
+ 
+@@ -341,11 +345,13 @@ public class MediaProvider extends ContentProvider {
+         }
+ 
+         synchronized (sCacheLock) {
+-            File res = sCachedVolumePaths.get(volumeName);
+-            if (res == null) {
+-                res = FileUtils.getVolumePath(getContext(), volumeName);
+-                sCachedVolumePaths.put(volumeName, res);
++            if (sCachedVolumePaths.containsKey(volumeName)) {
++                return sCachedVolumePaths.get(volumeName);
+             }
++
++            // Nothing found above; let's ask directly and cache the answer
++            final File res = FileUtils.getVolumePath(getContext(), volumeName);
++            sCachedVolumePaths.put(volumeName, res);
+             return res;
+         }
+     }
+@@ -368,15 +374,23 @@ public class MediaProvider extends ContentProvider {
+         }
+     }
+ 
+-    public static Set<String> getExternalVolumeNames() {
++    public @NonNull Set<String> getExternalVolumeNames() {
+         synchronized (sCacheLock) {
+             return new ArraySet<>(sCachedExternalVolumeNames);
+         }
+     }
+ 
+-    public static Collection<File> getVolumeScanPaths(String volumeName) {
++    public @NonNull Collection<File> getVolumeScanPaths(String volumeName)
++            throws FileNotFoundException {
+         synchronized (sCacheLock) {
+-            return new ArrayList<>(sCachedVolumeScanPaths.get(volumeName));
++            if (sCachedVolumeScanPaths.containsKey(volumeName)) {
++                return new ArrayList<>(sCachedVolumeScanPaths.get(volumeName));
++            }
++
++            // Nothing found above; let's ask directly and cache the answer
++            final Collection<File> res = FileUtils.getVolumeScanPaths(getContext(), volumeName);
++            sCachedVolumeScanPaths.put(volumeName, res);
++            return res;
+         }
+     }
+ 
+@@ -2206,7 +2220,7 @@ public class MediaProvider extends ContentProvider {
+ 
+     @VisibleForTesting
+     void ensureFileColumns(@NonNull Uri uri, @NonNull ContentValues values)
+-            throws VolumeArgumentException {
++            throws VolumeArgumentException, VolumeNotFoundException {
+         final LocalUriMatcher matcher = new LocalUriMatcher(MediaStore.AUTHORITY);
+         final int match = matcher.matchUri(uri, true);
+         ensureNonUniqueFileColumns(match, uri, Bundle.EMPTY, values, null /* currentPath */);
+@@ -2214,13 +2228,13 @@ public class MediaProvider extends ContentProvider {
+ 
+     private void ensureUniqueFileColumns(int match, @NonNull Uri uri, @NonNull Bundle extras,
+             @NonNull ContentValues values, @Nullable String currentPath)
+-            throws VolumeArgumentException {
++            throws VolumeArgumentException, VolumeNotFoundException {
+         ensureFileColumns(match, uri, extras, values, true, currentPath);
+     }
+ 
+     private void ensureNonUniqueFileColumns(int match, @NonNull Uri uri,
+             @NonNull Bundle extras, @NonNull ContentValues values, @Nullable String currentPath)
+-            throws VolumeArgumentException {
++            throws VolumeArgumentException, VolumeNotFoundException {
+         ensureFileColumns(match, uri, extras, values, false, currentPath);
+     }
+ 
+@@ -2233,7 +2247,7 @@ public class MediaProvider extends ContentProvider {
+      */
+     private void ensureFileColumns(int match, @NonNull Uri uri, @NonNull Bundle extras,
+             @NonNull ContentValues values, boolean makeUnique, @Nullable String currentPath)
+-            throws VolumeArgumentException {
++            throws VolumeArgumentException, VolumeNotFoundException {
+         Trace.beginSection("ensureFileColumns");
+ 
+         Objects.requireNonNull(uri);
+@@ -2547,12 +2561,13 @@ public class MediaProvider extends ContentProvider {
+      * Sanity check that any requested {@link MediaColumns#DATA} paths actually
+      * live on the storage volume being targeted.
+      */
+-    private static void assertFileColumnsSane(int match, Uri uri, ContentValues values)
+-            throws VolumeArgumentException {
++    private void assertFileColumnsSane(int match, Uri uri, ContentValues values)
++            throws VolumeArgumentException, VolumeNotFoundException {
+         if (!values.containsKey(MediaColumns.DATA)) return;
++
++        final String volumeName = resolveVolumeName(uri);
+         try {
+             // Sanity check that the requested path actually lives on volume
+-            final String volumeName = resolveVolumeName(uri);
+             final Collection<File> allowed = getVolumeScanPaths(volumeName);
+             final File actual = new File(values.getAsString(MediaColumns.DATA))
+                     .getCanonicalFile();
+@@ -2560,7 +2575,7 @@ public class MediaProvider extends ContentProvider {
+                 throw new VolumeArgumentException(actual, allowed);
+             }
+         } catch (IOException e) {
+-            throw new IllegalArgumentException(e);
++            throw new VolumeNotFoundException(volumeName);
+         }
+     }
+ 
+@@ -2773,23 +2788,14 @@ public class MediaProvider extends ContentProvider {
+         }
+     }
+ 
+-    private long insertFile(@NonNull SQLiteQueryBuilder qb, @NonNull DatabaseHelper helper,
++    private Uri insertFile(@NonNull SQLiteQueryBuilder qb, @NonNull DatabaseHelper helper,
+             int match, @NonNull Uri uri, @NonNull Bundle extras, @NonNull ContentValues values,
+-            int mediaType, boolean notify) {
++            int mediaType) throws VolumeArgumentException, VolumeNotFoundException {
+         boolean wasPathEmpty = !values.containsKey(MediaStore.MediaColumns.DATA)
+                 || TextUtils.isEmpty(values.getAsString(MediaStore.MediaColumns.DATA));
+ 
+         // Make sure all file-related columns are defined
+-        try {
+-            ensureUniqueFileColumns(match, uri, extras, values, null);
+-        } catch (VolumeArgumentException e) {
+-            if (getCallingPackageTargetSdkVersion() >= Build.VERSION_CODES.Q) {
+-                throw new IllegalArgumentException(e.getMessage());
+-            } else {
+-                Log.w(TAG, e.getMessage());
+-                return 0;
+-            }
+-        }
++        ensureUniqueFileColumns(match, uri, extras, values, null);
+ 
+         switch (mediaType) {
+             case FileColumns.MEDIA_TYPE_AUDIO: {
+@@ -2825,8 +2831,9 @@ public class MediaProvider extends ContentProvider {
+             format = MimeUtils.resolveFormatCode(mimeType);
+         }
+         if (path != null && path.endsWith("/")) {
++            // TODO: convert to using FallbackException once VERSION_CODES.S is defined
+             Log.e(TAG, "directory has trailing slash: " + path);
+-            return 0;
++            return null;
+         }
+         if (format != 0) {
+             values.put(FileColumns.FORMAT, format);
+@@ -2885,7 +2892,7 @@ public class MediaProvider extends ContentProvider {
+             }
+         }
+ 
+-        return rowId;
++        return ContentUris.withAppendedId(uri, rowId);
+     }
+ 
+     /**
+@@ -3142,12 +3149,8 @@ public class MediaProvider extends ContentProvider {
+             case IMAGES_MEDIA: {
+                 maybePut(initialValues, FileColumns.OWNER_PACKAGE_NAME, ownerPackageName);
+                 final boolean isDownload = maybeMarkAsDownload(initialValues);
+-                rowId = insertFile(qb, helper, match, uri, extras, initialValues,
+-                        FileColumns.MEDIA_TYPE_IMAGE, true);
+-                if (rowId > 0) {
+-                    newUri = ContentUris.withAppendedId(
+-                            Images.Media.getContentUri(originalVolumeName), rowId);
+-                }
++                newUri = insertFile(qb, helper, match, uri, extras, initialValues,
++                        FileColumns.MEDIA_TYPE_IMAGE);
+                 break;
+             }
+ 
+@@ -3198,12 +3201,8 @@ public class MediaProvider extends ContentProvider {
+             case AUDIO_MEDIA: {
+                 maybePut(initialValues, FileColumns.OWNER_PACKAGE_NAME, ownerPackageName);
+                 final boolean isDownload = maybeMarkAsDownload(initialValues);
+-                rowId = insertFile(qb, helper, match, uri, extras, initialValues,
+-                        FileColumns.MEDIA_TYPE_AUDIO, true);
+-                if (rowId > 0) {
+-                    newUri = ContentUris.withAppendedId(
+-                            Audio.Media.getContentUri(originalVolumeName), rowId);
+-                }
++                newUri = insertFile(qb, helper, match, uri, extras, initialValues,
++                        FileColumns.MEDIA_TYPE_AUDIO);
+                 break;
+             }
+ 
+@@ -3234,11 +3233,9 @@ public class MediaProvider extends ContentProvider {
+                         values.put(MediaColumns.MIME_TYPE, "audio/mpegurl");
+                     }
+                 }
+-                rowId = insertFile(qb, helper, match, uri, extras, values,
+-                        FileColumns.MEDIA_TYPE_PLAYLIST, true);
+-                if (rowId > 0) {
+-                    newUri = ContentUris.withAppendedId(
+-                            Audio.Playlists.getContentUri(originalVolumeName), rowId);
++                newUri = insertFile(qb, helper, match, uri, extras, values,
++                        FileColumns.MEDIA_TYPE_PLAYLIST);
++                if (newUri != null) {
+                     // Touch empty playlist file on disk so its ready for renames
+                     if (Binder.getCallingUid() != android.os.Process.myUid()) {
+                         try (OutputStream out = ContentResolver.wrap(this)
+@@ -3253,12 +3250,8 @@ public class MediaProvider extends ContentProvider {
+             case VIDEO_MEDIA: {
+                 maybePut(initialValues, FileColumns.OWNER_PACKAGE_NAME, ownerPackageName);
+                 final boolean isDownload = maybeMarkAsDownload(initialValues);
+-                rowId = insertFile(qb, helper, match, uri, extras, initialValues,
+-                        FileColumns.MEDIA_TYPE_VIDEO, true);
+-                if (rowId > 0) {
+-                    newUri = ContentUris.withAppendedId(
+-                            Video.Media.getContentUri(originalVolumeName), rowId);
+-                }
++                newUri = insertFile(qb, helper, match, uri, extras, initialValues,
++                        FileColumns.MEDIA_TYPE_VIDEO);
+                 break;
+             }
+ 
+@@ -3281,25 +3274,16 @@ public class MediaProvider extends ContentProvider {
+                 final boolean isDownload = maybeMarkAsDownload(initialValues);
+                 final String mimeType = initialValues.getAsString(MediaColumns.MIME_TYPE);
+                 final int mediaType = MimeUtils.resolveMediaType(mimeType);
+-                rowId = insertFile(qb, helper, match, uri, extras, initialValues,
+-                        mediaType, true);
+-
+-                if (rowId > 0) {
+-                    newUri = Files.getContentUri(originalVolumeName, rowId);
+-                }
++                newUri = insertFile(qb, helper, match, uri, extras, initialValues,
++                        mediaType);
+                 break;
+             }
+ 
+             case DOWNLOADS:
+                 maybePut(initialValues, FileColumns.OWNER_PACKAGE_NAME, ownerPackageName);
+                 initialValues.put(FileColumns.IS_DOWNLOAD, 1);
+-                rowId = insertFile(qb, helper, match, uri, extras, initialValues,
+-                        FileColumns.MEDIA_TYPE_NONE, false);
+-                if (rowId > 0) {
+-                    final int mediaType = initialValues.getAsInteger(FileColumns.MEDIA_TYPE);
+-                    newUri = ContentUris.withAppendedId(
+-                        MediaStore.Downloads.getContentUri(originalVolumeName), rowId);
+-                }
++                newUri = insertFile(qb, helper, match, uri, extras, initialValues,
++                        FileColumns.MEDIA_TYPE_NONE);
+                 break;
+ 
+             default:
+diff --git a/src/com/android/providers/media/util/FileUtils.java b/src/com/android/providers/media/util/FileUtils.java
+index e2a67722..a48aca67 100644
+--- a/src/com/android/providers/media/util/FileUtils.java
++++ b/src/com/android/providers/media/util/FileUtils.java
+@@ -807,8 +807,13 @@ public class FileUtils {
+         }
+ 
+         final Uri uri = MediaStore.Files.getContentUri(volumeName);
+-        return context.getSystemService(StorageManager.class).getStorageVolume(uri)
++        final File path = context.getSystemService(StorageManager.class).getStorageVolume(uri)
+                 .getDirectory();
++        if (path != null) {
++            return path;
++        } else {
++            throw new FileNotFoundException(volumeName + " has no associated path");
++        }
+     }
+ 
+     /**
+diff --git a/tests/client/src/com/android/providers/media/client/LegacyProviderMigrationTest.java b/tests/client/src/com/android/providers/media/client/LegacyProviderMigrationTest.java
+index dc162722..cb642b23 100644
+--- a/tests/client/src/com/android/providers/media/client/LegacyProviderMigrationTest.java
++++ b/tests/client/src/com/android/providers/media/client/LegacyProviderMigrationTest.java
+@@ -43,6 +43,8 @@ import android.provider.MediaStore.DownloadColumns;
+ import android.provider.MediaStore.Files.FileColumns;
+ import android.provider.MediaStore.MediaColumns;
+ import android.provider.MediaStore.Video.VideoColumns;
++import android.system.ErrnoException;
++import android.system.Os;
+ import android.util.Log;
+ import android.webkit.MimeTypeMap;
+ 
+@@ -209,12 +211,11 @@ public class LegacyProviderMigrationTest {
+         Assume.assumeNotNull(legacyProvider);
+         Assume.assumeNotNull(modernProvider);
+ 
+-        // Wait until everything calms down
+-        MediaStore.waitForIdle(context.getContentResolver());
+-
+         // Clear data on the legacy provider so that we create a database
++        waitForMountedAndIdle(context.getContentResolver());
+         executeShellCommand("sync", ui);
+         executeShellCommand("pm clear " + legacyProvider.applicationInfo.packageName, ui);
++        waitForMountedAndIdle(context.getContentResolver());
+ 
+         // Create thousands of items in the legacy provider
+         try (ContentProviderClient legacy = context.getContentResolver()
+@@ -241,12 +242,12 @@ public class LegacyProviderMigrationTest {
+ 
+         // Clear data on the modern provider so that the initial scan recovers
+         // metadata from the legacy provider
++        waitForMountedAndIdle(context.getContentResolver());
+         executeShellCommand("sync", ui);
+         executeShellCommand("pm clear " + modernProvider.applicationInfo.packageName, ui);
+-        pollForExternalStorageState();
++        waitForMountedAndIdle(context.getContentResolver());
+ 
+         // Confirm that details from legacy provider have migrated
+-        MediaStore.waitForIdle(context.getContentResolver());
+         try (ContentProviderClient modern = context.getContentResolver()
+                 .acquireContentProviderClient(MediaStore.AUTHORITY)) {
+             try (Cursor cursor = modern.query(mExternalImages, null, null, null)) {
+@@ -268,12 +269,11 @@ public class LegacyProviderMigrationTest {
+         Assume.assumeNotNull(legacyProvider);
+         Assume.assumeNotNull(modernProvider);
+ 
+-        // Wait until everything calms down
+-        MediaStore.waitForIdle(context.getContentResolver());
+-
+         // Clear data on the legacy provider so that we create a database
++        waitForMountedAndIdle(context.getContentResolver());
+         executeShellCommand("sync", ui);
+         executeShellCommand("pm clear " + legacyProvider.applicationInfo.packageName, ui);
++        waitForMountedAndIdle(context.getContentResolver());
+ 
+         // Create a well-known entry in legacy provider, and write data into
+         // place to ensure the file is created on disk
+@@ -297,12 +297,12 @@ public class LegacyProviderMigrationTest {
+ 
+         // Clear data on the modern provider so that the initial scan recovers
+         // metadata from the legacy provider
++        waitForMountedAndIdle(context.getContentResolver());
+         executeShellCommand("sync", ui);
+         executeShellCommand("pm clear " + modernProvider.applicationInfo.packageName, ui);
+-        pollForExternalStorageState();
++        waitForMountedAndIdle(context.getContentResolver());
+ 
+         // And force a scan to confirm upgraded data survives
+-        MediaStore.waitForIdle(context.getContentResolver());
+         MediaStore.scanVolume(context.getContentResolver(),
+                 MediaStore.getVolumeName(collectionUri));
+ 
+@@ -329,12 +329,29 @@ public class LegacyProviderMigrationTest {
+         }
+     }
+ 
+-    private static void pollForExternalStorageState() throws Exception {
++    private static void waitForMountedAndIdle(ContentResolver resolver) {
++        // We purposefully perform these operations twice in this specific
++        // order, since clearing the data on a package can asynchronously
++        // perform a vold reset, which can make us think storage is ready and
++        // mounted when it's moments away from being torn down.
++        pollForExternalStorageState();
++        MediaStore.waitForIdle(resolver);
++        pollForExternalStorageState();
++        MediaStore.waitForIdle(resolver);
++    }
++
++    private static void pollForExternalStorageState() {
++        final File target = Environment.getExternalStorageDirectory();
+         for (int i = 0; i < POLLING_TIMEOUT_MILLIS / POLLING_SLEEP_MILLIS; i++) {
+-            if(Environment.getExternalStorageState(Environment.getExternalStorageDirectory())
+-                    .equals(Environment.MEDIA_MOUNTED)) {
+-                return;
++            try {
++                if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState(target))
++                        && Os.statvfs(target.getAbsolutePath()).f_blocks > 0) {
++                    return;
++                }
++            } catch (ErrnoException ignored) {
+             }
++
++            Log.v(TAG, "Waiting for external storage...");
+             SystemClock.sleep(POLLING_SLEEP_MILLIS);
+         }
+         fail("Timed out while waiting for ExternalStorageState to be MEDIA_MOUNTED");
+diff --git a/tests/src/com/android/providers/media/MediaProviderTest.java b/tests/src/com/android/providers/media/MediaProviderTest.java
+index 9671df8b..725d90e7 100644
+--- a/tests/src/com/android/providers/media/MediaProviderTest.java
++++ b/tests/src/com/android/providers/media/MediaProviderTest.java
+@@ -967,14 +967,14 @@ public class MediaProviderTest {
+         values.put(MediaColumns.MIME_TYPE, mimeType);
+         try {
+             ensureFileColumns(uri, values);
+-        } catch (VolumeArgumentException e) {
++        } catch (VolumeArgumentException | VolumeNotFoundException e) {
+             throw e.rethrowAsIllegalArgumentException();
+         }
+         return values.getAsString(MediaColumns.DATA);
+     }
+ 
+     private void ensureFileColumns(Uri uri, ContentValues values)
+-            throws VolumeArgumentException {
++            throws VolumeArgumentException, VolumeNotFoundException {
+         try (ContentProviderClient cpc = sIsolatedResolver
+                 .acquireContentProviderClient(MediaStore.AUTHORITY)) {
+             ((MediaProvider) cpc.getLocalContentProvider())
+-- 
+2.35.1
+

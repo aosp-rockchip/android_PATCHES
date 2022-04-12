@@ -1,0 +1,54 @@
+From e36d21c94e2e94bad40db7c22f2cf41ff4af96bc Mon Sep 17 00:00:00 2001
+From: Jay Aliomer <aaliomer@google.com>
+Date: Thu, 5 Mar 2020 12:12:16 -0500
+Subject: [PATCH 100/297] Dark theme upgrade broken
+
+When upgrading release, night mode overrides evaluate to
+true for unknown reasons. a check for manual toggle is added in order
+to not apply overrides
+
+Fixes: 150567159
+Test: manual since it involves integration
+Change-Id: I09af78fd16662185d01aea427188f79527d47a9e
+(cherry picked from commit 1b174b0d31bcc28b73b0afe106a125ac365a7479)
+---
+ .../java/com/android/server/UiModeManagerService.java     | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/services/core/java/com/android/server/UiModeManagerService.java b/services/core/java/com/android/server/UiModeManagerService.java
+index 88b517c597c..7c833faee1b 100644
+--- a/services/core/java/com/android/server/UiModeManagerService.java
++++ b/services/core/java/com/android/server/UiModeManagerService.java
+@@ -467,9 +467,9 @@ final class UiModeManagerService extends SystemService {
+             mNightMode = Secure.getIntForUser(context.getContentResolver(),
+                     Secure.UI_NIGHT_MODE, defaultNightMode, userId);
+             mOverrideNightModeOn = Secure.getIntForUser(context.getContentResolver(),
+-                    Secure.UI_NIGHT_MODE_OVERRIDE_ON, defaultNightMode, userId) != 0;
++                    Secure.UI_NIGHT_MODE_OVERRIDE_ON, 0, userId) != 0;
+             mOverrideNightModeOff = Secure.getIntForUser(context.getContentResolver(),
+-                    Secure.UI_NIGHT_MODE_OVERRIDE_OFF, defaultNightMode, userId) != 0;
++                    Secure.UI_NIGHT_MODE_OVERRIDE_OFF, 0, userId) != 0;
+             mCustomAutoNightModeStartMilliseconds = LocalTime.ofNanoOfDay(
+                     Secure.getLongForUser(context.getContentResolver(),
+                     Secure.DARK_THEME_CUSTOM_START_TIME,
+@@ -1045,7 +1045,6 @@ final class UiModeManagerService extends SystemService {
+                 final TwilightState lastState = mTwilightManager.getLastTwilightState();
+                 activateNightMode = lastState == null ? mComputedNightMode : lastState.isNight();
+             }
+-            
+             updateComputedNightModeLocked(activateNightMode);
+         } else {
+             if (mTwilightManager != null) {
+@@ -1375,6 +1374,9 @@ final class UiModeManagerService extends SystemService {
+ 
+     private void updateComputedNightModeLocked(boolean activate) {
+         mComputedNightMode = activate;
++        if (mNightMode == MODE_NIGHT_YES || mNightMode == UiModeManager.MODE_NIGHT_NO) {
++            return;
++        }
+         if (mOverrideNightModeOn && !mComputedNightMode) {
+             mComputedNightMode = true;
+             return;
+-- 
+2.35.1
+

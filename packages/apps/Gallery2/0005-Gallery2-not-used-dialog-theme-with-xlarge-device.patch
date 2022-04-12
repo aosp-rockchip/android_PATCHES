@@ -1,0 +1,33 @@
+From 00942579f37249c10fb763bac22cbc6bada05c59 Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Mon, 22 Feb 2021 16:01:50 +0800
+Subject: [PATCH 5/5] Gallery2: not used dialog theme with xlarge device
+
+DialogPicker used dialog theme with xlarge device, and we found it will flash in top after choice to set wallpaper, so replace it. It also effect in AlbumPicker.
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: Ieb02f30322044005f0d78fc42fea7797ceeee32e
+---
+ res/values-xlarge/styles.xml | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/res/values-xlarge/styles.xml b/res/values-xlarge/styles.xml
+index 55b29b1fa..7e8127ca4 100644
+--- a/res/values-xlarge/styles.xml
++++ b/res/values-xlarge/styles.xml
+@@ -14,9 +14,9 @@
+      limitations under the License.
+ -->
+ <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+-    <style name="DialogPickerTheme" parent="android:Theme.Holo.Dialog">
+-    </style>
+-    <bool name="picker_is_dialog">true</bool>
++<!--    <style name="DialogPickerTheme" parent="android:Theme.Holo.Dialog">-->
++<!--    </style>-->
++<!--    <bool name="picker_is_dialog">true</bool>-->
+ 
+     <!-- Camera resources below -->
+ 
+-- 
+2.35.1
+

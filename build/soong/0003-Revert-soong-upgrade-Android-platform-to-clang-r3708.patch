@@ -1,0 +1,90 @@
+From a711e551c547d5260932f4ca71e0478fa43e4a46 Mon Sep 17 00:00:00 2001
+From: Nick Desaulniers <ndesaulniers@google.com>
+Date: Mon, 9 Dec 2019 11:07:03 -0800
+Subject: [PATCH 3/5] Revert "soong: upgrade Android platform to clang-r370808"
+
+This reverts commit 4f49e359028c053e506f789b00a3442294fd5241.
+
+Causes test failures in ndk_translate.
+Bug: 145807809
+Bug: 145827049
+Test: N/A
+Change-Id: I8f42a15fec44475b74b1926c70bc98e03fe66f52
+Signed-off-by: Nick Desaulniers <ndesaulniers@google.com>
+(cherry picked from commit 862eb4648a71738c7333d3d26d8609419a017eb7)
+---
+ cc/config/clang.go  | 15 ---------------
+ cc/config/global.go |  4 ++--
+ cc/ndk_library.go   |  1 -
+ 3 files changed, 2 insertions(+), 18 deletions(-)
+
+diff --git a/cc/config/clang.go b/cc/config/clang.go
+index 8618d0955..eddc34104 100644
+--- a/cc/config/clang.go
++++ b/cc/config/clang.go
+@@ -132,10 +132,6 @@ func init() {
+ 		// Disable -Winconsistent-missing-override until we can clean up the existing
+ 		// codebase for it.
+ 		"-Wno-inconsistent-missing-override",
+-
+-		// Warnings from clang-10
+-		// Nested and array designated initialization is nice to have.
+-		"-Wno-c99-designator",
+ 	}, " "))
+ 
+ 	pctx.StaticVariable("ClangExtraCppflags", strings.Join([]string{
+@@ -165,10 +161,6 @@ func init() {
+ 		// new warnings are fixed.
+ 		"-Wno-tautological-constant-compare",
+ 		"-Wno-tautological-type-limit-compare",
+-		// http://b/145210666
+-		"-Wno-reorder-init-list",
+-		// http://b/145211066
+-		"-Wno-implicit-int-float-conversion",
+ 	}, " "))
+ 
+ 	// Extra cflags for external third-party projects to disable warnings that
+@@ -184,13 +176,6 @@ func init() {
+ 		// Bug: http://b/29823425 Disable -Wnull-dereference until the
+ 		// new instances detected by this warning are fixed.
+ 		"-Wno-null-dereference",
+-
+-		// http://b/145211477
+-		"-Wno-pointer-compare",
+-		// http://b/145211022
+-		"-Wno-xor-used-as-pow",
+-		// http://b/145211022
+-		"-Wno-final-dtor-non-final-class",
+ 	}, " "))
+ }
+ 
+diff --git a/cc/config/global.go b/cc/config/global.go
+index bae5555f9..0a09fa4e7 100644
+--- a/cc/config/global.go
++++ b/cc/config/global.go
+@@ -126,8 +126,8 @@ var (
+ 
+ 	// prebuilts/clang default settings.
+ 	ClangDefaultBase         = "prebuilts/clang/host"
+-	ClangDefaultVersion      = "clang-r370808"
+-	ClangDefaultShortVersion = "10.0.1"
++	ClangDefaultVersion      = "clang-r365631b"
++	ClangDefaultShortVersion = "9.0.7"
+ 
+ 	// Directories with warnings from Android.bp files.
+ 	WarningAllowedProjects = []string{
+diff --git a/cc/ndk_library.go b/cc/ndk_library.go
+index da94d331c..c47cbf077 100644
+--- a/cc/ndk_library.go
++++ b/cc/ndk_library.go
+@@ -261,7 +261,6 @@ func addStubLibraryCompilerFlags(flags Flags) Flags {
+ 		// We're knowingly doing some otherwise unsightly things with builtin
+ 		// functions here. We're just generating stub libraries, so ignore it.
+ 		"-Wno-incompatible-library-redeclaration",
+-		"-Wno-incomplete-setjmp-declaration",
+ 		"-Wno-builtin-requires-header",
+ 		"-Wno-invalid-noreturn",
+ 		"-Wall",
+-- 
+2.35.1
+

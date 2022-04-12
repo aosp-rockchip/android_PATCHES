@@ -1,0 +1,35 @@
+From c97572fc9a022b66f44e596ff1d29f6351b2c2d5 Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Fri, 29 Jan 2021 10:18:04 +0800
+Subject: [PATCH 26/26] Revert "MediaProvider: workaround some apps save in
+ extend storage"
+
+This reverts commit 094303b799a7a1ee68e9f1d2e6ba644cef74ffad.
+
+Test: CtsProviderTestCases
+android.provider.cts.media.MediaStore_FilesTest*
+CtsAppSecurityHostTestCases
+android.appsecurity.cts.ExternalStorageHostTest#testMultiUserStorageIsolated
+
+Change-Id: I70f0330ad700b9f49f68b7dfbefb3c3b92433f0e
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+---
+ src/com/android/providers/media/MediaProvider.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/com/android/providers/media/MediaProvider.java b/src/com/android/providers/media/MediaProvider.java
+index 19f3bd0d..0bdaeed1 100644
+--- a/src/com/android/providers/media/MediaProvider.java
++++ b/src/com/android/providers/media/MediaProvider.java
+@@ -2755,7 +2755,7 @@ public class MediaProvider extends ContentProvider {
+             final File actual = new File(values.getAsString(MediaColumns.DATA))
+                     .getCanonicalFile();
+             if (!FileUtils.contains(allowed, actual)) {
+-                //throw new VolumeArgumentException(actual, allowed);
++                throw new VolumeArgumentException(actual, allowed);
+             }
+         } catch (IOException e) {
+             throw new VolumeNotFoundException(volumeName);
+-- 
+2.35.1
+

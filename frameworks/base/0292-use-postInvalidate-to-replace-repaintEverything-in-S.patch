@@ -1,0 +1,40 @@
+From 4c63b56e4dd256c798c346ab1e154e82e1c427a2 Mon Sep 17 00:00:00 2001
+From: zj <zj@rock-chips.com>
+Date: Wed, 27 Jan 2021 16:00:41 +0800
+Subject: [PATCH 292/297] use postInvalidate() to replace repaintEverything in
+ SF
+
+Signed-off-by: zj <zj@rock-chips.com>
+Change-Id: I9ecf171b509d2d8ea67f583cae8dd1d5196865b4
+---
+ core/java/android/os/EinkManager.java | 14 --------------
+ 1 file changed, 14 deletions(-)
+
+diff --git a/core/java/android/os/EinkManager.java b/core/java/android/os/EinkManager.java
+index d41bdbf589c..7c9fde05328 100755
+--- a/core/java/android/os/EinkManager.java
++++ b/core/java/android/os/EinkManager.java
+@@ -124,20 +124,6 @@ public class EinkMode {
+         } catch (RemoteException e) {
+             e.rethrowFromSystemServer();
+         }
+-
+-        try {
+-            IBinder surfaceFlinger = ServiceManager.getService("SurfaceFlinger");
+-            if (surfaceFlinger != null) {
+-                Parcel data = Parcel.obtain();
+-                data.writeInterfaceToken("android.ui.ISurfaceComposer");
+-                surfaceFlinger.transact(1004, data, null, 0);
+-                data.recycle();
+-                Log.d(TAG, "system set einkMode to EPD_FULL");
+-            }
+-        } catch (Exception ex)
+-        {
+-            Log.e(TAG, "failed to transact SF_SETMODE.", ex);
+-        }
+ }
+     public void setMode(@Nullable String einkMode){
+         try {
+-- 
+2.35.1
+

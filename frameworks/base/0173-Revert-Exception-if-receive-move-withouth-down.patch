@@ -1,0 +1,61 @@
+From 71c824c057245c3c36f5b5ae44e3d118162cd8a3 Mon Sep 17 00:00:00 2001
+From: Robert Snoeberger <snoeberger@google.com>
+Date: Wed, 3 Jun 2020 18:48:19 +0000
+Subject: [PATCH 173/297] Revert "Exception if receive move withouth down"
+
+This reverts commit a0a20dc23babe74e4ba59262323280367ad76185.
+
+Reason for revert: This is causing a number of fatal crashes in SystemUI. See b/158081578, b/158057055, b/158060735, and b/158061923.
+
+Fixes: 158081578
+Fixes: 158057055
+Fixes: 158060735
+Fixes: 158061923
+Change-Id: If7e6cd4ade3df540ba7d97d9265564132a235292
+(cherry picked from commit 0ef6f01bd1f47594af77d5024a8115dfd2b46116)
+---
+ core/java/android/view/GestureDetector.java | 14 --------------
+ 1 file changed, 14 deletions(-)
+
+diff --git a/core/java/android/view/GestureDetector.java b/core/java/android/view/GestureDetector.java
+index a9af59543c7..f6c72c4eefb 100644
+--- a/core/java/android/view/GestureDetector.java
++++ b/core/java/android/view/GestureDetector.java
+@@ -288,11 +288,6 @@ public class GestureDetector {
+      */
+     private VelocityTracker mVelocityTracker;
+ 
+-    /**
+-     * True if the detector can throw exception when touch steam is unexpected .
+-     */
+-    private boolean mExceptionForTouchStream;
+-
+     /**
+      * Consistency verifier for debugging purposes.
+      */
+@@ -472,8 +467,6 @@ public class GestureDetector {
+         mTouchSlopSquare = touchSlop * touchSlop;
+         mDoubleTapTouchSlopSquare = doubleTapTouchSlop * doubleTapTouchSlop;
+         mDoubleTapSlopSquare = doubleTapSlop * doubleTapSlop;
+-        mExceptionForTouchStream = context != null
+-                && context.getApplicationInfo().targetSdkVersion >= Build.VERSION_CODES.R;
+     }
+ 
+     /**
+@@ -646,13 +639,6 @@ public class GestureDetector {
+                 break;
+ 
+             case MotionEvent.ACTION_MOVE:
+-                if (mExceptionForTouchStream && !mStillDown) {
+-                    throw new IllegalStateException("Incomplete event stream received: "
+-                            + "Received ACTION_MOVE before ACTION_DOWN. ACTION_DOWN must precede "
+-                            + "ACTION_MOVE following ACTION_UP or ACTION_CANCEL, or when this "
+-                            + "GestureDetector has not yet received any events.");
+-                }
+-
+                 if (mInLongPress || mInContextClick) {
+                     break;
+                 }
+-- 
+2.35.1
+

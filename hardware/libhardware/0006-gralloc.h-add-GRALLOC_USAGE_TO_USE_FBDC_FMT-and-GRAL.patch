@@ -1,0 +1,30 @@
+From 40e059f524ffb315924ddb739e1e1ccab4e18703 Mon Sep 17 00:00:00 2001
+From: ZhuangXiaoLiang <zhuangxl@rock-chips.com>
+Date: Fri, 7 Jul 2017 15:09:17 +0800
+Subject: [PATCH 06/36] gralloc.h: add GRALLOC_USAGE_TO_USE_FBDC_FMT and
+ GRALLOC_USAGE_TO_USE_SINGLE_BUFFER From: commit b5d94fc.
+
+Change-Id: Ibf0c3b2681e987ce2a9a3dceabfca9a75e288592
+Signed-off-by: cw <cw@rock-chips.com>
+---
+ include/hardware/gralloc.h | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/include/hardware/gralloc.h b/include/hardware/gralloc.h
+index c42801ee..b6844bd0 100755
+--- a/include/hardware/gralloc.h
++++ b/include/hardware/gralloc.h
+@@ -141,6 +141,10 @@ enum {
+     /* buffer may be used as a cursor */
+     GRALLOC_USAGE_ROT_MASK              = 0x0F000000,
+ 
++    GRALLOC_USAGE_TO_USE_SINGLE_BUFFER  = 0x08000000,
++    /* would like to use a fbdc(afbc) format. */
++    GRALLOC_USAGE_TO_USE_FBDC_FMT       = 0x04000000,
++
+     /* implementation-specific private usage flags */
+     GRALLOC_USAGE_PRIVATE_0             = 0x10000000U,
+     GRALLOC_USAGE_PRIVATE_1             = 0x20000000U,
+-- 
+2.35.1
+

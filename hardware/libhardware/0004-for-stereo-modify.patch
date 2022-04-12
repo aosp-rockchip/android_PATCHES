@@ -1,0 +1,28 @@
+From dc4882923e4674a411a766d614af08f1e2353d9d Mon Sep 17 00:00:00 2001
+From: hds <hds@rock-chips.com>
+Date: Wed, 29 Apr 2015 09:34:27 +0800
+Subject: [PATCH 04/36] for stereo modify
+
+Signed-off-by: wzq <yhx@rock-chips.com>
+---
+ include/hardware/hwcomposer.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/include/hardware/hwcomposer.h b/include/hardware/hwcomposer.h
+index 51b58644..7f316d13 100755
+--- a/include/hardware/hwcomposer.h
++++ b/include/hardware/hwcomposer.h
+@@ -183,8 +183,8 @@ typedef struct hwc_layer_1 {
+             int32_t bufferUpdate;
+             int32_t bufferChange;
+             int32_t dospecialflag;
+-            int32_t exTop;
+-            int32_t exBottom;
++            int32_t alreadyStereo;
++            int32_t displayStereo;
+             int32_t exLeft;
+             int32_t exRight;
+             int32_t exAddrOffset;
+-- 
+2.35.1
+

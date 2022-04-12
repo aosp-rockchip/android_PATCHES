@@ -1,0 +1,30 @@
+From b55d66cd81a5ccaa91507041c8d3eb1d78a3052c Mon Sep 17 00:00:00 2001
+From: Amit Mahajan <amitmahajan@google.com>
+Date: Wed, 21 Oct 2020 12:32:59 -0700
+Subject: [PATCH 256/297] Mark deleteMessageFromIcc() as @UnsupportedAppUsage.
+
+The API was exposed in ag/9766884 but reverted in ag/10665971. However
+with the revert the annotation was not added back.
+
+Test: TH
+Bug: 159022482
+Change-Id: Ia7d200bfd4d4565971701048b1c469a6633edeb4
+---
+ telephony/java/android/telephony/SmsManager.java | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/telephony/java/android/telephony/SmsManager.java b/telephony/java/android/telephony/SmsManager.java
+index b376660f839..f633df2e8a6 100644
+--- a/telephony/java/android/telephony/SmsManager.java
++++ b/telephony/java/android/telephony/SmsManager.java
+@@ -1718,6 +1718,7 @@ public final class SmsManager {
+      *
+      * {@hide}
+      */
++    @UnsupportedAppUsage
+     @RequiresPermission(Manifest.permission.ACCESS_MESSAGES_ON_ICC)
+     public boolean deleteMessageFromIcc(int messageIndex) {
+         boolean success = false;
+-- 
+2.35.1
+

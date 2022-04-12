@@ -1,0 +1,61 @@
+From 4d7cc155b4cb26b99c6fe2f7f50a813a7aec31cb Mon Sep 17 00:00:00 2001
+From: Alex Zhao <zzc@rock-chips.com>
+Date: Thu, 14 Nov 2019 20:17:10 +0800
+Subject: [PATCH 07/10] fix
+ VtsHalWifiV1_0Host#WifiStaIfaceHidlTest.RSSIMonitoring fail
+
+Ensures that calls to enable RSSI monitoring will return an error status
+code if device is not connected to an AP.
+
+Change-Id: I67a979cf1fb97559422d535952e7730ba98ade4a
+Signed-off-by: Alex Zhao <zzc@rock-chips.com>
+---
+ bcmdhd/wifi_hal/wifi_hal.cpp | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/bcmdhd/wifi_hal/wifi_hal.cpp b/bcmdhd/wifi_hal/wifi_hal.cpp
+index 7780592..6390e86 100644
+--- a/bcmdhd/wifi_hal/wifi_hal.cpp
++++ b/bcmdhd/wifi_hal/wifi_hal.cpp
+@@ -35,6 +35,7 @@
+ #include <netlink/attr.h>
+ #include <netlink/handlers.h>
+ #include <netlink/msg.h>
++#include <cutils/properties.h>
+ 
+ #include <dirent.h>
+ #include <net/if.h>
+@@ -1310,7 +1311,15 @@ wifi_error wifi_set_country_code(wifi_interface_handle handle, const char *count
+ static wifi_error wifi_start_rssi_monitoring(wifi_request_id id, wifi_interface_handle
+                         iface, s8 max_rssi, s8 min_rssi, wifi_rssi_event_handler eh)
+ {
++    static char state[PROPERTY_VALUE_MAX];
++
+     ALOGD("Start RSSI monitor %d", id);
++    property_get("vendor.wifi.state", state, "disconnected");
++    if (0 == strcmp (state, "disconnected")) {
++	ALOGD("Start RSSI monitor WIFI_ERROR_INVALID_ARGS");
++	return WIFI_ERROR_INVALID_ARGS;
++    }
++
+     wifi_handle handle = getWifiHandle(iface);
+     SetRSSIMonitorCommand *cmd = new SetRSSIMonitorCommand(id, iface, max_rssi, min_rssi, eh);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+@@ -1330,8 +1339,13 @@ static wifi_error wifi_start_rssi_monitoring(wifi_request_id id, wifi_interface_
+ 
+ static wifi_error wifi_stop_rssi_monitoring(wifi_request_id id, wifi_interface_handle iface)
+ {
++    static char state[PROPERTY_VALUE_MAX];
+     ALOGD("Stopping RSSI monitor");
+-
++    property_get("vendor.wifi.state", state, "disconnected");
++    if (0 == strcmp (state, "disconnected")) {
++	ALOGD("Stopping RSSI monitor WIFI_ERROR_INVALID_ARGS");
++	return WIFI_ERROR_INVALID_ARGS;
++    }
+     if(id == -1) {
+         wifi_rssi_event_handler handler;
+         s8 max_rssi = 0, min_rssi = 0;
+-- 
+2.35.1
+

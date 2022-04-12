@@ -1,0 +1,29 @@
+From 952aff56cd2694706324e700bdbc116ce7905edf Mon Sep 17 00:00:00 2001
+From: Weiguo Hu <hwg@rock-chips.com>
+Date: Tue, 4 Sep 2018 21:51:46 +0800
+Subject: [PATCH 04/10] ssv6051: solve VtsHalWifiV1_0Host test fail
+
+VtsHalWifiV1_0Host#WifiApIfaceHidlTest.GetValidFrequenciesForBand
+VtsHalWifiV1_0Host#WifiStaIfaceHidlTest.GetValidFrequenciesForBand
+
+Change-Id: Id9fa4762754b845bd7eed9fb565639374f10b323
+---
+ bcmdhd/wifi_hal/gscan.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/bcmdhd/wifi_hal/gscan.cpp b/bcmdhd/wifi_hal/gscan.cpp
+index 3376b35..9682810 100644
+--- a/bcmdhd/wifi_hal/gscan.cpp
++++ b/bcmdhd/wifi_hal/gscan.cpp
+@@ -320,7 +320,7 @@ protected:
+ wifi_error wifi_get_valid_channels(wifi_interface_handle handle,
+         int band, int max_channels, wifi_channel *channels, int *num_channels)
+ {
+-    if (check_wifi_chip_type() == REALTEK_WIFI) {
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
+         *num_channels = 12;
+         return WIFI_SUCCESS;
+     }
+-- 
+2.35.1
+

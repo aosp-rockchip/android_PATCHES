@@ -1,0 +1,74 @@
+From f68a3d2eb544602d2b98c117c01a879dcf7236e3 Mon Sep 17 00:00:00 2001
+From: zj <zj@rock-chips.com>
+Date: Thu, 28 Jan 2021 17:04:38 +0800
+Subject: [PATCH 293/297]  Added low power shutdown logic  Added charging sleep
+ and low power sleep logic
+
+Signed-off-by: zj <zj@rock-chips.com>
+Change-Id: Ibc4fe53949bf1960f877e38df1bc4b481fc6cdf7
+---
+ .../android/server/job/controllers/BatteryController.java   | 3 +++
+ .../SystemUI/src/com/android/systemui/BatteryMeterView.java | 6 ++++++
+ 2 files changed, 9 insertions(+)
+ mode change 100644 => 100755 apex/jobscheduler/service/java/com/android/server/job/controllers/BatteryController.java
+ mode change 100644 => 100755 packages/SystemUI/src/com/android/systemui/BatteryMeterView.java
+
+diff --git a/apex/jobscheduler/service/java/com/android/server/job/controllers/BatteryController.java b/apex/jobscheduler/service/java/com/android/server/job/controllers/BatteryController.java
+old mode 100644
+new mode 100755
+index 461ef21af7e..5c0aeed757c
+--- a/apex/jobscheduler/service/java/com/android/server/job/controllers/BatteryController.java
++++ b/apex/jobscheduler/service/java/com/android/server/job/controllers/BatteryController.java
+@@ -37,6 +37,7 @@ import com.android.server.job.JobSchedulerService;
+ import com.android.server.job.StateControllerProto;
+ 
+ import java.util.function.Predicate;
++import android.os.SystemProperties;
+ 
+ /**
+  * Simple controller that tracks whether the phone is charging or not. The phone is considered to
+@@ -208,6 +209,7 @@ public final class BatteryController extends RestrictingController {
+                     // charging, but hasn't been for long enough to be healthy.
+                     mBatteryHealthy = false;
+                     maybeReportNewChargingStateLocked();
++                    SystemProperties.set("sys.power.status", "1");
+                 } else if (Intent.ACTION_BATTERY_OKAY.equals(action)) {
+                     if (DEBUG) {
+                         Slog.d(TAG, "Battery life healthy enough to do work. @ "
+@@ -215,6 +217,7 @@ public final class BatteryController extends RestrictingController {
+                     }
+                     mBatteryHealthy = true;
+                     maybeReportNewChargingStateLocked();
++                    SystemProperties.set("sys.power.status", "0");
+                 } else if (BatteryManager.ACTION_CHARGING.equals(action)) {
+                     if (DEBUG) {
+                         Slog.d(TAG, "Received charging intent, fired @ "
+diff --git a/packages/SystemUI/src/com/android/systemui/BatteryMeterView.java b/packages/SystemUI/src/com/android/systemui/BatteryMeterView.java
+old mode 100644
+new mode 100755
+index a46ab3a9e35..5baf95abddf
+--- a/packages/SystemUI/src/com/android/systemui/BatteryMeterView.java
++++ b/packages/SystemUI/src/com/android/systemui/BatteryMeterView.java
+@@ -70,6 +70,7 @@ import java.io.FileDescriptor;
+ import java.io.PrintWriter;
+ import java.lang.annotation.Retention;
+ import java.text.NumberFormat;
++import android.os.SystemProperties;
+ 
+ public class BatteryMeterView extends LinearLayout implements
+         BatteryStateChangeCallback, Tunable, DarkReceiver, ConfigurationListener {
+@@ -321,6 +322,11 @@ public class BatteryMeterView extends LinearLayout implements
+ 
+     @Override
+     public void onBatteryLevelChanged(int level, boolean pluggedIn, boolean charging) {
++        if(pluggedIn){
++            SystemProperties.set("sys.power.connected", "1");
++        }else{
++            SystemProperties.set("sys.power.connected", "0");
++        }
+         mDrawable.setCharging(pluggedIn);
+         mDrawable.setBatteryLevel(level);
+         mCharging = pluggedIn;
+-- 
+2.35.1
+

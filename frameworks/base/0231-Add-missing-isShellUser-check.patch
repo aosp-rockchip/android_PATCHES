@@ -1,0 +1,32 @@
+From c44177d6c90d34a084db8ea986b59cdef538e984 Mon Sep 17 00:00:00 2001
+From: John Reck <jreck@google.com>
+Date: Mon, 6 Jul 2020 16:10:49 -0700
+Subject: [PATCH 231/297] Add missing isShellUser check
+
+Bug: 160390416
+Test: verified command still works from shell
+Change-Id: I23bb06e00f1623e4f27c02d7eb2c0d273b40771b
+Merged-In: I23bb06e00f1623e4f27c02d7eb2c0d273b40771b
+(cherry picked from commit bfdb7121ef7ae85520abbdcb4b9d05923d91999c)
+---
+ .../java/com/android/server/am/ActivityManagerService.java    | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/services/core/java/com/android/server/am/ActivityManagerService.java b/services/core/java/com/android/server/am/ActivityManagerService.java
+index ec24014f77d..82abb988cb2 100644
+--- a/services/core/java/com/android/server/am/ActivityManagerService.java
++++ b/services/core/java/com/android/server/am/ActivityManagerService.java
+@@ -3318,6 +3318,10 @@ public class ActivityManagerService extends IActivityManager.Stub
+     @Override
+     public boolean setProcessMemoryTrimLevel(String process, int userId, int level)
+             throws RemoteException {
++        if (!isCallerShell()) {
++            EventLog.writeEvent(0x534e4554, 160390416, Binder.getCallingUid(), "");
++            throw new SecurityException("Only shell can call it");
++        }
+         synchronized (this) {
+             final ProcessRecord app = findProcessLocked(process, userId, "setProcessMemoryTrimLevel");
+             if (app == null) {
+-- 
+2.35.1
+

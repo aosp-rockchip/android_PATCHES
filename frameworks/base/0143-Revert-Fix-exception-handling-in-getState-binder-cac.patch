@@ -1,0 +1,72 @@
+From 2de40f4042789344b6ccbaaaceae3081aeaf0cf6 Mon Sep 17 00:00:00 2001
+From: Lee Shombert <shombert@google.com>
+Date: Wed, 8 Apr 2020 21:02:22 +0000
+Subject: [PATCH 143/297] Revert "Fix exception handling in getState() binder
+ cache"
+
+This reverts commit 81a3e1c578b5618bf02968a9b4402e70592b7b9b.
+
+Bug: b/153505953
+
+Change-Id: I58c46e534ccadf332d10fff8f99c85ad24340c27
+(cherry picked from commit 2a8802d2ca8ca6f1902d2c40ffaacc11c40e9e44)
+---
+ .../android/bluetooth/BluetoothAdapter.java   | 32 ++++++-------------
+ 1 file changed, 9 insertions(+), 23 deletions(-)
+
+diff --git a/core/java/android/bluetooth/BluetoothAdapter.java b/core/java/android/bluetooth/BluetoothAdapter.java
+index fc48e7f18f5..f216db6fc71 100644
+--- a/core/java/android/bluetooth/BluetoothAdapter.java
++++ b/core/java/android/bluetooth/BluetoothAdapter.java
+@@ -979,14 +979,17 @@ public final class BluetoothAdapter {
+                 8, BLUETOOTH_GET_STATE_CACHE_PROPERTY) {
+                 @Override
+                 protected Integer recompute(Void query) {
+-                    // This function must be called while holding the
+-                    // mServiceLock, and with mService not null. The public
+-                    // getState() method makes this guarantee.
+                     try {
+-                        return mService.getState();
++                        mServiceLock.readLock().lock();
++                        if (mService != null) {
++                            return mService.getState();
++                        }
+                     } catch (RemoteException e) {
+-                        throw e.rethrowFromSystemServer();
++                        Log.e(TAG, "", e);
++                    } finally {
++                        mServiceLock.readLock().unlock();
+                     }
++                    return BluetoothAdapter.STATE_OFF;
+                 }
+             };
+ 
+@@ -1013,24 +1016,7 @@ public final class BluetoothAdapter {
+     @RequiresPermission(Manifest.permission.BLUETOOTH)
+     @AdapterState
+     public int getState() {
+-        int state = BluetoothAdapter.STATE_OFF;
+-
+-        try {
+-            mServiceLock.readLock().lock();
+-            // The test for mService must either be outside the cache, or
+-            // the cache must be invalidated when mService changes.
+-            if (mService != null) {
+-                state = mBluetoothGetStateCache.query(null);
+-            }
+-        } catch (RuntimeException e) {
+-            if (e.getCause() instanceof RemoteException) {
+-                Log.e(TAG, "", e.getCause());
+-            } else {
+-                throw e;
+-            }
+-        } finally {
+-            mServiceLock.readLock().unlock();
+-        }
++        int state = mBluetoothGetStateCache.query(null);
+ 
+         // Consider all internal states as OFF
+         if (state == BluetoothAdapter.STATE_BLE_ON || state == BluetoothAdapter.STATE_BLE_TURNING_ON
+-- 
+2.35.1
+

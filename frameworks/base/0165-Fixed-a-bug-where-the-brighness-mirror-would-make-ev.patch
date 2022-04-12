@@ -1,0 +1,34 @@
+From 8f818fd481444697cda4aa48f70cca4d2f14c22c Mon Sep 17 00:00:00 2001
+From: Selim Cinek <cinek@google.com>
+Date: Mon, 18 May 2020 11:27:32 -0700
+Subject: [PATCH 165/297] Fixed a bug where the brighness mirror would make
+ everything invisible
+
+Because of some new animation optimization, this could lead to issues
+where we weren't cancelling the animation in one side case.
+
+Fixes: 156569031
+Test: tap on brightness mirror, observe
+Change-Id: I18164b16a612431f8b3ec87a5b5834c0f48dd761
+(cherry picked from commit 7d9d378b283c03d8ccc5f35d1f18424ab36549e7)
+---
+ .../systemui/statusbar/notification/PropertyAnimator.java      | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/PropertyAnimator.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/PropertyAnimator.java
+index b1b6a1c12a0..3517e245f62 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/PropertyAnimator.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/PropertyAnimator.java
+@@ -92,6 +92,9 @@ public class PropertyAnimator {
+         AnimatorListenerAdapter listener = properties.getAnimationFinishListener(property);
+         if (currentValue.equals(newEndValue)) {
+             // Skip the animation!
++            if (previousAnimator != null) {
++                previousAnimator.cancel();
++            }
+             if (listener != null) {
+                 listener.onAnimationEnd(null);
+             }
+-- 
+2.35.1
+

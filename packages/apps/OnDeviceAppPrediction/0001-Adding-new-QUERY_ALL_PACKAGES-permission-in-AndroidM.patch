@@ -1,0 +1,35 @@
+From f25a08b51f45ebb93fb4ca70921709af60fc49ad Mon Sep 17 00:00:00 2001
+From: Kyle Cai <kylecai@google.com>
+Date: Mon, 10 Aug 2020 16:45:45 -0700
+Subject: [PATCH] Adding new QUERY_ALL_PACKAGES permission in
+ AndroidManifest.xml to allow querying of other apps by AppPredictionService.
+
+Bug: 163420027
+Test: Tested manually on blueline device.
+Change-Id: I1984e6ee5fe6d491feefb761f9b27318a3bb1c51
+---
+ AndroidManifest.xml | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index c85ddb6..058f991 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -17,6 +17,8 @@
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+     package="com.android.apppredictionservice">
+ 
++    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
++
+     <application>
+         <service
+             android:name=".PredictionService"
+@@ -28,4 +30,5 @@
+         </service>
+ 
+     </application>
++
+ </manifest>
+-- 
+2.35.1
+

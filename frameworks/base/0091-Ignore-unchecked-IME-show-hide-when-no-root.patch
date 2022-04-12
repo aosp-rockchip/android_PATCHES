@@ -1,0 +1,78 @@
+From 10b6086a4569dc0d47d988c0bf29c8cf81416748 Mon Sep 17 00:00:00 2001
+From: Tarandeep Singh <tarandeep@google.com>
+Date: Mon, 2 Mar 2020 10:41:14 -0800
+Subject: [PATCH 091/297] Ignore unchecked IME show/hide when no root
+
+Both showSoftInputUnchecked() and closeCurrenInput() rely on rootView to
+obtain window token. If view root is null, window has already gone away
+and IME control had been revoked. Trying to show or hide at this time
+would be a no-op.
+
+Bug: 149900693
+Test: Manually using the steps mentioned in bug and verify that there is
+      no NPE.
+Change-Id: I294bb2ec5395d7502a855bafbac672af069e9b4a
+(cherry picked from commit ba9b716a7092f97997fa4c2389d393e605d1c8ab)
+---
+ .../view/inputmethod/InputMethodManager.java  | 38 ++++++++++++-------
+ 1 file changed, 25 insertions(+), 13 deletions(-)
+
+diff --git a/core/java/android/view/inputmethod/InputMethodManager.java b/core/java/android/view/inputmethod/InputMethodManager.java
+index aca265b1f59..482d5b25e9d 100644
+--- a/core/java/android/view/inputmethod/InputMethodManager.java
++++ b/core/java/android/view/inputmethod/InputMethodManager.java
+@@ -1634,14 +1634,20 @@ public final class InputMethodManager {
+     @Deprecated
+     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.P, trackingBug = 123768499)
+     public void showSoftInputUnchecked(int flags, ResultReceiver resultReceiver) {
+-        try {
+-            Log.w(TAG, "showSoftInputUnchecked() is a hidden method, which will be removed "
+-                    + "soon. If you are using android.support.v7.widget.SearchView, please update "
+-                    + "to version 26.0 or newer version.");
+-            mService.showSoftInput(
+-                    mClient, mCurRootView.getView().getWindowToken(), flags, resultReceiver);
+-        } catch (RemoteException e) {
+-            throw e.rethrowFromSystemServer();
++        synchronized (mH) {
++            try {
++                Log.w(TAG, "showSoftInputUnchecked() is a hidden method, which will be"
++                        + " removed soon. If you are using android.support.v7.widget.SearchView,"
++                        + " please update to version 26.0 or newer version.");
++                if (mCurRootView == null || mCurRootView.getView() == null) {
++                    Log.w(TAG, "No current root view, ignoring showSoftInputUnchecked()");
++                    return;
++                }
++                mService.showSoftInput(
++                        mClient, mCurRootView.getView().getWindowToken(), flags, resultReceiver);
++            } catch (RemoteException e) {
++                throw e.rethrowFromSystemServer();
++            }
+         }
+     }
+ 
+@@ -1986,11 +1992,17 @@ public final class InputMethodManager {
+ 
+     @UnsupportedAppUsage
+     void closeCurrentInput() {
+-        try {
+-            mService.hideSoftInput(
+-                    mClient, mCurRootView.getView().getWindowToken(), HIDE_NOT_ALWAYS, null);
+-        } catch (RemoteException e) {
+-            throw e.rethrowFromSystemServer();
++        synchronized (mH) {
++            if (mCurRootView == null || mCurRootView.getView() == null) {
++                Log.w(TAG, "No current root view, ignoring closeCurrentInput()");
++                return;
++            }
++            try {
++                mService.hideSoftInput(
++                        mClient, mCurRootView.getView().getWindowToken(), HIDE_NOT_ALWAYS, null);
++            } catch (RemoteException e) {
++                throw e.rethrowFromSystemServer();
++            }
+         }
+     }
+ 
+-- 
+2.35.1
+

@@ -1,0 +1,28 @@
+From 06f22685bcb57e0547e640643e3c4b68e9289016 Mon Sep 17 00:00:00 2001
+From: libin <bin.li@rock-chips.com>
+Date: Wed, 21 Nov 2018 09:38:02 +0800
+Subject: [PATCH 23/36] Add HLG supported_eotf_type.
+
+Change-Id: I8fcf2cb8e267eda5a7fed7542aceb9d0bdf9935c
+Signed-off-by: libin <bin.li@rock-chips.com>
+---
+ include/hardware/gralloc.h | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/include/hardware/gralloc.h b/include/hardware/gralloc.h
+index 793a49f0..caea177b 100755
+--- a/include/hardware/gralloc.h
++++ b/include/hardware/gralloc.h
+@@ -218,7 +218,8 @@ enum {
+ enum supported_eotf_type {
+         TRADITIONAL_GAMMA_SDR = 0,
+         TRADITIONAL_GAMMA_HDR,
+-        SMPTE_ST2084,  /* HDR10*/
++        SMPTE_ST2084,  /* HDR10 */
++        HLG,           /* HLG */
+         FUTURE_EOTF
+ };
+ 
+-- 
+2.35.1
+

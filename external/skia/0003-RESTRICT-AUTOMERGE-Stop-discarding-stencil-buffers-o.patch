@@ -1,0 +1,57 @@
+From d9c10cff782e61067fcb242e7372a6db388cf71e Mon Sep 17 00:00:00 2001
+From: android-autoroll
+ <android-autoroll@skia-corp.google.com.iam.gserviceaccount.com>
+Date: Tue, 21 Jul 2020 16:38:46 +0000
+Subject: [PATCH 3/5] [RESTRICT AUTOMERGE]: Stop discarding stencil buffers on
+ tilers
+
+Bug: b/160958008
+Test: SystemWebViewShell.apk
+      - Tap 3 dot menu
+      - Tap "Animation test"
+      - Check "Rounded corner" checkbox
+
+Roll Skia from b43313646796 to 411090f66974 (1 revision)
+
+https://skia.googlesource.com/skia.git/+log/b43313646796..411090f66974
+
+If this roll has caused a breakage, revert this CL and stop the roller
+using the controls here:
+https://skia-autoroll.corp.goog/r/android-next-autoroll
+Please CC scroggo@google.com on the revert to ensure that a human
+is aware of the problem.
+
+To report a problem with the AutoRoller itself, please file a bug:
+https://bugs.chromium.org/p/skia/issues/entry?template=Autoroller+Bug
+
+Documentation for the AutoRoller is here:
+https://skia.googlesource.com/buildbot/+doc/master/autoroll/README.md
+
+Change-Id: I64fe28313866b775b2ecf78b111b3fab7623a99b
+(cherry picked from commit 66302698226902c6dcaf8cb00d7f0ce72a6d0a5a)
+---
+ src/gpu/GrCaps.h | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/src/gpu/GrCaps.h b/src/gpu/GrCaps.h
+index d98890df17..9d7a0c13a3 100644
+--- a/src/gpu/GrCaps.h
++++ b/src/gpu/GrCaps.h
+@@ -74,9 +74,14 @@ public:
+     // Should we discard stencil values after a render pass? (Tilers get better performance if we
+     // always load stencil buffers with a "clear" op, and then discard the content when finished.)
+     bool discardStencilValuesAfterRenderPass() const {
++#if defined(SK_BUILD_FOR_ANDROID)
++        // b/160958008
++        return false;
++#else
+         // This method is actually just a duplicate of preferFullscreenClears(), with a descriptive
+         // name for the sake of readability.
+         return this->preferFullscreenClears();
++#endif
+     }
+ 
+     bool preferVRAMUseOverFlushes() const { return fPreferVRAMUseOverFlushes; }
+-- 
+2.35.1
+

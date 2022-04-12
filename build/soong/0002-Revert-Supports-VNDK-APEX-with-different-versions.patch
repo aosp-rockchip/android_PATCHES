@@ -1,0 +1,653 @@
+From 40597659eb7876a724c6eda6a46c7ff2056b6baf Mon Sep 17 00:00:00 2001
+From: Jooyung Han <jooyung@google.com>
+Date: Wed, 16 Oct 2019 22:43:42 +0000
+Subject: [PATCH 2/5] Revert "Supports VNDK APEX with different versions"
+
+This reverts commit 394951da73ec7a7a2b6353d75657dfd2d7c81ab8.
+
+Reason for revert: some targets are broken
+
+Bug: 142773030
+Change-Id: I4ce2e4a4c683c71958bc4f73e45a5ddd4a4ae32a
+(cherry picked from commit 48dd4b5ea480319da29359a668191d52e9d8c9c2)
+---
+ apex/apex.go        |  72 +++++++------
+ apex/apex_test.go   | 256 ++++++++------------------------------------
+ cc/androidmk.go     |   5 -
+ cc/cc.go            |   9 ++
+ cc/vndk.go          |  25 -----
+ cc/vndk_prebuilt.go |  22 ++--
+ 6 files changed, 98 insertions(+), 291 deletions(-)
+
+diff --git a/apex/apex.go b/apex/apex.go
+index 9382c191b..dce9bea25 100644
+--- a/apex/apex.go
++++ b/apex/apex.go
+@@ -182,7 +182,10 @@ func init() {
+ 	android.RegisterModuleType("apex_defaults", defaultsFactory)
+ 	android.RegisterModuleType("prebuilt_apex", PrebuiltFactory)
+ 
+-	android.PreDepsMutators(RegisterPreDepsMutators)
++	android.PreDepsMutators(func(ctx android.RegisterMutatorsContext) {
++		ctx.TopDown("apex_vndk_gather", apexVndkGatherMutator).Parallel()
++		ctx.BottomUp("apex_vndk_add_deps", apexVndkAddDepsMutator).Parallel()
++	})
+ 	android.PostDepsMutators(RegisterPostDepsMutators)
+ 
+ 	android.RegisterMakeVarsProvider(pctx, func(ctx android.MakeVarsContext) {
+@@ -192,11 +195,6 @@ func init() {
+ 	})
+ }
+ 
+-func RegisterPreDepsMutators(ctx android.RegisterMutatorsContext) {
+-	ctx.TopDown("apex_vndk", apexVndkMutator).Parallel()
+-	ctx.BottomUp("apex_vndk_deps", apexVndkDepsMutator).Parallel()
+-}
+-
+ func RegisterPostDepsMutators(ctx android.RegisterMutatorsContext) {
+ 	ctx.TopDown("apex_deps", apexDepsMutator)
+ 	ctx.BottomUp("apex", apexMutator).Parallel()
+@@ -209,39 +207,44 @@ var (
+ 	vndkApexListMutex sync.Mutex
+ )
+ 
+-func vndkApexList(config android.Config) map[string]string {
++func vndkApexList(config android.Config) map[string]*apexBundle {
+ 	return config.Once(vndkApexListKey, func() interface{} {
+-		return map[string]string{}
+-	}).(map[string]string)
++		return map[string]*apexBundle{}
++	}).(map[string]*apexBundle)
+ }
+ 
+-func apexVndkMutator(mctx android.TopDownMutatorContext) {
++// apexVndkGatherMutator gathers "apex_vndk" modules and puts them in a map with vndk_version as a key.
++func apexVndkGatherMutator(mctx android.TopDownMutatorContext) {
+ 	if ab, ok := mctx.Module().(*apexBundle); ok && ab.vndkApex {
+ 		if ab.IsNativeBridgeSupported() {
+ 			mctx.PropertyErrorf("native_bridge_supported", "%q doesn't support native bridge binary.", mctx.ModuleType())
+ 		}
+ 
+-		vndkVersion := ab.vndkVersion(mctx.DeviceConfig())
+-		// Ensure VNDK APEX mount point is formatted as com.android.vndk.v###
+-		ab.properties.Apex_name = proptools.StringPtr("com.android.vndk.v" + vndkVersion)
++		vndkVersion := proptools.String(ab.vndkProperties.Vndk_version)
+ 
+-		// vndk_version should be unique
+ 		vndkApexListMutex.Lock()
+ 		defer vndkApexListMutex.Unlock()
+ 		vndkApexList := vndkApexList(mctx.Config())
+ 		if other, ok := vndkApexList[vndkVersion]; ok {
+-			mctx.PropertyErrorf("vndk_version", "%v is already defined in %q", vndkVersion, other)
++			mctx.PropertyErrorf("vndk_version", "%v is already defined in %q", vndkVersion, other.BaseModuleName())
+ 		}
+-		vndkApexList[vndkVersion] = mctx.ModuleName()
++		vndkApexList[vndkVersion] = ab
+ 	}
+ }
+ 
+-func apexVndkDepsMutator(mctx android.BottomUpMutatorContext) {
+-	if m, ok := mctx.Module().(*cc.Module); ok && cc.IsForVndkApex(mctx, m) {
+-		vndkVersion := m.VndkVersion()
++// apexVndkAddDepsMutator adds (reverse) dependencies from vndk libs to apex_vndk modules.
++// It filters only libs with matching targets.
++func apexVndkAddDepsMutator(mctx android.BottomUpMutatorContext) {
++	if cc, ok := mctx.Module().(*cc.Module); ok && cc.IsVndkOnSystem() {
+ 		vndkApexList := vndkApexList(mctx.Config())
+-		if vndkApex, ok := vndkApexList[vndkVersion]; ok {
+-			mctx.AddReverseDependency(mctx.Module(), sharedLibTag, vndkApex)
++		if ab, ok := vndkApexList[cc.VndkVersion()]; ok {
++			targetArch := cc.Target().String()
++			for _, target := range ab.MultiTargets() {
++				if target.String() == targetArch {
++					mctx.AddReverseDependency(mctx.Module(), sharedLibTag, ab.Name())
++					break
++				}
++			}
+ 		}
+ 	}
+ }
+@@ -654,6 +657,7 @@ func (a *apexBundle) combineProperties(ctx android.BottomUpMutatorContext) {
+ }
+ 
+ func (a *apexBundle) DepsMutator(ctx android.BottomUpMutatorContext) {
++
+ 	targets := ctx.MultiTargets()
+ 	config := ctx.DeviceConfig()
+ 
+@@ -824,9 +828,6 @@ func (a *apexBundle) installable() bool {
+ }
+ 
+ func (a *apexBundle) getImageVariation(config android.DeviceConfig) string {
+-	if a.vndkApex {
+-		return "vendor." + a.vndkVersion(config)
+-	}
+ 	if config.VndkVersion() != "" && proptools.Bool(a.properties.Use_vendor) {
+ 		return "vendor." + config.PlatformVndkVersion()
+ 	} else {
+@@ -1243,7 +1244,7 @@ func (a *apexBundle) GenerateAndroidBuildActions(ctx android.ModuleContext) {
+ 	// prepend the name of this APEX to the module names. These names will be the names of
+ 	// modules that will be defined if the APEX is flattened.
+ 	for i := range filesInfo {
+-		filesInfo[i].moduleName = filesInfo[i].moduleName + "." + ctx.ModuleName()
++		filesInfo[i].moduleName = ctx.ModuleName() + "." + filesInfo[i].moduleName
+ 	}
+ 
+ 	a.installDir = android.PathForModuleInstall(ctx, "apex")
+@@ -1569,7 +1570,7 @@ func (a *apexBundle) buildFlattenedApex(ctx android.ModuleContext) {
+ 	if a.installable() {
+ 		// For flattened APEX, do nothing but make sure that apex_manifest.json and apex_pubkey are also copied along
+ 		// with other ordinary files.
+-		a.filesInfo = append(a.filesInfo, apexFile{a.manifestOut, "apex_manifest.json." + ctx.ModuleName(), ".", etc, nil, nil})
++		a.filesInfo = append(a.filesInfo, apexFile{a.manifestOut, ctx.ModuleName() + ".apex_manifest.json", ".", etc, nil, nil})
+ 
+ 		// rename to apex_pubkey
+ 		copiedPubkey := android.PathForModuleOut(ctx, "apex_pubkey")
+@@ -1578,7 +1579,7 @@ func (a *apexBundle) buildFlattenedApex(ctx android.ModuleContext) {
+ 			Input:  a.public_key_file,
+ 			Output: copiedPubkey,
+ 		})
+-		a.filesInfo = append(a.filesInfo, apexFile{copiedPubkey, "apex_pubkey." + ctx.ModuleName(), ".", etc, nil, nil})
++		a.filesInfo = append(a.filesInfo, apexFile{copiedPubkey, ctx.ModuleName() + ".apex_pubkey", ".", etc, nil, nil})
+ 
+ 		if ctx.Config().FlattenApex() {
+ 			apexName := proptools.StringDefault(a.properties.Apex_name, ctx.ModuleName())
+@@ -1818,18 +1819,19 @@ func vndkApexBundleFactory() android.Module {
+ 		}{
+ 			proptools.StringPtr("both"),
+ 		})
++
++		vndkVersion := proptools.StringDefault(bundle.vndkProperties.Vndk_version, "current")
++		if vndkVersion == "current" {
++			vndkVersion = ctx.DeviceConfig().PlatformVndkVersion()
++			bundle.vndkProperties.Vndk_version = proptools.StringPtr(vndkVersion)
++		}
++
++		// Ensure VNDK APEX mount point is formatted as com.android.vndk.v###
++		bundle.properties.Apex_name = proptools.StringPtr("com.android.vndk.v" + vndkVersion)
+ 	})
+ 	return bundle
+ }
+ 
+-func (a *apexBundle) vndkVersion(config android.DeviceConfig) string {
+-	vndkVersion := proptools.StringDefault(a.vndkProperties.Vndk_version, "current")
+-	if vndkVersion == "current" {
+-		vndkVersion = config.PlatformVndkVersion()
+-	}
+-	return vndkVersion
+-}
+-
+ //
+ // Defaults
+ //
+diff --git a/apex/apex_test.go b/apex/apex_test.go
+index a20ead063..d1cd9699d 100644
+--- a/apex/apex_test.go
++++ b/apex/apex_test.go
+@@ -18,7 +18,6 @@ import (
+ 	"io/ioutil"
+ 	"os"
+ 	"reflect"
+-	"sort"
+ 	"strings"
+ 	"testing"
+ 
+@@ -86,10 +85,6 @@ func withTargets(targets map[android.OsType][]android.Target) testCustomizer {
+ 	}
+ }
+ 
+-func withBinder32bit(fs map[string][]byte, config android.Config) {
+-	config.TestProductVariables.Binder32bit = proptools.BoolPtr(true)
+-}
+-
+ func testApexContext(t *testing.T, bp string, handlers ...testCustomizer) (*android.TestContext, android.Config) {
+ 	config := android.TestArchConfig(buildDir, nil)
+ 	config.TestProductVariables.DeviceVndkVersion = proptools.StringPtr("current")
+@@ -137,10 +132,13 @@ func testApexContext(t *testing.T, bp string, handlers ...testCustomizer) (*andr
+ 		ctx.BottomUp("test_per_src", cc.TestPerSrcMutator).Parallel()
+ 		ctx.BottomUp("version", cc.VersionMutator).Parallel()
+ 		ctx.BottomUp("begin", cc.BeginMutator).Parallel()
++		ctx.TopDown("apex_vndk_gather", apexVndkGatherMutator)
++		ctx.BottomUp("apex_vndk_add_deps", apexVndkAddDepsMutator)
+ 	})
+-	ctx.PreDepsMutators(RegisterPreDepsMutators)
+-	ctx.PostDepsMutators(RegisterPostDepsMutators)
+ 	ctx.PostDepsMutators(func(ctx android.RegisterMutatorsContext) {
++		ctx.TopDown("apex_deps", apexDepsMutator)
++		ctx.BottomUp("apex", apexMutator)
++		ctx.BottomUp("apex_uses", apexUsesMutator)
+ 		ctx.TopDown("prebuilt_select", android.PrebuiltSelectModuleMutator).Parallel()
+ 		ctx.BottomUp("prebuilt_postdeps", android.PrebuiltPostDepsMutator).Parallel()
+ 	})
+@@ -1269,74 +1267,6 @@ func TestHeaderLibsDependency(t *testing.T) {
+ 	ensureContains(t, cFlags, "-Imy_include")
+ }
+ 
+-func ensureExactContents(t *testing.T, ctx *android.TestContext, moduleName string, files []string) {
+-	t.Helper()
+-	apexRule := ctx.ModuleForTests(moduleName, "android_common_"+moduleName).Rule("apexRule")
+-	copyCmds := apexRule.Args["copy_commands"]
+-	imageApexDir := "/image.apex/"
+-	dstFiles := []string{}
+-	for _, cmd := range strings.Split(copyCmds, "&&") {
+-		cmd = strings.TrimSpace(cmd)
+-		if cmd == "" {
+-			continue
+-		}
+-		terms := strings.Split(cmd, " ")
+-		switch terms[0] {
+-		case "mkdir":
+-		case "cp":
+-			if len(terms) != 3 {
+-				t.Fatal("copyCmds contains invalid cp command", cmd)
+-			}
+-			dst := terms[2]
+-			index := strings.Index(dst, imageApexDir)
+-			if index == -1 {
+-				t.Fatal("copyCmds should copy a file to image.apex/", cmd)
+-			}
+-			dstFile := dst[index+len(imageApexDir):]
+-			dstFiles = append(dstFiles, dstFile)
+-		default:
+-			t.Fatalf("copyCmds should contain mkdir/cp commands only: %q", cmd)
+-		}
+-	}
+-	sort.Strings(dstFiles)
+-	sort.Strings(files)
+-	missing := []string{}
+-	surplus := []string{}
+-	i := 0
+-	j := 0
+-	for i < len(dstFiles) && j < len(files) {
+-		if dstFiles[i] == files[j] {
+-			i++
+-			j++
+-		} else if dstFiles[i] < files[j] {
+-			surplus = append(surplus, dstFiles[i])
+-			i++
+-		} else {
+-			missing = append(missing, files[j])
+-			j++
+-		}
+-	}
+-	if i < len(dstFiles) {
+-		surplus = append(surplus, dstFiles[i:]...)
+-	}
+-	if j < len(files) {
+-		missing = append(missing, files[j:]...)
+-	}
+-
+-	failed := false
+-	if len(surplus) > 0 {
+-		t.Log("surplus files", surplus)
+-		failed = true
+-	}
+-	if len(missing) > 0 {
+-		t.Log("missing files", missing)
+-		failed = true
+-	}
+-	if failed {
+-		t.Fail()
+-	}
+-}
+-
+ func TestVndkApexCurrent(t *testing.T) {
+ 	ctx, _ := testApex(t, `
+ 		apex_vndk {
+@@ -1375,12 +1305,12 @@ func TestVndkApexCurrent(t *testing.T) {
+ 		}
+ 	`)
+ 
+-	ensureExactContents(t, ctx, "myapex", []string{
+-		"lib/libvndk.so",
+-		"lib/libvndksp.so",
+-		"lib64/libvndk.so",
+-		"lib64/libvndksp.so",
+-	})
++	apexRule := ctx.ModuleForTests("myapex", "android_common_myapex").Rule("apexRule")
++	copyCmds := apexRule.Args["copy_commands"]
++	ensureContains(t, copyCmds, "image.apex/lib/libvndk.so")
++	ensureContains(t, copyCmds, "image.apex/lib/libvndksp.so")
++	ensureContains(t, copyCmds, "image.apex/lib64/libvndk.so")
++	ensureContains(t, copyCmds, "image.apex/lib64/libvndksp.so")
+ }
+ 
+ func TestVndkApexWithPrebuilt(t *testing.T) {
+@@ -1398,42 +1328,22 @@ func TestVndkApexWithPrebuilt(t *testing.T) {
+ 		}
+ 
+ 		cc_prebuilt_library_shared {
+-			name: "libvndk",
+-			srcs: ["libvndk.so"],
+-			vendor_available: true,
+-			vndk: {
+-				enabled: true,
+-			},
+-			system_shared_libs: [],
+-			stl: "none",
+-		}
+-
+-		cc_prebuilt_library_shared {
+-			name: "libvndk.arm",
+-			srcs: ["libvndk.arm.so"],
++			name: "libvndkshared",
++			srcs: ["libvndkshared.so"],
+ 			vendor_available: true,
+ 			vndk: {
+ 				enabled: true,
+ 			},
+-			enabled: false,
+-			arch: {
+-				arm: {
+-					enabled: true,
+-				},
+-			},
+ 			system_shared_libs: [],
+ 			stl: "none",
+ 		}
+ 	`, withFiles(map[string][]byte{
+-		"libvndk.so":     nil,
+-		"libvndk.arm.so": nil,
++		"libvndkshared.so": nil,
+ 	}))
+ 
+-	ensureExactContents(t, ctx, "myapex", []string{
+-		"lib/libvndk.so",
+-		"lib/libvndk.arm.so",
+-		"lib64/libvndk.so",
+-	})
++	apexRule := ctx.ModuleForTests("myapex", "android_common_myapex").Rule("apexRule")
++	copyCmds := apexRule.Args["copy_commands"]
++	ensureContains(t, copyCmds, "image.apex/lib/libvndkshared.so")
+ }
+ 
+ func TestVndkApexVersion(t *testing.T) {
+@@ -1451,22 +1361,15 @@ func TestVndkApexVersion(t *testing.T) {
+ 			private_key: "testkey.pem",
+ 		}
+ 
+-		vndk_prebuilt_shared {
+-			name: "libvndk27",
+-			version: "27",
++		cc_library {
++			name: "libvndk",
++			srcs: ["mylib.cpp"],
+ 			vendor_available: true,
+ 			vndk: {
+ 				enabled: true,
+ 			},
+-			target_arch: "arm64",
+-			arch: {
+-				arm: {
+-					srcs: ["libvndk27_arm.so"],
+-				},
+-				arm64: {
+-					srcs: ["libvndk27_arm64.so"],
+-				},
+-			},
++			system_shared_libs: [],
++			stl: "none",
+ 		}
+ 
+ 		vndk_prebuilt_shared {
+@@ -1476,27 +1379,18 @@ func TestVndkApexVersion(t *testing.T) {
+ 			vndk: {
+ 				enabled: true,
+ 			},
+-			target_arch: "x86_64",
+-			arch: {
+-				x86: {
+-					srcs: ["libvndk27_x86.so"],
+-				},
+-				x86_64: {
+-					srcs: ["libvndk27_x86_64.so"],
+-				},
+-			},
+-	}
++			target_arch: "arm64",
++			srcs: ["libvndk27.so"],
++		}
+ 	`, withFiles(map[string][]byte{
+-		"libvndk27_arm.so":    nil,
+-		"libvndk27_arm64.so":  nil,
+-		"libvndk27_x86.so":    nil,
+-		"libvndk27_x86_64.so": nil,
++		"libvndk27.so": nil,
+ 	}))
+ 
+-	ensureExactContents(t, ctx, "myapex_v27", []string{
+-		"lib/libvndk27_arm.so",
+-		"lib64/libvndk27_arm64.so",
+-	})
++	apexRule := ctx.ModuleForTests("myapex_v27", "android_common_myapex_v27").Rule("apexRule")
++	copyCmds := apexRule.Args["copy_commands"]
++	ensureContains(t, copyCmds, "image.apex/lib/libvndk27.so")
++	ensureContains(t, copyCmds, "image.apex/lib64/libvndk27.so")
++	ensureNotContains(t, copyCmds, "image.apex/lib/libvndk.so")
+ }
+ 
+ func TestVndkApexErrorWithDuplicateVersion(t *testing.T) {
+@@ -1611,10 +1505,14 @@ func TestVndkApexSkipsNativeBridgeSupportedModules(t *testing.T) {
+ 		},
+ 	}))
+ 
+-	ensureExactContents(t, ctx, "myapex", []string{
+-		"lib/libvndk.so",
+-		"lib64/libvndk.so",
+-	})
++	apexRule := ctx.ModuleForTests("myapex", "android_common_myapex").Rule("apexRule")
++	copyCmds := apexRule.Args["copy_commands"]
++	ensureContains(t, copyCmds, "image.apex/lib/libvndk.so")
++	ensureContains(t, copyCmds, "image.apex/lib64/libvndk.so")
++
++	// apex
++	ensureNotContains(t, copyCmds, "image.apex/lib/x86/libvndk.so")
++	ensureNotContains(t, copyCmds, "image.apex/lib64/x86_64/libvndk.so")
+ }
+ 
+ func TestVndkApexDoesntSupportNativeBridgeSupported(t *testing.T) {
+@@ -1647,70 +1545,6 @@ func TestVndkApexDoesntSupportNativeBridgeSupported(t *testing.T) {
+ 	`)
+ }
+ 
+-func TestVndkApexWithBinder32(t *testing.T) {
+-	ctx, _ := testApex(t,
+-		`
+-		apex_vndk {
+-			name: "myapex_v27",
+-			key: "myapex.key",
+-			file_contexts: "myapex",
+-			vndk_version: "27",
+-		}
+-
+-		apex_key {
+-			name: "myapex.key",
+-			public_key: "testkey.avbpubkey",
+-			private_key: "testkey.pem",
+-		}
+-
+-		vndk_prebuilt_shared {
+-			name: "libvndk27",
+-			version: "27",
+-			target_arch: "arm",
+-			vendor_available: true,
+-			vndk: {
+-				enabled: true,
+-			},
+-			arch: {
+-				arm: {
+-					srcs: ["libvndk27.so"],
+-				}
+-			},
+-		}
+-
+-		vndk_prebuilt_shared {
+-			name: "libvndk27",
+-			version: "27",
+-			target_arch: "arm",
+-			binder32bit: true,
+-			vendor_available: true,
+-			vndk: {
+-				enabled: true,
+-			},
+-			arch: {
+-				arm: {
+-					srcs: ["libvndk27binder32.so"],
+-				}
+-			},
+-		}
+-		`,
+-		withFiles(map[string][]byte{
+-			"libvndk27.so":         nil,
+-			"libvndk27binder32.so": nil,
+-		}),
+-		withBinder32bit,
+-		withTargets(map[android.OsType][]android.Target{
+-			android.Android: []android.Target{
+-				{Os: android.Android, Arch: android.Arch{ArchType: android.Arm, ArchVariant: "armv7-a-neon", Abi: []string{"armeabi-v7a"}}, NativeBridge: android.NativeBridgeDisabled, NativeBridgeHostArchName: "", NativeBridgeRelativePath: ""},
+-			},
+-		}),
+-	)
+-
+-	ensureExactContents(t, ctx, "myapex_v27", []string{
+-		"lib/libvndk27binder32.so",
+-	})
+-}
+-
+ func TestDependenciesInApexManifest(t *testing.T) {
+ 	ctx, _ := testApex(t, `
+ 		apex {
+@@ -2221,12 +2055,12 @@ func TestApexWithTests(t *testing.T) {
+ 	var builder strings.Builder
+ 	data.Custom(&builder, name, prefix, "", data)
+ 	androidMk := builder.String()
+-	ensureContains(t, androidMk, "LOCAL_MODULE := mytest.myapex\n")
+-	ensureContains(t, androidMk, "LOCAL_MODULE := mytest1.myapex\n")
+-	ensureContains(t, androidMk, "LOCAL_MODULE := mytest2.myapex\n")
+-	ensureContains(t, androidMk, "LOCAL_MODULE := mytest3.myapex\n")
+-	ensureContains(t, androidMk, "LOCAL_MODULE := apex_manifest.json.myapex\n")
+-	ensureContains(t, androidMk, "LOCAL_MODULE := apex_pubkey.myapex\n")
++	ensureContains(t, androidMk, "LOCAL_MODULE := myapex.mytest\n")
++	ensureContains(t, androidMk, "LOCAL_MODULE := myapex.mytest1\n")
++	ensureContains(t, androidMk, "LOCAL_MODULE := myapex.mytest2\n")
++	ensureContains(t, androidMk, "LOCAL_MODULE := myapex.mytest3\n")
++	ensureContains(t, androidMk, "LOCAL_MODULE := myapex.apex_manifest.json\n")
++	ensureContains(t, androidMk, "LOCAL_MODULE := myapex.apex_pubkey\n")
+ 	ensureContains(t, androidMk, "LOCAL_MODULE := myapex\n")
+ }
+ 
+diff --git a/cc/androidmk.go b/cc/androidmk.go
+index f6b26d267..f1d329f9c 100644
+--- a/cc/androidmk.go
++++ b/cc/androidmk.go
+@@ -93,11 +93,6 @@ func (c *Module) AndroidMk() android.AndroidMkData {
+ 					fmt.Fprintln(w, "LOCAL_USE_VNDK := true")
+ 					if c.isVndk() && !c.static() {
+ 						fmt.Fprintln(w, "LOCAL_SOONG_VNDK_VERSION := "+c.vndkVersion())
+-						// VNDK libraries available to vendor are not installed because
+-						// they are packaged in VNDK APEX and installed by APEX packages (apex/apex.go)
+-						if !c.isVndkExt() {
+-							fmt.Fprintln(w, "LOCAL_UNINSTALLABLE_MODULE := true")
+-						}
+ 					}
+ 				}
+ 			},
+diff --git a/cc/cc.go b/cc/cc.go
+index f6f8abbf8..32d160eed 100644
+--- a/cc/cc.go
++++ b/cc/cc.go
+@@ -488,6 +488,15 @@ func (c *Module) RelativeInstallPath() string {
+ 	return ""
+ }
+ 
++// IsVndkOnSystem returns true if a module is supposed to be a vndk library provided by system to vendor
++func (c *Module) IsVndkOnSystem() bool {
++	if linker, ok := c.linker.(libraryInterface); ok {
++		return linker.shared() && c.isVndk() && c.useVndk() && !c.isVndkExt()
++	}
++
++	return false
++}
++
+ func (c *Module) VndkVersion() string {
+ 	return c.vndkVersion()
+ }
+diff --git a/cc/vndk.go b/cc/vndk.go
+index 2c1856e88..14bbf1156 100644
+--- a/cc/vndk.go
++++ b/cc/vndk.go
+@@ -307,31 +307,6 @@ func processVndkLibrary(mctx android.BottomUpMutatorContext, m *Module) {
+ 	}
+ }
+ 
+-func IsForVndkApex(mctx android.BottomUpMutatorContext, m *Module) bool {
+-	if !m.Enabled() {
+-		return false
+-	}
+-
+-	if m.Target().NativeBridge == android.NativeBridgeEnabled {
+-		return false
+-	}
+-
+-	// prebuilt vndk modules should match with device
+-	// TODO(b/142675459): Use enabled: to select target device in vndk_prebuilt_shared
+-	// When b/142675459 is landed, remove following check
+-	if p, ok := m.linker.(*vndkPrebuiltLibraryDecorator); ok && !p.matchesWithDevice(mctx.DeviceConfig()) {
+-		return false
+-	}
+-
+-	if lib, ok := m.linker.(libraryInterface); ok {
+-		useCoreVariant := m.vndkVersion() == mctx.DeviceConfig().PlatformVndkVersion() &&
+-			mctx.DeviceConfig().VndkUseCoreVariant() &&
+-			!inList(m.BaseModuleName(), config.VndkMustUseVendorVariantList)
+-		return lib.shared() && m.useVndk() && m.isVndk() && !m.isVndkExt() && !useCoreVariant
+-	}
+-	return false
+-}
+-
+ // gather list of vndk-core, vndk-sp, and ll-ndk libs
+ func VndkMutator(mctx android.BottomUpMutatorContext) {
+ 	m, ok := mctx.Module().(*Module)
+diff --git a/cc/vndk_prebuilt.go b/cc/vndk_prebuilt.go
+index 8ed0afb2b..2cebb6dcb 100644
+--- a/cc/vndk_prebuilt.go
++++ b/cc/vndk_prebuilt.go
+@@ -130,7 +130,13 @@ func (p *vndkPrebuiltLibraryDecorator) singleSourcePath(ctx ModuleContext) andro
+ func (p *vndkPrebuiltLibraryDecorator) link(ctx ModuleContext,
+ 	flags Flags, deps PathDeps, objs Objects) android.Path {
+ 
+-	if !p.matchesWithDevice(ctx.DeviceConfig()) {
++	arches := ctx.DeviceConfig().Arches()
++	if len(arches) == 0 || arches[0].ArchType.String() != p.arch() {
++		ctx.Module().SkipInstall()
++		return nil
++	}
++
++	if ctx.DeviceConfig().BinderBitness() != p.binderBit() {
+ 		ctx.Module().SkipInstall()
+ 		return nil
+ 	}
+@@ -147,20 +153,6 @@ func (p *vndkPrebuiltLibraryDecorator) link(ctx ModuleContext,
+ 	return nil
+ }
+ 
+-func (p *vndkPrebuiltLibraryDecorator) matchesWithDevice(config android.DeviceConfig) bool {
+-	arches := config.Arches()
+-	if len(arches) == 0 || arches[0].ArchType.String() != p.arch() {
+-		return false
+-	}
+-	if config.BinderBitness() != p.binderBit() {
+-		return false
+-	}
+-	if len(p.properties.Srcs) == 0 {
+-		return false
+-	}
+-	return true
+-}
+-
+ func (p *vndkPrebuiltLibraryDecorator) nativeCoverage() bool {
+ 	return false
+ }
+-- 
+2.35.1
+

@@ -1,0 +1,62 @@
+From 498dee8aef4003bf82bbef76cbc585afa106551f Mon Sep 17 00:00:00 2001
+From: zj <zj@rock-chips.com>
+Date: Wed, 6 Jan 2021 14:26:27 +0800
+Subject: [PATCH 278/297] revert standby() and EinkManager.quitStandby
+
+Signed-off-by: zj <zj@rock-chips.com>
+Change-Id: Ib2a66bcfb429872fa1d1add0d78ca4b25afb0249
+---
+ .../server/power/PowerManagerService.java     | 29 ++++---------------
+ 1 file changed, 5 insertions(+), 24 deletions(-)
+
+diff --git a/services/core/java/com/android/server/power/PowerManagerService.java b/services/core/java/com/android/server/power/PowerManagerService.java
+index 578b4e28dca..c84b013c961 100755
+--- a/services/core/java/com/android/server/power/PowerManagerService.java
++++ b/services/core/java/com/android/server/power/PowerManagerService.java
+@@ -1682,18 +1682,11 @@ public final class PowerManagerService extends SystemService
+         if (DEBUG_SPEW) {
+             Slog.d(TAG, "wakeUpNoUpdateLocked: eventTime=" + eventTime + ", uid=" + reasonUid);
+         }
+-        if (mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)) {
+-            if(mEinkManager == null){
+-                mEinkManager = (EinkManager) mContext.getSystemService(Context.EINK_SERVICE);
+-            }
+-            if(mEinkManager != null){
+-                mEinkManager.quitStandby();
+-            }
+-            if (eventTime < mLastSleepTime || getWakefulnessLocked() == WAKEFULNESS_AWAKE
+-                    || mForceSuspendActive || !mSystemReady) {
+-                return false;
+-            }
++        if (eventTime < mLastSleepTime || getWakefulnessLocked() == WAKEFULNESS_AWAKE
++                || mForceSuspendActive || !mSystemReady) {
++            return false;
+         }
++
+         Trace.asyncTraceBegin(Trace.TRACE_TAG_POWER, TRACE_SCREEN_ON, 0);
+ 
+         Trace.traceBegin(Trace.TRACE_TAG_POWER, "wakeUp");
+@@ -1743,19 +1736,7 @@ public final class PowerManagerService extends SystemService
+             Slog.d(TAG, "goToSleepNoUpdateLocked: eventTime=" + eventTime
+                     + ", reason=" + reason + ", flags=" + flags + ", uid=" + uid);
+         }
+-        if (mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)) {
+-            if(mEinkManager == null){
+-                mEinkManager = (EinkManager) mContext.getSystemService(Context.EINK_SERVICE);
+-            }
+-            if(mEinkManager != null){
+-                mEinkManager.standby();
+-            }
+-            try {
+-                Thread.sleep(1 * 1000L);
+-            } catch (InterruptedException e) {
+-                Thread.currentThread().interrupt();
+-            }
+-        }
++
+         if (eventTime < mLastWakeTime
+                 || getWakefulnessLocked() == WAKEFULNESS_ASLEEP
+                 || getWakefulnessLocked() == WAKEFULNESS_DOZING
+-- 
+2.35.1
+

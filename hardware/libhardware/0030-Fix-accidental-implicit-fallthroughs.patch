@@ -1,0 +1,47 @@
+From ac58074c049ef348b9dfb65c1247510fd839b8d1 Mon Sep 17 00:00:00 2001
+From: Colin Cross <ccross@android.com>
+Date: Fri, 1 Nov 2019 16:34:30 -0700
+Subject: [PATCH 30/36] Fix accidental implicit fallthroughs
+
+-Wimplicit-fallthrough was printing warnings for these, they look
+like real errors.  Fix them and re-enable the error.
+
+Bug: 144040966
+Test: treehugger
+Merged-In: I818e18a995760f17b85b4c72ee577e531fa2a601
+Change-Id: I818e18a995760f17b85b4c72ee577e531fa2a601
+(cherry picked from commit 540824e658cc6df13c42faa548ef9ccb06aa0474)
+---
+ modules/sensors/dynamic_sensor/HidRawSensor.cpp | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/modules/sensors/dynamic_sensor/HidRawSensor.cpp b/modules/sensors/dynamic_sensor/HidRawSensor.cpp
+index ae6ef473..46684128 100644
+--- a/modules/sensors/dynamic_sensor/HidRawSensor.cpp
++++ b/modules/sensors/dynamic_sensor/HidRawSensor.cpp
+@@ -676,6 +676,7 @@ bool HidRawSensor::detectAndroidCustomSensor(const std::string &description) {
+                     mFeatureInfo.type = SENSOR_TYPE_AMBIENT_TEMPERATURE;
+                     mFeatureInfo.typeString = SENSOR_STRING_TYPE_AMBIENT_TEMPERATURE;
+                     typeParsed = true;
++                    break;
+                 case SENSOR_TYPE_LIGHT:
+                     mFeatureInfo.type = SENSOR_TYPE_LIGHT;
+                     mFeatureInfo.typeString = SENSOR_STRING_TYPE_LIGHT;
+@@ -917,12 +918,14 @@ int HidRawSensor::batch(int64_t samplingPeriod, int64_t batchingPeriod) {
+                     periodMs = std::min(periodMs, static_cast<int64_t>(UINT16_MAX));
+                     buffer[mReportIntervalOffset] = periodMs & 0xFF;
+                     buffer[mReportIntervalOffset + 1] = (periodMs >> 8) & 0xFF;
++                    break;
+                 case sizeof(uint32_t):
+                     periodMs = std::min(periodMs, static_cast<int64_t>(UINT32_MAX));
+                     buffer[mReportIntervalOffset] = periodMs & 0xFF;
+                     buffer[mReportIntervalOffset + 1] = (periodMs >> 8) & 0xFF;
+                     buffer[mReportIntervalOffset + 2] = (periodMs >> 16) & 0xFF;
+                     buffer[mReportIntervalOffset + 3] = (periodMs >> 24) & 0xFF;
++                    break;
+             }
+             ok = device->setFeature(id, buffer);
+         }
+-- 
+2.35.1
+

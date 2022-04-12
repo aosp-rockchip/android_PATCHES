@@ -1,0 +1,114 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/native (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/native (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit 9768584d0752bde037e490352d8bfb859a498652
+Merge: 53ff05a3d bea59e60c
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Wed Jan 27 14:35:13 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' of ssh://10.10.10.29:29418/android/platform/frameworks/native into eink
+    
+    Android 11.0.0 release 28
+    
+    Conflicts:
+            services/surfaceflinger/SurfaceFlinger.cpp
+    
+    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+    Change-Id: Ie03b64a360ec752f2fc551528257c4783c827751
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/native (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/native (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit 9768584d0752bde037e490352d8bfb859a498652
+Merge: 53ff05a3d bea59e60c
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Wed Jan 27 14:35:13 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' of ssh://10.10.10.29:29418/android/platform/frameworks/native into eink
+    
+    Android 11.0.0 release 28
+    
+    Conflicts:
+            services/surfaceflinger/SurfaceFlinger.cpp
+    
+    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+    Change-Id: Ie03b64a360ec752f2fc551528257c4783c827751
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/native (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/native (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit 9768584d0752bde037e490352d8bfb859a498652
+Merge: 53ff05a3d bea59e60c
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Wed Jan 27 14:35:13 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' of ssh://10.10.10.29:29418/android/platform/frameworks/native into eink
+    
+    Android 11.0.0 release 28
+    
+    Conflicts:
+            services/surfaceflinger/SurfaceFlinger.cpp
+    
+    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+    Change-Id: Ie03b64a360ec752f2fc551528257c4783c827751
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/native (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/native (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit 9768584d0752bde037e490352d8bfb859a498652
+Merge: 53ff05a3d bea59e60c
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Wed Jan 27 14:35:13 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' of ssh://10.10.10.29:29418/android/platform/frameworks/native into eink
+    
+    Android 11.0.0 release 28
+    
+    Conflicts:
+            services/surfaceflinger/SurfaceFlinger.cpp
+    
+    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+    Change-Id: Ie03b64a360ec752f2fc551528257c4783c827751
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/native (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/native (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit 9768584d0752bde037e490352d8bfb859a498652
+Merge: 53ff05a3d bea59e60c
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Wed Jan 27 14:35:13 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' of ssh://10.10.10.29:29418/android/platform/frameworks/native into eink
+    
+    Android 11.0.0 release 28
+    
+    Conflicts:
+            services/surfaceflinger/SurfaceFlinger.cpp
+    
+    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+    Change-Id: Ie03b64a360ec752f2fc551528257c4783c827751
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/native (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/native (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit 9768584d0752bde037e490352d8bfb859a498652
+Merge: 53ff05a3d bea59e60c
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Wed Jan 27 14:35:13 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' of ssh://10.10.10.29:29418/android/platform/frameworks/native into eink
+    
+    Android 11.0.0 release 28
+    
+    Conflicts:
+            services/surfaceflinger/SurfaceFlinger.cpp
+    
+    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+    Change-Id: Ie03b64a360ec752f2fc551528257c4783c827751

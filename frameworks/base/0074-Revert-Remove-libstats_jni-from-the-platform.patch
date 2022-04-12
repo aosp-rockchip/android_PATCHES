@@ -1,0 +1,88 @@
+From adfcc2a11f3555668789648208943920808bfd87 Mon Sep 17 00:00:00 2001
+From: Daniel Chapin <chapin@google.com>
+Date: Tue, 18 Feb 2020 19:07:02 +0000
+Subject: [PATCH 074/297] Revert "Remove libstats_jni from the platform"
+
+Revert "Add com.android.os.statsd to linkerconfig"
+
+Revert submission 10302138-tej_jni
+
+Reason for revert: b/149720256
+Reverted Changes:
+I1fe277bce: Limit metricslogger call into statsdw for events
+Id516e79e1: Add com.android.os.statsd to linkerconfig
+I22c2816c8: Remove libstats_jni from the platform
+
+Change-Id: I70857ef140b13aac073afee1936b49b7a96ccee5
+(cherry picked from commit cbbaaae4402ba0ebd5d8fd1ad3a19b26898359e0)
+---
+ apex/statsd/Android.bp                                | 2 ++
+ apex/statsd/framework/java/android/util/StatsLog.java | 5 -----
+ core/jni/Android.bp                                   | 1 +
+ core/jni/AndroidRuntime.cpp                           | 2 ++
+ 4 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/apex/statsd/Android.bp b/apex/statsd/Android.bp
+index c8aa526254b..1f9f18cd051 100644
+--- a/apex/statsd/Android.bp
++++ b/apex/statsd/Android.bp
+@@ -71,5 +71,7 @@ cc_library_shared {
+     apex_available: [
+         "com.android.os.statsd",
+         "test_com.android.os.statsd",
++        //TODO (b/148620413): remove platform.
++         "//apex_available:platform",
+     ],
+ }
+\ No newline at end of file
+diff --git a/apex/statsd/framework/java/android/util/StatsLog.java b/apex/statsd/framework/java/android/util/StatsLog.java
+index 536b71a0e62..511bc01f521 100644
+--- a/apex/statsd/framework/java/android/util/StatsLog.java
++++ b/apex/statsd/framework/java/android/util/StatsLog.java
+@@ -36,11 +36,6 @@ import com.android.internal.util.StatsdStatsLog;
+  * define custom metrics inside statsd.
+  */
+ public final class StatsLog {
+-
+-    // Load JNI library
+-    static {
+-        System.loadLibrary("stats_jni");
+-    }
+     private static final String TAG = "StatsLog";
+     private static final boolean DEBUG = false;
+     private static final int EXPERIMENT_IDS_FIELD_ID = 1;
+diff --git a/core/jni/Android.bp b/core/jni/Android.bp
+index 900445c9835..653cbc90d88 100644
+--- a/core/jni/Android.bp
++++ b/core/jni/Android.bp
+@@ -272,6 +272,7 @@ cc_library_shared {
+                 "libnativewindow",
+                 "libdl",
+                 "libdl_android",
++                "libstats_jni",
+                 "libstatslog",
+                 "server_configurable_flags",
+                 "libstatspull",
+diff --git a/core/jni/AndroidRuntime.cpp b/core/jni/AndroidRuntime.cpp
+index d790ada8083..bbc23fec87e 100644
+--- a/core/jni/AndroidRuntime.cpp
++++ b/core/jni/AndroidRuntime.cpp
+@@ -108,6 +108,7 @@ namespace android {
+ extern int register_android_app_admin_SecurityLog(JNIEnv* env);
+ extern int register_android_content_AssetManager(JNIEnv* env);
+ extern int register_android_util_EventLog(JNIEnv* env);
++extern int register_android_util_StatsLog(JNIEnv* env);
+ extern int register_android_util_StatsLogInternal(JNIEnv* env);
+ extern int register_android_util_Log(JNIEnv* env);
+ extern int register_android_util_MemoryIntArray(JNIEnv* env);
+@@ -1431,6 +1432,7 @@ static const RegJNIRec gRegJNI[] = {
+         REG_JNI(register_android_util_EventLog),
+         REG_JNI(register_android_util_Log),
+         REG_JNI(register_android_util_MemoryIntArray),
++        REG_JNI(register_android_util_StatsLog),
+         REG_JNI(register_android_util_StatsLogInternal),
+         REG_JNI(register_android_app_admin_SecurityLog),
+         REG_JNI(register_android_content_AssetManager),
+-- 
+2.35.1
+

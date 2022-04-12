@@ -1,0 +1,26 @@
+From da58a38881fea8dc63036c4e3794f9275a452254 Mon Sep 17 00:00:00 2001
+From: Alex Zhao <zzc@rock-chips.com>
+Date: Mon, 7 Dec 2020 17:32:28 +0800
+Subject: [PATCH 10/10] enable p2p capabilities for bcm wifi
+
+Signed-off-by: Alex Zhao <zzc@rock-chips.com>
+Change-Id: I44ae55df5220acd79b408ccfa74b04e94e2bde4b
+---
+ bcmdhd/config/wpa_supplicant_overlay.conf | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/bcmdhd/config/wpa_supplicant_overlay.conf b/bcmdhd/config/wpa_supplicant_overlay.conf
+index 740792b..981b617 100644
+--- a/bcmdhd/config/wpa_supplicant_overlay.conf
++++ b/bcmdhd/config/wpa_supplicant_overlay.conf
+@@ -1,5 +1,4 @@
+ disable_scan_offload=1
+ wowlan_triggers=any
+-p2p_disabled=1
+ filter_rssi=-75
+-no_ctrl_interface=
+\ No newline at end of file
++no_ctrl_interface=
+-- 
+2.35.1
+

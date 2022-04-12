@@ -1,0 +1,31 @@
+From 4527a8a0d9b02b1f309fdd86bcf7e63ec8afbe67 Mon Sep 17 00:00:00 2001
+From: "alex.lin" <alex.lin@rock-chips.com>
+Date: Wed, 2 Dec 2020 09:57:45 +0800
+Subject: [PATCH 262/297] fix duplicate screenshot when clicking the screenshot
+ button once
+
+https://redmine.rock-chips.com/issues/274358
+https://redmine.rock-chips.com/issues/276284
+
+Signed-off-by: alex.lin <alex.lin@rock-chips.com>
+Change-Id: I2e690e2e3181111b317407ee905766df18f69bee
+---
+ .../android/systemui/statusbar/phone/NavigationBarFragment.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
+index 3433526318b..8180c7f819c 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
+@@ -1016,7 +1016,7 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+ 
+         ButtonDispatcher screenshotButton = mNavigationBarView.getScreenshotButton();
+         screenshotButton.setOnClickListener(this:: screenshotClick);
+-        screenshotButton.setOnTouchListener(this:: screenshotTouch);
++        //screenshotButton.setOnTouchListener(this:: screenshotTouch);
+         boolean isShow=Settings.System.getInt(getContext().getContentResolver(), Settings.System.SCREENSHOT_BUTTON_SHOW, 1) == 1;
+         if(isShow){
+             screenshotButton.setVisibility(View.VISIBLE);
+-- 
+2.35.1
+

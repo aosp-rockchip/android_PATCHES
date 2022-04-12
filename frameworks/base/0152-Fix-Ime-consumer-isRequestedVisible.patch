@@ -1,0 +1,32 @@
+From baa7b8d6938190ab7fe5c208edb6774dc0c75970 Mon Sep 17 00:00:00 2001
+From: Taran Singh <tarandeep@google.com>
+Date: Mon, 20 Apr 2020 17:10:41 -0700
+Subject: [PATCH 152/297] Fix Ime consumer isRequestedVisible
+
+isRequestedVisible() was mistakenly missed from previous
+commit I93dd5790e1fb3d7841ad1323a45cd3bae2d6e9b8
+
+Fix: 154440912
+Test: atest ImeInsetsControllerTest WindowInsetsControllerTests
+Change-Id: I958fc5747382109aa2f21bc1067a28746e7242d8
+(cherry picked from commit 335ffd017c9bc984bd16f65d6fb5b6bf1b702e39)
+---
+ core/java/android/view/ImeInsetsSourceConsumer.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/java/android/view/ImeInsetsSourceConsumer.java b/core/java/android/view/ImeInsetsSourceConsumer.java
+index bdc8ba835fb..df891303bb1 100644
+--- a/core/java/android/view/ImeInsetsSourceConsumer.java
++++ b/core/java/android/view/ImeInsetsSourceConsumer.java
+@@ -153,7 +153,7 @@ public final class ImeInsetsSourceConsumer extends InsetsSourceConsumer {
+ 
+     @Override
+     protected boolean isRequestedVisibleAwaitingControl() {
+-        return mIsRequestedVisibleAwaitingControl;
++        return mIsRequestedVisibleAwaitingControl || isRequestedVisible();
+     }
+ 
+     private boolean isDummyOrEmptyEditor(EditorInfo info) {
+-- 
+2.35.1
+

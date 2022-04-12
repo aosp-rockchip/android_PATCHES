@@ -1,0 +1,27 @@
+From b2f6e1900332e11c0d288280fc2eeac2c09649c7 Mon Sep 17 00:00:00 2001
+From: zj <zj@rock-chips.com>
+Date: Tue, 5 Jan 2021 11:15:22 +0800
+Subject: [PATCH 277/297] fix refresh button bug:there has no frame from
+ Android that caused no refresh
+
+Signed-off-by: zj <zj@rock-chips.com>
+Change-Id: Iff50d98ca9f7285bd35bf2248378c25690484723
+---
+ .../android/systemui/statusbar/phone/NavigationBarFragment.java  | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
+index 58bf9f64ebc..9e9f9883457 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
+@@ -1065,6 +1065,7 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+     private void onRefreshRepaintEverything(){
+         if (mEinkManager != null) {
+             mEinkManager.sendOneFullFrame();
++            mNavigationBarView.postInvalidate();
+         }
+     }
+ 
+-- 
+2.35.1
+

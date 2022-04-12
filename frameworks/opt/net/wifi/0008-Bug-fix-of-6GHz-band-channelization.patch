@@ -1,0 +1,36 @@
+From 339bec172d023e203a2866e639d04542af6bd358 Mon Sep 17 00:00:00 2001
+From: Kai Shi <kaishi@google.com>
+Date: Wed, 9 Sep 2020 21:52:06 -0700
+Subject: [PATCH 08/13] Bug fix of 6GHz band channelization
+
+1) Move up 6GHz band start and end frequencies by 10MHz per IEEE 802.11ax
+draft 7.0 Annex E Table E-4.
+2) Add operating class 135 and 136.
+3) Add special case of 6G band channel 2
+
+Bug: 167426957
+Test: atest com.android.server.wifi
+Test: manual test with 6GHz capable STA and AP
+Change-Id: I2c9eb3d704d68b37685363c230d67758c31e17a1
+Merged-In: I2c9eb3d704d68b37685363c230d67758c31e17a1
+---
+ service/java/com/android/server/wifi/util/ApConfigUtil.java | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/service/java/com/android/server/wifi/util/ApConfigUtil.java b/service/java/com/android/server/wifi/util/ApConfigUtil.java
+index 39d0df5f5..1e8cc24a0 100644
+--- a/service/java/com/android/server/wifi/util/ApConfigUtil.java
++++ b/service/java/com/android/server/wifi/util/ApConfigUtil.java
+@@ -65,7 +65,8 @@ public class ApConfigUtil {
+         sBandToOperatingClass.append(SoftApConfiguration.BAND_2GHZ, new int[]{81, 82, 83, 84});
+         sBandToOperatingClass.append(SoftApConfiguration.BAND_5GHZ, new int[]{115, 116, 117, 118,
+                 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130});
+-        sBandToOperatingClass.append(SoftApConfiguration.BAND_6GHZ, new int[]{131, 132, 133, 134});
++        sBandToOperatingClass.append(SoftApConfiguration.BAND_6GHZ, new int[]{131, 132, 133, 134,
++                135, 136});
+     }
+ 
+     /**
+-- 
+2.35.1
+

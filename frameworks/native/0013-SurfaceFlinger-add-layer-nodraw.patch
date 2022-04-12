@@ -1,0 +1,80 @@
+From 1a4f9168df016f732c3ad3f3e7820f8a41027b87 Mon Sep 17 00:00:00 2001
+From: Zhixiong Lin <zhixiong.lin@rock-chips.com>
+Date: Mon, 28 Sep 2020 16:25:04 +0800
+Subject: [PATCH 13/33] SurfaceFlinger: add layer nodraw
+
+Change-Id: I2569b97a4c366186f7e595fe4a1935250936cfe2
+Signed-off-by: Zhixiong Lin <zhixiong.lin@rock-chips.com>
+---
+ services/surfaceflinger/Android.bp                   |  1 +
+ services/surfaceflinger/CompositionEngine/Android.bp |  4 ++++
+ .../surfaceflinger/CompositionEngine/src/Output.cpp  | 12 ++++++++++++
+ 3 files changed, 17 insertions(+)
+
+diff --git a/services/surfaceflinger/Android.bp b/services/surfaceflinger/Android.bp
+index d2bb99125..a9f9c8257 100755
+--- a/services/surfaceflinger/Android.bp
++++ b/services/surfaceflinger/Android.bp
+@@ -57,6 +57,7 @@ cc_defaults {
+         "libinput",
+         "libutils",
+         "libSurfaceFlingerProp",
++        "libgraphicpolicy",
+     ],
+     // VrComposer is not used when building surfaceflinger for vendors
+     target: {
+diff --git a/services/surfaceflinger/CompositionEngine/Android.bp b/services/surfaceflinger/CompositionEngine/Android.bp
+index 6d3fcd82f..e5661cd1f 100755
+--- a/services/surfaceflinger/CompositionEngine/Android.bp
++++ b/services/surfaceflinger/CompositionEngine/Android.bp
+@@ -24,6 +24,7 @@ cc_defaults {
+         "libtimestats",
+         "libui",
+         "libutils",
++        "libgraphicpolicy",
+     ],
+     static_libs: [
+         "libmath",
+@@ -37,6 +38,9 @@ cc_defaults {
+         "android.hardware.graphics.composer@2.4-command-buffer",
+         "libsurfaceflinger_headers",
+     ],
++    include_dirs: [
++        "hardware/rockchip/libgraphicpolicy",
++    ],
+ }
+ 
+ cc_library {
+diff --git a/services/surfaceflinger/CompositionEngine/src/Output.cpp b/services/surfaceflinger/CompositionEngine/src/Output.cpp
+index c6bacf29b..f9e540cd8 100755
+--- a/services/surfaceflinger/CompositionEngine/src/Output.cpp
++++ b/services/surfaceflinger/CompositionEngine/src/Output.cpp
+@@ -44,6 +44,9 @@
+ #include <gui/Surface.h>
+ #include "TracedOrdinal.h"
+ 
++#include <cutils/properties.h>
++#include "graphicpolicy.h"
++
+ namespace android::compositionengine {
+ 
+ Output::~Output() = default;
+@@ -980,6 +983,15 @@ std::vector<LayerFE::LayerSettings> Output::generateClientCompositionRequests(
+             continue;
+         }
+ 
++        if(graphic_policy(GPID_SF_NODRAW)) {
++            char value[PROPERTY_VALUE_MAX];
++            property_get("sys.sf.nodraw", value, "nodraw");
++            if(strstr(layerFE.getDebugName(),value)) {
++                ALOGD("debug-sf: nodraw layer:%s \n",layerFE.getDebugName());
++                continue;
++            }
++        }
++
+         const bool clientComposition = layer->requiresClientComposition();
+ 
+         // We clear the client target for non-client composed layers if
+-- 
+2.35.1
+

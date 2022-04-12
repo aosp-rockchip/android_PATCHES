@@ -1,0 +1,75 @@
+From 69735c3f2e838042b445c78c4cf86d99e0086b8a Mon Sep 17 00:00:00 2001
+From: Jooyung Han <jooyung@google.com>
+Date: Wed, 16 Oct 2019 22:37:10 +0000
+Subject: [PATCH 1/6] Revert "Change linker config variable: VNDK_VER"
+
+This reverts commit e30a7f5d1f00f4571c4a6ea9766fd22a6be27904.
+
+Reason for revert: some targets are broken
+
+Bug: 142773030
+Change-Id: I651ef00a9d1aaac6f0119d31712fb588d8aa68f0
+(cherry picked from commit a365ac10a270974fb248b4a2dada54db526f05cb)
+---
+ linker/linker.cpp        | 2 +-
+ linker/linker_config.cpp | 8 ++++----
+ linker/linker_config.h   | 2 +-
+ 3 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/linker/linker.cpp b/linker/linker.cpp
+index cee9c3b31..37a318916 100644
+--- a/linker/linker.cpp
++++ b/linker/linker.cpp
+@@ -4208,7 +4208,7 @@ static std::string get_ld_config_file_vndk_path() {
+   if (insert_pos == std::string::npos) {
+     insert_pos = ld_config_file_vndk.length();
+   }
+-  ld_config_file_vndk.insert(insert_pos, Config::get_vndk_version_string("."));
++  ld_config_file_vndk.insert(insert_pos, Config::get_vndk_version_string('.'));
+   return ld_config_file_vndk;
+ }
+ 
+diff --git a/linker/linker_config.cpp b/linker/linker_config.cpp
+index 450d0e6d3..46c91a3dd 100644
+--- a/linker/linker_config.cpp
++++ b/linker/linker_config.cpp
+@@ -408,7 +408,7 @@ class Properties {
+       params.push_back({ "SDK_VER", buf });
+     }
+ 
+-    static std::string vndk = Config::get_vndk_version_string("");
++    static std::string vndk = Config::get_vndk_version_string('-');
+     params.push_back({ "VNDK_VER", vndk });
+ 
+     for (auto& path : paths) {
+@@ -596,11 +596,11 @@ bool Config::read_binary_config(const char* ld_config_file_path,
+   return true;
+ }
+ 
+-std::string Config::get_vndk_version_string(const std::string& prefix) {
++std::string Config::get_vndk_version_string(const char delimiter) {
+   std::string version = android::base::GetProperty("ro.vndk.version", "");
+   if (version != "" && version != "current") {
+-    //add the prefix in front of the string and return it.
+-    return version.insert(0, prefix);
++    //add the delimiter char in front of the string and return it.
++    return version.insert(0, 1, delimiter);
+   }
+   return "";
+ }
+diff --git a/linker/linker_config.h b/linker/linker_config.h
+index 547c62ebd..75d93789b 100644
+--- a/linker/linker_config.h
++++ b/linker/linker_config.h
+@@ -164,7 +164,7 @@ class Config {
+                                  const Config** config,
+                                  std::string* error_msg);
+ 
+-  static std::string get_vndk_version_string(const std::string& prefix);
++  static std::string get_vndk_version_string(const char delimiter);
+  private:
+   void clear();
+ 
+-- 
+2.35.1
+

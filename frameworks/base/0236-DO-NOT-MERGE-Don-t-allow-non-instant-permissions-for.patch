@@ -1,0 +1,111 @@
+From db65aa2e04a298c21c31f9b110461114a24c3fa7 Mon Sep 17 00:00:00 2001
+From: Hai Zhang <zhanghai@google.com>
+Date: Thu, 13 Aug 2020 01:45:09 +0000
+Subject: [PATCH 236/297] DO NOT MERGE Don't allow non-instant permissions for
+ instant apps.
+
+Bug: 140256621
+Test: atest EphemeralTest
+Change-Id: Id07342c0347c0b4d2ccb3f58a4af9fda7a20d6ef
+(cherry picked from commit d83e3a350d1a2a6fd317b19ad22ee5647781870e)
+---
+ .../server/pm/PackageManagerService.java      | 45 +++++++++++++------
+ 1 file changed, 31 insertions(+), 14 deletions(-)
+
+diff --git a/services/core/java/com/android/server/pm/PackageManagerService.java b/services/core/java/com/android/server/pm/PackageManagerService.java
+index eea0611ac0e..81c111fc364 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -4214,13 +4214,9 @@ public class PackageManagerService extends IPackageManager.Stub
+         Iterator<ResolveInfo> iter = matches.iterator();
+         while (iter.hasNext()) {
+             final ResolveInfo rInfo = iter.next();
+-            final PackageSetting ps = mSettings.mPackages.get(rInfo.activityInfo.packageName);
+-            if (ps != null) {
+-                final PermissionsState permissionsState = ps.getPermissionsState();
+-                if (permissionsState.hasPermission(Manifest.permission.INSTALL_PACKAGES, 0)
+-                        || Build.IS_ENG) {
+-                    continue;
+-                }
++            if (checkPermission(Manifest.permission.INSTALL_PACKAGES,
++                    rInfo.activityInfo.packageName, 0) == PERMISSION_GRANTED || Build.IS_ENG) {
++                continue;
+             }
+             iter.remove();
+         }
+@@ -4396,8 +4392,24 @@ public class PackageManagerService extends IPackageManager.Stub
+             final int[] gids = (flags & PackageManager.GET_GIDS) == 0
+                     ? EMPTY_INT_ARRAY : permissionsState.computeGids(userId);
+             // Compute granted permissions only if package has requested permissions
+-            final Set<String> permissions = ArrayUtils.isEmpty(p.getRequestedPermissions())
++            Set<String> permissions = ArrayUtils.isEmpty(p.getRequestedPermissions())
+                     ? Collections.emptySet() : permissionsState.getPermissions(userId);
++            if (state.instantApp) {
++                permissions = new ArraySet<>(permissions);
++                permissions.removeIf(permissionName -> {
++                    BasePermission permission = mPermissionManager.getPermissionTEMP(
++                            permissionName);
++                    if (permission == null) {
++                        return true;
++                    }
++                    if (!permission.isInstant()) {
++                        EventLog.writeEvent(0x534e4554, "140256621", UserHandle.getUid(userId,
++                                ps.appId), permissionName);
++                        return true;
++                    }
++                    return false;
++                });
++            }
+ 
+             PackageInfo packageInfo = PackageInfoUtils.generate(p, gids, flags,
+                     ps.firstInstallTime, ps.lastUpdateTime, permissions, state, userId, ps);
+@@ -8595,10 +8607,9 @@ public class PackageManagerService extends IPackageManager.Stub
+     private void addPackageHoldingPermissions(ArrayList<PackageInfo> list, PackageSetting ps,
+             String[] permissions, boolean[] tmp, int flags, int userId) {
+         int numMatch = 0;
+-        final PermissionsState permissionsState = ps.getPermissionsState();
+         for (int i=0; i<permissions.length; i++) {
+             final String permission = permissions[i];
+-            if (permissionsState.hasPermission(permission, userId)) {
++            if (checkPermission(permission, ps.name, userId) == PERMISSION_GRANTED) {
+                 tmp[i] = true;
+                 numMatch++;
+             } else {
+@@ -19268,6 +19279,13 @@ public class PackageManagerService extends IPackageManager.Stub
+         final int flags = action.flags;
+         final boolean systemApp = isSystemApp(ps);
+ 
++        // We need to get the permission state before package state is (potentially) destroyed.
++        final SparseBooleanArray hadSuspendAppsPermission = new SparseBooleanArray();
++        for (int userId : allUserHandles) {
++            hadSuspendAppsPermission.put(userId, checkPermission(Manifest.permission.SUSPEND_APPS,
++                    packageName, userId) == PERMISSION_GRANTED);
++        }
++
+         final int userId = user == null ? UserHandle.USER_ALL : user.getIdentifier();
+ 
+         if ((!systemApp || (flags & PackageManager.DELETE_SYSTEM_APP) != 0)
+@@ -19366,8 +19384,7 @@ public class PackageManagerService extends IPackageManager.Stub
+             affectedUserIds = resolveUserIds(userId);
+         }
+         for (final int affectedUserId : affectedUserIds) {
+-            if (ps.getPermissionsState().hasPermission(Manifest.permission.SUSPEND_APPS,
+-                    affectedUserId)) {
++            if (hadSuspendAppsPermission.get(affectedUserId)) {
+                 unsuspendForSuspendingPackage(packageName, affectedUserId);
+                 removeAllDistractingPackageRestrictions(affectedUserId);
+             }
+@@ -21132,8 +21149,8 @@ public class PackageManagerService extends IPackageManager.Stub
+                 pkgSetting.setEnabled(newState, userId, callingPackage);
+                 if ((newState == COMPONENT_ENABLED_STATE_DISABLED_USER
+                         || newState == COMPONENT_ENABLED_STATE_DISABLED)
+-                        && pkgSetting.getPermissionsState().hasPermission(
+-                                Manifest.permission.SUSPEND_APPS, userId)) {
++                        && checkPermission(Manifest.permission.SUSPEND_APPS, packageName, userId)
++                        == PERMISSION_GRANTED) {
+                     // This app should not generally be allowed to get disabled by the UI, but if it
+                     // ever does, we don't want to end up with some of the user's apps permanently
+                     // suspended.
+-- 
+2.35.1
+

@@ -1,0 +1,45 @@
+From db05fc226ff2373fe6f5b0e06772ad7216233e9d Mon Sep 17 00:00:00 2001
+From: Zhixiong Lin <zhixiong.lin@rock-chips.com>
+Date: Mon, 24 Feb 2020 09:14:24 +0800
+Subject: [PATCH 21/33] SurfaceFlinger: fix setProjection get Width and Height
+ wrong                 when pre-Orientation is set 90 or 270.
+
+Change-Id: I4393e67add9485a6d63696a1c2eba4aefd640a29
+Signed-off-by: Zhixiong Lin <zhixiong.lin@rock-chips.com>
+---
+ services/surfaceflinger/SurfaceFlinger.cpp | 19 ++++++++++++++++++-
+ 1 file changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/services/surfaceflinger/SurfaceFlinger.cpp b/services/surfaceflinger/SurfaceFlinger.cpp
+index 5629fa2d9..638591723 100755
+--- a/services/surfaceflinger/SurfaceFlinger.cpp
++++ b/services/surfaceflinger/SurfaceFlinger.cpp
+@@ -2619,7 +2619,24 @@ sp<DisplayDevice> SurfaceFlinger::setupNewDisplayDeviceInternal(
+     }
+ 
+     display->setLayerStack(state.layerStack);
+-    display->setProjection(state.orientation, state.viewport, state.frame);
++
++    //display->setProjection(state.orientation, state.viewport, state.frame);
++    //Per-orientation Width Height problem
++    if(creationArgs.physicalOrientation == ui::ROTATION_90 ||
++       creationArgs.physicalOrientation == ui::ROTATION_270)
++    {
++        //ALOGE("rk-debug[%s %d] name:%s physicalOrientation:%d \n",
++        //    __FUNCTION__,__LINE__,state.displayName.c_str(),creationArgs.physicalOrientation);
++        display->setProjection(state.orientation, Rect(display->getHeight(),
++                                 display->getWidth()), Rect(display->getHeight(), display->getWidth()));
++    }
++    else{
++        //ALOGE("rk-debug[%s %d] name:%s physicalOrientation:%d \n",
++        //    __FUNCTION__,__LINE__,state.displayName.c_str(),creationArgs.physicalOrientation);
++        display->setProjection(state.orientation, state.viewport, state.frame);
++    }
++    //end
++
+     display->setDisplayName(state.displayName);
+ 
+     return display;
+-- 
+2.35.1
+

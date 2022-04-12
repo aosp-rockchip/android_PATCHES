@@ -1,0 +1,133 @@
+From 6e5adffc2a6ccd180416a0451d2427873c15a3db Mon Sep 17 00:00:00 2001
+From: Julia Reynolds <juliacr@google.com>
+Date: Wed, 2 Sep 2020 16:32:09 -0400
+Subject: [PATCH 243/297] Add screenshot back to power menu for some devices
+
+Test: atest
+Bug: 155251236
+Change-Id: I190a03385b9136748aa75dbd26ed4556cf81599a
+(cherry picked from commit 858b4ae2b2ff6870e739192f4046a3ed2f914407)
+(cherry picked from commit 238de217662d27688c644ddcd523bf12b3404d9e)
+---
+ core/res/res/values/config.xml                |  1 +
+ .../globalactions/GlobalActionsDialog.java    | 22 +++++++++++++++++-
+ .../GlobalActionsDialogTest.java              | 23 +++++++++++++++++++
+ 3 files changed, 45 insertions(+), 1 deletion(-)
+
+diff --git a/core/res/res/values/config.xml b/core/res/res/values/config.xml
+index 39d20bbff3b..6ca5bf27f54 100644
+--- a/core/res/res/values/config.xml
++++ b/core/res/res/values/config.xml
+@@ -2774,6 +2774,7 @@
+         <item>power</item>
+         <item>restart</item>
+         <item>logout</item>
++        <item>screenshot</item>
+         <item>bugreport</item>
+     </string-array>
+ 
+diff --git a/packages/SystemUI/src/com/android/systemui/globalactions/GlobalActionsDialog.java b/packages/SystemUI/src/com/android/systemui/globalactions/GlobalActionsDialog.java
+index b2e91643bed..016ad45f7d7 100644
+--- a/packages/SystemUI/src/com/android/systemui/globalactions/GlobalActionsDialog.java
++++ b/packages/SystemUI/src/com/android/systemui/globalactions/GlobalActionsDialog.java
+@@ -19,6 +19,7 @@ import static android.view.WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM;
+ import static android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+ import static android.view.WindowManager.ScreenshotSource.SCREENSHOT_GLOBAL_ACTIONS;
+ import static android.view.WindowManager.TAKE_SCREENSHOT_FULLSCREEN;
++import static android.view.WindowManagerPolicyConstants.NAV_BAR_MODE_2BUTTON;
+ 
+ import static com.android.internal.widget.LockPatternUtils.StrongAuthTracker.SOME_AUTH_REQUIRED_AFTER_USER_REQUEST;
+ import static com.android.internal.widget.LockPatternUtils.StrongAuthTracker.STRONG_AUTH_NOT_REQUIRED;
+@@ -547,7 +548,7 @@ public class GlobalActionsDialog implements DialogInterface.OnDismissListener,
+         if (!mDeviceProvisioned && !action.showBeforeProvisioning()) {
+             return false;
+         }
+-        return true;
++        return action.shouldShow();
+     }
+ 
+     /**
+@@ -962,6 +963,8 @@ public class GlobalActionsDialog implements DialogInterface.OnDismissListener,
+ 
+     @VisibleForTesting
+     class ScreenshotAction extends SinglePressAction implements LongPressAction {
++        final String KEY_SYSTEM_NAV_2BUTTONS = "system_nav_2buttons";
++
+         public ScreenshotAction() {
+             super(R.drawable.ic_screenshot, R.string.global_action_screenshot);
+         }
+@@ -993,6 +996,19 @@ public class GlobalActionsDialog implements DialogInterface.OnDismissListener,
+             return false;
+         }
+ 
++        @Override
++        public boolean shouldShow() {
++          // Include screenshot in power menu for legacy nav because it is not accessible
++          // through Recents in that mode
++            return is2ButtonNavigationEnabled();
++        }
++
++        boolean is2ButtonNavigationEnabled() {
++            return NAV_BAR_MODE_2BUTTON == mContext.getResources().getInteger(
++                    com.android.internal.R.integer.config_navBarInteractionMode);
++        }
++
++
+         @Override
+         public boolean onLongPress() {
+             if (FeatureFlagUtils.isEnabled(mContext, FeatureFlagUtils.SCREENRECORD_LONG_PRESS)) {
+@@ -1616,6 +1632,10 @@ public class GlobalActionsDialog implements DialogInterface.OnDismissListener,
+          * @return
+          */
+         CharSequence getMessage();
++
++        default boolean shouldShow() {
++            return true;
++        }
+     }
+ 
+     /**
+diff --git a/packages/SystemUI/tests/src/com/android/systemui/globalactions/GlobalActionsDialogTest.java b/packages/SystemUI/tests/src/com/android/systemui/globalactions/GlobalActionsDialogTest.java
+index ac8c6710e04..5e2e7c07504 100644
+--- a/packages/SystemUI/tests/src/com/android/systemui/globalactions/GlobalActionsDialogTest.java
++++ b/packages/SystemUI/tests/src/com/android/systemui/globalactions/GlobalActionsDialogTest.java
+@@ -49,6 +49,7 @@ import android.testing.TestableLooper;
+ import android.util.FeatureFlagUtils;
+ import android.view.IWindowManager;
+ import android.view.View;
++import android.view.WindowManagerPolicyConstants;
+ import android.widget.FrameLayout;
+ 
+ import androidx.test.filters.SmallTest;
+@@ -241,6 +242,28 @@ public class GlobalActionsDialogTest extends SysuiTestCase {
+         verifyLogPosted(GlobalActionsDialog.GlobalActionsEvent.GA_SCREENSHOT_LONG_PRESS);
+     }
+ 
++    @Test
++    public void testShouldShowScreenshot() {
++        mContext.getOrCreateTestableResources().addOverride(
++                com.android.internal.R.integer.config_navBarInteractionMode,
++                WindowManagerPolicyConstants.NAV_BAR_MODE_2BUTTON);
++
++        GlobalActionsDialog.ScreenshotAction screenshotAction =
++                mGlobalActionsDialog.makeScreenshotActionForTesting();
++        assertThat(screenshotAction.shouldShow()).isTrue();
++    }
++
++    @Test
++    public void testShouldNotShowScreenshot() {
++        mContext.getOrCreateTestableResources().addOverride(
++                com.android.internal.R.integer.config_navBarInteractionMode,
++                WindowManagerPolicyConstants.NAV_BAR_MODE_3BUTTON);
++
++        GlobalActionsDialog.ScreenshotAction screenshotAction =
++                mGlobalActionsDialog.makeScreenshotActionForTesting();
++        assertThat(screenshotAction.shouldShow()).isFalse();
++    }
++
+     private void verifyLogPosted(GlobalActionsDialog.GlobalActionsEvent event) {
+         mTestableLooper.processAllMessages();
+         verify(mUiEventLogger, times(1))
+-- 
+2.35.1
+

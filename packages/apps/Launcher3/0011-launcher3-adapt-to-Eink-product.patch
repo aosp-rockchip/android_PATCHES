@@ -1,0 +1,98 @@
+From 5b9744d1757908837a24479ad55cd81457e4057b Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Tue, 12 Jan 2021 17:07:41 +0800
+Subject: [PATCH 11/13] launcher3: adapt to Eink product
+
+1. eink not show QSB
+2. not compiles some app with Launcher3QuickStepGo
+3. add hide app function
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: I03581743c8ba569655a07fbdb36a1f456ead5347
+---
+ Android.mk                                         |  7 +++++++
+ src/com/android/launcher3/AppFilter.java           | 13 +++++++++++++
+ src/com/android/launcher3/Utilities.java           |  4 ++++
+ src/com/android/launcher3/config/FeatureFlags.java |  2 +-
+ 4 files changed, 25 insertions(+), 1 deletion(-)
+
+diff --git a/Android.mk b/Android.mk
+index 7805b32e8..6b27190a4 100644
+--- a/Android.mk
++++ b/Android.mk
+@@ -234,7 +234,14 @@ LOCAL_PROGUARD_ENABLED := full
+ LOCAL_PACKAGE_NAME := Launcher3QuickStepGo
+ LOCAL_PRIVILEGED_MODULE := true
+ LOCAL_SYSTEM_EXT_MODULE := true
++
++ifeq ($(strip $(TARGET_PRODUCT)), rk3566_eink)
++LOCAL_OVERRIDES_PACKAGES := Home Launcher2 Launcher3 Launcher3QuickStep \
++    Calendar Contacts DeskClock Lightning Music QuickSearchBox RkExplorer
++else
+ LOCAL_OVERRIDES_PACKAGES := Home Launcher2 Launcher3 Launcher3QuickStep
++endif
++
+ LOCAL_REQUIRED_MODULES := privapp_whitelist_com.android.launcher3
+ 
+ LOCAL_FULL_LIBS_MANIFEST_FILES := \
+diff --git a/src/com/android/launcher3/AppFilter.java b/src/com/android/launcher3/AppFilter.java
+index 9b6166ffc..fde482e7c 100644
+--- a/src/com/android/launcher3/AppFilter.java
++++ b/src/com/android/launcher3/AppFilter.java
+@@ -6,12 +6,25 @@ import android.content.Context;
+ import com.android.launcher3.util.ResourceBasedOverride;
+ 
+ public class AppFilter implements ResourceBasedOverride {
++    private static boolean mIsEinkProduct = Utilities.isEinkProduct();
++    private final String[] EINK_BLACKLIST = new String[] {
++        "org.chromium.webview_shell",
++    };
+ 
+     public static AppFilter newInstance(Context context) {
+         return Overrides.getObject(AppFilter.class, context, R.string.app_filter_class);
+     }
+ 
+     public boolean shouldShowApp(ComponentName app) {
++        if (null != app && mIsEinkProduct) {
++            String packageName = app.getPackageName();
++            String className = app.getClassName();
++            for (String temp : EINK_BLACKLIST) {
++                if (temp.equals(packageName)) {
++                    return false;
++                }
++            }
++        }
+         return true;
+     }
+ }
+diff --git a/src/com/android/launcher3/Utilities.java b/src/com/android/launcher3/Utilities.java
+index bf637886b..ed16ad0f6 100644
+--- a/src/com/android/launcher3/Utilities.java
++++ b/src/com/android/launcher3/Utilities.java
+@@ -418,6 +418,10 @@ public final class Utilities {
+         return "1".equals(getSystemProperty("sys.boot_completed", "1"));
+     }
+ 
++    public static boolean isEinkProduct() {
++        return "true".equals(getSystemProperty("ro.vendor.eink", "false"));
++    }
++
+     public static String getSystemProperty(String property, String defaultValue) {
+         try {
+             Class clazz = Class.forName("android.os.SystemProperties");
+diff --git a/src/com/android/launcher3/config/FeatureFlags.java b/src/com/android/launcher3/config/FeatureFlags.java
+index 5c4a4922f..33cbf5713 100644
+--- a/src/com/android/launcher3/config/FeatureFlags.java
++++ b/src/com/android/launcher3/config/FeatureFlags.java
+@@ -52,7 +52,7 @@ public final class FeatureFlags {
+      * Enable moving the QSB on the 0th screen of the workspace. This is not a configuration feature
+      * and should be modified at a project level.
+      */
+-    public static final boolean QSB_ON_FIRST_SCREEN = true;
++    public static final boolean QSB_ON_FIRST_SCREEN = !Utilities.isEinkProduct();
+ 
+     /**
+      * Feature flag to handle define config changes dynamically instead of killing the process.
+-- 
+2.35.1
+

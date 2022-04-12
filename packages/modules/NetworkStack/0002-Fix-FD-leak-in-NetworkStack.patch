@@ -1,0 +1,63 @@
+From 78ea4205a24580ec8ede343ad85d2ce463d490d9 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ruoyao=20Liu=20=28=E5=88=98=E8=8B=A5=E5=B0=A7=29?=
+ <ruoyao.liu@mediatek.com>
+Date: Tue, 14 Jul 2020 11:05:25 +0800
+Subject: [PATCH 2/3] Fix FD leak in NetworkStack
+
+FD leak happened in IpClientLinkObserver, MyNetlinkMonitor never stop
+and socket never been closed. Socket should be close properly when
+IpClient shutdown.
+
+Bug: 161330494
+Change-Id: I398314218a11fea2724cd77a91497440ee309c69
+Signed-off-by: Alex Zhao <zzc@rock-chips.com>
+---
+ src/android/net/ip/IpClient.java             | 1 +
+ src/android/net/ip/IpClientLinkObserver.java | 8 +++++++-
+ 2 files changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/src/android/net/ip/IpClient.java b/src/android/net/ip/IpClient.java
+index c4f46ae9..d1e130a3 100644
+--- a/src/android/net/ip/IpClient.java
++++ b/src/android/net/ip/IpClient.java
+@@ -777,6 +777,7 @@ public class IpClient extends StateMachine {
+ 
+     private void stopStateMachineUpdaters() {
+         mObserverRegistry.unregisterObserver(mLinkObserver);
++        mLinkObserver.shutdown();
+     }
+ 
+     @Override
+diff --git a/src/android/net/ip/IpClientLinkObserver.java b/src/android/net/ip/IpClientLinkObserver.java
+index 82f8d5d5..5fd45a39 100644
+--- a/src/android/net/ip/IpClientLinkObserver.java
++++ b/src/android/net/ip/IpClientLinkObserver.java
+@@ -114,6 +114,7 @@ public class IpClientLinkObserver implements NetworkObserver {
+     private DnsServerRepository mDnsServerRepository;
+     private final AlarmManager mAlarmManager;
+     private final Configuration mConfig;
++    private final Handler mHandler;
+ 
+     private final MyNetlinkMonitor mNetlinkMonitor;
+ 
+@@ -127,11 +128,16 @@ public class IpClientLinkObserver implements NetworkObserver {
+         mLinkProperties = new LinkProperties();
+         mLinkProperties.setInterfaceName(mInterfaceName);
+         mConfig = config;
++        mHandler = h;
+         mInterfaceLinkState = true; // Assume up by default
+         mDnsServerRepository = new DnsServerRepository(config.minRdnssLifetime);
+         mAlarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+         mNetlinkMonitor = new MyNetlinkMonitor(h, log, mTag);
+-        h.post(mNetlinkMonitor::start);
++        mHandler.post(mNetlinkMonitor::start);
++    }
++
++    public void shutdown() {
++        mHandler.post(mNetlinkMonitor::stop);
+     }
+ 
+     private void maybeLog(String operation, String iface, LinkAddress address) {
+-- 
+2.35.1
+

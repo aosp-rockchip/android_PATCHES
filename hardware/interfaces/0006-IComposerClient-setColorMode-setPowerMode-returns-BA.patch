@@ -1,0 +1,39 @@
+From fba6f7d5eff84a2e6d25bb8039613080e1e11871 Mon Sep 17 00:00:00 2001
+From: Li Huang <putin.li@rock-chips.com>
+Date: Mon, 4 Nov 2019 16:53:45 +0800
+Subject: [PATCH 06/24] IComposerClient::setColorMode && setPowerMode returns
+ BAD_PARAMETER when passed in an invalid color mode
+
+for VtsHalGraphicsComposerV2_1Target.
+
+Change-Id: I5e1dca23d4f28746c03bc29817b8a57681d162d2
+Signed-off-by: Li Huang <putin.li@rock-chips.com>
+---
+ graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp b/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+index 37021716c..762e02f8e 100644
+--- a/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
++++ b/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+@@ -849,6 +849,8 @@ Error HWC2On1Adapter::Display::setColorMode(android_color_mode_t mode) {
+     std::unique_lock<std::recursive_mutex> lock (mStateMutex);
+ 
+     ALOGV("[%" PRIu64 "] setColorMode(%d)", mId, mode);
++    if (mode == -1)
++        return Error::BadParameter;
+ 
+     if (mode == mActiveColorMode) {
+         return Error::None;
+@@ -903,6 +905,8 @@ static bool isValid(PowerMode mode) {
+         case PowerMode::DozeSuspend: // Fall-through
+         case PowerMode::Doze: // Fall-through
+         case PowerMode::On: return true;
++        default:
++            return false;
+     }
+ }
+ 
+-- 
+2.35.1
+

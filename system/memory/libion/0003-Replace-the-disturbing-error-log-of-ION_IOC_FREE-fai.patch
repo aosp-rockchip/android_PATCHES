@@ -1,0 +1,35 @@
+From 627cff6cbed2a911587012436ae8901479343c0a Mon Sep 17 00:00:00 2001
+From: Zhen Chen <chenzhen@rock-chips.com>
+Date: Mon, 26 Oct 2020 16:17:48 +0800
+Subject: [PATCH 3/3] Replace the disturbing error log of ION_IOC_FREE failed
+ with warning log with more information
+
+Change-Id: Ibe6301c49c9adb8a3fabac07341ce82c6794c6d2
+Signed-off-by: Zhen Chen <chenzhen@rock-chips.com>
+---
+ ion.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/ion.c b/ion.c
+index 5930257..d0d15da 100644
+--- a/ion.c
++++ b/ion.c
+@@ -75,7 +75,14 @@ int ion_close(int fd) {
+ static int ion_ioctl(int fd, int req, void* arg) {
+     int ret = ioctl(fd, req, arg);
+     if (ret < 0) {
+-        ALOGE("ioctl %x failed with code %d: %s", req, ret, strerror(errno));
++        if ( ION_IOC_FREE == req )
++        {
++            ALOGW("ION_IOC_FREE failed with code %d: %s; might be caused by that current kernel is NEW.", ret, strerror(errno));
++        }
++        else
++        {
++            ALOGE("ioctl %x failed with code %d: %s", req, ret, strerror(errno));
++        }
+         return -errno;
+     }
+     return ret;
+-- 
+2.35.1
+

@@ -1,0 +1,93 @@
+From a8762b893241f080ed72017c69be12f31b2e4ff2 Mon Sep 17 00:00:00 2001
+From: Christopher Ferris <cferris@google.com>
+Date: Tue, 28 Jul 2020 16:25:49 -0700
+Subject: [PATCH 1/2] Add new mallopt options.
+
+This adds the code to support calling mallopt and converting the
+options to the internal Option enum.
+
+Reviewed By: cryptoad
+
+Differential Revision: https://reviews.llvm.org/D84806
+
+Bug: 162092537
+
+Test: Built and booted on a flame, ran scudo and bionic unit tests.
+GitOrigin-RevId: f14472a2e327a393d4795a141b901be1dd397505
+Change-Id: I90ade697da0bee1daf872b9d4077fdaf64faf400
+Merged-In: I90ade697da0bee1daf872b9d4077fdaf64faf400
+(cherry picked from commit e4ac106f6027f447633620c7b3d0ddba4810eb6f)
+---
+ standalone/tests/wrappers_c_test.cpp |  6 ++++++
+ standalone/wrappers_c.inc            | 23 +++++++++++++++++++++--
+ 2 files changed, 27 insertions(+), 2 deletions(-)
+
+diff --git a/standalone/tests/wrappers_c_test.cpp b/standalone/tests/wrappers_c_test.cpp
+index 8b2bc6e..1913c61 100644
+--- a/standalone/tests/wrappers_c_test.cpp
++++ b/standalone/tests/wrappers_c_test.cpp
+@@ -209,6 +209,12 @@ TEST(ScudoWrappersCTest, MallOpt) {
+   EXPECT_EQ(mallopt(M_DECAY_TIME, 0), 1);
+   EXPECT_EQ(mallopt(M_DECAY_TIME, 1), 1);
+   EXPECT_EQ(mallopt(M_DECAY_TIME, 0), 1);
++
++  if (SCUDO_ANDROID) {
++    EXPECT_EQ(mallopt(M_CACHE_COUNT_MAX, 100), 1);
++    EXPECT_EQ(mallopt(M_CACHE_SIZE_MAX, 1024 * 1024 * 2), 1);
++    EXPECT_EQ(mallopt(M_TSDS_COUNT_MAX, 10), 1);
++  }
+ }
+ #endif
+ 
+diff --git a/standalone/wrappers_c.inc b/standalone/wrappers_c.inc
+index 5a6c1a8..6cb71f2 100644
+--- a/standalone/wrappers_c.inc
++++ b/standalone/wrappers_c.inc
+@@ -17,6 +17,10 @@
+ #define SCUDO_MALLOC_ALIGNMENT FIRST_32_SECOND_64(8U, 16U)
+ #endif
+ 
++#if SCUDO_ANDROID
++#include <malloc.h>
++#endif
++
+ extern "C" {
+ 
+ INTERFACE WEAK void *SCUDO_PREFIX(calloc)(size_t nmemb, size_t size) {
+@@ -155,7 +159,7 @@ void SCUDO_PREFIX(malloc_postinit)() {
+                  SCUDO_PREFIX(malloc_enable));
+ }
+ 
+-INTERFACE WEAK int SCUDO_PREFIX(mallopt)(int param, UNUSED int value) {
++INTERFACE WEAK int SCUDO_PREFIX(mallopt)(int param, int value) {
+   if (param == M_DECAY_TIME) {
+     if (SCUDO_ANDROID) {
+       if (value == 0) {
+@@ -173,8 +177,23 @@ INTERFACE WEAK int SCUDO_PREFIX(mallopt)(int param, UNUSED int value) {
+   } else if (param == M_PURGE) {
+     SCUDO_ALLOCATOR.releaseToOS();
+     return 1;
++  } else {
++    scudo::Option option;
++    switch (param) {
++    case M_CACHE_COUNT_MAX:
++      option = scudo::Option::MaxCacheEntriesCount;
++      break;
++    case M_CACHE_SIZE_MAX:
++      option = scudo::Option::MaxCacheEntrySize;
++      break;
++    case M_TSDS_COUNT_MAX:
++      option = scudo::Option::MaxTSDsCount;
++      break;
++    default:
++      return 0;
++    }
++    return SCUDO_ALLOCATOR.setOption(option, static_cast<scudo::sptr>(value));
+   }
+-  return 0;
+ }
+ 
+ INTERFACE WEAK void *SCUDO_PREFIX(aligned_alloc)(size_t alignment,
+-- 
+2.35.1
+

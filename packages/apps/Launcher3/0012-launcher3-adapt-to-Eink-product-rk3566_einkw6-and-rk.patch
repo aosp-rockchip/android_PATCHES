@@ -1,0 +1,31 @@
+From 3efb2e0df6a95082a9666fdab9a593322f222735 Mon Sep 17 00:00:00 2001
+From: Zorro Liu <lyx@rock-chips.com>
+Date: Wed, 13 Jan 2021 20:58:46 +0800
+Subject: [PATCH 12/13] launcher3: adapt to Eink product rk3566_einkw6 and
+ rk3566_eink
+
+Signed-off-by: Zorro Liu <lyx@rock-chips.com>
+Change-Id: I45f87b6e04dfeeb35b5245460027eee5fb7caad0
+---
+ Android.mk | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Android.mk b/Android.mk
+index 6b27190a4..ea609d452 100644
+--- a/Android.mk
++++ b/Android.mk
+@@ -235,9 +235,9 @@ LOCAL_PACKAGE_NAME := Launcher3QuickStepGo
+ LOCAL_PRIVILEGED_MODULE := true
+ LOCAL_SYSTEM_EXT_MODULE := true
+ 
+-ifeq ($(strip $(TARGET_PRODUCT)), rk3566_eink)
++ifneq ($(filter rk3566_eink rk3566_einkw6, $(strip $(TARGET_PRODUCT))), )
+ LOCAL_OVERRIDES_PACKAGES := Home Launcher2 Launcher3 Launcher3QuickStep \
+-    Calendar Contacts DeskClock Lightning Music QuickSearchBox RkExplorer
++    Calendar Contacts Lightning QuickSearchBox RkExplorer
+ else
+ LOCAL_OVERRIDES_PACKAGES := Home Launcher2 Launcher3 Launcher3QuickStep
+ endif
+-- 
+2.35.1
+

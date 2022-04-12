@@ -1,0 +1,120 @@
+From 1a14a470d51860065de4f7c645ac06f12bc174a1 Mon Sep 17 00:00:00 2001
+From: Weixin Zhou <zwx@rock-chips.com>
+Date: Wed, 27 Jan 2021 14:56:49 +0800
+Subject: [PATCH 2/2] suspend: add new config of mem_sleep
+
+mem:
+echo deep > sys/power/mem_sleep
+echo mem > sys/power/state
+
+ultra:
+echo ultra > sys/power/mem_sleep
+echo mem > sys/power/state
+
+Signed-off-by: Weixin Zhou <zwx@rock-chips.com>
+Change-Id: I700a2a3ee3db7ad69325ce252545d6d224c2abed
+---
+ suspend/1.0/default/SystemSuspend.cpp | 41 +++++++++++++++++++++------
+ suspend/1.0/default/SystemSuspend.h   |  1 +
+ 2 files changed, 33 insertions(+), 9 deletions(-)
+
+diff --git a/suspend/1.0/default/SystemSuspend.cpp b/suspend/1.0/default/SystemSuspend.cpp
+index ba364b7..23ee08e 100644
+--- a/suspend/1.0/default/SystemSuspend.cpp
++++ b/suspend/1.0/default/SystemSuspend.cpp
+@@ -41,13 +41,15 @@ namespace suspend {
+ namespace V1_0 {
+ 
+ static const char kSleepState[] = "mem";
+-static const char kSleepStateUltra[] = "ultra";
++static const char kDeepMemsleep[] = "deep";
++static const char kUltraMemsleep[] = "ultra";
+ // TODO(b/128923994): we only need /sys/power/wake_[un]lock to export debugging info via
+ // /sys/kernel/debug/wakeup_sources.
+ static constexpr char kSysPowerWakeLock[] = "/sys/power/wake_lock";
+ static constexpr char kSysPowerWakeUnlock[] = "/sys/power/wake_unlock";
+ static constexpr char mkSysWifiState[] = "/sys/class/net/wlan0/carrier";
+ static constexpr char mkSysBtState[] = "/sys/class/rfkill/rfkill0/state";
++static constexpr char kSysPowerMemsleep[] = "/sys/power/mem_sleep";
+ 
+ // This function assumes that data in fd is small enough that it can be read in one go.
+ // We use this function instead of the ones available in libbase because it doesn't block
+@@ -112,6 +114,13 @@ SystemSuspend::SystemSuspend(unique_fd wakeupCountFd, unique_fd stateFd, unique_
+             PLOG(ERROR) << "error opening " << kSysPowerWakeUnlock;
+         }
+     }
++
++    if (mMemsleepFd < 0) {
++	    mMemsleepFd.reset(TEMP_FAILURE_RETRY(open(kSysPowerMemsleep, O_CLOEXEC | O_RDWR)));
++	    if (mMemsleepFd < 0) {
++		    PLOG(ERROR) << "error opening " << kSysPowerMemsleep;
++	    }
++    }
+ }
+ 
+ bool SystemSuspend::enableAutosuspend() {
+@@ -143,13 +152,20 @@ bool SystemSuspend::forceSuspend() {
+     btState = android::base::Trim(btState);
+ 
+     if (btState=="1" || wifiState=="1") {
+-	    LOG(ERROR) << "forceSuspend: is Mem btState " << btState << " wifiState " << wifiState;
+-	    success = WriteStringToFd(kSleepState, mStateFd);
++	    LOG(ERROR) << "forceSuspend: is deep btState " << btState << " wifiState " << wifiState;
++	    success = WriteStringToFd(kDeepMemsleep, mMemsleepFd);
+     } else {
+-	    LOG(ERROR) << "forceSuspend: is Ultra btState " << btState << " wifiState " << wifiState;
+-	    success = WriteStringToFd(kSleepStateUltra, mStateFd);
++	    LOG(ERROR) << "forceSuspend: is ultra btState " << btState << " wifiState " << wifiState;
++	    success = WriteStringToFd(kUltraMemsleep, mMemsleepFd);
++    }
++
++    if (!success) {
++        PLOG(VERBOSE) << "error writing to /sys/power/mem_sleep for forceSuspend";
+     }
+ 
++    LOG(ERROR) << "forceSuspend: set Mem btState " << btState << " wifiState " << wifiState;
++    success = WriteStringToFd(kSleepState, mStateFd);
++
+     counterLock.unlock();
+ 
+     if (!success) {
+@@ -222,13 +238,20 @@ void SystemSuspend::initAutosuspend() {
+ 	    btState = android::base::Trim(btState);
+ 
+ 	    if (btState=="1" || wifiState=="1") {
+-		    LOG(ERROR) << "is Mem btState " << btState << " wifiState " << wifiState;
+-		    success = WriteStringToFd(kSleepState, mStateFd);
++		    LOG(ERROR) << "forceSuspend: is deep btState " << btState << " wifiState " << wifiState;
++		    success = WriteStringToFd(kDeepMemsleep, mMemsleepFd);
+ 	    } else {
+-		    LOG(ERROR) << "is Ultra btState " << btState << " wifiState " << wifiState;
+-		    success = WriteStringToFd(kSleepStateUltra, mStateFd);
++		    LOG(ERROR) << "forceSuspend: is ultra btState " << btState << " wifiState " << wifiState;
++		    success = WriteStringToFd(kUltraMemsleep, mMemsleepFd);
++	    }
++
++	    if (!success) {
++		    PLOG(VERBOSE) << "error writing to /sys/power/mem_sleep";
+ 	    }
+ 
++	    LOG(ERROR) << "forceSuspend: set Mem btState " << btState << " wifiState " << wifiState;
++	    success = WriteStringToFd(kSleepState, mStateFd);
++
+             counterLock.unlock();
+ 
+             if (!success) {
+diff --git a/suspend/1.0/default/SystemSuspend.h b/suspend/1.0/default/SystemSuspend.h
+index 9fe9319..60e6bfb 100644
+--- a/suspend/1.0/default/SystemSuspend.h
++++ b/suspend/1.0/default/SystemSuspend.h
+@@ -103,6 +103,7 @@ class SystemSuspend : public ISystemSuspend {
+     uint32_t mSuspendCounter;
+     unique_fd mWakeupCountFd;
+     unique_fd mStateFd;
++    unique_fd mMemsleepFd = (unique_fd)-1;
+ 
+     unique_fd mSuspendStatsFd;
+ 
+-- 
+2.35.1
+

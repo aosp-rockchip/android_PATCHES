@@ -1,0 +1,41 @@
+From 9ac1d9a15cb1dc06c8cc2c068f37e94e8bb033b5 Mon Sep 17 00:00:00 2001
+From: Stanley Wang <stanleytfwang@google.com>
+Date: Mon, 6 Jan 2020 14:10:40 +0800
+Subject: [PATCH 07/25] Fix Settings search crashed.
+
+Add the check condition in the getNonIndexableKeys to
+check if the FaceManager exist or not.
+
+Fixes: 147076221
+Test: manual
+Change-Id: I898c936403ce90869a9da28aa14297eb6bf5d730
+(cherry picked from commit e037faf8307e8850247b688b6d1feae1de207638)
+---
+ .../settings/biometrics/face/FaceSettings.java        | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/src/com/android/settings/biometrics/face/FaceSettings.java b/src/com/android/settings/biometrics/face/FaceSettings.java
+index e1ca4f7bcb..08cfa70312 100644
+--- a/src/com/android/settings/biometrics/face/FaceSettings.java
++++ b/src/com/android/settings/biometrics/face/FaceSettings.java
+@@ -329,10 +329,13 @@ public class FaceSettings extends DashboardFragment {
+                 @Override
+                 public List<String> getNonIndexableKeys(Context context) {
+                     final List<String> keys = super.getNonIndexableKeys(context);
+-                    final FaceManager faceManager = context.getSystemService(FaceManager.class);
+-                    final boolean hasEnrolled = faceManager.hasEnrolledTemplates(
+-                            UserHandle.myUserId());
+-                    keys.add(hasEnrolled ? PREF_KEY_ENROLL_FACE_UNLOCK : PREF_KEY_DELETE_FACE_DATA);
++                    if (isAvailable(context)) {
++                        final FaceManager faceManager = context.getSystemService(FaceManager.class);
++                        final boolean hasEnrolled = faceManager.hasEnrolledTemplates(
++                                UserHandle.myUserId());
++                        keys.add(hasEnrolled ? PREF_KEY_ENROLL_FACE_UNLOCK
++                                : PREF_KEY_DELETE_FACE_DATA);
++                    }
+                     return keys;
+                 }
+             };
+-- 
+2.35.1
+

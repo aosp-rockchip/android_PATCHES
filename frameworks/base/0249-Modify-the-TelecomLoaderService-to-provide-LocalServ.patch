@@ -1,0 +1,273 @@
+From 00a54a27bb293b17d6f681f08ffbe3db1b0ce450 Mon Sep 17 00:00:00 2001
+From: Brad Ebinger <breadley@google.com>
+Date: Thu, 3 Sep 2020 14:41:35 -0700
+Subject: [PATCH 249/297] Modify the TelecomLoaderService to provide
+ LocalServices to Telecom
+
+We need access to the DeviceIdleController, which is not currently
+accessible via the PowerWhitelistManager due to restrictions with
+components in the same SYSTEM process accessing public APIs (see
+context#enforceCallingPermission).
+
+To get around this, we need to wrap services only available as
+LocalServices using Binder to pass these services to the Telecom
+code. This is all in-process (no IPC allowed), so there should be
+little to no impact.
+
+Bug: 160724034
+Test: miss call and verify `adb shell cmd deviceidle tempwhitelist` contains
+default dialer.
+Test: atest TelecomUnitTests; atest CtsTelecomTestCases
+
+Change-Id: I6275b550d19743e576b93f5fcd2bd3aa9ea4e1a8
+---
+ .../telecom/InternalServiceRepository.java    | 63 +++++++++++++++++++
+ .../server/telecom/TelecomLoaderService.java  | 25 +++++---
+ .../telecom/IDeviceIdleControllerAdapter.aidl | 26 ++++++++
+ .../telecom/IInternalServiceRetriever.aidl    | 27 ++++++++
+ .../internal/telecom/ITelecomLoader.aidl      | 28 +++++++++
+ 5 files changed, 161 insertions(+), 8 deletions(-)
+ create mode 100644 services/core/java/com/android/server/telecom/InternalServiceRepository.java
+ create mode 100644 telecomm/java/com/android/internal/telecom/IDeviceIdleControllerAdapter.aidl
+ create mode 100644 telecomm/java/com/android/internal/telecom/IInternalServiceRetriever.aidl
+ create mode 100644 telecomm/java/com/android/internal/telecom/ITelecomLoader.aidl
+
+diff --git a/services/core/java/com/android/server/telecom/InternalServiceRepository.java b/services/core/java/com/android/server/telecom/InternalServiceRepository.java
+new file mode 100644
+index 00000000000..76ea5c788bd
+--- /dev/null
++++ b/services/core/java/com/android/server/telecom/InternalServiceRepository.java
+@@ -0,0 +1,63 @@
++/*
++ * Copyright (C) 2020 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.server.telecom;
++
++import android.content.Context;
++import android.os.Binder;
++import android.os.Process;
++
++import com.android.internal.telecom.IDeviceIdleControllerAdapter;
++import com.android.internal.telecom.IInternalServiceRetriever;
++import com.android.server.DeviceIdleInternal;
++
++/**
++ * The Telecom APK can not access services stored in LocalService directly and since it is in the
++ * SYSTEM process, it also can not use the *Manager interfaces
++ * (see {@link Context#enforceCallingPermission(String, String)}). Instead, we must wrap these local
++ * services in binder interfaces to allow Telecom access.
++ */
++public class InternalServiceRepository extends IInternalServiceRetriever.Stub {
++
++    private final IDeviceIdleControllerAdapter.Stub mDeviceIdleControllerAdapter =
++            new IDeviceIdleControllerAdapter.Stub() {
++        @Override
++        public void exemptAppTemporarilyForEvent(String packageName, long duration, int userHandle,
++                String reason) {
++            mDeviceIdleController.addPowerSaveTempWhitelistApp(Process.myUid(), packageName,
++                    duration, userHandle, true /*sync*/, reason);
++        }
++    };
++
++    private final DeviceIdleInternal mDeviceIdleController;
++
++    public InternalServiceRepository(DeviceIdleInternal deviceIdleController) {
++        mDeviceIdleController = deviceIdleController;
++    }
++
++    @Override
++    public IDeviceIdleControllerAdapter getDeviceIdleController() {
++        ensureSystemProcess();
++        return mDeviceIdleControllerAdapter;
++    }
++
++    private void ensureSystemProcess() {
++        if (Binder.getCallingUid() != Process.SYSTEM_UID) {
++            // Correctness check - this should never happen.
++            throw new SecurityException("SYSTEM ONLY API.");
++        }
++    }
++}
+diff --git a/services/core/java/com/android/server/telecom/TelecomLoaderService.java b/services/core/java/com/android/server/telecom/TelecomLoaderService.java
+index a853529f49e..52ad893a9ac 100644
+--- a/services/core/java/com/android/server/telecom/TelecomLoaderService.java
++++ b/services/core/java/com/android/server/telecom/TelecomLoaderService.java
+@@ -35,7 +35,10 @@ import android.util.IntArray;
+ import android.util.Slog;
+ 
+ import com.android.internal.annotations.GuardedBy;
++import com.android.internal.telecom.ITelecomLoader;
++import com.android.internal.telecom.ITelecomService;
+ import com.android.internal.telephony.SmsApplication;
++import com.android.server.DeviceIdleInternal;
+ import com.android.server.LocalServices;
+ import com.android.server.SystemService;
+ import com.android.server.pm.UserManagerService;
+@@ -53,16 +56,13 @@ public class TelecomLoaderService extends SystemService {
+         @Override
+         public void onServiceConnected(ComponentName name, IBinder service) {
+             // Normally, we would listen for death here, but since telecom runs in the same process
+-            // as this loader (process="system") thats redundant here.
++            // as this loader (process="system") that's redundant here.
+             try {
+-                service.linkToDeath(new IBinder.DeathRecipient() {
+-                    @Override
+-                    public void binderDied() {
+-                        connectToTelecom();
+-                    }
+-                }, 0);
++                ITelecomLoader telecomLoader = ITelecomLoader.Stub.asInterface(service);
++                ITelecomService telecomService = telecomLoader.createTelecomService(mServiceRepo);
++
+                 SmsApplication.getDefaultMmsApplication(mContext, false);
+-                ServiceManager.addService(Context.TELECOM_SERVICE, service);
++                ServiceManager.addService(Context.TELECOM_SERVICE, telecomService.asBinder());
+ 
+                 synchronized (mLock) {
+                     final PermissionManagerServiceInternal permissionManager =
+@@ -114,6 +114,8 @@ public class TelecomLoaderService extends SystemService {
+     @GuardedBy("mLock")
+     private TelecomServiceConnection mServiceConnection;
+ 
++    private InternalServiceRepository mServiceRepo;
++
+     public TelecomLoaderService(Context context) {
+         super(context);
+         mContext = context;
+@@ -129,6 +131,8 @@ public class TelecomLoaderService extends SystemService {
+         if (phase == PHASE_ACTIVITY_MANAGER_READY) {
+             registerDefaultAppNotifier();
+             registerCarrierConfigChangedReceiver();
++            // core services will have already been loaded.
++            setupServiceRepository();
+             connectToTelecom();
+         }
+     }
+@@ -154,6 +158,11 @@ public class TelecomLoaderService extends SystemService {
+         }
+     }
+ 
++    private void setupServiceRepository() {
++        DeviceIdleInternal deviceIdleInternal = getLocalService(DeviceIdleInternal.class);
++        mServiceRepo = new InternalServiceRepository(deviceIdleInternal);
++    }
++
+ 
+     private void registerDefaultAppProviders() {
+         final PermissionManagerServiceInternal permissionManager =
+diff --git a/telecomm/java/com/android/internal/telecom/IDeviceIdleControllerAdapter.aidl b/telecomm/java/com/android/internal/telecom/IDeviceIdleControllerAdapter.aidl
+new file mode 100644
+index 00000000000..50bbf4c4128
+--- /dev/null
++++ b/telecomm/java/com/android/internal/telecom/IDeviceIdleControllerAdapter.aidl
+@@ -0,0 +1,26 @@
++/*
++ * Copyright (C) 2020 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.internal.telecom;
++
++/*
++ * Adapter interface for using DeviceIdleController, since the PowerWhitelistManager is not
++ * directly accessible in the SYSTEM process.
++ */
++interface IDeviceIdleControllerAdapter {
++    void exemptAppTemporarilyForEvent(String packageName, long duration, int userHandle,
++            String reason);
++}
+\ No newline at end of file
+diff --git a/telecomm/java/com/android/internal/telecom/IInternalServiceRetriever.aidl b/telecomm/java/com/android/internal/telecom/IInternalServiceRetriever.aidl
+new file mode 100644
+index 00000000000..b5601069636
+--- /dev/null
++++ b/telecomm/java/com/android/internal/telecom/IInternalServiceRetriever.aidl
+@@ -0,0 +1,27 @@
++/*
++ * Copyright (C) 2020 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.internal.telecom;
++
++import com.android.internal.telecom.IDeviceIdleControllerAdapter;
++
++/*
++ * Interface used to retrieve services that are only accessible via LocalService in the SYSTEM
++ * process.
++ */
++interface IInternalServiceRetriever {
++    IDeviceIdleControllerAdapter getDeviceIdleController();
++}
+diff --git a/telecomm/java/com/android/internal/telecom/ITelecomLoader.aidl b/telecomm/java/com/android/internal/telecom/ITelecomLoader.aidl
+new file mode 100644
+index 00000000000..eda0f5b2495
+--- /dev/null
++++ b/telecomm/java/com/android/internal/telecom/ITelecomLoader.aidl
+@@ -0,0 +1,28 @@
++/*
++ * Copyright (C) 2020 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.internal.telecom;
++
++import com.android.internal.telecom.ITelecomService;
++import com.android.internal.telecom.IInternalServiceRetriever;
++
++/*
++ * Internal interface for getting an instance of the ITelecomService for external publication.
++ * Allows the TelecomLoaderService to pass additional dependencies required for creation.
++ */
++interface ITelecomLoader {
++    ITelecomService createTelecomService(IInternalServiceRetriever retriever);
++}
+-- 
+2.35.1
+

@@ -1,0 +1,27 @@
+From b373d73ccda4da415d685819bc79e00951ab0365 Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Thu, 30 Apr 2020 15:42:23 +0800
+Subject: [PATCH 03/24] graphics: mapper: passthrough: fix compilation errors.
+
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+Change-Id: Ib13401a1640d2fbcd29bef471ce7a8eed61512d4
+---
+ .../passthrough/include/mapper-passthrough/2.1/Gralloc0Hal.h    | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/graphics/mapper/2.1/utils/passthrough/include/mapper-passthrough/2.1/Gralloc0Hal.h b/graphics/mapper/2.1/utils/passthrough/include/mapper-passthrough/2.1/Gralloc0Hal.h
+index 13df3bcbc..e7dce11be 100644
+--- a/graphics/mapper/2.1/utils/passthrough/include/mapper-passthrough/2.1/Gralloc0Hal.h
++++ b/graphics/mapper/2.1/utils/passthrough/include/mapper-passthrough/2.1/Gralloc0Hal.h
+@@ -48,7 +48,7 @@ class Gralloc0HalImpl : public V2_0::passthrough::detail::Gralloc0HalImpl<Hal> {
+          int32_t ret = mModule->validateBufferSize(
+                  mModule, bufferHandle, descriptorInfo.width, descriptorInfo.height,
+                  static_cast<int32_t>(descriptorInfo.format),
+-                 static_cast<uint64_t>(descriptorInfo.usage), stride);
++                 static_cast<uint64_t>(descriptorInfo.usage), descriptorInfo.layerCount, stride);
+          if (ret == -EINVAL) {
+              return Error::BAD_BUFFER;
+          } else if (ret < 0) {
+-- 
+2.35.1
+

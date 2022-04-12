@@ -1,0 +1,62 @@
+From 00d8f1fe5a44cf7658ed15d7dfde4a29d3864faa Mon Sep 17 00:00:00 2001
+From: Nicholas Ambur <nambur@google.com>
+Date: Thu, 19 Mar 2020 21:01:31 -0700
+Subject: [PATCH 126/297] add KEYPHRASE_ENROLLMENT_APPLICATION permission
+
+Split the model management permission controll into two separate
+permissions. KEYPHRASE_ENROLLMENT_APPLICATION is reserved for enrollment
+applications detected by KeyphraseEnrollmentInfo class while
+MANAGE_VOICE_KEYPHRASES is reserved for VoiceInteractionService
+implementations.
+
+Keyphrase enrollment applications are allowed to enroll at anytime,
+and VoiceInteractionService implementations are only allowed to enroll
+when they are the active service (see VoiceInteractionManagerService).
+
+Bug: 151405284
+Test: Enroll voice model from both enrollment application and active
+voiceinteraction service.
+Change-Id: I12eeb09e308af9aa934174dd059f47f789a9ce39
+
+Change-Id: Iffdfeab1d09ec6c8cf4b30a9768ef6efc9bdfa01
+(cherry picked from commit 5a207846e63842fed0bd4f7c419951799ea5f4f7)
+---
+ core/res/AndroidManifest.xml | 19 ++++++++++++++++---
+ 1 file changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/core/res/AndroidManifest.xml b/core/res/AndroidManifest.xml
+index 1f2f5691fcd..4c2e56cbb58 100644
+--- a/core/res/AndroidManifest.xml
++++ b/core/res/AndroidManifest.xml
+@@ -3447,12 +3447,25 @@
+     <permission android:name="android.permission.BIND_AUGMENTED_AUTOFILL_SERVICE"
+                 android:protectionLevel="signature" />
+ 
+-    <!-- Must be required by hotword enrollment application,
+-         to ensure that only the system can interact with it.
+-         @hide <p>Not for use by third-party applications.</p> -->
++    <!-- Must be required by a {@link android.service.voice.VoiceInteractionService} implementation
++         to enroll its own sound models. This is a more restrictive permission than the higher-level
++         permission KEYPHRASE_ENROLLMENT_APPLICATION. For the caller to enroll sound models with
++         this permission, it must hold the permission and be the active VoiceInteractionService in
++         the system.
++         {@see Settings.Secure.VOICE_INTERACTION_SERVICE}
++         @hide -->
+     <permission android:name="android.permission.MANAGE_VOICE_KEYPHRASES"
+         android:protectionLevel="signature|privileged" />
+ 
++    <!-- Must be required by a keyphrase enrollment application, to enroll sound models. This is
++         treated as a higher-level permission to MANAGE_VOICE_KEYPHRASES as a caller can enroll
++         sound models at any time. This permission should be reserved for system enrollment
++         applications detected by {@link android.hardware.soundtrigger.KeyphraseEnrollmentInfo}
++         only.
++         @hide <p>Not for use by third-party applications.</p> -->
++    <permission android:name="android.permission.KEYPHRASE_ENROLLMENT_APPLICATION"
++        android:protectionLevel="signature|privileged" />
++
+     <!-- Must be required by a {@link com.android.media.remotedisplay.RemoteDisplayProvider},
+          to ensure that only the system can bind to it.
+          @hide -->
+-- 
+2.35.1
+

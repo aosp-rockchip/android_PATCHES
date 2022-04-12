@@ -1,0 +1,54 @@
+From 2a855a96f8518d9bde8c70a0d16903622cdc08d5 Mon Sep 17 00:00:00 2001
+From: Chen Jinsen <kevin.chen@rock-chips.com>
+Date: Tue, 4 Aug 2020 10:14:51 +0800
+Subject: [PATCH 11/25] [MetadataRetriever]: add RockitMetadataRetriever
+ interface support
+
+Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
+Change-Id: I0ba1cbd49e9ce64f829a5a4f06173d843054d246
+---
+ .../MetadataRetrieverClient.cpp                    | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/media/libmediaplayerservice/MetadataRetrieverClient.cpp b/media/libmediaplayerservice/MetadataRetrieverClient.cpp
+index 7ed7468ba9..3874cf9a84 100644
+--- a/media/libmediaplayerservice/MetadataRetrieverClient.cpp
++++ b/media/libmediaplayerservice/MetadataRetrieverClient.cpp
+@@ -41,6 +41,7 @@
+ #include <private/media/VideoFrame.h>
+ #include "MetadataRetrieverClient.h"
+ #include "StagefrightMetadataRetriever.h"
++#include "RockitMetadataRetriever.h"
+ #include "MediaPlayerFactory.h"
+ 
+ namespace android {
+@@ -84,14 +85,25 @@ void MetadataRetrieverClient::disconnect()
+ static sp<MediaMetadataRetrieverBase> createRetriever(player_type playerType)
+ {
+     sp<MediaMetadataRetrieverBase> p;
++    char value[PROPERTY_VALUE_MAX];
++
+     switch (playerType) {
+         case STAGEFRIGHT_PLAYER:
+         case NU_PLAYER:
+-        case ROCKIT_PLAYER:
+         {
+             p = new StagefrightMetadataRetriever;
+             break;
+         }
++        case ROCKIT_PLAYER:
++        {
++            if (property_get("cts_gts.status", value, NULL)
++                    && !strcasecmp("true", value)) {
++                p = new StagefrightMetadataRetriever;
++            } else {
++                p = new RockitMetadataRetriever;
++            }
++            break;
++        }
+         default:
+             // TODO:
+             // support for TEST_PLAYER
+-- 
+2.35.1
+

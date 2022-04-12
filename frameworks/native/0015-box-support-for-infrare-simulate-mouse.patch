@@ -1,0 +1,548 @@
+From fcc0199483dad6babed5fed98c8e650f811e490f Mon Sep 17 00:00:00 2001
+From: Alex Wang <alex.wang@rock-chips.com>
+Date: Tue, 27 Oct 2020 19:52:12 +0800
+Subject: [PATCH 15/33] box:support for infrare simulate mouse.
+
+Change-Id: I7224b873882de742b86b2dfda0dbaa298b34f2f7
+---
+ services/inputflinger/reader/Android.bp       |   1 +
+ services/inputflinger/reader/EventHub.cpp     |   7 +
+ services/inputflinger/reader/InputDevice.cpp  |   7 +
+ .../inputflinger/reader/include/EventHub.h    |   3 +
+ .../reader/mapper/KeyMouseInputMapper.cpp     | 235 ++++++++++++++++++
+ .../reader/mapper/KeyMouseInputMapper.h       |  58 +++++
+ .../reader/mapper/KeyboardInputMapper.cpp     |  39 ++-
+ .../accumulator/CursorButtonAccumulator.cpp   |  20 ++
+ .../accumulator/CursorButtonAccumulator.h     |   1 +
+ 9 files changed, 369 insertions(+), 2 deletions(-)
+ mode change 100644 => 100755 services/inputflinger/reader/Android.bp
+ mode change 100644 => 100755 services/inputflinger/reader/InputDevice.cpp
+ create mode 100755 services/inputflinger/reader/mapper/KeyMouseInputMapper.cpp
+ create mode 100755 services/inputflinger/reader/mapper/KeyMouseInputMapper.h
+ mode change 100644 => 100755 services/inputflinger/reader/mapper/KeyboardInputMapper.cpp
+ mode change 100644 => 100755 services/inputflinger/reader/mapper/accumulator/CursorButtonAccumulator.cpp
+ mode change 100644 => 100755 services/inputflinger/reader/mapper/accumulator/CursorButtonAccumulator.h
+
+diff --git a/services/inputflinger/reader/Android.bp b/services/inputflinger/reader/Android.bp
+old mode 100644
+new mode 100755
+index 83a610f76..f3d6c966b
+--- a/services/inputflinger/reader/Android.bp
++++ b/services/inputflinger/reader/Android.bp
+@@ -35,6 +35,7 @@ filegroup {
+         "mapper/InputMapper.cpp",
+         "mapper/JoystickInputMapper.cpp",
+         "mapper/KeyboardInputMapper.cpp",
++        "mapper/KeyMouseInputMapper.cpp",
+         "mapper/MultiTouchInputMapper.cpp",
+         "mapper/RotaryEncoderInputMapper.cpp",
+         "mapper/SingleTouchInputMapper.cpp",
+diff --git a/services/inputflinger/reader/EventHub.cpp b/services/inputflinger/reader/EventHub.cpp
+index a1514af66..148843d2d 100644
+--- a/services/inputflinger/reader/EventHub.cpp
++++ b/services/inputflinger/reader/EventHub.cpp
+@@ -1326,6 +1326,13 @@ status_t EventHub::openDeviceLocked(const char* devicePath) {
+                                 sizeof_bit_array(BTN_DIGI));
+     if (haveKeyboardKeys || haveGamepadButtons) {
+         device->classes |= INPUT_DEVICE_CLASS_KEYBOARD;
++
++        // for infrare simulate mouse.
++        char targetProduct[PROPERTY_VALUE_MAX] = "";
++        property_get("ro.target.product", targetProduct, "");
++        if (strcmp(targetProduct, "box") == 0) {
++            device->classes |= INPUT_DEVICE_CLASS_KEYMOUSE;
++        }
+     }
+ 
+     // See if this is a cursor device such as a trackball or mouse.
+diff --git a/services/inputflinger/reader/InputDevice.cpp b/services/inputflinger/reader/InputDevice.cpp
+old mode 100644
+new mode 100755
+index 4b19e5e35..7cabb3406
+--- a/services/inputflinger/reader/InputDevice.cpp
++++ b/services/inputflinger/reader/InputDevice.cpp
+@@ -30,6 +30,7 @@
+ #include "SingleTouchInputMapper.h"
+ #include "SwitchInputMapper.h"
+ #include "VibratorInputMapper.h"
++#include "KeyMouseInputMapper.h"
+ 
+ namespace android {
+ 
+@@ -181,6 +182,12 @@ void InputDevice::addEventHubDevice(int32_t eventHubId, bool populateMappers) {
+         mappers.push_back(std::make_unique<CursorInputMapper>(*contextPtr));
+     }
+ 
++    // Mouser-like devices.
++    if (classes & INPUT_DEVICE_CLASS_KEYMOUSE) {
++        mappers.push_back(
++                std::make_unique<KeyMouseInputMapper>(*contextPtr));
++    }
++
+     // Touchscreens and touchpad devices.
+     if (classes & INPUT_DEVICE_CLASS_TOUCH_MT) {
+         mappers.push_back(std::make_unique<MultiTouchInputMapper>(*contextPtr));
+diff --git a/services/inputflinger/reader/include/EventHub.h b/services/inputflinger/reader/include/EventHub.h
+index c17f3a184..dca48b960 100644
+--- a/services/inputflinger/reader/include/EventHub.h
++++ b/services/inputflinger/reader/include/EventHub.h
+@@ -119,6 +119,9 @@ enum {
+     /* The input device has a rotary encoder */
+     INPUT_DEVICE_CLASS_ROTARY_ENCODER = 0x00001000,
+ 
++    /* The input device has a mouse. */
++    INPUT_DEVICE_CLASS_KEYMOUSE       = 0x00004000,
++
+     /* The input device is virtual (not a real device, not part of UI configuration). */
+     INPUT_DEVICE_CLASS_VIRTUAL = 0x40000000,
+ 
+diff --git a/services/inputflinger/reader/mapper/KeyMouseInputMapper.cpp b/services/inputflinger/reader/mapper/KeyMouseInputMapper.cpp
+new file mode 100755
+index 000000000..49e173217
+--- /dev/null
++++ b/services/inputflinger/reader/mapper/KeyMouseInputMapper.cpp
+@@ -0,0 +1,235 @@
++/*
++ * Copyright (C) 2019 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#include "../Macros.h"
++
++#include "KeyMouseInputMapper.h"
++#include "TouchCursorInputMapperCommon.h"
++#include <cutils/properties.h>
++
++namespace android {
++
++// --- Static Definitions ---
++
++KeyMouseInputMapper::KeyMouseInputMapper(InputDeviceContext& deviceContext) : InputMapper(deviceContext) {
++}
++
++KeyMouseInputMapper::~KeyMouseInputMapper() {
++}
++
++uint32_t KeyMouseInputMapper::getSources() {
++    return AINPUT_SOURCE_MOUSE;
++}
++
++void KeyMouseInputMapper::populateDeviceInfo(InputDeviceInfo* info) {
++    InputMapper::populateDeviceInfo(info);
++}
++
++void KeyMouseInputMapper::dump(std::string& dump) {
++
++}
++
++void KeyMouseInputMapper::configure(nsecs_t when,
++        const InputReaderConfiguration* config, uint32_t changes) {
++
++    InputMapper::configure(when, config, changes);
++    mSource=AINPUT_SOURCE_MOUSE;
++    mXPrecision = 1.0f;
++    mYPrecision = 1.0f;
++	mPointerController = getContext()->getPointerController(getDeviceId());
++}
++
++void KeyMouseInputMapper::reset(nsecs_t when) {
++    mButtonState = 0;
++    mDownTime = 0;
++    mCursorButtonAccumulator.reset(getDeviceContext());
++
++    InputMapper::reset(when);
++}
++
++void KeyMouseInputMapper::process(const RawEvent* rawEvent) {
++
++        mCursorButtonAccumulator.process(rawEvent);
++
++        int mID;
++        char mgetDeviceID[PROPERTY_VALUE_MAX] = "";
++        property_get("sys.ID.mID", mgetDeviceID,0);
++        mID=atoi(mgetDeviceID);
++        if (rawEvent->type == EV_KEY && ((rawEvent->code== 28)||(rawEvent->code== 232))) {
++                mdeltax = 0;
++                mdeltay = 0;
++                sync(rawEvent->when);
++        }
++}
++
++void KeyMouseInputMapper::sync(nsecs_t when) {
++    int32_t lastButtonState = mButtonState;
++    int32_t currentButtonState = mCursorButtonAccumulator.getButtonState();
++    mButtonState = currentButtonState;
++    char mKeyLock[PROPERTY_VALUE_MAX] = "";
++    memset(mKeyLock,0,5);
++    property_get("sys.KeyMouse.mKeyMouseState", mKeyLock, "off");
++
++    bool wasDown = isPointerDown(lastButtonState);
++    bool down = isPointerDown(currentButtonState);
++    bool downChanged;
++    if (!wasDown && down) {
++        mDownTime = when;
++        downChanged = true;
++    } else if (wasDown && !down) {
++        downChanged = true;
++    } else {
++        downChanged = false;
++    }
++    nsecs_t downTime = mDownTime;
++    if(strcmp(mKeyLock, "off") == 0) {
++        return;
++    }
++    bool buttonsChanged = currentButtonState != lastButtonState;
++    int32_t buttonsPressed = currentButtonState & ~lastButtonState;
++    int32_t buttonsReleased = lastButtonState & ~currentButtonState;
++
++    float deltaX = mdeltax;
++    float deltaY = mdeltay;
++
++    // Rotate delta according to orientation if needed.
++    if (false) {
++        rotateDelta(DISPLAY_ORIENTATION_0, &deltaX, &deltaY);
++    }
++
++    // Move the pointer.
++    PointerProperties pointerProperties;
++    pointerProperties.clear();
++    pointerProperties.id = 0;
++    pointerProperties.toolType = AMOTION_EVENT_TOOL_TYPE_MOUSE;
++
++    PointerCoords pointerCoords;
++    pointerCoords.clear();
++
++    //paint the pointer of mouse here
++    uint32_t policyFlags = 0;
++    policyFlags |= POLICY_FLAG_WAKE;
++
++    int32_t displayId = ADISPLAY_ID_DEFAULT;
++    float xCursorPosition = AMOTION_EVENT_INVALID_CURSOR_POSITION;
++    float yCursorPosition = AMOTION_EVENT_INVALID_CURSOR_POSITION;
++
++    if (mPointerController != NULL) {
++		mPointerController->setPresentation(PointerControllerInterface::PRESENTATION_POINTER);
++        mPointerController->move(deltaX,deltaY);
++        mPointerController->unfade(PointerControllerInterface::TRANSITION_IMMEDIATE);
++
++        mPointerController->getPosition(&xCursorPosition, &yCursorPosition);
++        pointerCoords.setAxisValue(AMOTION_EVENT_AXIS_X, xCursorPosition);
++        pointerCoords.setAxisValue(AMOTION_EVENT_AXIS_Y, yCursorPosition);
++        displayId = mPointerController->getDisplayId();//ADISPLAY_ID_DEFAULT;
++    }
++    // Moving an external trackball or mouse should wake the device.
++    // We don't do this for internal cursor devices to prevent them from waking up
++    // the device in your pocket.
++    // TODO: Use the input device configuration to control this behavior more finely.
++
++    // Synthesize key down from buttons if needed.
++    synthesizeButtonKeys(getContext(), AKEY_EVENT_ACTION_DOWN, when, getDeviceId(), mSource,
++                  displayId, policyFlags, lastButtonState, currentButtonState);
++
++    // Send motion event.
++    if (downChanged || buttonsChanged) {
++        int32_t metaState = getContext()->getGlobalMetaState();
++        int32_t buttonState = lastButtonState;
++        int32_t motionEventAction;
++        if (downChanged) {
++            motionEventAction = down ? AMOTION_EVENT_ACTION_DOWN : AMOTION_EVENT_ACTION_UP;
++        } else if (down || (mSource != AINPUT_SOURCE_MOUSE)) {
++            motionEventAction = AMOTION_EVENT_ACTION_MOVE;
++        } else {
++            motionEventAction = AMOTION_EVENT_ACTION_HOVER_MOVE;
++        }
++        if (buttonsReleased) {
++            BitSet32 released(buttonsReleased);
++            while (!released.isEmpty()) {
++                int32_t actionButton = BitSet32::valueForBit(released.clearFirstMarkedBit());
++                buttonState &= ~actionButton;
++                NotifyMotionArgs releaseArgs(getContext()->getNextId(), when, getDeviceId(),
++                                             mSource, displayId, policyFlags,
++                                             AMOTION_EVENT_ACTION_BUTTON_RELEASE, actionButton, 0,
++                                             metaState, buttonState, MotionClassification::NONE,
++                                             AMOTION_EVENT_EDGE_FLAG_NONE, 1, &pointerProperties,
++                                             &pointerCoords, mXPrecision, mYPrecision,
++                                             xCursorPosition, yCursorPosition, downTime,
++                                             /* videoFrames */ {});
++                getListener()->notifyMotion(&releaseArgs);
++            }
++        }
++
++        NotifyMotionArgs args(getContext()->getNextId(), when, getDeviceId(), mSource, displayId,
++                              policyFlags, motionEventAction, 0, 0, metaState, currentButtonState,
++                              MotionClassification::NONE, AMOTION_EVENT_EDGE_FLAG_NONE, 1,
++                              &pointerProperties, &pointerCoords, mXPrecision, mYPrecision,
++                              xCursorPosition, yCursorPosition, downTime,
++                              /* videoFrames */ {});
++        getListener()->notifyMotion(&args);
++
++        if (buttonsPressed) {
++            BitSet32 pressed(buttonsPressed);
++            while (!pressed.isEmpty()) {
++                int32_t actionButton = BitSet32::valueForBit(pressed.clearFirstMarkedBit());
++                buttonState |= actionButton;
++                NotifyMotionArgs pressArgs(getContext()->getNextId(), when, getDeviceId(), mSource,
++                                           displayId, policyFlags,
++                                           AMOTION_EVENT_ACTION_BUTTON_PRESS, actionButton, 0,
++                                           metaState, buttonState, MotionClassification::NONE,
++                                           AMOTION_EVENT_EDGE_FLAG_NONE, 1, &pointerProperties,
++                                           &pointerCoords, mXPrecision, mYPrecision,
++                                           xCursorPosition, yCursorPosition, downTime,
++                                           /* videoFrames */ {});
++                getListener()->notifyMotion(&pressArgs);
++            }
++        }
++
++        ALOG_ASSERT(buttonState == currentButtonState);
++
++        // Send hover move after UP to tell the application that the mouse is hovering now.
++        if (motionEventAction == AMOTION_EVENT_ACTION_UP
++                && (mSource == AINPUT_SOURCE_MOUSE)) {
++            NotifyMotionArgs hoverArgs(getContext()->getNextId(), when, getDeviceId(), mSource,
++                                       displayId, policyFlags, AMOTION_EVENT_ACTION_HOVER_MOVE, 0,
++                                       0, metaState, currentButtonState, MotionClassification::NONE,
++                                       AMOTION_EVENT_EDGE_FLAG_NONE, 1, &pointerProperties,
++                                       &pointerCoords, mXPrecision, mYPrecision, xCursorPosition,
++                                       yCursorPosition, downTime, /* videoFrames */ {});
++            getListener()->notifyMotion(&hoverArgs);
++        }
++
++    }
++    // Synthesize key up from buttons if needed.
++    synthesizeButtonKeys(getContext(), AKEY_EVENT_ACTION_UP, when, getDeviceId(), mSource,
++            displayId, policyFlags, lastButtonState, currentButtonState);
++}
++
++int32_t KeyMouseInputMapper::getScanCodeState(uint32_t sourceMask, int32_t scanCode) {
++    if (scanCode >= BTN_MOUSE && scanCode < BTN_JOYSTICK) {
++        return getDeviceContext().getScanCodeState(scanCode);
++    } else {
++        return AKEY_STATE_UNKNOWN;
++    }
++}
++
++void KeyMouseInputMapper::fadePointer() {
++
++}
++
++} // namespace android
+diff --git a/services/inputflinger/reader/mapper/KeyMouseInputMapper.h b/services/inputflinger/reader/mapper/KeyMouseInputMapper.h
+new file mode 100755
+index 000000000..7b590160a
+--- /dev/null
++++ b/services/inputflinger/reader/mapper/KeyMouseInputMapper.h
+@@ -0,0 +1,58 @@
++/*
++ * Copyright (C) 2019 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef _UI_INPUTREADER_KEYMOUSE_INPUT_MAPPER_H
++#define _UI_INPUTREADER_KEYMOUSE_INPUT_MAPPER_H
++
++#include "InputMapper.h"
++#include "CursorButtonAccumulator.h"
++
++namespace android {
++
++class KeyMouseInputMapper : public InputMapper {
++
++public:
++    KeyMouseInputMapper(InputDeviceContext& deviceContext);
++    virtual ~KeyMouseInputMapper();
++
++    virtual uint32_t getSources();
++    virtual void populateDeviceInfo(InputDeviceInfo* deviceInfo);
++    virtual void dump(std::string& dump);
++    virtual void configure(nsecs_t when, const InputReaderConfiguration* config, uint32_t changes);
++    virtual void reset(nsecs_t when);
++    virtual void process(const RawEvent* rawEvent);
++
++    virtual int32_t getScanCodeState(uint32_t sourceMask, int32_t scanCode);
++
++    virtual void fadePointer();
++
++
++private:
++    CursorButtonAccumulator mCursorButtonAccumulator;
++    sp<PointerControllerInterface> mPointerController;
++
++    int32_t mSource;
++    float mdeltax, mdeltay;
++    int32_t mButtonState;
++    nsecs_t mDownTime;
++    float mXPrecision;
++    float mYPrecision;
++
++    void sync(nsecs_t when);
++};
++} // namespace android
++
++#endif // _UI_INPUTREADER_KEYMOUSE_INPUT_MAPPER_H
+diff --git a/services/inputflinger/reader/mapper/KeyboardInputMapper.cpp b/services/inputflinger/reader/mapper/KeyboardInputMapper.cpp
+old mode 100644
+new mode 100755
+index e0092210a..cfd3b39f5
+--- a/services/inputflinger/reader/mapper/KeyboardInputMapper.cpp
++++ b/services/inputflinger/reader/mapper/KeyboardInputMapper.cpp
+@@ -17,6 +17,7 @@
+ #include "../Macros.h"
+ 
+ #include "KeyboardInputMapper.h"
++#include <cutils/properties.h>
+ 
+ namespace android {
+ 
+@@ -278,8 +279,28 @@ void KeyboardInputMapper::processKey(nsecs_t when, bool down, int32_t scanCode,
+         keyMetaState = mMetaState;
+         policyFlags = 0;
+     }
+-
++    // Support simulate mouse function.
++    if (policyFlags & POLICY_FLAG_GESTURE) {
++        getDeviceContext().cancelTouch(when);
++    }
++    char mKeyMouseState[PROPERTY_VALUE_MAX] = "";
++    property_get("sys.KeyMouse.mKeyMouseState", mKeyMouseState, "off");
++    char mID[PROPERTY_VALUE_MAX] = "";
++    sprintf(mID,"%d",getDeviceId());
++    property_set("sys.ID.mID",mID);
+     if (down) {
++        if (keyCode == AKEYCODE_PROFILE_SWITCH) {
++            char targetProduct[PROPERTY_VALUE_MAX] = "";
++            property_get("ro.target.product", targetProduct, "");
++            if (strcmp(targetProduct, "box") == 0) {
++                if (strcmp(mKeyMouseState, "on")==0) {
++                    property_set("sys.KeyMouse.mKeyMouseState", "off");
++                } else if (strcmp(mKeyMouseState,"off")==0) {
++                    property_set("sys.KeyMouse.mKeyMouseState","on");
++                }
++            }
++        }
++
+         // Rotate key codes according to orientation if needed.
+         if (mParameters.orientationAware) {
+             keyCode = rotateKeyCode(keyCode, getOrientation());
+@@ -347,7 +368,21 @@ void KeyboardInputMapper::processKey(nsecs_t when, bool down, int32_t scanCode,
+     if (mParameters.handlesKeyRepeat) {
+         policyFlags |= POLICY_FLAG_DISABLE_KEY_REPEAT;
+     }
+-
++    if (down && !isMetaKey(keyCode)) {
++        getContext()->fadePointer();
++    }
++    //
++    if (strcmp(mKeyMouseState, "on") == 0) {
++        if(keyCode == AKEYCODE_DPAD_LEFT) {
++            keyCode = AKEYCODE_SYSTEM_NAVIGATION_LEFT;
++        } else if (keyCode == AKEYCODE_DPAD_RIGHT) {
++            keyCode = AKEYCODE_SYSTEM_NAVIGATION_RIGHT;
++        } else if (keyCode == AKEYCODE_DPAD_UP) {
++            keyCode = AKEYCODE_SYSTEM_NAVIGATION_UP;
++        } else if (keyCode == AKEYCODE_DPAD_DOWN) {
++            keyCode = AKEYCODE_SYSTEM_NAVIGATION_DOWN;
++        }
++    }
+     NotifyKeyArgs args(getContext()->getNextId(), when, getDeviceId(), mSource, getDisplayId(),
+                        policyFlags, down ? AKEY_EVENT_ACTION_DOWN : AKEY_EVENT_ACTION_UP,
+                        AKEY_EVENT_FLAG_FROM_SYSTEM, keyCode, scanCode, keyMetaState, downTime);
+diff --git a/services/inputflinger/reader/mapper/accumulator/CursorButtonAccumulator.cpp b/services/inputflinger/reader/mapper/accumulator/CursorButtonAccumulator.cpp
+old mode 100644
+new mode 100755
+index 96767dc5b..168b0a70b
+--- a/services/inputflinger/reader/mapper/accumulator/CursorButtonAccumulator.cpp
++++ b/services/inputflinger/reader/mapper/accumulator/CursorButtonAccumulator.cpp
+@@ -22,6 +22,9 @@
+ 
+ namespace android {
+ 
++static const int KEYCODE_ENTER = 28;
++static const int KEYCODE_DPAD_CENTER = 232;
++
+ CursorButtonAccumulator::CursorButtonAccumulator() {
+     clearButtons();
+ }
+@@ -35,6 +38,8 @@ void CursorButtonAccumulator::reset(InputDeviceContext& deviceContext) {
+     mBtnForward = deviceContext.isKeyPressed(BTN_FORWARD);
+     mBtnExtra = deviceContext.isKeyPressed(BTN_EXTRA);
+     mBtnTask = deviceContext.isKeyPressed(BTN_TASK);
++    mBtnOk = deviceContext.isKeyPressed(KEYCODE_ENTER);
++    mBtnOk = deviceContext.isKeyPressed(KEYCODE_DPAD_CENTER);
+ }
+ 
+ void CursorButtonAccumulator::clearButtons() {
+@@ -46,6 +51,7 @@ void CursorButtonAccumulator::clearButtons() {
+     mBtnForward = 0;
+     mBtnExtra = 0;
+     mBtnTask = 0;
++    mBtnOk = 0;
+ }
+ 
+ void CursorButtonAccumulator::process(const RawEvent* rawEvent) {
+@@ -75,6 +81,13 @@ void CursorButtonAccumulator::process(const RawEvent* rawEvent) {
+             case BTN_TASK:
+                 mBtnTask = rawEvent->value;
+                 break;
++            case KEYCODE_ENTER:
++            case KEYCODE_DPAD_CENTER:
++                char mKeyMouseState[PROPERTY_VALUE_MAX] = {0};
++                property_get("sys.KeyMouse.mKeyMouseState", mKeyMouseState, "off");
++                if (strcmp(mKeyMouseState, "on") == 0)
++                    mBtnOk = rawEvent->value;
++                break;
+         }
+     }
+ }
+@@ -84,6 +97,13 @@ uint32_t CursorButtonAccumulator::getButtonState() const {
+     if (mBtnLeft) {
+         result |= AMOTION_EVENT_BUTTON_PRIMARY;
+     }
++    if (mBtnOk) {
++       char mKeyMouseState[PROPERTY_VALUE_MAX] = {0};
++        property_get("sys.KeyMouse.mKeyMouseState", mKeyMouseState, "off");
++        if (strcmp(mKeyMouseState, "on") == 0) {
++         result |= AMOTION_EVENT_BUTTON_PRIMARY;
++        }
++    }
+     if (mBtnRight) {
+         char targetProduct[PROPERTY_VALUE_MAX] = {0};
+         property_get("ro.target.product", targetProduct, "");
+diff --git a/services/inputflinger/reader/mapper/accumulator/CursorButtonAccumulator.h b/services/inputflinger/reader/mapper/accumulator/CursorButtonAccumulator.h
+old mode 100644
+new mode 100755
+index 9e159064f..9e9a26815
+--- a/services/inputflinger/reader/mapper/accumulator/CursorButtonAccumulator.h
++++ b/services/inputflinger/reader/mapper/accumulator/CursorButtonAccumulator.h
+@@ -43,6 +43,7 @@ private:
+     bool mBtnForward;
+     bool mBtnExtra;
+     bool mBtnTask;
++    bool mBtnOk;
+ 
+     void clearButtons();
+ };
+-- 
+2.35.1
+

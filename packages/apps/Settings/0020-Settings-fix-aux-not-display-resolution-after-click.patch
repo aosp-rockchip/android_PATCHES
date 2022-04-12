@@ -1,0 +1,27 @@
+From 4978f682eb86f0d1eac4cce104b66ee9b0595e31 Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Wed, 9 Dec 2020 09:23:25 +0800
+Subject: [PATCH 20/25] Settings: fix aux not display resolution after click
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: I31231edef1dd943d13a3b3ee9c7c25100799bb02
+---
+ src/com/android/settings/display/HdmiSettings.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/com/android/settings/display/HdmiSettings.java b/src/com/android/settings/display/HdmiSettings.java
+index 668e569467..d410cfa483 100644
+--- a/src/com/android/settings/display/HdmiSettings.java
++++ b/src/com/android/settings/display/HdmiSettings.java
+@@ -504,7 +504,7 @@ public class HdmiSettings extends SettingsPreferenceFragment
+                 startActivity(screenScaleIntent);
+             }
+         } else if (preference == mAuxResolution) {
+-            showWaitingDialog(1500, KEY_AUX_CATEGORY);
++            showWaitingDialog(1500, KEY_AUX_RESOLUTION);
+             updateAuxState();
+         }
+         return true;
+-- 
+2.35.1
+

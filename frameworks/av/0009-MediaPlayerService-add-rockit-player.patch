@@ -1,0 +1,137 @@
+From 4c12f0bf32feac5a2cb15101afb9d52c1c6ca0e2 Mon Sep 17 00:00:00 2001
+From: Zhou Jing <tracy.zhou@rock-chips.com>
+Date: Fri, 11 Oct 2019 17:23:09 +0800
+Subject: [PATCH 09/25] MediaPlayerService: add rockit player
+
+Change-Id: I28b090bd643ad25ac7700f06986d1c85e11e7a2a
+Signed-off-by: shine.liu <shine.liu@rock-chips.com>
+---
+ media/libmediaplayerservice/Android.bp        |  4 ++
+ .../MediaPlayerFactory.cpp                    | 42 ++++++++++++++++++-
+ .../MetadataRetrieverClient.cpp               |  1 +
+ .../include/MediaPlayerInterface.h            |  1 +
+ 4 files changed, 47 insertions(+), 1 deletion(-)
+
+diff --git a/media/libmediaplayerservice/Android.bp b/media/libmediaplayerservice/Android.bp
+index 5301f5c571..693c2a39eb 100644
+--- a/media/libmediaplayerservice/Android.bp
++++ b/media/libmediaplayerservice/Android.bp
+@@ -41,6 +41,7 @@ cc_library_shared {
+         "libstagefright_foundation",
+         "libstagefright_httplive",
+         "libutils",
++        "librockit_interface",
+     ],
+ 
+     header_libs: [
+@@ -59,6 +60,9 @@ cc_library_shared {
+     include_dirs: [
+         "frameworks/av/media/libstagefright/rtsp",
+         "frameworks/av/media/libstagefright/webm",
++        "vendor/rockchip/hardware/interfaces/rockit/include",
++        "vendor/rockchip/hardware/interfaces/rockit/include/rt_base",
++        "vendor/rockchip/hardware/interfaces/rockit/direct/include",
+     ],
+ 
+     local_include_dirs: ["include"],
+diff --git a/media/libmediaplayerservice/MediaPlayerFactory.cpp b/media/libmediaplayerservice/MediaPlayerFactory.cpp
+index 05f7365594..252f3527c2 100644
+--- a/media/libmediaplayerservice/MediaPlayerFactory.cpp
++++ b/media/libmediaplayerservice/MediaPlayerFactory.cpp
+@@ -31,6 +31,7 @@
+ 
+ #include "TestPlayerStub.h"
+ #include "nuplayer/NuPlayerDriver.h"
++#include "RockitPlayerInterface.h"
+ 
+ namespace android {
+ 
+@@ -62,7 +63,8 @@ status_t MediaPlayerFactory::registerFactory_l(IFactory* factory,
+ }
+ 
+ static player_type getDefaultPlayerType() {
+-    return NU_PLAYER;
++    return ROCKIT_PLAYER;
++    //return NU_PLAYER;
+ }
+ 
+ status_t MediaPlayerFactory::registerFactory(IFactory* factory,
+@@ -238,6 +240,41 @@ class TestPlayerFactory : public MediaPlayerFactory::IFactory {
+     }
+ };
+ 
++
++class RockitPlayerFactory : public MediaPlayerFactory::IFactory {
++  public:
++    virtual float scoreFactory(const sp<IMediaPlayer>& /*client*/,
++                               const char* url,
++                               float curScore) {
++        (void)url;
++        static const float kOurScore = 0.0;
++
++        if (kOurScore <= curScore)
++            return 0.0;
++
++        return kOurScore;
++    }
++
++    virtual float scoreFactory(const sp<IMediaPlayer>& /*client*/,
++                               const sp<IStreamSource>& /*source*/,
++                               float /*curScore*/) {
++        return 0.0;
++    }
++
++    virtual float scoreFactory(const sp<IMediaPlayer>& /*client*/,
++                               const sp<DataSource>& /*source*/,
++                               float /*curScore*/) {
++        // Rockit player supports setting a DataSource source directly.
++        return 0.0;
++    }
++
++    virtual sp<MediaPlayerBase> createPlayer(pid_t pid) {
++        (void)pid;
++        ALOGD("create Rockit Player");
++        return new RockitPlayerClient();
++    }
++};
++
+ void MediaPlayerFactory::registerBuiltinFactories() {
+     Mutex::Autolock lock_(&sLock);
+ 
+@@ -250,6 +287,9 @@ void MediaPlayerFactory::registerBuiltinFactories() {
+     factory = new TestPlayerFactory();
+     if (registerFactory_l(factory, TEST_PLAYER) != OK)
+         delete factory;
++    factory = new RockitPlayerFactory();
++    if (registerFactory_l(factory, ROCKIT_PLAYER) != OK)
++        delete factory;
+ 
+     sInitComplete = true;
+ }
+diff --git a/media/libmediaplayerservice/MetadataRetrieverClient.cpp b/media/libmediaplayerservice/MetadataRetrieverClient.cpp
+index fb228ca297..7ed7468ba9 100644
+--- a/media/libmediaplayerservice/MetadataRetrieverClient.cpp
++++ b/media/libmediaplayerservice/MetadataRetrieverClient.cpp
+@@ -87,6 +87,7 @@ static sp<MediaMetadataRetrieverBase> createRetriever(player_type playerType)
+     switch (playerType) {
+         case STAGEFRIGHT_PLAYER:
+         case NU_PLAYER:
++        case ROCKIT_PLAYER:
+         {
+             p = new StagefrightMetadataRetriever;
+             break;
+diff --git a/media/libmediaplayerservice/include/MediaPlayerInterface.h b/media/libmediaplayerservice/include/MediaPlayerInterface.h
+index 436cb317b1..70b80ad8ea 100644
+--- a/media/libmediaplayerservice/include/MediaPlayerInterface.h
++++ b/media/libmediaplayerservice/include/MediaPlayerInterface.h
+@@ -52,6 +52,7 @@ enum player_type {
+     // The shared library with the test player is passed passed as an
+     // argument to the 'test:' url in the setDataSource call.
+     TEST_PLAYER = 5,
++    ROCKIT_PLAYER = 6,
+ };
+ 
+ 
+-- 
+2.35.1
+

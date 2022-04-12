@@ -1,0 +1,78 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/linkerconfig (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/linkerconfig (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit ab22aeebded308f9f9f516d217ff3775a29591db
+Merge: ae0147e 45b1df7
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Wed Jan 27 14:32:14 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' of ssh://10.10.10.29:29418/android/platform/system/linkerconfig into eink
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/linkerconfig (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/linkerconfig (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit ab22aeebded308f9f9f516d217ff3775a29591db
+Merge: ae0147e 45b1df7
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Wed Jan 27 14:32:14 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' of ssh://10.10.10.29:29418/android/platform/system/linkerconfig into eink
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/linkerconfig (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/linkerconfig (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit ab22aeebded308f9f9f516d217ff3775a29591db
+Merge: ae0147e 45b1df7
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Wed Jan 27 14:32:14 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' of ssh://10.10.10.29:29418/android/platform/system/linkerconfig into eink
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/linkerconfig (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/linkerconfig (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit ab22aeebded308f9f9f516d217ff3775a29591db
+Merge: ae0147e 45b1df7
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Wed Jan 27 14:32:14 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' of ssh://10.10.10.29:29418/android/platform/system/linkerconfig into eink
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/linkerconfig (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/linkerconfig (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit ab22aeebded308f9f9f516d217ff3775a29591db
+Merge: ae0147e 45b1df7
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Wed Jan 27 14:32:14 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' of ssh://10.10.10.29:29418/android/platform/system/linkerconfig into eink
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/linkerconfig (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/linkerconfig (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit ab22aeebded308f9f9f516d217ff3775a29591db
+Merge: ae0147e 45b1df7
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Wed Jan 27 14:32:14 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' of ssh://10.10.10.29:29418/android/platform/system/linkerconfig into eink
+    
+    Android 11.0.0 release 28

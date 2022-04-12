@@ -1,0 +1,222 @@
+From ce31d1a77c2250cf0343ff6d3abd42bfcad6d55f Mon Sep 17 00:00:00 2001
+From: Rahul Sabnis <rahulsabnis@google.com>
+Date: Mon, 21 Sep 2020 20:50:10 -0700
+Subject: [PATCH 253/297] Move all BluetoothCodecConfig and
+ BluetoothCodecStatus APIs moved from the non-SDK API list to the blocklist in
+ Android 11 back to the non-SDK API list.
+
+Tag: #feature
+Bug: 168812851
+Test: atest BluetoothHostTest#testCodecMethodsAccessible
+Merged-In: I29983284b1a1c271d983c99b286e204604abdc72
+Change-Id: I29983284b1a1c271d983c99b286e204604abdc72
+---
+ .../bluetooth/BluetoothCodecConfig.java       | 32 ++++++++++++++++++-
+ .../bluetooth/BluetoothCodecStatus.java       |  5 +++
+ 2 files changed, 36 insertions(+), 1 deletion(-)
+
+diff --git a/core/java/android/bluetooth/BluetoothCodecConfig.java b/core/java/android/bluetooth/BluetoothCodecConfig.java
+index d2a15357aa1..735980beebb 100644
+--- a/core/java/android/bluetooth/BluetoothCodecConfig.java
++++ b/core/java/android/bluetooth/BluetoothCodecConfig.java
+@@ -51,19 +51,25 @@ public final class BluetoothCodecConfig implements Parcelable {
+     @Retention(RetentionPolicy.SOURCE)
+     public @interface SourceCodecType {}
+ 
++    @UnsupportedAppUsage
+     public static final int SOURCE_CODEC_TYPE_SBC = 0;
+ 
++    @UnsupportedAppUsage
+     public static final int SOURCE_CODEC_TYPE_AAC = 1;
+ 
++    @UnsupportedAppUsage
+     public static final int SOURCE_CODEC_TYPE_APTX = 2;
+ 
++    @UnsupportedAppUsage
+     public static final int SOURCE_CODEC_TYPE_APTX_HD = 3;
+ 
++    @UnsupportedAppUsage
+     public static final int SOURCE_CODEC_TYPE_LDAC = 4;
+ 
++    @UnsupportedAppUsage
+     public static final int SOURCE_CODEC_TYPE_MAX = 5;
+ 
+-
++    @UnsupportedAppUsage
+     public static final int SOURCE_CODEC_TYPE_INVALID = 1000 * 1000;
+ 
+     /** @hide */
+@@ -75,10 +81,13 @@ public final class BluetoothCodecConfig implements Parcelable {
+     @Retention(RetentionPolicy.SOURCE)
+     public @interface CodecPriority {}
+ 
++    @UnsupportedAppUsage
+     public static final int CODEC_PRIORITY_DISABLED = -1;
+ 
++    @UnsupportedAppUsage
+     public static final int CODEC_PRIORITY_DEFAULT = 0;
+ 
++    @UnsupportedAppUsage
+     public static final int CODEC_PRIORITY_HIGHEST = 1000 * 1000;
+ 
+ 
+@@ -95,18 +104,25 @@ public final class BluetoothCodecConfig implements Parcelable {
+     @Retention(RetentionPolicy.SOURCE)
+     public @interface SampleRate {}
+ 
++    @UnsupportedAppUsage
+     public static final int SAMPLE_RATE_NONE = 0;
+ 
++    @UnsupportedAppUsage
+     public static final int SAMPLE_RATE_44100 = 0x1 << 0;
+ 
++    @UnsupportedAppUsage
+     public static final int SAMPLE_RATE_48000 = 0x1 << 1;
+ 
++    @UnsupportedAppUsage
+     public static final int SAMPLE_RATE_88200 = 0x1 << 2;
+ 
++    @UnsupportedAppUsage
+     public static final int SAMPLE_RATE_96000 = 0x1 << 3;
+ 
++    @UnsupportedAppUsage
+     public static final int SAMPLE_RATE_176400 = 0x1 << 4;
+ 
++    @UnsupportedAppUsage
+     public static final int SAMPLE_RATE_192000 = 0x1 << 5;
+ 
+ 
+@@ -120,12 +136,16 @@ public final class BluetoothCodecConfig implements Parcelable {
+     @Retention(RetentionPolicy.SOURCE)
+     public @interface BitsPerSample {}
+ 
++    @UnsupportedAppUsage
+     public static final int BITS_PER_SAMPLE_NONE = 0;
+ 
++    @UnsupportedAppUsage
+     public static final int BITS_PER_SAMPLE_16 = 0x1 << 0;
+ 
++    @UnsupportedAppUsage
+     public static final int BITS_PER_SAMPLE_24 = 0x1 << 1;
+ 
++    @UnsupportedAppUsage
+     public static final int BITS_PER_SAMPLE_32 = 0x1 << 2;
+ 
+ 
+@@ -138,10 +158,13 @@ public final class BluetoothCodecConfig implements Parcelable {
+     @Retention(RetentionPolicy.SOURCE)
+     public @interface ChannelMode {}
+ 
++    @UnsupportedAppUsage
+     public static final int CHANNEL_MODE_NONE = 0;
+ 
++    @UnsupportedAppUsage
+     public static final int CHANNEL_MODE_MONO = 0x1 << 0;
+ 
++    @UnsupportedAppUsage
+     public static final int CHANNEL_MODE_STEREO = 0x1 << 1;
+ 
+     private final @SourceCodecType int mCodecType;
+@@ -154,6 +177,7 @@ public final class BluetoothCodecConfig implements Parcelable {
+     private final long mCodecSpecific3;
+     private final long mCodecSpecific4;
+ 
++    @UnsupportedAppUsage
+     public BluetoothCodecConfig(@SourceCodecType int codecType, @CodecPriority int codecPriority,
+             @SampleRate int sampleRate, @BitsPerSample int bitsPerSample,
+             @ChannelMode int channelMode, long codecSpecific1,
+@@ -170,6 +194,7 @@ public final class BluetoothCodecConfig implements Parcelable {
+         mCodecSpecific4 = codecSpecific4;
+     }
+ 
++    @UnsupportedAppUsage
+     public BluetoothCodecConfig(@SourceCodecType int codecType) {
+         mCodecType = codecType;
+         mCodecPriority = BluetoothCodecConfig.CODEC_PRIORITY_DEFAULT;
+@@ -391,6 +416,7 @@ public final class BluetoothCodecConfig implements Parcelable {
+      *
+      * @return the codec type
+      */
++    @UnsupportedAppUsage
+     public @SourceCodecType int getCodecType() {
+         return mCodecType;
+     }
+@@ -411,6 +437,7 @@ public final class BluetoothCodecConfig implements Parcelable {
+      *
+      * @return the codec priority
+      */
++    @UnsupportedAppUsage
+     public @CodecPriority int getCodecPriority() {
+         return mCodecPriority;
+     }
+@@ -441,6 +468,7 @@ public final class BluetoothCodecConfig implements Parcelable {
+      *
+      * @return the codec sample rate
+      */
++    @UnsupportedAppUsage
+     public @SampleRate int getSampleRate() {
+         return mSampleRate;
+     }
+@@ -455,6 +483,7 @@ public final class BluetoothCodecConfig implements Parcelable {
+      *
+      * @return the codec bits per sample
+      */
++    @UnsupportedAppUsage
+     public @BitsPerSample int getBitsPerSample() {
+         return mBitsPerSample;
+     }
+@@ -479,6 +508,7 @@ public final class BluetoothCodecConfig implements Parcelable {
+      *
+      * @return a codec specific value1.
+      */
++    @UnsupportedAppUsage
+     public long getCodecSpecific1() {
+         return mCodecSpecific1;
+     }
+diff --git a/core/java/android/bluetooth/BluetoothCodecStatus.java b/core/java/android/bluetooth/BluetoothCodecStatus.java
+index 1e394b830d5..7b567b4098e 100644
+--- a/core/java/android/bluetooth/BluetoothCodecStatus.java
++++ b/core/java/android/bluetooth/BluetoothCodecStatus.java
+@@ -17,6 +17,7 @@
+ package android.bluetooth;
+ 
+ import android.annotation.Nullable;
++import android.compat.annotation.UnsupportedAppUsage;
+ import android.os.Parcel;
+ import android.os.Parcelable;
+ 
+@@ -38,6 +39,7 @@ public final class BluetoothCodecStatus implements Parcelable {
+      * This extra represents the current codec status of the A2DP
+      * profile.
+      */
++    @UnsupportedAppUsage
+     public static final String EXTRA_CODEC_STATUS =
+             "android.bluetooth.extra.CODEC_STATUS";
+ 
+@@ -196,6 +198,7 @@ public final class BluetoothCodecStatus implements Parcelable {
+      *
+      * @return the current codec configuration
+      */
++    @UnsupportedAppUsage
+     public @Nullable BluetoothCodecConfig getCodecConfig() {
+         return mCodecConfig;
+     }
+@@ -205,6 +208,7 @@ public final class BluetoothCodecStatus implements Parcelable {
+      *
+      * @return an array with the codecs local capabilities
+      */
++    @UnsupportedAppUsage
+     public @Nullable BluetoothCodecConfig[] getCodecsLocalCapabilities() {
+         return mCodecsLocalCapabilities;
+     }
+@@ -214,6 +218,7 @@ public final class BluetoothCodecStatus implements Parcelable {
+      *
+      * @return an array with the codecs selectable capabilities
+      */
++    @UnsupportedAppUsage
+     public @Nullable BluetoothCodecConfig[] getCodecsSelectableCapabilities() {
+         return mCodecsSelectableCapabilities;
+     }
+-- 
+2.35.1
+

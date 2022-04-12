@@ -1,0 +1,262 @@
+From e5a22e82b2f8b716c252dadd2345938a6b34995c Mon Sep 17 00:00:00 2001
+From: Sahana Rao <sahanas@google.com>
+Date: Wed, 12 Feb 2020 20:15:43 +0000
+Subject: [PATCH 03/26] Delete database entry for files deleted by apps that
+ bypass restrictions
+
+Previously, apps that bypass scoped storage restrictions just deleted
+the file in lower file system, but file remained in database until the
+next scan. Changed deleteFileForFuse to try deleting the database entry
+using MediaProvider delete() method.
+
+Added a test to verify legcy app with write permission can delete files
+and corresponding database entry is deleted on deleting the file.
+
+Test: atest FuseDaemonHosteTest#testCanDeleteAllFiles_hasRW
+Test: atest FuseDaemonHostTest
+Change-Id: I4922d9d7b8485b93343bfa5a5f30d711a0546372
+(cherry picked from commit 4c8e8a18a1adc2644ce94f809066b4b91a00d779)
+---
+ .../providers/media/MediaProvider.java        | 15 +++--
+ tests/jni/FuseDaemonTest/Android.bp           |  5 +-
+ .../fused/host/LegacyAccessHostTest.java      |  9 ++-
+ .../FuseDaemonTest/legacy/AndroidManifest.xml |  3 +
+ .../fused/legacy/LegacyFileAccessTest.java    | 55 ++++++++++++++++++-
+ .../tests/fused/FilePathAccessTest.java       | 10 +---
+ 6 files changed, 81 insertions(+), 16 deletions(-)
+
+diff --git a/src/com/android/providers/media/MediaProvider.java b/src/com/android/providers/media/MediaProvider.java
+index 424f1f2c..2dafd9d8 100644
+--- a/src/com/android/providers/media/MediaProvider.java
++++ b/src/com/android/providers/media/MediaProvider.java
+@@ -5578,10 +5578,6 @@ public class MediaProvider extends ContentProvider {
+         final LocalCallingIdentity token =
+                 clearLocalCallingIdentity(LocalCallingIdentity.fromExternal(getContext(), uid));
+         try {
+-            if (shouldBypassFuseRestrictions(/*forWrite*/ true, path)) {
+-                return deleteFileUnchecked(path);
+-            }
+-
+             // Check if app is deleting a file under an app specific directory
+             final String appSpecificDir = extractPathOwnerPackageName(path);
+ 
+@@ -5595,9 +5591,12 @@ public class MediaProvider extends ContentProvider {
+                 }
+             }
+ 
++            final boolean shouldBypass = shouldBypassFuseRestrictions(/*forWrite*/ true,
++                    path);
++
+             // Legacy apps that made is this far don't have the right storage permission and hence
+             // are not allowed to access anything other than their external app directory
+-            if (isCallingPackageRequestingLegacy()) {
++            if (!shouldBypass && isCallingPackageRequestingLegacy()) {
+                 return OsConstants.EPERM;
+             }
+ 
+@@ -5611,6 +5610,12 @@ public class MediaProvider extends ContentProvider {
+             final String[] whereArgs = {sanitizedPath};
+ 
+             if (delete(contentUri, where, whereArgs) == 0) {
++                if (shouldBypass) {
++                    // For apps that bypass scoped storage restrictions, delete() should only fail
++                    // if the file is not in database. This shouldn't stop these apps from deleting
++                    // a file, hence delete the file in the lower file system.
++                    return deleteFileUnchecked(path);
++                }
+                 return OsConstants.ENOENT;
+             } else if (!path.equals(sanitizedPath)) {
+                 // delete() doesn't delete the file in lower file system if sanitized path is
+diff --git a/tests/jni/FuseDaemonTest/Android.bp b/tests/jni/FuseDaemonTest/Android.bp
+index 1c4afe68..35cc9df1 100644
+--- a/tests/jni/FuseDaemonTest/Android.bp
++++ b/tests/jni/FuseDaemonTest/Android.bp
+@@ -46,7 +46,10 @@ android_test {
+     static_libs: ["androidx.test.rules", "truth-prebuilt",  "tests-fusedaemon-lib"],
+     test_suites: ["general-tests", "mts"],
+     sdk_version: "test_current",
+-    target_sdk_version: "29"
++    target_sdk_version: "29",
++    java_resources: [
++        ":TestAppA",
++    ]
+ }
+ 
+ java_test_host {
+diff --git a/tests/jni/FuseDaemonTest/host/src/com/android/tests/fused/host/LegacyAccessHostTest.java b/tests/jni/FuseDaemonTest/host/src/com/android/tests/fused/host/LegacyAccessHostTest.java
+index 33b874f7..78283f76 100644
+--- a/tests/jni/FuseDaemonTest/host/src/com/android/tests/fused/host/LegacyAccessHostTest.java
++++ b/tests/jni/FuseDaemonTest/host/src/com/android/tests/fused/host/LegacyAccessHostTest.java
+@@ -154,8 +154,8 @@ public class LegacyAccessHostTest extends BaseHostJUnit4Test {
+     }
+ 
+     @Test
+-    public void testCanRename_hasW() throws Exception {
+-        runDeviceTest("testCanRename_hasW");
++    public void testCanRename_hasRW() throws Exception {
++        runDeviceTest("testCanRename_hasRW");
+     }
+ 
+     @Test
+@@ -176,4 +176,9 @@ public class LegacyAccessHostTest extends BaseHostJUnit4Test {
+             executeShellCommand("rm " + SHELL_FILE);
+         }
+     }
++
++    @Test
++    public void testCanDeleteAllFiles_hasRW() throws Exception {
++        runDeviceTest("testCanDeleteAllFiles_hasRW");
++    }
+ }
+diff --git a/tests/jni/FuseDaemonTest/legacy/AndroidManifest.xml b/tests/jni/FuseDaemonTest/legacy/AndroidManifest.xml
+index 25530b63..0665f911 100644
+--- a/tests/jni/FuseDaemonTest/legacy/AndroidManifest.xml
++++ b/tests/jni/FuseDaemonTest/legacy/AndroidManifest.xml
+@@ -18,7 +18,10 @@
+     package="com.android.tests.fused.legacy" >
+ 
+     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
++    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+     <application  android:requestLegacyExternalStorage="true" >
++        <receiver android:name="com.android.cts.install.lib.LocalIntentSender"
++                  android:exported="true" />
+         <uses-library android:name="android.test.runner" />
+     </application>
+ 
+diff --git a/tests/jni/FuseDaemonTest/legacy/src/com/android/tests/fused/legacy/LegacyFileAccessTest.java b/tests/jni/FuseDaemonTest/legacy/src/com/android/tests/fused/legacy/LegacyFileAccessTest.java
+index 2f897de3..64f67f53 100644
+--- a/tests/jni/FuseDaemonTest/legacy/src/com/android/tests/fused/legacy/LegacyFileAccessTest.java
++++ b/tests/jni/FuseDaemonTest/legacy/src/com/android/tests/fused/legacy/LegacyFileAccessTest.java
+@@ -16,7 +16,12 @@
+ 
+ package com.android.tests.fused.legacy;
+ 
++import static com.android.tests.fused.lib.TestUtils.createFileAs;
++import static com.android.tests.fused.lib.TestUtils.deleteFileAsNoThrow;
++import static com.android.tests.fused.lib.TestUtils.getFileRowIdFromDatabase;
++import static com.android.tests.fused.lib.TestUtils.installApp;
+ import static com.android.tests.fused.lib.TestUtils.pollForExternalStorageState;
++import static com.android.tests.fused.lib.TestUtils.uninstallApp;
+ 
+ import static com.android.tests.fused.lib.TestUtils.pollForPermission;
+ 
+@@ -34,6 +39,9 @@ import android.util.Log;
+ import androidx.test.InstrumentationRegistry;
+ import androidx.test.runner.AndroidJUnit4;
+ 
++import com.android.cts.install.lib.TestApp;
++import com.android.tests.fused.lib.ReaddirTestHelper;
++
+ import org.junit.Before;
+ import org.junit.Test;
+ import org.junit.runner.RunWith;
+@@ -57,6 +65,12 @@ public class LegacyFileAccessTest {
+ 
+     private static final String TAG = "LegacyFileAccessTest";
+ 
++    static final String VIDEO_FILE_NAME = "LegacyAccessTest_file.mp4";
++    static final String NONMEDIA_FILE_NAME = "LegacyAccessTest_file.pdf";
++
++    private static final TestApp TEST_APP_A  = new TestApp("TestAppA",
++            "com.android.tests.fused.testapp.A", 1, false, "TestAppA.apk");
++
+     @Before
+     public void setUp() throws Exception {
+         pollForExternalStorageState();
+@@ -254,7 +268,7 @@ public class LegacyFileAccessTest {
+      * restrictions imposed by MediaProvider
+      */
+     @Test
+-    public void testCanRename_hasW() throws Exception {
++    public void testCanRename_hasRW() throws Exception {
+         pollForPermission(Manifest.permission.READ_EXTERNAL_STORAGE, /*granted*/ true);
+         pollForPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, /*granted*/ true);
+ 
+@@ -359,6 +373,45 @@ public class LegacyFileAccessTest {
+         }
+     }
+ 
++    /**
++     * Test that legacy app with WRITE_EXTERNAL_STORAGE can delete all files, and corresponding
++     * database entry is deleted on deleting the file.
++     */
++    @Test
++    public void testCanDeleteAllFiles_hasRW() throws Exception {
++        pollForPermission(Manifest.permission.READ_EXTERNAL_STORAGE, /*granted*/ true);
++        pollForPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, /*granted*/ true);
++
++        final File EXTERNAL_STORAGE_DIR = Environment.getExternalStorageDirectory();
++        final File videoFile = new File(EXTERNAL_STORAGE_DIR, VIDEO_FILE_NAME);
++        final File otherAppPdfFile = new File(EXTERNAL_STORAGE_DIR,
++                Environment.DIRECTORY_DOWNLOADS + "/" + NONMEDIA_FILE_NAME);
++
++        try {
++            assertThat(videoFile.createNewFile()).isTrue();
++            assertThat(ReaddirTestHelper.readDirectory(EXTERNAL_STORAGE_DIR))
++                    .contains(VIDEO_FILE_NAME);
++
++            assertThat(getFileRowIdFromDatabase(videoFile)).isNotEqualTo(-1);
++            // Legacy app can delete its own file.
++            assertThat(videoFile.delete()).isTrue();
++            // Deleting the file will remove videoFile entry from database.
++            assertThat(getFileRowIdFromDatabase(videoFile)).isEqualTo(-1);
++
++            installApp(TEST_APP_A, false);
++            assertThat(createFileAs(TEST_APP_A, otherAppPdfFile.getAbsolutePath())).isTrue();
++            assertThat(getFileRowIdFromDatabase(otherAppPdfFile)).isNotEqualTo(-1);
++            // Legacy app with write permission can delete the pdfFile owned by TestApp.
++            assertThat(otherAppPdfFile.delete()).isTrue();
++            // Deleting the pdfFile also removes pdfFile from database.
++            assertThat(getFileRowIdFromDatabase(otherAppPdfFile)).isEqualTo(-1);
++        } finally {
++            deleteFileAsNoThrow(TEST_APP_A, otherAppPdfFile.getAbsolutePath());
++            uninstallApp(TEST_APP_A);
++            videoFile.delete();
++        }
++    }
++
+     private static void assertCanCreateFile(File file) throws IOException {
+         if (file.exists()) {
+             file.delete();
+diff --git a/tests/jni/FuseDaemonTest/src/com/android/tests/fused/FilePathAccessTest.java b/tests/jni/FuseDaemonTest/src/com/android/tests/fused/FilePathAccessTest.java
+index ba2a2fda..8f47edd9 100644
+--- a/tests/jni/FuseDaemonTest/src/com/android/tests/fused/FilePathAccessTest.java
++++ b/tests/jni/FuseDaemonTest/src/com/android/tests/fused/FilePathAccessTest.java
+@@ -1005,6 +1005,7 @@ public class FilePathAccessTest {
+             // to images and video only
+             assertThat(imageFile.renameTo(musicFile)).isFalse();
+         } finally {
++            deleteFileAsNoThrow(TEST_APP_A, otherAppVideoFile.getAbsolutePath());
+             uninstallApp(TEST_APP_A);
+             imageFile.delete();
+             videoFile.delete();
+@@ -1317,16 +1318,11 @@ public class FilePathAccessTest {
+ 
+             assertThat(otherAppMusic.delete()).isTrue();
+             assertThat(otherAppMusic.exists()).isFalse();
+-
+-            // Create the files again to allow the helper app to clean them up
+-            assertThat(otherAppPdf.createNewFile()).isTrue();
+-            assertThat(otherAppImage.createNewFile()).isTrue();
+-            assertThat(otherAppMusic.createNewFile()).isTrue();
+         } finally {
++            dropShellPermissionIdentity();
+             deleteFileAsNoThrow(TEST_APP_A, otherAppPdf.getAbsolutePath());
+             deleteFileAsNoThrow(TEST_APP_A, otherAppImage.getAbsolutePath());
+             deleteFileAsNoThrow(TEST_APP_A, otherAppMusic.getAbsolutePath());
+-            dropShellPermissionIdentity();
+             uninstallApp(TEST_APP_A);
+         }
+     }
+@@ -1380,7 +1376,7 @@ public class FilePathAccessTest {
+             topLevelPdf.delete();
+             musicFile.delete();
+             dropShellPermissionIdentity();
+-            otherAppPdf.delete();
++            deleteFileAsNoThrow(TEST_APP_A, otherAppPdf.getAbsolutePath());
+             uninstallApp(TEST_APP_A);
+         }
+     }
+-- 
+2.35.1
+

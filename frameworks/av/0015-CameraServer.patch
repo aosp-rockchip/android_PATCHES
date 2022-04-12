@@ -1,0 +1,27 @@
+From a44a66e88cbc7b5c6c824b8587eeed78771c564b Mon Sep 17 00:00:00 2001
+From: chenxiao <cx@rock-chips.com>
+Date: Tue, 13 Oct 2020 09:31:08 +0800
+Subject: [PATCH 15/25] CameraServer:     report all support fps.
+
+Signed-off-by: chenxiao <cx@rock-chips.com>
+Change-Id: I06194001d1fd44d563076bbb031765eeee1805f7
+---
+ services/camera/libcameraservice/api1/client2/Parameters.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/services/camera/libcameraservice/api1/client2/Parameters.cpp b/services/camera/libcameraservice/api1/client2/Parameters.cpp
+index a3c55b0aec..809c7b55e8 100644
+--- a/services/camera/libcameraservice/api1/client2/Parameters.cpp
++++ b/services/camera/libcameraservice/api1/client2/Parameters.cpp
+@@ -3089,7 +3089,7 @@ bool Parameters::isFpsSupported(const Vector<Size> &sizes, int format, int32_t f
+         // Add some margin here for the case where the hal supports 29.xxxfps.
+         maxSupportedFps += FPS_MARGIN;
+         if (fps > maxSupportedFps) {
+-            return false;
++            //return false;
+         }
+     }
+     return true;
+-- 
+2.35.1
+

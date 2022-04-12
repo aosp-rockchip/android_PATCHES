@@ -1,0 +1,636 @@
+From 08a011cb1773ed1922ece03f1d7fcd1b1f4675e7 Mon Sep 17 00:00:00 2001
+From: "alex.lin" <alex.lin@rock-chips.com>
+Date: Tue, 13 Oct 2020 10:30:03 +0800
+Subject: [PATCH 206/297] add volume down/up and screenshot button on
+ navigation bar
+
+Signed-off-by: alex.lin <alex.lin@rock-chips.com>
+Change-Id: Ie969a9a347adc051dc4a5b5041e3e1830895b65a
+---
+ core/java/android/provider/Settings.java      |  7 +++
+ .../SettingsProvider/res/values/defaults.xml  |  3 ++
+ .../providers/settings/DatabaseHelper.java    |  3 ++
+ .../res/drawable/ic_sysbar_capture_button.xml | 12 +++++
+ .../drawable/ic_sysbar_volume_add_button.xml  |  9 ++++
+ .../drawable/ic_sysbar_volume_sub_button.xml  |  9 ++++
+ packages/SystemUI/res/layout/screenshot.xml   | 29 ++++++++++
+ packages/SystemUI/res/layout/volume_add.xml   | 29 ++++++++++
+ packages/SystemUI/res/layout/volume_sub.xml   | 29 ++++++++++
+ .../SystemUI/res/values-sw400dp/config.xml    | 27 ++++++++++
+ .../SystemUI/res/values-sw400dp/dimens.xml    |  3 +-
+ .../SystemUI/res/values-sw410dp/dimens.xml    |  2 +
+ .../res/values-sw600dp-land/dimens.xml        |  4 +-
+ .../SystemUI/res/values-sw600dp/config.xml    |  2 +-
+ .../SystemUI/res/values-sw600dp/dimens.xml    |  4 +-
+ packages/SystemUI/res/values/config.xml       |  2 +-
+ .../phone/NavigationBarFragment.java          | 54 +++++++++++++++++++
+ .../phone/NavigationBarInflaterView.java      | 22 ++++++++
+ .../statusbar/phone/NavigationBarView.java    | 34 ++++++++++++
+ .../server/policy/PhoneWindowManager.java     | 13 +++++
+ 20 files changed, 290 insertions(+), 7 deletions(-)
+ create mode 100644 packages/SystemUI/res/drawable/ic_sysbar_capture_button.xml
+ create mode 100644 packages/SystemUI/res/drawable/ic_sysbar_volume_add_button.xml
+ create mode 100644 packages/SystemUI/res/drawable/ic_sysbar_volume_sub_button.xml
+ create mode 100644 packages/SystemUI/res/layout/screenshot.xml
+ create mode 100644 packages/SystemUI/res/layout/volume_add.xml
+ create mode 100644 packages/SystemUI/res/layout/volume_sub.xml
+ create mode 100644 packages/SystemUI/res/values-sw400dp/config.xml
+
+diff --git a/core/java/android/provider/Settings.java b/core/java/android/provider/Settings.java
+index 64d9c9dcc6e..55f81e6d36d 100755
+--- a/core/java/android/provider/Settings.java
++++ b/core/java/android/provider/Settings.java
+@@ -4495,6 +4495,13 @@ public final class Settings {
+         public static final String HIDE_ROTATION_LOCK_TOGGLE_FOR_ACCESSIBILITY =
+                 "hide_rotation_lock_toggle_for_accessibility";
+ 
++        /**
++         * screenshot button show.
++         *
++         * @hide
++         */
++        public static final String SCREENSHOT_BUTTON_SHOW = "screenshot_button_show";
++
+         /**
+          * Whether the phone vibrates when it is ringing due to an incoming call. This will
+          * be used by Phone and Setting apps; it shouldn't affect other apps.
+diff --git a/packages/SettingsProvider/res/values/defaults.xml b/packages/SettingsProvider/res/values/defaults.xml
+index 51f69a95e16..86f30424f7d 100644
+--- a/packages/SettingsProvider/res/values/defaults.xml
++++ b/packages/SettingsProvider/res/values/defaults.xml
+@@ -240,4 +240,7 @@
+ 
+     <!-- Default for setting for Settings.Global.HDMI_CONTROL_AUTO_DEVICE_OFF_ENABLED -->
+     <bool name="def_hdmiControlAutoDeviceOff">false</bool>
++
++    <!-- should show the screenshot button default -->
++    <integer name="def_screenshot_button_show">0</integer>
+ </resources>
+diff --git a/packages/SettingsProvider/src/com/android/providers/settings/DatabaseHelper.java b/packages/SettingsProvider/src/com/android/providers/settings/DatabaseHelper.java
+index 266bfe0a22b..a63497e8b94 100644
+--- a/packages/SettingsProvider/src/com/android/providers/settings/DatabaseHelper.java
++++ b/packages/SettingsProvider/src/com/android/providers/settings/DatabaseHelper.java
+@@ -2275,6 +2275,9 @@ class DatabaseHelper extends SQLiteOpenHelper {
+             loadIntegerSetting(stmt, Settings.System.POINTER_SPEED,
+                     R.integer.def_pointer_speed);
+ 
++            loadIntegerSetting(stmt, Settings.System.SCREENSHOT_BUTTON_SHOW,
++                    R.integer.def_screenshot_button_show);
++
+             /*
+              * IMPORTANT: Do not add any more upgrade steps here as the global,
+              * secure, and system settings are no longer stored in a database
+diff --git a/packages/SystemUI/res/drawable/ic_sysbar_capture_button.xml b/packages/SystemUI/res/drawable/ic_sysbar_capture_button.xml
+new file mode 100644
+index 00000000000..870b099ee6d
+--- /dev/null
++++ b/packages/SystemUI/res/drawable/ic_sysbar_capture_button.xml
+@@ -0,0 +1,12 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++        android:width="22dp"
++        android:height="22dp"
++        android:viewportWidth="24.0"
++        android:viewportHeight="24.0">
++    <path
++        android:fillColor="?attr/singleToneColor"
++        android:pathData="M12,12m-3.2,0a3.2,3.2 0,1 1,6.4 0a3.2,3.2 0,1 1,-6.4 0"/>
++    <path
++        android:fillColor="?attr/singleToneColor"
++        android:pathData="M9,2L7.17,4L4,4c-1.1,0 -2,0.9 -2,2v12c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2L22,6c0,-1.1 -0.9,-2 -2,-2h-3.17L15,2L9,2zM12,17c-2.76,0 -5,-2.24 -5,-5s2.24,-5 5,-5 5,2.24 5,5 -2.24,5 -5,5z"/>
++</vector>
+diff --git a/packages/SystemUI/res/drawable/ic_sysbar_volume_add_button.xml b/packages/SystemUI/res/drawable/ic_sysbar_volume_add_button.xml
+new file mode 100644
+index 00000000000..76a145eff0c
+--- /dev/null
++++ b/packages/SystemUI/res/drawable/ic_sysbar_volume_add_button.xml
+@@ -0,0 +1,9 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++        android:width="24dp"
++        android:height="24dp"
++        android:viewportWidth="24.0"
++        android:viewportHeight="24.0">
++    <path
++        android:fillColor="?attr/singleToneColor"
++        android:pathData="M3,9v6h4l5,5L12,4L7,9L3,9zM16.5,12c0,-1.77 -1.02,-3.29 -2.5,-4.03v8.05c1.48,-0.73 2.5,-2.25 2.5,-4.02zM14,3.23v2.06c2.89,0.86 5,3.54 5,6.71s-2.11,5.85 -5,6.71v2.06c4.01,-0.91 7,-4.49 7,-8.77s-2.99,-7.86 -7,-8.77z"/>
++</vector>
+diff --git a/packages/SystemUI/res/drawable/ic_sysbar_volume_sub_button.xml b/packages/SystemUI/res/drawable/ic_sysbar_volume_sub_button.xml
+new file mode 100644
+index 00000000000..69d86071ce1
+--- /dev/null
++++ b/packages/SystemUI/res/drawable/ic_sysbar_volume_sub_button.xml
+@@ -0,0 +1,9 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++        android:width="28dp"
++        android:height="28dp"
++        android:viewportWidth="24.0"
++        android:viewportHeight="24.0">
++    <path
++        android:fillColor="?attr/singleToneColor"
++        android:pathData="M18.5,12c0,-1.77 -1.02,-3.29 -2.5,-4.03v8.05c1.48,-0.73 2.5,-2.25 2.5,-4.02zM5,9v6h4l5,5V4L9,9H5z"/>
++</vector>
+diff --git a/packages/SystemUI/res/layout/screenshot.xml b/packages/SystemUI/res/layout/screenshot.xml
+new file mode 100644
+index 00000000000..a9eb713a727
+--- /dev/null
++++ b/packages/SystemUI/res/layout/screenshot.xml
+@@ -0,0 +1,29 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Copyright (C) 2016 The Android Open Source Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++<com.android.systemui.statusbar.policy.KeyButtonView
++    xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:systemui="http://schemas.android.com/apk/res-auto"
++    android:id="@+id/screenshot"
++    android:layout_width="@dimen/navigation_key_width"
++    android:layout_height="match_parent"
++    android:layout_weight="0"
++    systemui:keyCode="0"
++    android:scaleType="center"
++    android:contentDescription="@string/accessibility_home"
++    android:paddingStart="@dimen/navigation_key_padding"
++    android:paddingEnd="@dimen/navigation_key_padding"
++    />
++
+diff --git a/packages/SystemUI/res/layout/volume_add.xml b/packages/SystemUI/res/layout/volume_add.xml
+new file mode 100644
+index 00000000000..ba39304f086
+--- /dev/null
++++ b/packages/SystemUI/res/layout/volume_add.xml
+@@ -0,0 +1,29 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Copyright (C) 2016 The Android Open Source Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++<com.android.systemui.statusbar.policy.KeyButtonView
++    xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:systemui="http://schemas.android.com/apk/res-auto"
++    android:id="@+id/volume_add"
++    android:layout_width="@dimen/navigation_key_width"
++    android:layout_height="match_parent"
++    android:layout_weight="0"
++    systemui:keyCode="24"
++    android:scaleType="center"
++    android:contentDescription="@string/accessibility_home"
++    android:paddingStart="@dimen/navigation_key_padding"
++    android:paddingEnd="@dimen/navigation_key_padding"
++    />
++
+diff --git a/packages/SystemUI/res/layout/volume_sub.xml b/packages/SystemUI/res/layout/volume_sub.xml
+new file mode 100644
+index 00000000000..e2f5f033102
+--- /dev/null
++++ b/packages/SystemUI/res/layout/volume_sub.xml
+@@ -0,0 +1,29 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Copyright (C) 2016 The Android Open Source Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++<com.android.systemui.statusbar.policy.KeyButtonView
++    xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:systemui="http://schemas.android.com/apk/res-auto"
++    android:id="@+id/volume_sub"
++    android:layout_width="@dimen/navigation_key_width"
++    android:layout_height="match_parent"
++    android:layout_weight="0"
++    systemui:keyCode="25"
++    android:scaleType="center"
++    android:contentDescription="@string/accessibility_home"
++    android:paddingStart="@dimen/navigation_key_padding"
++    android:paddingEnd="@dimen/navigation_key_padding"
++    />
++
+diff --git a/packages/SystemUI/res/values-sw400dp/config.xml b/packages/SystemUI/res/values-sw400dp/config.xml
+new file mode 100644
+index 00000000000..de33fb57825
+--- /dev/null
++++ b/packages/SystemUI/res/values-sw400dp/config.xml
+@@ -0,0 +1,27 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++/*
++** Copyright 2012, The Android Open Source Project
++**
++** Licensed under the Apache License, Version 2.0 (the "License");
++** you may not use this file except in compliance with the License.
++** You may obtain a copy of the License at
++**
++**     http://www.apache.org/licenses/LICENSE-2.0
++**
++** Unless required by applicable law or agreed to in writing, software
++** distributed under the License is distributed on an "AS IS" BASIS,
++** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++** See the License for the specific language governing permissions and
++** limitations under the License.
++*/
++-->
++
++<!-- These resources are around just to allow their values to be customized
++     for different hardware and product builds. -->
++<resources>
++
++    <!-- Nav bar button default ordering/layout -->
++    <string name="config_navBarLayout" translatable="false">left;volume_sub,back,home,recent,volume_add,screenshot;right</string>
++
++</resources>
+diff --git a/packages/SystemUI/res/values-sw400dp/dimens.xml b/packages/SystemUI/res/values-sw400dp/dimens.xml
+index f19335bc628..340697a37fc 100644
+--- a/packages/SystemUI/res/values-sw400dp/dimens.xml
++++ b/packages/SystemUI/res/values-sw400dp/dimens.xml
+@@ -17,7 +17,8 @@
+ <resources>
+ 
+     <!-- The width of the view containing navigation buttons -->
+-    <dimen name="navigation_key_width">80dip</dimen>
++    <dimen name="navigation_key_width">50dp</dimen>
++    <dimen name="navigation_key_padding">30dp</dimen>
+ 
+     <!-- The padding on the side of the navigation bar. Must be greater than or equal to
+          navigation_extra_key_width -->
+diff --git a/packages/SystemUI/res/values-sw410dp/dimens.xml b/packages/SystemUI/res/values-sw410dp/dimens.xml
+index 6780dca130b..5711059dce6 100644
+--- a/packages/SystemUI/res/values-sw410dp/dimens.xml
++++ b/packages/SystemUI/res/values-sw410dp/dimens.xml
+@@ -37,4 +37,6 @@
+     <dimen name="global_actions_grid_item_icon_side_margin">24dp</dimen>
+     <dimen name="global_actions_grid_item_icon_bottom_margin">4dp</dimen>
+ 
++    <dimen name="navigation_key_width">55dp</dimen>
++    <dimen name="navigation_key_padding">33dp</dimen>
+ </resources>
+diff --git a/packages/SystemUI/res/values-sw600dp-land/dimens.xml b/packages/SystemUI/res/values-sw600dp-land/dimens.xml
+index f2df4b9023b..58965e72152 100644
+--- a/packages/SystemUI/res/values-sw600dp-land/dimens.xml
++++ b/packages/SystemUI/res/values-sw600dp-land/dimens.xml
+@@ -31,8 +31,8 @@
+          (screen_pinning_request_width - 3 * screen_pinning_request_button_width) / 2 -->
+     <dimen name="screen_pinning_request_side_width">2dp</dimen>
+ 
+-    <dimen name="navigation_key_width">162dp</dimen>
+-    <dimen name="navigation_key_padding">42dp</dimen>
++    <dimen name="navigation_key_width">120dp</dimen>
++    <dimen name="navigation_key_padding">50dp</dimen>
+ 
+     <dimen name="battery_detail_graph_space_top">27dp</dimen>
+     <dimen name="battery_detail_graph_space_bottom">27dp</dimen>
+diff --git a/packages/SystemUI/res/values-sw600dp/config.xml b/packages/SystemUI/res/values-sw600dp/config.xml
+index 5d20564a3ab..3c0ee9f8dd3 100644
+--- a/packages/SystemUI/res/values-sw600dp/config.xml
++++ b/packages/SystemUI/res/values-sw600dp/config.xml
+@@ -27,7 +27,7 @@
+     <integer name="quick_settings_user_time_settings_tile_span">1</integer>
+ 
+     <!-- Nav bar button default ordering/layout -->
+-    <string name="config_navBarLayout" translatable="false">left;back,home,recent;right</string>
++    <string name="config_navBarLayout" translatable="false">left;volume_sub,back,home,recent,volume_add,screenshot;right</string>
+ 
+     <!-- Animation duration when using long press on recents to dock -->
+     <integer name="long_press_dock_anim_duration">290</integer>
+diff --git a/packages/SystemUI/res/values-sw600dp/dimens.xml b/packages/SystemUI/res/values-sw600dp/dimens.xml
+index fdf4e3b1b79..4e125870f5d 100644
+--- a/packages/SystemUI/res/values-sw600dp/dimens.xml
++++ b/packages/SystemUI/res/values-sw600dp/dimens.xml
+@@ -86,8 +86,8 @@
+ 
+     <dimen name="fab_margin">24dp</dimen>
+ 
+-    <dimen name="navigation_key_width">128dp</dimen>
+-    <dimen name="navigation_key_padding">25dp</dimen>
++    <dimen name="navigation_key_width">75dp</dimen>
++    <dimen name="navigation_key_padding">50dp</dimen>
+ 
+     <!-- Keyboard shortcuts helper -->
+     <dimen name="ksh_layout_width">488dp</dimen>
+diff --git a/packages/SystemUI/res/values/config.xml b/packages/SystemUI/res/values/config.xml
+index 848cdb1e831..fb3f2aca240 100644
+--- a/packages/SystemUI/res/values/config.xml
++++ b/packages/SystemUI/res/values/config.xml
+@@ -317,7 +317,7 @@
+     </string-array>
+ 
+     <!-- Nav bar button default ordering/layout -->
+-    <string name="config_navBarLayout" translatable="false">left[.5W],back[1WC];home;recent[1WC],right[.5W]</string>
++    <string name="config_navBarLayout" translatable="false">left[.5W];volume_sub,back,home,recent,volume_add,screenshot;right[.5W]</string>
+     <string name="config_navBarLayoutQuickstep" translatable="false">back[1.7WC];home;contextual[1.7WC]</string>
+     <string name="config_navBarLayoutHandle" translatable="false">back[40AC];home_handle;ime_switcher[40AC]</string>
+ 
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
+index 27daf8615a3..3433526318b 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
+@@ -70,6 +70,7 @@ import android.os.Handler;
+ import android.os.IBinder;
+ import android.os.Looper;
+ import android.os.RemoteException;
++import android.os.SystemProperties;
+ import android.os.UserHandle;
+ import android.provider.DeviceConfig;
+ import android.provider.Settings;
+@@ -174,6 +175,7 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+     private @TransitionMode int mNavigationBarMode;
+     private AccessibilityManager mAccessibilityManager;
+     private ContentResolver mContentResolver;
++    private ContentObserver mScreenshotShowObserver;
+     private boolean mAssistantAvailable;
+ 
+     private int mDisabledFlags1;
+@@ -432,6 +434,17 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+         mContentResolver.registerContentObserver(
+                 Settings.Secure.getUriFor(Settings.Secure.ASSISTANT),
+                 false /* notifyForDescendants */, mAssistContentObserver, UserHandle.USER_ALL);
++        mScreenshotShowObserver = new ContentObserver( getContext().getMainThreadHandler()) {
++            @Override
++            public void onChange(boolean selfChange) {
++                boolean isShow = Settings.System.getInt(getContext().getContentResolver(), Settings.System.SCREENSHOT_BUTTON_SHOW, 1) == 1;
++                ButtonDispatcher screenshotButton = mNavigationBarView.getScreenshotButton();
++                screenshotButton.setVisibility(isShow ? View.VISIBLE : View.GONE);
++            }
++        };
++        mContentResolver.registerContentObserver(
++                Settings.System.getUriFor(Settings.System.SCREENSHOT_BUTTON_SHOW), true,
++                mScreenshotShowObserver, UserHandle.USER_ALL);
+ 
+         if (savedInstanceState != null) {
+             mDisabledFlags1 = savedInstanceState.getInt(EXTRA_DISABLE_STATE, 0);
+@@ -460,6 +473,9 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+         mContentResolver.unregisterContentObserver(mAssistContentObserver);
+ 
+         DeviceConfig.removeOnPropertiesChangedListener(mOnPropertiesChangedListener);
++        if(null != mScreenshotShowObserver){
++            mContentResolver.unregisterContentObserver(mScreenshotShowObserver);
++        }
+     }
+ 
+     @Override
+@@ -997,6 +1013,31 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+         updateAccessibilityServicesState(mAccessibilityManager);
+ 
+         updateScreenPinningGestures();
++
++        ButtonDispatcher screenshotButton = mNavigationBarView.getScreenshotButton();
++        screenshotButton.setOnClickListener(this:: screenshotClick);
++        screenshotButton.setOnTouchListener(this:: screenshotTouch);
++        boolean isShow=Settings.System.getInt(getContext().getContentResolver(), Settings.System.SCREENSHOT_BUTTON_SHOW, 1) == 1;
++        if(isShow){
++            screenshotButton.setVisibility(View.VISIBLE);
++        }else{
++            screenshotButton.setVisibility(View.GONE);
++        }
++
++        ButtonDispatcher volumeAddButton=mNavigationBarView.getVolumeAddButton();
++        ButtonDispatcher volumeSubButton=mNavigationBarView.getVolumeSubButton();
++        boolean isShowVolumeButton="true".equals(SystemProperties.get("ro.rk.systembar.voiceicon","true"));
++        if(isShowVolumeButton){
++            volumeAddButton.setVisibility(View.VISIBLE);
++            volumeSubButton.setVisibility(View.VISIBLE);
++        }else{
++            volumeAddButton.setVisibility(View.GONE);
++            volumeSubButton.setVisibility(View.GONE);
++        }
++        if (getContext().getResources().getConfiguration().smallestScreenWidthDp < 400) {
++            volumeAddButton.setVisibility(View.GONE);
++            volumeSubButton.setVisibility(View.GONE);
++        }
+     }
+ 
+     private boolean onHomeTouch(View v, MotionEvent event) {
+@@ -1183,6 +1224,19 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+                 MetricsEvent.ACTION_WINDOW_UNDOCK_LONGPRESS);
+     }
+ 
++    private boolean screenshotTouch(View v, MotionEvent event) {
++        if (event.getAction() == MotionEvent.ACTION_UP) {
++            Intent intent=new Intent("android.intent.action.SCREENSHOT");
++            getContext().sendBroadcast(intent);
++        }
++        return false;
++    }
++
++    private void screenshotClick(View v) {
++        Intent intent=new Intent("android.intent.action.SCREENSHOT");
++        getContext().sendBroadcast(intent);
++    }
++
+     private void onAccessibilityClick(View v) {
+         final Display display = v.getDisplay();
+         mAccessibilityManager.notifyAccessibilityButtonClicked(
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarInflaterView.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarInflaterView.java
+index 4337e20c0a3..70146739948 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarInflaterView.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarInflaterView.java
+@@ -64,6 +64,9 @@ public class NavigationBarInflaterView extends FrameLayout
+     public static final String RIGHT = "right";
+     public static final String CONTEXTUAL = "contextual";
+     public static final String IME_SWITCHER = "ime_switcher";
++    public static final String SCREENSHOT = "screenshot";
++    public static final String VOLUME_ADD = "volume_add";
++    public static final String VOLUME_SUB = "volume_sub";
+ 
+     public static final String GRAVITY_SEPARATOR = ";";
+     public static final String BUTTON_SEPARATOR = ",";
+@@ -95,11 +98,14 @@ public class NavigationBarInflaterView extends FrameLayout
+     private boolean mIsVertical;
+     private boolean mAlternativeOrder;
+ 
++    private int mDensity;
++
+     private OverviewProxyService mOverviewProxyService;
+     private int mNavBarMode = NAV_BAR_MODE_3BUTTON;
+ 
+     public NavigationBarInflaterView(Context context, AttributeSet attrs) {
+         super(context, attrs);
++        mDensity = context.getResources().getConfiguration().densityDpi;
+         createInflaters();
+         mOverviewProxyService = Dependency.get(OverviewProxyService.class);
+         mNavBarMode = Dependency.get(NavigationModeController.class).addListener(this);
+@@ -114,6 +120,16 @@ public class NavigationBarInflaterView extends FrameLayout
+         mLandscapeInflater = LayoutInflater.from(mContext.createConfigurationContext(landscape));
+     }
+ 
++    @Override
++    protected void onConfigurationChanged(Configuration newConfig) {
++        super.onConfigurationChanged(newConfig);
++        if(mDensity != newConfig.densityDpi || mDensity < 600){
++            mDensity = newConfig.densityDpi;
++            clearViews();
++            inflateLayout(mCurrentLayout);
++        }
++    }
++
+     @Override
+     protected void onFinishInflate() {
+         super.onFinishInflate();
+@@ -383,6 +399,12 @@ public class NavigationBarInflaterView extends FrameLayout
+             v = inflater.inflate(R.layout.home_handle, parent, false);
+         } else if (IME_SWITCHER.equals(button)) {
+             v = inflater.inflate(R.layout.ime_switcher, parent, false);
++        } else if (SCREENSHOT.equals(button)) {
++            v = inflater.inflate(R.layout.screenshot, parent, false);
++        } else if (VOLUME_ADD.equals(button)) {
++            v = inflater.inflate(R.layout.volume_add, parent, false);
++        } else if (VOLUME_SUB.equals(button)) {
++            v = inflater.inflate(R.layout.volume_sub, parent, false);
+         } else if (button.startsWith(KEY)) {
+             String uri = extractImage(button);
+             int code = extractKeycode(button);
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarView.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarView.java
+index 1eab427b415..a6f4a1dabb1 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarView.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarView.java
+@@ -49,6 +49,7 @@ import android.util.AttributeSet;
+ import android.util.Log;
+ import android.util.SparseArray;
+ import android.view.Display;
++import android.view.Display.Mode;
+ import android.view.MotionEvent;
+ import android.view.Surface;
+ import android.view.View;
+@@ -124,6 +125,9 @@ public class NavigationBarView extends FrameLayout implements
+     private KeyButtonDrawable mHomeDefaultIcon;
+     private KeyButtonDrawable mRecentIcon;
+     private KeyButtonDrawable mDockedIcon;
++    private KeyButtonDrawable mVolumeAddIcon;
++    private KeyButtonDrawable mVolumeSubIcon;
++    private KeyButtonDrawable mScreenshotIcon;
+ 
+     private EdgeBackGestureHandler mEdgeBackGestureHandler;
+     private final DeadZone mDeadZone;
+@@ -160,6 +164,9 @@ public class NavigationBarView extends FrameLayout implements
+      * fully locked mode we only show that unlocking is blocked.
+      */
+     private ScreenPinningNotify mScreenPinningNotify;
++
++    private boolean mIsRot0Landscape = true;
++
+     private Rect mSamplingBounds = new Rect();
+     /**
+      * When quickswitching between apps of different orientations, we draw a secondary home handle
+@@ -311,6 +318,11 @@ public class NavigationBarView extends FrameLayout implements
+         mTmpLastConfiguration = new Configuration();
+         mConfiguration.updateFrom(context.getResources().getConfiguration());
+ 
++        Display display = ((WindowManager)context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
++        Mode displayMode = display.getMode();
++        mIsRot0Landscape = displayMode.getPhysicalWidth() > displayMode.getPhysicalHeight();
++        Log.v(TAG, "PW=" + displayMode.getPhysicalWidth() + ", PH=" + displayMode.getPhysicalHeight());
++
+         mScreenPinningNotify = new ScreenPinningNotify(mContext);
+         mBarTransitions = new NavigationBarTransitions(this, Dependency.get(CommandQueue.class));
+ 
+@@ -322,6 +334,9 @@ public class NavigationBarView extends FrameLayout implements
+         mButtonDispatchers.put(R.id.accessibility_button, accessibilityButton);
+         mButtonDispatchers.put(R.id.rotate_suggestion, rotateSuggestionButton);
+         mButtonDispatchers.put(R.id.menu_container, mContextualButtonGroup);
++        mButtonDispatchers.put(R.id.screenshot, new ButtonDispatcher(R.id.screenshot));
++        mButtonDispatchers.put(R.id.volume_add, new ButtonDispatcher(R.id.volume_add));
++        mButtonDispatchers.put(R.id.volume_sub, new ButtonDispatcher(R.id.volume_sub));
+         mDeadZone = new DeadZone(this);
+ 
+         mNavColorSampleMargin = getResources()
+@@ -462,6 +477,18 @@ public class NavigationBarView extends FrameLayout implements
+         return mButtonDispatchers.get(R.id.accessibility_button);
+     }
+ 
++    public ButtonDispatcher getScreenshotButton() {
++        return mButtonDispatchers.get(R.id.screenshot);
++    }
++
++    public ButtonDispatcher getVolumeAddButton() {
++        return mButtonDispatchers.get(R.id.volume_add);
++    }
++
++    public ButtonDispatcher getVolumeSubButton() {
++        return mButtonDispatchers.get(R.id.volume_sub);
++    }
++
+     public RotationContextButton getRotateSuggestionButton() {
+         return (RotationContextButton) mButtonDispatchers.get(R.id.rotate_suggestion);
+     }
+@@ -506,6 +533,10 @@ public class NavigationBarView extends FrameLayout implements
+         if (orientationChange || densityChange || dirChange) {
+             mBackIcon = getBackDrawable();
+         }
++
++        mVolumeAddIcon = getDrawable(R.drawable.ic_sysbar_volume_add_button);
++        mVolumeSubIcon = getDrawable(R.drawable.ic_sysbar_volume_sub_button);
++        mScreenshotIcon = getDrawable(R.drawable.ic_sysbar_capture_button);
+     }
+ 
+     public KeyButtonDrawable getBackDrawable() {
+@@ -659,6 +690,9 @@ public class NavigationBarView extends FrameLayout implements
+         }
+         getHomeButton().setImageDrawable(homeIcon);
+         getBackButton().setImageDrawable(backIcon);
++        getVolumeAddButton().setImageDrawable(mVolumeAddIcon);
++        getVolumeSubButton().setImageDrawable(mVolumeSubIcon);
++        getScreenshotButton().setImageDrawable(mScreenshotIcon);
+ 
+         updateRecentsIcon();
+ 
+diff --git a/services/core/java/com/android/server/policy/PhoneWindowManager.java b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+index 0890b9212d2..d4039096a70 100644
+--- a/services/core/java/com/android/server/policy/PhoneWindowManager.java
++++ b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+@@ -1902,6 +1902,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+                     Intent.EXTRA_DOCK_STATE_UNDOCKED));
+         }
+ 
++        // register for screenshot broadcasts
++        filter=new IntentFilter();
++        filter.addAction("android.intent.action.SCREENSHOT");
++        context.registerReceiver(mScreenshotReceiver, filter);
++
+         // register for dream-related broadcasts
+         filter = new IntentFilter();
+         filter.addAction(Intent.ACTION_DREAMING_STARTED);
+@@ -4308,6 +4313,14 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         mBroadcastWakeLock.release();
+     }
+ 
++    BroadcastReceiver mScreenshotReceiver = new BroadcastReceiver() {
++        @Override
++        public void onReceive(Context context, Intent intent) {
++            mHandler.post(mScreenshotRunnable);
++        }
++    };
++
++
+     BroadcastReceiver mDockReceiver = new BroadcastReceiver() {
+         @Override
+         public void onReceive(Context context, Intent intent) {
+-- 
+2.35.1
+

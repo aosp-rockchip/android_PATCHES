@@ -1,0 +1,44 @@
+From 12da448c7742868c14ccad893325b19b67ea2458 Mon Sep 17 00:00:00 2001
+From: Longjian Lin <llj@rock-chips.com>
+Date: Fri, 23 Oct 2020 16:32:10 +0800
+Subject: [PATCH 05/24] gnss: add android.hardware.gnss@1.0-service.xml
+
+Change-Id: I5eabe0745d42aba671171c7e03e216b4621eb536
+---
+ gnss/1.0/default/Android.bp                           |  1 +
+ .../1.0/default/android.hardware.gnss@1.0-service.xml | 11 +++++++++++
+ 2 files changed, 12 insertions(+)
+ create mode 100644 gnss/1.0/default/android.hardware.gnss@1.0-service.xml
+
+diff --git a/gnss/1.0/default/Android.bp b/gnss/1.0/default/Android.bp
+index 57d8903c4..f0e3d48ae 100644
+--- a/gnss/1.0/default/Android.bp
++++ b/gnss/1.0/default/Android.bp
+@@ -3,6 +3,7 @@ cc_library_shared {
+     defaults: ["hidl_defaults"],
+     vendor: true,
+     relative_install_path: "hw",
++    vintf_fragments: ["android.hardware.gnss@1.0-service.xml"],
+     srcs: [
+         "ThreadCreationWrapper.cpp",
+         "AGnss.cpp",
+diff --git a/gnss/1.0/default/android.hardware.gnss@1.0-service.xml b/gnss/1.0/default/android.hardware.gnss@1.0-service.xml
+new file mode 100644
+index 000000000..6fc26eda2
+--- /dev/null
++++ b/gnss/1.0/default/android.hardware.gnss@1.0-service.xml
+@@ -0,0 +1,11 @@
++<manifest version="1.0" type="device">
++    <hal format="hidl">
++        <name>android.hardware.gnss</name>
++        <transport>hwbinder</transport>
++        <version>1.0</version>
++        <interface>
++            <name>IGnss</name>
++            <instance>default</instance>
++        </interface>
++    </hal>
++</manifest>
+-- 
+2.35.1
+

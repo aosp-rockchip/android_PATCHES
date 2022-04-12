@@ -1,0 +1,67 @@
+From 780bdd9a0d4c528b2c0a63c7752d90782c4bcdc1 Mon Sep 17 00:00:00 2001
+From: Dave Mankoff <mankoff@google.com>
+Date: Fri, 13 Sep 2019 14:35:15 -0400
+Subject: [PATCH 016/297] Workaround multiple instance of AppComponentFactory.
+
+When a device is newly reformatted, we can end up with multiple
+instances of AppComponentFactory. We need to ensure they are all
+injected into properly so that we don't get NPEs.
+
+Bug: 140556803
+Test: atest SystemUITests && manual
+Change-Id: Ia2076124b9435a6a8ff6305f4442df8cf7f1034c
+(cherry picked from commit 66c4c72ba4a79a3f28833744411d5e1387bb4bbc)
+---
+ .../systemui/SystemUIAppComponentFactory.java     | 15 ++++-----------
+ 1 file changed, 4 insertions(+), 11 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/SystemUIAppComponentFactory.java b/packages/SystemUI/src/com/android/systemui/SystemUIAppComponentFactory.java
+index e8b5285c264..3eb330e0438 100644
+--- a/packages/SystemUI/src/com/android/systemui/SystemUIAppComponentFactory.java
++++ b/packages/SystemUI/src/com/android/systemui/SystemUIAppComponentFactory.java
+@@ -21,8 +21,6 @@ import android.app.Service;
+ import android.content.ContentProvider;
+ import android.content.Context;
+ import android.content.Intent;
+-import android.os.Process;
+-import android.util.Log;
+ 
+ import androidx.annotation.NonNull;
+ import androidx.core.app.AppComponentFactory;
+@@ -60,9 +58,6 @@ public class SystemUIAppComponentFactory extends AppComponentFactory {
+                         SystemUIFactory.createFromConfig(context);
+                         SystemUIFactory.getInstance().getRootComponent().inject(
+                                 SystemUIAppComponentFactory.this);
+-                        Log.d(TAG, "Initialized during Application creation in Process "
+-                                + Process.myPid() + ", Thread " + Process.myTid());
+-                        Log.d(TAG, "mComponentHelper: " + mComponentHelper);
+                     }
+             );
+         }
+@@ -83,8 +78,6 @@ public class SystemUIAppComponentFactory extends AppComponentFactory {
+                         SystemUIFactory.createFromConfig(context);
+                         SystemUIFactory.getInstance().getRootComponent().inject(
+                                 contentProvider);
+-                        Log.d(TAG, "Initialized during ContentProvider creation in Process "
+-                                + Process.myPid() + ", Thread " + Process.myTid());
+                     }
+             );
+         }
+@@ -98,10 +91,10 @@ public class SystemUIAppComponentFactory extends AppComponentFactory {
+             @NonNull ClassLoader cl, @NonNull String className, Intent intent)
+             throws InstantiationException, IllegalAccessException, ClassNotFoundException {
+         if (mComponentHelper == null) {
+-            // Everything is about to crash if this is true, but that is inevitable. We either crash
+-            // here or crash lower in the stack. Better to crash early!
+-            Log.wtf(TAG, "Uninitialized mComponentHelper in Process" + Process.myPid() + ", Thread "
+-                    + Process.myTid());
++            // This shouldn't happen, but does when a device is freshly formatted.
++            // Bug filed against framework to take a look: http://b/141008541
++            SystemUIFactory.getInstance().getRootComponent().inject(
++                    SystemUIAppComponentFactory.this);
+         }
+         Service service = mComponentHelper.resolveService(className);
+         if (service != null) {
+-- 
+2.35.1
+

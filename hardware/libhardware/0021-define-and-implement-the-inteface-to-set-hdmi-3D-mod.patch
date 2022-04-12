@@ -1,0 +1,78 @@
+From f9a70001b9e8614b89af853a34578a3be389b751 Mon Sep 17 00:00:00 2001
+From: hehua <hh@rock-chips.com>
+Date: Wed, 21 Nov 2018 18:28:50 +0800
+Subject: [PATCH 21/36] define and implement the inteface to set hdmi 3D mode
+
+Change-Id: I0091f02e6864ebd776d826d3498520daf2b8c81f
+Signed-off-by: hehua <hh@rock-chips.com>
+---
+ include/hardware/hw_output.h    |  2 +-
+ modules/hw_output/hw_output.cpp | 19 +++++++++++++++++++
+ 2 files changed, 20 insertions(+), 1 deletion(-)
+ mode change 100644 => 100755 include/hardware/hw_output.h
+ mode change 100644 => 100755 modules/hw_output/hw_output.cpp
+
+diff --git a/include/hardware/hw_output.h b/include/hardware/hw_output.h
+old mode 100644
+new mode 100755
+index eb7b125b..e11faa45
+--- a/include/hardware/hw_output.h
++++ b/include/hardware/hw_output.h
+@@ -355,7 +355,7 @@ typedef struct hw_output_device {
+ 
+ 	void (*hotplug)(struct hw_output_device* dev);
+ 	void (*saveConfig)(struct hw_output_device* dev);
+-
++	int (*set3DMode)(struct hw_output_device* dev, const char* mode);
+     void* reserved[2];
+ } hw_output_device_t;
+ /** convenience API for opening and closing a supported device */
+diff --git a/modules/hw_output/hw_output.cpp b/modules/hw_output/hw_output.cpp
+old mode 100644
+new mode 100755
+index dc064624..c5df5095
+--- a/modules/hw_output/hw_output.cpp
++++ b/modules/hw_output/hw_output.cpp
+@@ -882,6 +882,23 @@ static int hw_output_set_mode(struct hw_output_device*, int dpy, const char* mod
+     return 0;
+ }
+ 
++static int hw_output_set_3d_mode(struct hw_output_device*, const char* mode)
++{
++    char property[PROPERTY_VALUE_MAX];
++    property_get("vendor.3d_resolution.main", property, "null");
++    if (strcmp(mode, property) !=0) {
++        char tmp[128];
++
++        timeline++;
++        snprintf(tmp,128, "%d", timeline);
++
++        ALOGV("%s: setprop vendor.3d_resolution.main %s",__FUNCTION__,mode);
++        property_set("vendor.3d_resolution.main", mode);
++        property_set("vendor.display.timeline", tmp);
++    }
++    return 0;
++}
++
+ static int hw_output_set_gamma(struct hw_output_device* dev, int dpy, uint32_t size, uint16_t* r, uint16_t* g, uint16_t* b)
+ {
+     hw_output_private_t* priv = (hw_output_private_t*)dev;
+@@ -1381,6 +1398,7 @@ static drm_mode_t* hw_output_get_display_modes(struct hw_output_device* dev, int
+ static int hw_output_device_close(struct hw_device_t *dev)
+ {
+     hw_output_private_t* priv = (hw_output_private_t*)dev;
++
+     if (priv) {
+         free(priv);
+     }
+@@ -1405,6 +1423,7 @@ static int hw_output_device_open(const struct hw_module_t* module,
+ 
+         dev->device.initialize = hw_output_initialize;
+         dev->device.setMode = hw_output_set_mode;
++        dev->device.set3DMode = hw_output_set_3d_mode;
+         dev->device.setBrightness = hw_output_set_brightness;
+         dev->device.setContrast = hw_output_set_contrast;
+         dev->device.setSat = hw_output_set_sat;
+-- 
+2.35.1
+

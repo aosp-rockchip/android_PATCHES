@@ -1,0 +1,57 @@
+From 61b6c2988821d6055a2d3b23eefddfd711f5c529 Mon Sep 17 00:00:00 2001
+From: Yohei Yukawa <yukawa@google.com>
+Date: Fri, 17 Jul 2020 16:10:13 -0700
+Subject: [PATCH 188/297] Fix missing IME switcher icon (w/ a hardware
+ keyboard)
+
+This is a follow up CL to our previous CL [1], which aimed to adjust
+the timing to change navbar icons that depend on the IME window
+visibility.
+
+One thing we overlooked is that only InputMethodService#IME_VISIBLE
+needed to be cleared to keep the back button icon to behave as if the
+IME window was invisible.  For the IME switcher icon to work as
+intended, the current protocol requires InputMethodService.IME_ACTIVE
+to remain to be set even when an IME window is invisible as long as
+there is an active session between the app and the IME.
+
+ [1]: I4dc9d6513d0559156f7da39244f3fc5ebc952ed4
+      c22eec9d35e797417b8630fff178ec53e7c29b65
+
+Fix: 160283619
+Test: Manually done as follows:
+  1. Build aosp_coral-userdebug and flash it
+  2. make -j SoftKeyboard
+  3. adb install -r $OUT/system/app/SoftKeyboard/SoftKeyboard.apk
+  4. adb shell ime enable com.example.android.softkeyboard/.SoftKeyboard
+  5. adb shell ime set com.example.android.softkeyboard/.SoftKeyboard
+  6. Open any app that has an EditText
+  7. Focus in to the EditText. Make sure the IME shows up and the IME
+     switcher icon is visible on the navbar.
+  8. Attach a hardware keyboard. Make sure that the IME becomes hidden
+     while the IME switcher icon remains to be visible on the navbar.
+  9. Detach the hardware keyboard.  Make sure that the IME switcher
+     icon remains to be visible on the navbar.
+Change-Id: I4a9ddf514a32a221c2372be0ca166fbdac555932
+Merged-In: I4a9ddf514a32a221c2372be0ca166fbdac555932
+(cherry picked from commit 5749b51f8c739f8fa82760a8a7868e9b05aa9dd2)
+---
+ .../android/server/inputmethod/InputMethodManagerService.java   | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/inputmethod/InputMethodManagerService.java b/services/core/java/com/android/server/inputmethod/InputMethodManagerService.java
+index 0154fe07a41..254285dfbd4 100644
+--- a/services/core/java/com/android/server/inputmethod/InputMethodManagerService.java
++++ b/services/core/java/com/android/server/inputmethod/InputMethodManagerService.java
+@@ -2942,7 +2942,7 @@ public class InputMethodManagerService extends IInputMethodManager.Stub
+                 vis = 0;
+             }
+             if (!mCurPerceptible) {
+-                vis = 0;
++                vis &= ~InputMethodService.IME_VISIBLE;
+             }
+             // mImeWindowVis should be updated before calling shouldShowImeSwitcherLocked().
+             final boolean needsToShowImeSwitcher = shouldShowImeSwitcherLocked(vis);
+-- 
+2.35.1
+

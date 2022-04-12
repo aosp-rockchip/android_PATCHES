@@ -1,0 +1,117 @@
+From 23dab11b42628f6b7b86cca446e2e20a1671fd3a Mon Sep 17 00:00:00 2001
+From: Mohammad Samiul Islam <samiul@google.com>
+Date: Fri, 23 Oct 2020 13:53:52 +0100
+Subject: [PATCH 258/297] Prevent exceptions in pre-reboot verification from
+ crashing system server
+
+An unhandled exception during pre-reboot verification will cause system
+server to crash and restart.
+
+Instead of allowing the exception to crash the system server, we now
+catch it and fail the corresponding staged session with appropriate
+message.
+
+Bug: 170784748
+Test: manual
+Test: verified that without this fix, any unhandled exception crashes
+the system server.
+
+Change-Id: If100796687906be67bc02ea63a78e1b6e291ce7a
+Merged-In: If100796687906be67bc02ea63a78e1b6e291ce7a
+(cherry picked from commit 5a2548589560404f9fce4914216564b0333895d4)
+---
+ .../com/android/server/pm/StagingManager.java | 64 +++++++++++++++----
+ 1 file changed, 51 insertions(+), 13 deletions(-)
+
+diff --git a/services/core/java/com/android/server/pm/StagingManager.java b/services/core/java/com/android/server/pm/StagingManager.java
+index 5b1c0fdb824..e5083432db5 100644
+--- a/services/core/java/com/android/server/pm/StagingManager.java
++++ b/services/core/java/com/android/server/pm/StagingManager.java
+@@ -1074,6 +1074,26 @@ public class StagingManager {
+         return true;
+     }
+ 
++    /**
++     * Ensure that there is no active apex session staged in apexd for the given session.
++     *
++     * @return returns true if it is ensured that there is no active apex session, otherwise false
++     */
++    private boolean ensureActiveApexSessionIsAborted(PackageInstallerSession session) {
++        if (!sessionContainsApex(session)) {
++            return true;
++        }
++        final ApexSessionInfo apexSession = mApexManager.getStagedSessionInfo(session.sessionId);
++        if (apexSession == null || isApexSessionFinalized(apexSession)) {
++            return true;
++        }
++        try {
++            return mApexManager.abortStagedSession(session.sessionId);
++        } catch (PackageManagerException ignore) {
++            return false;
++        }
++    }
++
+     private boolean isApexSessionFinalized(ApexSessionInfo session) {
+         /* checking if the session is in a final state, i.e., not active anymore */
+         return session.isUnknown || session.isActivationFailed || session.isSuccess
+@@ -1305,19 +1325,26 @@ public class StagingManager {
+                 onPreRebootVerificationComplete(sessionId);
+                 return;
+             }
+-            switch (msg.what) {
+-                case MSG_PRE_REBOOT_VERIFICATION_START:
+-                    handlePreRebootVerification_Start(session);
+-                    break;
+-                case MSG_PRE_REBOOT_VERIFICATION_APEX:
+-                    handlePreRebootVerification_Apex(session);
+-                    break;
+-                case MSG_PRE_REBOOT_VERIFICATION_APK:
+-                    handlePreRebootVerification_Apk(session);
+-                    break;
+-                case MSG_PRE_REBOOT_VERIFICATION_END:
+-                    handlePreRebootVerification_End(session);
+-                    break;
++            try {
++                switch (msg.what) {
++                    case MSG_PRE_REBOOT_VERIFICATION_START:
++                        handlePreRebootVerification_Start(session);
++                        break;
++                    case MSG_PRE_REBOOT_VERIFICATION_APEX:
++                        handlePreRebootVerification_Apex(session);
++                        break;
++                    case MSG_PRE_REBOOT_VERIFICATION_APK:
++                        handlePreRebootVerification_Apk(session);
++                        break;
++                    case MSG_PRE_REBOOT_VERIFICATION_END:
++                        handlePreRebootVerification_End(session);
++                        break;
++                }
++            } catch (Exception e) {
++                Slog.e(TAG, "Pre-reboot verification failed due to unhandled exception", e);
++                onPreRebootVerificationFailure(session,
++                        SessionInfo.STAGED_SESSION_ACTIVATION_FAILED,
++                        "Pre-reboot verification failed due to unhandled exception: " + e);
+             }
+         }
+ 
+@@ -1354,6 +1381,17 @@ public class StagingManager {
+             obtainMessage(MSG_PRE_REBOOT_VERIFICATION_START, sessionId, 0).sendToTarget();
+         }
+ 
++        private void onPreRebootVerificationFailure(PackageInstallerSession session,
++                @SessionInfo.StagedSessionErrorCode int errorCode, String errorMessage) {
++            if (!ensureActiveApexSessionIsAborted(session)) {
++                Slog.e(TAG, "Failed to abort apex session " + session.sessionId);
++                // Safe to ignore active apex session abortion failure since session will be marked
++                // failed on next step and staging directory for session will be deleted.
++            }
++            session.setStagedSessionFailed(errorCode, errorMessage);
++            onPreRebootVerificationComplete(session.sessionId);
++        }
++
+         // Things to do when pre-reboot verification completes for a particular sessionId
+         private void onPreRebootVerificationComplete(int sessionId) {
+             // Remove it from mVerificationRunning so that verification is considered complete
+-- 
+2.35.1
+

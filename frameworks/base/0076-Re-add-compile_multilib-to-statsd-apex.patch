@@ -1,0 +1,43 @@
+From 1a5e6c75d8bcdc71b55fbab21964c186ef8ec9a7 Mon Sep 17 00:00:00 2001
+From: Muhammad Qureshi <muhammadq@google.com>
+Date: Tue, 18 Feb 2020 11:30:17 -0800
+Subject: [PATCH 076/297] Re-add compile_multilib to statsd apex
+
+An earlier revert removed compile_multilib: both line which caused only
+64-bit variant of libstats_jni to be added to the apex when 32-bit is
+also required.
+
+This change adds both 32-bit and 64-bit variants to the apex.
+
+Bug: 149720256
+Test: m
+Test: fastboot flashall
+Test: launch Play Store
+Change-Id: I594b290e60052e28139cd954a54ada1067d43e09
+(cherry picked from commit 6f83764ce50ef635a68daffbe705e27411dacab0)
+---
+ apex/statsd/Android.bp | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/apex/statsd/Android.bp b/apex/statsd/Android.bp
+index c8aa526254b..0e9311034ee 100644
+--- a/apex/statsd/Android.bp
++++ b/apex/statsd/Android.bp
+@@ -27,6 +27,7 @@ apex_defaults {
+         "framework-statsd",
+         "service-statsd",
+     ],
++    compile_multilib: "both",
+     // prebuilts: ["my_prebuilt"],
+     name: "com.android.os.statsd-defaults",
+     key: "com.android.os.statsd.key",
+@@ -72,4 +73,4 @@ cc_library_shared {
+         "com.android.os.statsd",
+         "test_com.android.os.statsd",
+     ],
+-}
+\ No newline at end of file
++}
+-- 
+2.35.1
+

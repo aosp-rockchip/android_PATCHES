@@ -1,0 +1,37 @@
+From d027dcb83a71fd5264086aa53a05066e9db4ff48 Mon Sep 17 00:00:00 2001
+From: Grace Jia <xiaotonj@google.com>
+Date: Wed, 5 Feb 2020 18:05:30 -0800
+Subject: [PATCH 1/5] Fix unexpected crashed phone app notification when use
+ system dialer as default dialer.
+
+Test: Manually test with system dialer
+Bug: 148758211
+Change-Id: I80985c666f8f7f824b1057a8fdbf27774bfe4974
+(cherry picked from commit d5b8466e0bedc5506a28d3d06703ba1e3c4c5c86)
+---
+ src/com/android/server/telecom/InCallController.java | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/src/com/android/server/telecom/InCallController.java b/src/com/android/server/telecom/InCallController.java
+index f3a030eb4..6a9771a11 100644
+--- a/src/com/android/server/telecom/InCallController.java
++++ b/src/com/android/server/telecom/InCallController.java
+@@ -1312,10 +1312,13 @@ public class InCallController extends CallsManagerListenerBase {
+     private InCallServiceInfo getDefaultDialerComponent() {
+         String packageName = mDefaultDialerCache.getDefaultDialerApplication(
+                 mCallsManager.getCurrentUserHandle().getIdentifier());
++        String systemPackageName = mDefaultDialerCache.getSystemDialerApplication();
+         Log.d(this, "Default Dialer package: " + packageName);
+ 
+-        InCallServiceInfo defaultDialerComponent = getInCallServiceComponent(packageName,
+-                IN_CALL_SERVICE_TYPE_DIALER_UI);
++        InCallServiceInfo defaultDialerComponent =
++                (systemPackageName != null && systemPackageName.equals(packageName))
++                ? getInCallServiceComponent(packageName, IN_CALL_SERVICE_TYPE_SYSTEM_UI)
++                : getInCallServiceComponent(packageName, IN_CALL_SERVICE_TYPE_DIALER_UI);
+         if (packageName != null && defaultDialerComponent == null) {
+             // The in call service of default phone app is disabled, send notification.
+             sendCrashedInCallServiceNotification(packageName);
+-- 
+2.35.1
+

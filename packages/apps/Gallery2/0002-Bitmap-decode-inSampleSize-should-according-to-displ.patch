@@ -1,0 +1,51 @@
+From aedc95578dfa9c0390cae00c3ebfb1ef95456c44 Mon Sep 17 00:00:00 2001
+From: callen <callen.cai@rock-chips.com>
+Date: Mon, 10 Aug 2020 17:09:34 +0800
+Subject: [PATCH 2/5] Bitmap decode inSampleSize should according to display
+ size.
+
+Change-Id: Ia0d37f94ab4f6673feffec2c263dd178210961bc
+Signed-off-by: callen <callen.cai@rock-chips.com>
+(cherry picked from commit 1e2345bc908ad9c7cbfb0ffd803a9e029e861f6e)
+---
+ src/com/android/gallery3d/data/LocalImage.java | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/src/com/android/gallery3d/data/LocalImage.java b/src/com/android/gallery3d/data/LocalImage.java
+index 15ad6a152..3a2d793c9 100644
+--- a/src/com/android/gallery3d/data/LocalImage.java
++++ b/src/com/android/gallery3d/data/LocalImage.java
+@@ -51,6 +51,8 @@ import java.io.File;
+ import java.io.FileNotFoundException;
+ import java.io.IOException;
+ import java.io.InputStream;
++import android.util.DisplayMetrics;
++import android.view.WindowManager;
+ 
+ // LocalImage represents an image in the local storage.
+ public class LocalImage extends LocalMediaItem {
+@@ -195,8 +197,9 @@ public class LocalImage extends LocalMediaItem {
+         @Override
+         public Bitmap onDecodeOriginal(JobContext jc, final int type) {
+             if(type == MediaItem.TYPE_DECODE){
++                DisplayMetrics dm = mApplication.getResources().getDisplayMetrics();
+                   return new com.android.gallery3d.util.BitmapUtils(mApplication.getAndroidContext())
+-                    .getBitmap(getContentUri(), 1024, 768);
++                    .getBitmap(getContentUri(), dm.widthPixels, dm.heightPixels);
+             }
+             BitmapFactory.Options options = new BitmapFactory.Options();
+             options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+@@ -406,8 +409,9 @@ public class LocalImage extends LocalMediaItem {
+ 
+         @Override
+         public BitmapInfo run(JobContext jc) {
++            DisplayMetrics dm = mApplication.getResources().getDisplayMetrics();
+             return new BitmapInfo(mUri,
+-                    new com.android.gallery3d.util.BitmapUtils(mApplication.getAndroidContext()).getNotRotateBitmap(mUri, 1024, 768));
++                    new com.android.gallery3d.util.BitmapUtils(mApplication.getAndroidContext()).getNotRotateBitmap(mUri, dm.widthPixels, dm.heightPixels));
+         }
+     }
+ }
+-- 
+2.35.1
+

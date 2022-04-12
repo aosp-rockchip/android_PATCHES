@@ -1,0 +1,111 @@
+From 05ef1919b8ba0f9cfd21292d8638453480e79ab2 Mon Sep 17 00:00:00 2001
+From: Kevin Lau Fang <fangk@google.com>
+Date: Thu, 14 Nov 2019 20:07:38 +0000
+Subject: [PATCH 06/25] Revert submission
+
+Reason for revert: This causes a boot issue on Taimen (b/144480969). It wasn't caught by TreeHugger due to Taimen tests being disabled due to a different lab outage (b/144350336).
+
+Change-Id: I490dc6c933c08c3c83b962786df11bd2da66b28a
+(cherry picked from commit 40dd1e2183427ecdf79cba299a422d9ea43b66c8)
+---
+ src/com/android/settings/deviceinfo/PrivateVolumeSettings.java  | 2 +-
+ .../FirmwareVersionDetailPreferenceController.java              | 2 +-
+ .../firmwareversion/FirmwareVersionPreferenceController.java    | 2 +-
+ .../settings/system/SystemUpdatePreferenceController.java       | 2 +-
+ .../FirmwareVersionDetailPreferenceControllerTest.java          | 2 +-
+ .../FirmwareVersionPreferenceControllerTest.java                | 2 +-
+ .../settings/system/SystemUpdatePreferenceControllerTest.java   | 2 +-
+ 7 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/src/com/android/settings/deviceinfo/PrivateVolumeSettings.java b/src/com/android/settings/deviceinfo/PrivateVolumeSettings.java
+index 08d6ca462b..8e6158ba23 100644
+--- a/src/com/android/settings/deviceinfo/PrivateVolumeSettings.java
++++ b/src/com/android/settings/deviceinfo/PrivateVolumeSettings.java
+@@ -737,7 +737,7 @@ public class PrivateVolumeSettings extends SettingsPreferenceFragment {
+         public Dialog onCreateDialog(Bundle savedInstanceState) {
+             return new AlertDialog.Builder(getActivity())
+                     .setMessage(getContext().getString(R.string.storage_detail_dialog_system,
+-                            Build.VERSION.RELEASE_OR_CODENAME))
++                            Build.VERSION.RELEASE))
+                     .setPositiveButton(android.R.string.ok, null)
+                     .create();
+         }
+diff --git a/src/com/android/settings/deviceinfo/firmwareversion/FirmwareVersionDetailPreferenceController.java b/src/com/android/settings/deviceinfo/firmwareversion/FirmwareVersionDetailPreferenceController.java
+index 5b975efd1c..daa10d2696 100644
+--- a/src/com/android/settings/deviceinfo/firmwareversion/FirmwareVersionDetailPreferenceController.java
++++ b/src/com/android/settings/deviceinfo/firmwareversion/FirmwareVersionDetailPreferenceController.java
+@@ -70,7 +70,7 @@ public class FirmwareVersionDetailPreferenceController extends BasePreferenceCon
+ 
+     @Override
+     public CharSequence getSummary() {
+-        return Build.VERSION.RELEASE_OR_CODENAME;
++        return Build.VERSION.RELEASE;
+     }
+ 
+     @Override
+diff --git a/src/com/android/settings/deviceinfo/firmwareversion/FirmwareVersionPreferenceController.java b/src/com/android/settings/deviceinfo/firmwareversion/FirmwareVersionPreferenceController.java
+index dcff4c328c..41d9566760 100644
+--- a/src/com/android/settings/deviceinfo/firmwareversion/FirmwareVersionPreferenceController.java
++++ b/src/com/android/settings/deviceinfo/firmwareversion/FirmwareVersionPreferenceController.java
+@@ -34,6 +34,6 @@ public class FirmwareVersionPreferenceController extends BasePreferenceControlle
+ 
+     @Override
+     public CharSequence getSummary() {
+-        return Build.VERSION.RELEASE_OR_CODENAME;
++        return Build.VERSION.RELEASE;
+     }
+ }
+diff --git a/src/com/android/settings/system/SystemUpdatePreferenceController.java b/src/com/android/settings/system/SystemUpdatePreferenceController.java
+index 92819d6ddf..38a88b9543 100644
+--- a/src/com/android/settings/system/SystemUpdatePreferenceController.java
++++ b/src/com/android/settings/system/SystemUpdatePreferenceController.java
+@@ -89,7 +89,7 @@ public class SystemUpdatePreferenceController extends BasePreferenceController {
+     @Override
+     public CharSequence getSummary() {
+         CharSequence summary = mContext.getString(R.string.android_version_summary,
+-                Build.VERSION.RELEASE_OR_CODENAME);
++                Build.VERSION.RELEASE);
+         final FutureTask<Bundle> bundleFutureTask = new FutureTask<>(
+                 // Put the API call in a future to avoid StrictMode violation.
+                 () -> mUpdateManager.retrieveSystemUpdateInfo());
+diff --git a/tests/robotests/src/com/android/settings/deviceinfo/firmwareversion/FirmwareVersionDetailPreferenceControllerTest.java b/tests/robotests/src/com/android/settings/deviceinfo/firmwareversion/FirmwareVersionDetailPreferenceControllerTest.java
+index 0d0d6f3e7b..adfff25bfb 100644
+--- a/tests/robotests/src/com/android/settings/deviceinfo/firmwareversion/FirmwareVersionDetailPreferenceControllerTest.java
++++ b/tests/robotests/src/com/android/settings/deviceinfo/firmwareversion/FirmwareVersionDetailPreferenceControllerTest.java
+@@ -64,7 +64,7 @@ public class FirmwareVersionDetailPreferenceControllerTest {
+ 
+     @Test
+     public void getSummary_shouldGetBuildVersion() {
+-        assertThat(mController.getSummary()).isEqualTo(Build.VERSION.RELEASE_OR_CODENAME);
++        assertThat(mController.getSummary()).isEqualTo(Build.VERSION.RELEASE);
+     }
+ 
+     @Test
+diff --git a/tests/robotests/src/com/android/settings/deviceinfo/firmwareversion/FirmwareVersionPreferenceControllerTest.java b/tests/robotests/src/com/android/settings/deviceinfo/firmwareversion/FirmwareVersionPreferenceControllerTest.java
+index 4306955170..77ae4e2589 100644
+--- a/tests/robotests/src/com/android/settings/deviceinfo/firmwareversion/FirmwareVersionPreferenceControllerTest.java
++++ b/tests/robotests/src/com/android/settings/deviceinfo/firmwareversion/FirmwareVersionPreferenceControllerTest.java
+@@ -65,6 +65,6 @@ public class FirmwareVersionPreferenceControllerTest {
+     public void updatePreference_shouldSetSummaryToBuildNumber() {
+         mController.updateState(mPreference);
+ 
+-        assertThat(mPreference.getSummary()).isEqualTo(Build.VERSION.RELEASE_OR_CODENAME);
++        assertThat(mPreference.getSummary()).isEqualTo(Build.VERSION.RELEASE);
+     }
+ }
+diff --git a/tests/robotests/src/com/android/settings/system/SystemUpdatePreferenceControllerTest.java b/tests/robotests/src/com/android/settings/system/SystemUpdatePreferenceControllerTest.java
+index 95c95bb929..fbd87c96f5 100644
+--- a/tests/robotests/src/com/android/settings/system/SystemUpdatePreferenceControllerTest.java
++++ b/tests/robotests/src/com/android/settings/system/SystemUpdatePreferenceControllerTest.java
+@@ -139,7 +139,7 @@ public class SystemUpdatePreferenceControllerTest {
+ 
+         assertThat(mPreference.getSummary())
+                 .isEqualTo(mContext.getString(R.string.android_version_summary,
+-                        Build.VERSION.RELEASE_OR_CODENAME));
++                        Build.VERSION.RELEASE));
+     }
+ 
+     @Test
+-- 
+2.35.1
+

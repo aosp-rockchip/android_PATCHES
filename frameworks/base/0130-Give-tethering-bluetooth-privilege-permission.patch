@@ -1,0 +1,48 @@
+From 04487ee10624a8ca6caca71d2c7eca7662035ad5 Mon Sep 17 00:00:00 2001
+From: markchien <markchien@google.com>
+Date: Thu, 12 Mar 2020 15:22:01 +0800
+Subject: [PATCH 130/297] Give tethering bluetooth privilege permission
+
+Permisssion of PanService#setBluetoothTethering is change from
+BLUETOOTH_ADMIN to BLUETOOTH_PRIVILEGED.
+Tethering service need bluetooth privilege permission to enable
+bluetooth tethering.
+
+Bug: 146045934
+Test: on/off bluetooth tethering
+Merged-In: Ib87a5d5a5bb49390aa55e52713bb3539d4a52348
+Change-Id: Ib87a5d5a5bb49390aa55e52713bb3539d4a52348
+(cherry picked from commit 1f47e1c22ef82e725575666ddff943c1d560652a)
+---
+ data/etc/privapp-permissions-platform.xml | 1 +
+ packages/Tethering/AndroidManifest.xml    | 2 +-
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/data/etc/privapp-permissions-platform.xml b/data/etc/privapp-permissions-platform.xml
+index d8bd81e80ed..97296efdd4c 100644
+--- a/data/etc/privapp-permissions-platform.xml
++++ b/data/etc/privapp-permissions-platform.xml
+@@ -255,6 +255,7 @@ applications that come with the platform
+     </privapp-permissions>
+ 
+     <privapp-permissions package="com.android.networkstack.tethering">
++        <permission name="android.permission.BLUETOOTH_PRIVILEGED" />
+         <permission name="android.permission.MANAGE_USB"/>
+         <permission name="android.permission.MODIFY_PHONE_STATE"/>
+         <permission name="android.permission.READ_NETWORK_USAGE_HISTORY"/>
+diff --git a/packages/Tethering/AndroidManifest.xml b/packages/Tethering/AndroidManifest.xml
+index c71d0d7bc54..9328611f5d3 100644
+--- a/packages/Tethering/AndroidManifest.xml
++++ b/packages/Tethering/AndroidManifest.xml
+@@ -27,7 +27,7 @@
+          added to the privileged permissions whitelist for that package. -->
+     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+     <uses-permission android:name="android.permission.BLUETOOTH" />
+-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
++    <uses-permission android:name="android.permission.BLUETOOTH_PRIVILEGED" />
+     <uses-permission android:name="android.permission.BROADCAST_STICKY" />
+     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+     <uses-permission android:name="android.permission.MANAGE_USB" />
+-- 
+2.35.1
+

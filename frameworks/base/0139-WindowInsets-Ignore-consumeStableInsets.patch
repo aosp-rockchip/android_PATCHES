@@ -1,0 +1,48 @@
+From 96b5266ed1ccf0f50fe806ac52f3b53566cadaca Mon Sep 17 00:00:00 2001
+From: Adrian Roos <roosa@google.com>
+Date: Wed, 1 Apr 2020 14:26:19 +0200
+Subject: [PATCH 139/297] WindowInsets: Ignore consumeStableInsets()
+
+With the introduction of insets types we no longer support consuming
+individual insets.
+
+Instead we consumed all insets, regardless of whether you consumed
+stable or system insets - but that led to compat issues.
+
+On Q, consumeStableInsets was almost always a no-op anyways, because
+stable insets already came pre-consumed during dispatch.
+
+This change makes consumeStableInsets() a no-op to more closely match
+that behavior.
+
+Bug: 152033222
+Test: atest WindowInsetsTest
+Change-Id: Ic48ee7386320fc16449ac79435b69305a8132bf8
+(cherry picked from commit 9ab688d487b50fe14a6b510d44d847908c36d6d6)
+---
+ core/java/android/view/WindowInsets.java | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/core/java/android/view/WindowInsets.java b/core/java/android/view/WindowInsets.java
+index 9b2a6cbce48..bbf1e2a6a57 100644
+--- a/core/java/android/view/WindowInsets.java
++++ b/core/java/android/view/WindowInsets.java
+@@ -818,12 +818,13 @@ public final class WindowInsets {
+      * @return A modified copy of this WindowInsets
+      * @deprecated Consuming of different parts individually of a {@link WindowInsets} instance is
+      * deprecated, since {@link WindowInsets} contains many different insets. Use {@link #CONSUMED}
+-     * instead to stop dispatching insets.
++     * instead to stop dispatching insets. On {@link android.os.Build.VERSION_CODES#R R}, this
++     * method has no effect.
+      */
+     @Deprecated
+     @NonNull
+     public WindowInsets consumeStableInsets() {
+-        return consumeSystemWindowInsets();
++        return this;
+     }
+ 
+     /**
+-- 
+2.35.1
+

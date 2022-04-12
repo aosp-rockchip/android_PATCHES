@@ -1,0 +1,108 @@
+From 943159d153821eabfa36af32c621f91c5beab4eb Mon Sep 17 00:00:00 2001
+From: Steve Elliott <steell@google.com>
+Date: Wed, 3 Jun 2020 20:50:23 -0400
+Subject: [PATCH 175/297] Fix missing icon for one-to-one convos
+
+Fixes: 158089612
+Test: manual
+Change-Id: If588073ff1df557b755b844277e893e001822d79
+(cherry picked from commit 3d360da16dc52a04f36d2c1c05c9d82cd8d76231)
+---
+ core/java/android/app/Notification.java       |  3 +-
+ .../internal/widget/ConversationLayout.java   | 35 +++++++++----------
+ 2 files changed, 18 insertions(+), 20 deletions(-)
+
+diff --git a/core/java/android/app/Notification.java b/core/java/android/app/Notification.java
+index 980fdb87f3f..f881616fd35 100644
+--- a/core/java/android/app/Notification.java
++++ b/core/java/android/app/Notification.java
+@@ -7625,7 +7625,6 @@ public class Notification implements Parcelable
+             }
+             boolean isConversationLayout = mConversationType != CONVERSATION_TYPE_LEGACY;
+             boolean isImportantConversation = mConversationType == CONVERSATION_TYPE_IMPORTANT;
+-            Icon conversationIcon = mShortcutIcon;
+             Icon largeIcon = mBuilder.mN.mLargeIcon;
+             TemplateBindResult bindResult = new TemplateBindResult();
+             StandardTemplateParams p = mBuilder.mParams.reset()
+@@ -7671,7 +7670,7 @@ public class Notification implements Parcelable
+                     "setConversationTitle", conversationTitle);
+             if (isConversationLayout) {
+                 contentView.setIcon(R.id.status_bar_latest_event_content,
+-                        "setConversationIcon", conversationIcon);
++                        "setShortcutIcon", mShortcutIcon);
+                 contentView.setBoolean(R.id.status_bar_latest_event_content,
+                         "setIsImportantConversation", isImportantConversation);
+             }
+diff --git a/core/java/com/android/internal/widget/ConversationLayout.java b/core/java/com/android/internal/widget/ConversationLayout.java
+index 0d2dbefb9cd..1f2ae5f9644 100644
+--- a/core/java/com/android/internal/widget/ConversationLayout.java
++++ b/core/java/com/android/internal/widget/ConversationLayout.java
+@@ -161,6 +161,7 @@ public class ConversationLayout extends FrameLayout
+     private Rect mAppOpsTouchRect = new Rect();
+     private float mMinTouchSize;
+     private Icon mConversationIcon;
++    private Icon mShortcutIcon;
+     private View mAppNameDivider;
+ 
+     public ConversationLayout(@NonNull Context context) {
+@@ -465,10 +466,9 @@ public class ConversationLayout extends FrameLayout
+     private void updateConversationLayout() {
+         // Set avatar and name
+         CharSequence conversationText = mConversationTitle;
++        mConversationIcon = mShortcutIcon;
+         if (mIsOneToOne) {
+             // Let's resolve the icon / text from the last sender
+-            mConversationIconView.setVisibility(VISIBLE);
+-            mConversationFacePile.setVisibility(GONE);
+             CharSequence userKey = getKey(mUser);
+             for (int i = mGroups.size() - 1; i >= 0; i--) {
+                 MessagingGroup messagingGroup = mGroups.get(i);
+@@ -490,22 +490,21 @@ public class ConversationLayout extends FrameLayout
+                     break;
+                 }
+             }
++        }
++        if (mConversationIcon == null) {
++            mConversationIcon = mLargeIcon;
++        }
++        if (mIsOneToOne || mConversationIcon != null) {
++            mConversationIconView.setVisibility(VISIBLE);
++            mConversationFacePile.setVisibility(GONE);
++            mConversationIconView.setImageIcon(mConversationIcon);
+         } else {
+-            if (mConversationIcon == null && mLargeIcon != null) {
+-                mConversationIcon = mLargeIcon;
+-            }
+-            if (mConversationIcon != null) {
+-                mConversationIconView.setVisibility(VISIBLE);
+-                mConversationFacePile.setVisibility(GONE);
+-                mConversationIconView.setImageIcon(mConversationIcon);
+-            } else {
+-                mConversationIconView.setVisibility(GONE);
+-                // This will also inflate it!
+-                mConversationFacePile.setVisibility(VISIBLE);
+-                // rebind the value to the inflated view instead of the stub
+-                mConversationFacePile = findViewById(R.id.conversation_face_pile);
+-                bindFacePile();
+-            }
++            mConversationIconView.setVisibility(GONE);
++            // This will also inflate it!
++            mConversationFacePile.setVisibility(VISIBLE);
++            // rebind the value to the inflated view instead of the stub
++            mConversationFacePile = findViewById(R.id.conversation_face_pile);
++            bindFacePile();
+         }
+         if (TextUtils.isEmpty(conversationText)) {
+             conversationText = mIsOneToOne ? mFallbackChatName : mFallbackGroupChatName;
+@@ -712,7 +711,7 @@ public class ConversationLayout extends FrameLayout
+     }
+ 
+     @RemotableViewMethod
+-    public void setConversationIcon(Icon conversationIcon) {
++    public void setShortcutIcon(Icon conversationIcon) {
+         mConversationIcon = conversationIcon;
+     }
+ 
+-- 
+2.35.1
+

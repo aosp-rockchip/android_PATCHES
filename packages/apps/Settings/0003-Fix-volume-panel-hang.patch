@@ -1,0 +1,357 @@
+From 9a4df33b4cfb71f5e2480d9b618d4ac22e23b8a0 Mon Sep 17 00:00:00 2001
+From: Raff Tsai <rafftsai@google.com>
+Date: Tue, 17 Sep 2019 23:47:07 +0800
+Subject: [PATCH 03/25] Fix volume panel hang
+
+SliceLiveData changed its behavior, if slice is null, it will not
+notify LiveData observer but callback to onErrorListener. We only
+reduce PanelSlicesLoaderCountdownLatch in LiveData observer.
+Therefore the error slice caused PanelSlicesLoaderCountdownLatch
+never count to 0, the UI was not displayed. It is solved by reducing
+PanelSlicesLoaderCountdownLatch in onErrorListener and also not return
+null in MediaOutputIndicatorSlice.
+
+Test: manual
+Fixes: 141084035
+Change-Id: Iddb2dbdc0e0d2ac3e26071960bb667937f181121
+(cherry picked from commit d9cfbaf3b5a1fa81b82aaeafab31a98bf9a7c57a)
+---
+ .../media/MediaOutputIndicatorSlice.java      |  4 +-
+ .../android/settings/panel/PanelFragment.java | 59 +++++++++++--------
+ .../settings/panel/PanelSlicesAdapter.java    |  6 +-
+ .../media/MediaOutputIndicatorSliceTest.java  | 29 ++++++---
+ .../panel/PanelSlicesAdapterTest.java         |  8 ++-
+ .../OwnerInfoPreferenceControllerTest.java    |  2 -
+ 6 files changed, 67 insertions(+), 41 deletions(-)
+
+diff --git a/src/com/android/settings/media/MediaOutputIndicatorSlice.java b/src/com/android/settings/media/MediaOutputIndicatorSlice.java
+index 75213c07ed..073682c447 100644
+--- a/src/com/android/settings/media/MediaOutputIndicatorSlice.java
++++ b/src/com/android/settings/media/MediaOutputIndicatorSlice.java
+@@ -65,7 +65,9 @@ public class MediaOutputIndicatorSlice implements CustomSliceable {
+     @Override
+     public Slice getSlice() {
+         if (!isVisible()) {
+-            return null;
++            return new ListBuilder(mContext, MEDIA_OUTPUT_INDICATOR_SLICE_URI, ListBuilder.INFINITY)
++                    .setIsError(true)
++                    .build();
+         }
+         final IconCompat icon = IconCompat.createWithResource(mContext,
+                 com.android.internal.R.drawable.ic_settings_bluetooth);
+diff --git a/src/com/android/settings/panel/PanelFragment.java b/src/com/android/settings/panel/PanelFragment.java
+index 54d9e8d8b9..1f008f143e 100644
+--- a/src/com/android/settings/panel/PanelFragment.java
++++ b/src/com/android/settings/panel/PanelFragment.java
+@@ -53,9 +53,10 @@ import com.android.settingslib.core.instrumentation.MetricsFeatureProvider;
+ 
+ import com.google.android.setupdesign.DividerItemDecoration;
+ 
+-import java.util.ArrayList;
+ import java.util.Arrays;
++import java.util.LinkedHashMap;
+ import java.util.List;
++import java.util.Map;
+ 
+ public class PanelFragment extends Fragment {
+ 
+@@ -86,7 +87,7 @@ public class PanelFragment extends Fragment {
+     private MetricsFeatureProvider mMetricsProvider;
+     private String mPanelClosedKey;
+ 
+-    private final List<LiveData<Slice>> mSliceLiveData = new ArrayList<>();
++    private final Map<Uri, LiveData<Slice>> mSliceLiveData = new LinkedHashMap<>();
+ 
+     @VisibleForTesting
+     PanelSlicesLoaderCountdownLatch mPanelSlicesLoaderCountdownLatch;
+@@ -97,14 +98,14 @@ public class PanelFragment extends Fragment {
+ 
+     private final ViewTreeObserver.OnGlobalLayoutListener mOnGlobalLayoutListener =
+             new ViewTreeObserver.OnGlobalLayoutListener() {
+-        @Override
+-        public void onGlobalLayout() {
+-            animateIn();
+-            if (mPanelSlices != null) {
+-                mPanelSlices.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+-            }
+-        }
+-    };
++                @Override
++                public void onGlobalLayout() {
++                    animateIn();
++                    if (mPanelSlices != null) {
++                        mPanelSlices.getViewTreeObserver().removeOnGlobalLayoutListener(this);
++                    }
++                }
++            };
+ 
+     private PanelSlicesAdapter mAdapter;
+ 
+@@ -121,9 +122,9 @@ public class PanelFragment extends Fragment {
+      * Animate the old panel out from the screen, then update the panel with new content once the
+      * animation is done.
+      * <p>
+-     *     Takes the entire panel and animates out from behind the navigation bar.
++     * Takes the entire panel and animates out from behind the navigation bar.
+      * <p>
+-     *     Call createPanelContent() once animation end.
++     * Call createPanelContent() once animation end.
+      */
+     void updatePanelWithAnimation() {
+         final View panelContent = mLayoutView.findViewById(R.id.panel_container);
+@@ -210,10 +211,14 @@ public class PanelFragment extends Fragment {
+         mPanelSlicesLoaderCountdownLatch = new PanelSlicesLoaderCountdownLatch(sliceUris.size());
+ 
+         for (Uri uri : sliceUris) {
+-            final LiveData<Slice> sliceLiveData = SliceLiveData.fromUri(getActivity(), uri);
++            final LiveData<Slice> sliceLiveData = SliceLiveData.fromUri(getActivity(), uri,
++                    (int type, Throwable source)-> {
++                            removeSliceLiveData(uri);
++                            mPanelSlicesLoaderCountdownLatch.markSliceLoaded(uri);
++                    });
+ 
+             // Add slice first to make it in order.  Will remove it later if there's an error.
+-            mSliceLiveData.add(sliceLiveData);
++            mSliceLiveData.put(uri, sliceLiveData);
+ 
+             sliceLiveData.observe(getViewLifecycleOwner(), slice -> {
+                 // If the Slice has already loaded, do nothing.
+@@ -238,12 +243,7 @@ public class PanelFragment extends Fragment {
+                  */
+                 final SliceMetadata metadata = SliceMetadata.from(getActivity(), slice);
+                 if (slice == null || metadata.isErrorSlice()) {
+-                    final List<String> whiteList = Arrays.asList(
+-                            getResources().getStringArray(
+-                                    R.array.config_panel_keep_observe_uri));
+-                    if (!whiteList.contains(uri.toString())) {
+-                        mSliceLiveData.remove(sliceLiveData);
+-                    }
++                    removeSliceLiveData(uri);
+                     mPanelSlicesLoaderCountdownLatch.markSliceLoaded(uri);
+                 } else if (metadata.getLoadingState() == SliceMetadata.LOADED_ALL) {
+                     mPanelSlicesLoaderCountdownLatch.markSliceLoaded(uri);
+@@ -260,12 +260,21 @@ public class PanelFragment extends Fragment {
+         }
+     }
+ 
++    private void removeSliceLiveData(Uri uri) {
++        final List<String> whiteList = Arrays.asList(
++                getResources().getStringArray(
++                        R.array.config_panel_keep_observe_uri));
++        if (!whiteList.contains(uri.toString())) {
++            mSliceLiveData.remove(uri);
++        }
++    }
++
+     /**
+      * When all of the Slices have loaded for the first time, then we can setup the
+      * {@link RecyclerView}.
+      * <p>
+-     *     When the Recyclerview has been laid out, we can begin the animation with the
+-     *     {@link mOnGlobalLayoutListener}, which calls {@link #animateIn()}.
++     * When the Recyclerview has been laid out, we can begin the animation with the
++     * {@link mOnGlobalLayoutListener}, which calls {@link #animateIn()}.
+      */
+     private void loadPanelWhenReady() {
+         if (mPanelSlicesLoaderCountdownLatch.isPanelReadyToLoad()) {
+@@ -286,9 +295,9 @@ public class PanelFragment extends Fragment {
+     /**
+      * Animate a Panel onto the screen.
+      * <p>
+-     *     Takes the entire panel and animates in from behind the navigation bar.
++     * Takes the entire panel and animates in from behind the navigation bar.
+      * <p>
+-     *     Relies on the Panel being having a fixed height to begin the animation.
++     * Relies on the Panel being having a fixed height to begin the animation.
+      */
+     private void animateIn() {
+         final View panelContent = mLayoutView.findViewById(R.id.panel_container);
+@@ -319,7 +328,7 @@ public class PanelFragment extends Fragment {
+         animatorSet.setInterpolator(new DecelerateInterpolator());
+         animatorSet.playTogether(
+                 ObjectAnimator.ofFloat(sheet, View.TRANSLATION_Y, startY, endY),
+-                ObjectAnimator.ofFloat(sheet, View.ALPHA, startAlpha,endAlpha));
++                ObjectAnimator.ofFloat(sheet, View.ALPHA, startAlpha, endAlpha));
+         return animatorSet;
+     }
+ 
+diff --git a/src/com/android/settings/panel/PanelSlicesAdapter.java b/src/com/android/settings/panel/PanelSlicesAdapter.java
+index 21e1b3ac98..60c434d43e 100644
+--- a/src/com/android/settings/panel/PanelSlicesAdapter.java
++++ b/src/com/android/settings/panel/PanelSlicesAdapter.java
+@@ -20,6 +20,7 @@ import static com.android.settings.slices.CustomSliceRegistry.MEDIA_OUTPUT_INDIC
+ 
+ import android.app.settings.SettingsEnums;
+ import android.content.Context;
++import android.net.Uri;
+ import android.view.LayoutInflater;
+ import android.view.View;
+ import android.view.ViewGroup;
+@@ -38,6 +39,7 @@ import com.google.android.setupdesign.DividerItemDecoration;
+ 
+ import java.util.ArrayList;
+ import java.util.List;
++import java.util.Map;
+ 
+ /**
+  * RecyclerView adapter for Slices in Settings Panels.
+@@ -56,9 +58,9 @@ public class PanelSlicesAdapter
+     private final PanelFragment mPanelFragment;
+ 
+     public PanelSlicesAdapter(
+-            PanelFragment fragment, List<LiveData<Slice>> sliceLiveData, int metricsCategory) {
++            PanelFragment fragment, Map<Uri, LiveData<Slice>> sliceLiveData, int metricsCategory) {
+         mPanelFragment = fragment;
+-        mSliceLiveData = new ArrayList<>(sliceLiveData);
++        mSliceLiveData = new ArrayList<>(sliceLiveData.values());
+         mMetricsCategory = metricsCategory;
+     }
+ 
+diff --git a/tests/robotests/src/com/android/settings/media/MediaOutputIndicatorSliceTest.java b/tests/robotests/src/com/android/settings/media/MediaOutputIndicatorSliceTest.java
+index ca9c6b9f0c..3b5a349780 100644
+--- a/tests/robotests/src/com/android/settings/media/MediaOutputIndicatorSliceTest.java
++++ b/tests/robotests/src/com/android/settings/media/MediaOutputIndicatorSliceTest.java
+@@ -17,6 +17,8 @@
+ 
+ package com.android.settings.media;
+ 
++import static android.app.slice.Slice.HINT_ERROR;
++
+ import static com.google.common.truth.Truth.assertThat;
+ 
+ import static org.mockito.Mockito.spy;
+@@ -110,11 +112,13 @@ public class MediaOutputIndicatorSliceTest {
+     }
+ 
+     @Test
+-    public void getSlice_noConnectedDevice_returnNull() {
++    public void getSlice_noConnectedDevice_returnErrorSlice() {
+         mDevicesList.clear();
+         when(mA2dpProfile.getConnectedDevices()).thenReturn(mDevicesList);
+ 
+-        assertThat(mMediaOutputIndicatorSlice.getSlice()).isNull();
++        final Slice mediaSlice = mMediaOutputIndicatorSlice.getSlice();
++        final SliceMetadata metadata = SliceMetadata.from(mContext, mediaSlice);
++        assertThat(metadata.isErrorSlice()).isTrue();
+     }
+ 
+     @Test
+@@ -129,6 +133,7 @@ public class MediaOutputIndicatorSliceTest {
+         assertThat(metadata.getTitle()).isEqualTo(mContext.getText(R.string.media_output_title));
+         assertThat(metadata.getSubtitle()).isEqualTo(mContext.getText(
+                 R.string.media_output_default_summary));
++        assertThat(metadata.isErrorSlice()).isFalse();
+     }
+ 
+     @Test
+@@ -141,6 +146,7 @@ public class MediaOutputIndicatorSliceTest {
+         final SliceMetadata metadata = SliceMetadata.from(mContext, mediaSlice);
+         assertThat(metadata.getTitle()).isEqualTo(mContext.getText(R.string.media_output_title));
+         assertThat(metadata.getSubtitle()).isEqualTo(TEST_A2DP_DEVICE_NAME);
++        assertThat(metadata.isErrorSlice()).isFalse();
+     }
+ 
+     @Test
+@@ -154,32 +160,39 @@ public class MediaOutputIndicatorSliceTest {
+         final SliceMetadata metadata = SliceMetadata.from(mContext, mediaSlice);
+         assertThat(metadata.getTitle()).isEqualTo(mContext.getText(R.string.media_output_title));
+         assertThat(metadata.getSubtitle()).isEqualTo(TEST_HAP_DEVICE_NAME);
++        assertThat(metadata.isErrorSlice()).isFalse();
+     }
+ 
+     @Test
+-    public void getSlice_audioModeIsInCommunication_returnNull() {
++    public void getSlice_audioModeIsInCommunication_returnErrorSlice() {
+         mDevicesList.add(mA2dpDevice);
+         when(mA2dpProfile.getConnectedDevices()).thenReturn(mDevicesList);
+         mAudioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+ 
+-        assertThat(mMediaOutputIndicatorSlice.getSlice()).isNull();
++        final Slice mediaSlice = mMediaOutputIndicatorSlice.getSlice();
++        final SliceMetadata metadata = SliceMetadata.from(mContext, mediaSlice);
++        assertThat(metadata.isErrorSlice()).isTrue();
+     }
+ 
+     @Test
+-    public void getSlice_audioModeIsRingtone_returnNull() {
++    public void getSlice_audioModeIsRingtone_returnErrorSlice() {
+         mDevicesList.add(mA2dpDevice);
+         when(mA2dpProfile.getConnectedDevices()).thenReturn(mDevicesList);
+         mAudioManager.setMode(AudioManager.MODE_RINGTONE);
+ 
+-        assertThat(mMediaOutputIndicatorSlice.getSlice()).isNull();
++        final Slice mediaSlice = mMediaOutputIndicatorSlice.getSlice();
++        final SliceMetadata metadata = SliceMetadata.from(mContext, mediaSlice);
++        assertThat(metadata.isErrorSlice()).isTrue();
+     }
+ 
+     @Test
+-    public void getSlice_audioModeIsInCall_returnNull() {
++    public void getSlice_audioModeIsInCall_returnErrorSlice() {
+         mDevicesList.add(mA2dpDevice);
+         when(mA2dpProfile.getConnectedDevices()).thenReturn(mDevicesList);
+         mAudioManager.setMode(AudioManager.MODE_IN_CALL);
+ 
+-        assertThat(mMediaOutputIndicatorSlice.getSlice()).isNull();
++        final Slice mediaSlice = mMediaOutputIndicatorSlice.getSlice();
++        final SliceMetadata metadata = SliceMetadata.from(mContext, mediaSlice);
++        assertThat(metadata.isErrorSlice()).isTrue();
+     }
+ }
+diff --git a/tests/robotests/src/com/android/settings/panel/PanelSlicesAdapterTest.java b/tests/robotests/src/com/android/settings/panel/PanelSlicesAdapterTest.java
+index 922e629d1a..89288f6bbd 100644
+--- a/tests/robotests/src/com/android/settings/panel/PanelSlicesAdapterTest.java
++++ b/tests/robotests/src/com/android/settings/panel/PanelSlicesAdapterTest.java
+@@ -49,7 +49,9 @@ import org.robolectric.RuntimeEnvironment;
+ import org.robolectric.android.controller.ActivityController;
+ 
+ import java.util.ArrayList;
++import java.util.LinkedHashMap;
+ import java.util.List;
++import java.util.Map;
+ 
+ @RunWith(RobolectricTestRunner.class)
+ public class PanelSlicesAdapterTest {
+@@ -61,7 +63,7 @@ public class PanelSlicesAdapterTest {
+     private PanelFeatureProvider mPanelFeatureProvider;
+     private FakeFeatureFactory mFakeFeatureFactory;
+     private FakePanelContent mFakePanelContent;
+-    private List<LiveData<Slice>> mData = new ArrayList<>();
++    private Map<Uri, LiveData<Slice>> mData = new LinkedHashMap<>();
+ 
+     @Before
+     public void setUp() {
+@@ -93,7 +95,7 @@ public class PanelSlicesAdapterTest {
+         doReturn(uri).when(slice).getUri();
+         final LiveData<Slice> liveData = mock(LiveData.class);
+         when(liveData.getValue()).thenReturn(slice);
+-        mData.add(liveData);
++        mData.put(uri, liveData);
+     }
+ 
+     @Test
+@@ -111,7 +113,7 @@ public class PanelSlicesAdapterTest {
+     @Test
+     public void sizeOfAdapter_shouldNotExceedMaxNum() {
+         for (int i = 0; i < MAX_NUM_OF_SLICES + 2; i++) {
+-            addTestLiveData(DATA_URI);
++            addTestLiveData(Uri.parse("uri" + i));
+         }
+ 
+         assertThat(mData.size()).isEqualTo(MAX_NUM_OF_SLICES + 2);
+diff --git a/tests/robotests/src/com/android/settings/security/OwnerInfoPreferenceControllerTest.java b/tests/robotests/src/com/android/settings/security/OwnerInfoPreferenceControllerTest.java
+index c4729227b5..0130aa1aeb 100644
+--- a/tests/robotests/src/com/android/settings/security/OwnerInfoPreferenceControllerTest.java
++++ b/tests/robotests/src/com/android/settings/security/OwnerInfoPreferenceControllerTest.java
+@@ -187,8 +187,6 @@ public class OwnerInfoPreferenceControllerTest {
+ 
+         preference.performClick();
+ 
+-        // Called once in setTargetFragment, and a second time to display the fragment.
+-        verify(mFragment, times(2)).getFragmentManager();
+         verify(mFragment.getFragmentManager().beginTransaction())
+                 .add(any(OwnerInfoSettings.class), anyString());
+     }
+-- 
+2.35.1
+

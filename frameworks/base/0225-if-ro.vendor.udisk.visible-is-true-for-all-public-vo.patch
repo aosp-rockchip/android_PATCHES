@@ -1,0 +1,34 @@
+From 9fe5b3bf35471a6653d93af4f7c8d90127a149b4 Mon Sep 17 00:00:00 2001
+From: "alex.lin" <alex.lin@rock-chips.com>
+Date: Sat, 17 Oct 2020 09:48:57 +0800
+Subject: [PATCH 225/297] if ro.vendor.udisk.visible is true ,for all public
+ volume is visible
+
+Signed-off-by: alex.lin <alex.lin@rock-chips.com>
+Change-Id: I5a052f2638b33d59e52e66a5abba5221f0966497
+---
+ .../java/com/android/server/StorageManagerService.java    | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/services/core/java/com/android/server/StorageManagerService.java b/services/core/java/com/android/server/StorageManagerService.java
+index 678387c540e..a8aaa5a2815 100644
+--- a/services/core/java/com/android/server/StorageManagerService.java
++++ b/services/core/java/com/android/server/StorageManagerService.java
+@@ -1529,6 +1529,14 @@ class StorageManagerService extends IStorageManager.Stub
+                 vol.mountFlags |= VolumeInfo.MOUNT_FLAG_VISIBLE;
+             }
+ 
++            if(("box".equals(SystemProperties.get("ro.target.product","unknown"))
++              ||"atv".equals(SystemProperties.get("ro.target.product","unknown"))
++              ||"tablet".equals(SystemProperties.get("ro.target.product","unknown")))
++              && "true".equals(SystemProperties.get("ro.vendor.udisk.visible"))){
++                Log.d(TAG,"-----for all public volume is visible-----");
++                vol.mountFlags |= VolumeInfo.MOUNT_FLAG_VISIBLE;
++            }
++
+             vol.mountUserId = mCurrentUserId;
+             mHandler.obtainMessage(H_VOLUME_MOUNT, vol).sendToTarget();
+ 
+-- 
+2.35.1
+

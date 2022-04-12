@@ -17,3 +17,117 @@ Date:   Fri Dec 4 09:26:35 2020 +0000
     Test: atest CtsLibcoreTestCases CtsLibcoreOkHttpTestCases
     Change-Id: I7ccd2c6d4255d29112e9a6d58640316c364bf67a
     (cherry picked from commit 650e71cc3acbc3f5af2ae312bc5ed71bb2d7c20b)
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/libcore (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/libcore (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit f1d1fb49df935db61459a9a9f5a1b8e778fc6baa
+Author: Pete Bentley <prb@google.com>
+Date:   Fri Dec 4 09:26:35 2020 +0000
+
+    Reject non-ASCII hostnames and SANs.
+    
+    Updates test expectations to match OkHostnameVerifier behaviour changes
+    in the same topic.
+    
+    Bug: 171980069
+    Test: atest CtsLibcoreTestCases CtsLibcoreOkHttpTestCases
+    Change-Id: I7ccd2c6d4255d29112e9a6d58640316c364bf67a
+    (cherry picked from commit 650e71cc3acbc3f5af2ae312bc5ed71bb2d7c20b)
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/libcore (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/libcore (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit f1d1fb49df935db61459a9a9f5a1b8e778fc6baa
+Author: Pete Bentley <prb@google.com>
+Date:   Fri Dec 4 09:26:35 2020 +0000
+
+    Reject non-ASCII hostnames and SANs.
+    
+    Updates test expectations to match OkHostnameVerifier behaviour changes
+    in the same topic.
+    
+    Bug: 171980069
+    Test: atest CtsLibcoreTestCases CtsLibcoreOkHttpTestCases
+    Change-Id: I7ccd2c6d4255d29112e9a6d58640316c364bf67a
+    (cherry picked from commit 650e71cc3acbc3f5af2ae312bc5ed71bb2d7c20b)
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/libcore (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/libcore (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit f1d1fb49df935db61459a9a9f5a1b8e778fc6baa
+Author: Pete Bentley <prb@google.com>
+Date:   Fri Dec 4 09:26:35 2020 +0000
+
+    Reject non-ASCII hostnames and SANs.
+    
+    Updates test expectations to match OkHostnameVerifier behaviour changes
+    in the same topic.
+    
+    Bug: 171980069
+    Test: atest CtsLibcoreTestCases CtsLibcoreOkHttpTestCases
+    Change-Id: I7ccd2c6d4255d29112e9a6d58640316c364bf67a
+    (cherry picked from commit 650e71cc3acbc3f5af2ae312bc5ed71bb2d7c20b)
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/libcore (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/libcore (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit f1d1fb49df935db61459a9a9f5a1b8e778fc6baa
+Author: Pete Bentley <prb@google.com>
+Date:   Fri Dec 4 09:26:35 2020 +0000
+
+    Reject non-ASCII hostnames and SANs.
+    
+    Updates test expectations to match OkHostnameVerifier behaviour changes
+    in the same topic.
+    
+    Bug: 171980069
+    Test: atest CtsLibcoreTestCases CtsLibcoreOkHttpTestCases
+    Change-Id: I7ccd2c6d4255d29112e9a6d58640316c364bf67a
+    (cherry picked from commit 650e71cc3acbc3f5af2ae312bc5ed71bb2d7c20b)
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/libcore (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/libcore (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit f1d1fb49df935db61459a9a9f5a1b8e778fc6baa
+Author: Pete Bentley <prb@google.com>
+Date:   Fri Dec 4 09:26:35 2020 +0000
+
+    Reject non-ASCII hostnames and SANs.
+    
+    Updates test expectations to match OkHostnameVerifier behaviour changes
+    in the same topic.
+    
+    Bug: 171980069
+    Test: atest CtsLibcoreTestCases CtsLibcoreOkHttpTestCases
+    Change-Id: I7ccd2c6d4255d29112e9a6d58640316c364bf67a
+    (cherry picked from commit 650e71cc3acbc3f5af2ae312bc5ed71bb2d7c20b)
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/libcore (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/libcore (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit f1d1fb49df935db61459a9a9f5a1b8e778fc6baa
+Author: Pete Bentley <prb@google.com>
+Date:   Fri Dec 4 09:26:35 2020 +0000
+
+    Reject non-ASCII hostnames and SANs.
+    
+    Updates test expectations to match OkHostnameVerifier behaviour changes
+    in the same topic.
+    
+    Bug: 171980069
+    Test: atest CtsLibcoreTestCases CtsLibcoreOkHttpTestCases
+    Change-Id: I7ccd2c6d4255d29112e9a6d58640316c364bf67a
+    (cherry picked from commit 650e71cc3acbc3f5af2ae312bc5ed71bb2d7c20b)

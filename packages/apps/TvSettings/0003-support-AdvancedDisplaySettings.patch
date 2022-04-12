@@ -1,0 +1,90 @@
+From e3f3bde785cd6ee7bbf4d42141f8b45f9678b4ba Mon Sep 17 00:00:00 2001
+From: zw <Johnny.zhang@rock-chips.com>
+Date: Thu, 5 Nov 2020 14:51:32 +0800
+Subject: [PATCH 3/7] support AdvancedDisplaySettings
+
+Signed-off-by: zw <Johnny.zhang@rock-chips.com>
+Change-Id: Ibe73209e675dae007ba8dd37bb1a68cc7b8df711
+---
+ Settings/Android.bp     |  2 +-
+ Settings/jni/Android.bp | 23 +++++++++++++++++++++++
+ Settings/jni/Android.mk | 24 ------------------------
+ 3 files changed, 24 insertions(+), 25 deletions(-)
+ create mode 100644 Settings/jni/Android.bp
+ delete mode 100755 Settings/jni/Android.mk
+
+diff --git a/Settings/Android.bp b/Settings/Android.bp
+index 9579bb2b..3756a705 100644
+--- a/Settings/Android.bp
++++ b/Settings/Android.bp
+@@ -47,7 +47,7 @@ android_app {
+         "statslog-tvsettings",
+         "TwoPanelSettingsLib"
+     ],
+-
++    jni_libs: ["libtvsettings-jni"],
+     resource_dirs: ["res"],
+ 
+     srcs: [
+diff --git a/Settings/jni/Android.bp b/Settings/jni/Android.bp
+new file mode 100644
+index 00000000..6bb1b4f7
+--- /dev/null
++++ b/Settings/jni/Android.bp
+@@ -0,0 +1,23 @@
++cc_library_shared {
++    name: "libtvsettings-jni",
++    compile_multilib: "both",
++    system_ext_specific: true,
++    multilib: {
++        lib64: {
++    	    srcs: [
++        	"native.cpp",
++	        "TVInfo.cpp",
++	    ],
++        },
++        lib32: {
++	    srcs: [
++        	"native.cpp",
++	        "TVInfo.cpp",
++	    ],
++        },
++    },
++    shared_libs: [
++        "libutils",
++        "liblog",
++    ]
++}
+diff --git a/Settings/jni/Android.mk b/Settings/jni/Android.mk
+deleted file mode 100755
+index 0879d57a..00000000
+--- a/Settings/jni/Android.mk
++++ /dev/null
+@@ -1,24 +0,0 @@
+-LOCAL_PATH:= $(call my-dir)
+-include $(CLEAR_VARS)
+-
+-#LOCAL_MODULE_TAGS := samples
+-
+-# This is the target being built.
+-LOCAL_MODULE:= libtvsettings-jni
+-
+-LOCAL_DEFAULT_CPP_EXTENSION := cpp
+-
+-# All of the source files that we will compile.
+-LOCAL_SRC_FILES := \
+-  native.cpp \
+-  TVInfo.cpp \
+-  # TVInfo.h \
+-  # Vop.h \
+-
+-LOCAL_SHARED_LIBRARIES := \
+-	libutils liblog
+-
+-# LOCAL_C_INCLUDES += \
+-# 	$(JNI_H_INCLUDE)
+-
+-include $(BUILD_SHARED_LIBRARY)
+-- 
+2.35.1
+

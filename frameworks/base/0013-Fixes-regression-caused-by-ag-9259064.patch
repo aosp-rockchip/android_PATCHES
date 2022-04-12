@@ -1,0 +1,169 @@
+From f46f568fa4e717d5e1150fabcb2280d5b8ad6719 Mon Sep 17 00:00:00 2001
+From: Fabian Kozynski <kozynski@google.com>
+Date: Wed, 4 Sep 2019 11:18:46 -0400
+Subject: [PATCH 013/297] Fixes regression caused by ag/9259064
+
+Makes sure that onClickListeners are always up to date.
+
+Fixes: 139920678
+Test: manual
+Test: atest UserDetailViewAdapterTest (fails on old code)
+Change-Id: I1060cb432b7e24a46a3472754efdf004798d6b6e
+(cherry picked from commit 8f571e59547dfb6293b9c24764bdc087c46fc713)
+---
+ .../systemui/qs/tiles/UserDetailView.java     |   2 +-
+ .../qs/tiles/UserDetailViewAdapterTest.kt     | 128 ++++++++++++++++++
+ 2 files changed, 129 insertions(+), 1 deletion(-)
+ create mode 100644 packages/SystemUI/tests/src/com/android/systemui/qs/tiles/UserDetailViewAdapterTest.kt
+
+diff --git a/packages/SystemUI/src/com/android/systemui/qs/tiles/UserDetailView.java b/packages/SystemUI/src/com/android/systemui/qs/tiles/UserDetailView.java
+index d6dad687e5d..187a3bdec13 100644
+--- a/packages/SystemUI/src/com/android/systemui/qs/tiles/UserDetailView.java
++++ b/packages/SystemUI/src/com/android/systemui/qs/tiles/UserDetailView.java
+@@ -76,7 +76,7 @@ public class UserDetailView extends PseudoGridView {
+                 UserSwitcherController.UserRecord item) {
+             UserDetailItemView v = UserDetailItemView.convertOrInflate(
+                     mContext, convertView, parent);
+-            if ((v != convertView && !item.isCurrent) || item.isGuest) {
++            if (!item.isCurrent || item.isGuest) {
+                 v.setOnClickListener(this);
+             } else {
+                 v.setOnClickListener(null);
+diff --git a/packages/SystemUI/tests/src/com/android/systemui/qs/tiles/UserDetailViewAdapterTest.kt b/packages/SystemUI/tests/src/com/android/systemui/qs/tiles/UserDetailViewAdapterTest.kt
+new file mode 100644
+index 00000000000..b51e716591f
+--- /dev/null
++++ b/packages/SystemUI/tests/src/com/android/systemui/qs/tiles/UserDetailViewAdapterTest.kt
+@@ -0,0 +1,128 @@
++/*
++ * Copyright (C) 2019 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License
++ */
++
++package com.android.systemui.qs.tiles
++
++import android.content.Context
++import android.content.pm.UserInfo
++import android.graphics.Bitmap
++import android.testing.AndroidTestingRunner
++import android.view.LayoutInflater
++import android.view.View
++import android.view.ViewGroup
++import androidx.test.filters.SmallTest
++import com.android.systemui.SysuiTestCase
++import com.android.systemui.statusbar.policy.UserSwitcherController
++import org.junit.Before
++import org.junit.Test
++import org.junit.runner.RunWith
++import org.mockito.ArgumentMatchers.any
++import org.mockito.ArgumentMatchers.anyBoolean
++import org.mockito.ArgumentMatchers.anyInt
++import org.mockito.Mock
++import org.mockito.Mockito.`when`
++import org.mockito.Mockito.verify
++import org.mockito.MockitoAnnotations
++
++@RunWith(AndroidTestingRunner::class)
++@SmallTest
++class UserDetailViewAdapterTest : SysuiTestCase() {
++
++    @Mock private lateinit var mUserSwitcherController: UserSwitcherController
++    @Mock private lateinit var mParent: ViewGroup
++    @Mock private lateinit var mUserDetailItemView: UserDetailItemView
++    @Mock private lateinit var mOtherView: View
++    @Mock private lateinit var mInflatedUserDetailItemView: UserDetailItemView
++    @Mock private lateinit var mUserInfo: UserInfo
++    @Mock private lateinit var mPicture: Bitmap
++    @Mock private lateinit var mLayoutInflater: LayoutInflater
++    private lateinit var adapter: UserDetailView.Adapter
++
++    @Before
++    fun setUp() {
++        MockitoAnnotations.initMocks(this)
++
++        mContext.addMockSystemService(Context.LAYOUT_INFLATER_SERVICE, mLayoutInflater)
++        `when`(mLayoutInflater.inflate(anyInt(), any(ViewGroup::class.java), anyBoolean()))
++                .thenReturn(mInflatedUserDetailItemView)
++        adapter = UserDetailView.Adapter(mContext, mUserSwitcherController)
++    }
++
++    private fun clickableTest(
++        current: Boolean,
++        guest: Boolean,
++        convertView: View,
++        shouldBeClickable: Boolean
++    ) {
++        val user = createUserRecord(current, guest)
++        val v = adapter.createUserDetailItemView(convertView, mParent, user)
++        if (shouldBeClickable) {
++            verify(v).setOnClickListener(adapter)
++        } else {
++            verify(v).setOnClickListener(null)
++        }
++    }
++
++    @Test
++    fun testGuestIsClickable_differentViews_notCurrent() {
++        clickableTest(false, true, mOtherView, true)
++    }
++
++    @Test
++    fun testGuestIsClickable_differentViews_Current() {
++        clickableTest(true, true, mOtherView, true)
++    }
++
++    @Test
++    fun testGuestIsClickable_sameView_notCurrent() {
++        clickableTest(false, true, mUserDetailItemView, true)
++    }
++
++    @Test
++    fun testGuestIsClickable_sameView_Current() {
++        clickableTest(true, true, mUserDetailItemView, true)
++    }
++
++    @Test
++    fun testNotGuestCurrentUserIsNotClickable_otherView() {
++        clickableTest(true, false, mOtherView, false)
++    }
++
++    @Test
++    fun testNotGuestCurrentUserIsNotClickable_sameView() {
++        clickableTest(true, false, mUserDetailItemView, false)
++    }
++
++    @Test
++    fun testNotGuestNotCurrentUserIsClickable_otherView() {
++        clickableTest(false, false, mOtherView, true)
++    }
++
++    @Test
++    fun testNotGuestNotCurrentUserIsClickable_sameView() {
++        clickableTest(false, false, mUserDetailItemView, true)
++    }
++
++    private fun createUserRecord(current: Boolean, guest: Boolean) =
++            UserSwitcherController.UserRecord(
++                    mUserInfo,
++                    mPicture,
++                    guest,
++                    current,
++                    false /* isAddUser */,
++                    false /* isRestricted */,
++                    true /* isSwitchToEnabled */)
++}
+\ No newline at end of file
+-- 
+2.35.1
+

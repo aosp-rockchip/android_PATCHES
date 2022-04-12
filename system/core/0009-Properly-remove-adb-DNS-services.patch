@@ -1,0 +1,38 @@
+From 920e0ee6b680dae03502d60d4b9b66b3f36c79f1 Mon Sep 17 00:00:00 2001
+From: Joshua Duong <joshuaduong@google.com>
+Date: Mon, 24 Feb 2020 10:03:54 -0800
+Subject: [PATCH 09/21] Properly remove adb DNS services.
+
+Bug: b/150136878
+Bug: b/111434128
+
+Bug: http://b/150032044
+Test: make
+Change-Id: Ibfb92a7c197a25fd1913107d277fbc5f78108c05
+Merged-In: Ibfb92a7c197a25fd1913107d277fbc5f78108c05
+(cherry picked from commit 79a452a923057a8f8fb6fa4bf9075e71c7a737e4)
+(cherry picked from commit e36a53e3076d38674fc4ddb200c19f1c5de6bcdd)
+---
+ adb/client/transport_mdns.cpp | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/adb/client/transport_mdns.cpp b/adb/client/transport_mdns.cpp
+index ff1f7b4c6..22b9b1808 100644
+--- a/adb/client/transport_mdns.cpp
++++ b/adb/client/transport_mdns.cpp
+@@ -409,9 +409,9 @@ static void adb_RemoveDNSService(const char* regType, const char* serviceName) {
+     }
+ 
+     std::string sName(serviceName);
+-    std::remove_if(services->begin(), services->end(), [&sName](ResolvedService* service) {
+-        return (sName == service->serviceName());
+-    });
++    services->erase(std::remove_if(
++            services->begin(), services->end(),
++            [&sName](ResolvedService* service) { return (sName == service->serviceName()); }));
+ }
+ 
+ // Returns the version the device wanted to advertise,
+-- 
+2.35.1
+

@@ -1,0 +1,36 @@
+From 5d5a287d144a4ae478848827b3f7cd513a11b347 Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Tue, 29 Dec 2020 15:52:20 +0800
+Subject: [PATCH 272/297] add prop to set DEFAULT_MAX_CACHED_PROCESSES
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: I796e5af479bf98c8d7094616eabe98806b17e5d8
+---
+ .../java/com/android/server/am/ActivityManagerConstants.java  | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/am/ActivityManagerConstants.java b/services/core/java/com/android/server/am/ActivityManagerConstants.java
+index 135ac9a7846..7fbc890252d 100644
+--- a/services/core/java/com/android/server/am/ActivityManagerConstants.java
++++ b/services/core/java/com/android/server/am/ActivityManagerConstants.java
+@@ -25,6 +25,7 @@ import android.database.ContentObserver;
+ import android.net.Uri;
+ import android.os.Build;
+ import android.os.Handler;
++import android.os.SystemProperties;
+ import android.provider.DeviceConfig;
+ import android.provider.DeviceConfig.OnPropertiesChangedListener;
+ import android.provider.DeviceConfig.Properties;
+@@ -89,7 +90,8 @@ final class ActivityManagerConstants extends ContentObserver {
+     static final String KEY_TOP_TO_FGS_GRACE_DURATION = "top_to_fgs_grace_duration";
+     static final String KEY_PENDINGINTENT_WARNING_THRESHOLD = "pendingintent_warning_threshold";
+ 
+-    private static final int DEFAULT_MAX_CACHED_PROCESSES = 32;
++    private static final int DEFAULT_MAX_CACHED_PROCESSES =
++            SystemProperties.getInt("sys.lmk.vendor.max_cached_proc", 32);
+     private static final long DEFAULT_BACKGROUND_SETTLE_TIME = 60*1000;
+     private static final long DEFAULT_FGSERVICE_MIN_SHOWN_TIME = 2*1000;
+     private static final long DEFAULT_FGSERVICE_MIN_REPORT_TIME = 3*1000;
+-- 
+2.35.1
+

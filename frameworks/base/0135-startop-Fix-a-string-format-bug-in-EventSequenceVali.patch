@@ -1,0 +1,100 @@
+From c976c4366c47a56ff463a5158fe1eafd9bb11b2e Mon Sep 17 00:00:00 2001
+From: Yan Wang <yawanng@google.com>
+Date: Tue, 31 Mar 2020 13:52:20 -0700
+Subject: [PATCH 135/297] startop: Fix a string format bug in
+ EventSequenceValidator.
+
+Bug: 152725990
+Test: Make and run check the log.
+Change-Id: Ib56a8f7acadec073946353f8b0a8a4677099b3b2
+(cherry picked from commit b5d1353a6998e97aa4f5250a359fc2589b4af34c)
+---
+ .../startop/iorap/EventSequenceValidator.java | 23 +++++++------------
+ 1 file changed, 8 insertions(+), 15 deletions(-)
+
+diff --git a/startop/iorap/src/com/google/android/startop/iorap/EventSequenceValidator.java b/startop/iorap/src/com/google/android/startop/iorap/EventSequenceValidator.java
+index 47bf14892cc..6b194550cc1 100644
+--- a/startop/iorap/src/com/google/android/startop/iorap/EventSequenceValidator.java
++++ b/startop/iorap/src/com/google/android/startop/iorap/EventSequenceValidator.java
+@@ -103,8 +103,7 @@ public class EventSequenceValidator implements ActivityMetricsLaunchObserver {
+   @Override
+   public void onIntentStarted(@NonNull Intent intent, long timestampNs) {
+     if (state == State.UNKNOWN) {
+-      logWarningWithStackTrace(
+-          String.format("IntentStarted during UNKNOWN. " + intent));
++      logWarningWithStackTrace("IntentStarted during UNKNOWN. " + intent);
+       incAccIntentStartedEvents();
+       return;
+     }
+@@ -128,7 +127,7 @@ public class EventSequenceValidator implements ActivityMetricsLaunchObserver {
+   @Override
+   public void onIntentFailed() {
+     if (state == State.UNKNOWN) {
+-      logWarningWithStackTrace(String.format("onIntentFailed during UNKNOWN."));
++      logWarningWithStackTrace("onIntentFailed during UNKNOWN.");
+       decAccIntentStartedEvents();
+       return;
+     }
+@@ -147,8 +146,7 @@ public class EventSequenceValidator implements ActivityMetricsLaunchObserver {
+   public void onActivityLaunched(@NonNull @ActivityRecordProto byte[] activity,
+       @Temperature int temperature) {
+     if (state == State.UNKNOWN) {
+-      logWarningWithStackTrace(
+-          String.format("onActivityLaunched during UNKNOWN."));
++      logWarningWithStackTrace("onActivityLaunched during UNKNOWN.");
+       return;
+     }
+     if (state != State.INTENT_STARTED) {
+@@ -165,8 +163,7 @@ public class EventSequenceValidator implements ActivityMetricsLaunchObserver {
+   @Override
+   public void onActivityLaunchCancelled(@Nullable @ActivityRecordProto byte[] activity) {
+     if (state == State.UNKNOWN) {
+-      logWarningWithStackTrace(
+-          String.format("onActivityLaunchCancelled during UNKNOWN."));
++      logWarningWithStackTrace("onActivityLaunchCancelled during UNKNOWN.");
+       decAccIntentStartedEvents();
+       return;
+     }
+@@ -185,8 +182,7 @@ public class EventSequenceValidator implements ActivityMetricsLaunchObserver {
+   public void onActivityLaunchFinished(@NonNull @ActivityRecordProto byte[] activity,
+       long timestampNs) {
+     if (state == State.UNKNOWN) {
+-      logWarningWithStackTrace(
+-          String.format("onActivityLaunchFinished during UNKNOWN."));
++      logWarningWithStackTrace("onActivityLaunchFinished during UNKNOWN.");
+       decAccIntentStartedEvents();
+       return;
+     }
+@@ -206,8 +202,7 @@ public class EventSequenceValidator implements ActivityMetricsLaunchObserver {
+   public void onReportFullyDrawn(@NonNull @ActivityRecordProto byte[] activity,
+       long timestampNs) {
+     if (state == State.UNKNOWN) {
+-      logWarningWithStackTrace(
+-          String.format("onReportFullyDrawn during UNKNOWN."));
++      logWarningWithStackTrace("onReportFullyDrawn during UNKNOWN.");
+       return;
+     }
+     if (state == State.INIT) {
+@@ -237,8 +232,7 @@ public class EventSequenceValidator implements ActivityMetricsLaunchObserver {
+ 
+   private void incAccIntentStartedEvents() {
+     if (accIntentStartedEvents < 0) {
+-      throw new AssertionError(
+-          String.format("The number of unknowns cannot be negative"));
++      throw new AssertionError("The number of unknowns cannot be negative");
+     }
+     if (accIntentStartedEvents == 0) {
+       state = State.UNKNOWN;
+@@ -250,8 +244,7 @@ public class EventSequenceValidator implements ActivityMetricsLaunchObserver {
+ 
+   private void decAccIntentStartedEvents() {
+     if (accIntentStartedEvents <= 0) {
+-      throw new AssertionError(
+-          String.format("The number of unknowns cannot be negative"));
++      throw new AssertionError("The number of unknowns cannot be negative");
+     }
+     if(accIntentStartedEvents == 1) {
+       state = State.INIT;
+-- 
+2.35.1
+

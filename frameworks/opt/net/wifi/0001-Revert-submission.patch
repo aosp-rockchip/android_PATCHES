@@ -1,0 +1,29 @@
+From bbbe14387c8d60931fdb81f3df64ad5582f010e3 Mon Sep 17 00:00:00 2001
+From: Kevin Lau Fang <fangk@google.com>
+Date: Thu, 14 Nov 2019 20:06:19 +0000
+Subject: [PATCH 01/13] Revert submission
+
+Reason for revert: This causes a boot issue on Taimen (b/144480969). It wasn't caught by TreeHugger due to Taimen tests being disabled due to a different lab outage (b/144350336).
+
+Change-Id: I3374b4ede6fd1e64284bad78d3b6d3c520a73e63
+(cherry picked from commit 4ccf5a2aa0899fc37fca2f8f1102e41a58815047)
+---
+ service/java/com/android/server/wifi/hotspot2/SystemInfo.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/service/java/com/android/server/wifi/hotspot2/SystemInfo.java b/service/java/com/android/server/wifi/hotspot2/SystemInfo.java
+index 374b8f5c0..e39eb185b 100644
+--- a/service/java/com/android/server/wifi/hotspot2/SystemInfo.java
++++ b/service/java/com/android/server/wifi/hotspot2/SystemInfo.java
+@@ -133,7 +133,7 @@ public class SystemInfo {
+      * @return the build release version.
+      */
+     public String getSoftwareVersion() {
+-         return new StringBuffer("Android ").append(Build.VERSION.RELEASE_OR_CODENAME).toString();
++         return new StringBuffer("Android ").append(Build.VERSION.RELEASE).toString();
+     }
+ 
+     /**
+-- 
+2.35.1
+

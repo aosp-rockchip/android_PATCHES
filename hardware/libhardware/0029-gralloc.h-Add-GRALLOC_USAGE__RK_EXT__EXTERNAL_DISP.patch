@@ -1,0 +1,30 @@
+From f77af5979918611090ca54090bef7ed1ae011b8d Mon Sep 17 00:00:00 2001
+From: Zhen Chen <chenzhen@rock-chips.com>
+Date: Mon, 6 Jan 2020 18:10:41 +0800
+Subject: [PATCH 29/36] gralloc.h: Add GRALLOC_USAGE__RK_EXT__EXTERNAL_DISP
+
+It's a replacement of GRALLOC_USAGE_EXTERNAL_DISP,
+which is treated as invalid by frameworks.
+
+Change-Id: I8bd1c6dc368fa44a3c6c99dda357f5526f71dc26
+---
+ include/hardware/gralloc.h | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/include/hardware/gralloc.h b/include/hardware/gralloc.h
+index 4d2d7241..ee2a4940 100755
+--- a/include/hardware/gralloc.h
++++ b/include/hardware/gralloc.h
+@@ -151,6 +151,9 @@ enum {
+     GRALLOC_USAGE_TO_USE_FBDC_FMT       = 0x09000000,
+     /* use Physically Continuous memory */
+     GRALLOC_USAGE_TO_USE_PHY_CONT	= 0x08000000,
++    /* replacement of GRALLOC_USAGE_EXTERNAL_DISP,
++     * which is treated as invalid by frameworks. */
++    GRALLOC_USAGE__RK_EXT__EXTERNAL_DISP= 0x07000000U,
+ 
+     /* implementation-specific private usage flags */
+     GRALLOC_USAGE_PRIVATE_0             = 0x10000000U,
+-- 
+2.35.1
+

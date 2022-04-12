@@ -1,0 +1,56 @@
+From 92a5ff054a98053a4ccca382cd7f0c7ba6399162 Mon Sep 17 00:00:00 2001
+From: Ned Burns <pixel@google.com>
+Date: Tue, 7 Jan 2020 20:34:23 -0500
+Subject: [PATCH 083/297] Don't crash if NSSL gets incomplete gesture
+
+In *theory*, a View should always receive an ACTION_DOWN before
+receiving any other touch events, but this isn't always the case in
+practice. Whenever we see one of these "partial" gestures, we should
+ignore it until a real one starts.
+
+Test: manual
+Bug: 146323887
+Change-Id: Ic75e4873993f0a8ec3e7210fc173d1fb0bd7b71f
+(cherry picked from commit d80ded29fbe1e876748ccc66579a5e82c921be65)
+---
+ .../stack/NotificationStackScrollLayout.java     | 16 ++++++++++------
+ 1 file changed, 10 insertions(+), 6 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/stack/NotificationStackScrollLayout.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/stack/NotificationStackScrollLayout.java
+index 1bd9bbecc26..3d41ef0adcc 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/stack/NotificationStackScrollLayout.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/stack/NotificationStackScrollLayout.java
+@@ -3841,9 +3841,17 @@ public class NotificationStackScrollLayout extends ViewGroup implements ScrollAd
+         initVelocityTrackerIfNotExists();
+         mVelocityTracker.addMovement(ev);
+ 
+-        final int action = ev.getAction();
++        final int action = ev.getActionMasked();
+ 
+-        switch (action & MotionEvent.ACTION_MASK) {
++        if (ev.findPointerIndex(mActivePointerId) == -1 && action != MotionEvent.ACTION_DOWN) {
++            // Incomplete gesture, possibly due to window swap mid-gesture. Ignore until a new
++            // one starts.
++            Log.e(TAG, "Invalid pointerId=" + mActivePointerId + " in onTouchEvent "
++                    + MotionEvent.actionToString(ev.getActionMasked()));
++            return true;
++        }
++
++        switch (action) {
+             case MotionEvent.ACTION_DOWN: {
+                 if (getChildCount() == 0 || !isInContentBounds(ev)) {
+                     return false;
+@@ -3866,10 +3874,6 @@ public class NotificationStackScrollLayout extends ViewGroup implements ScrollAd
+             }
+             case MotionEvent.ACTION_MOVE:
+                 final int activePointerIndex = ev.findPointerIndex(mActivePointerId);
+-                if (activePointerIndex == -1) {
+-                    Log.e(TAG, "Invalid pointerId=" + mActivePointerId + " in onTouchEvent");
+-                    break;
+-                }
+ 
+                 final int y = (int) ev.getY(activePointerIndex);
+                 final int x = (int) ev.getX(activePointerIndex);
+-- 
+2.35.1
+

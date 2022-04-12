@@ -1,0 +1,33 @@
+From d60fe60e4756fff49c4c5f3d37078304c626c4f9 Mon Sep 17 00:00:00 2001
+From: Alec Mouri <alecmouri@google.com>
+Date: Fri, 7 Aug 2020 11:37:31 -0700
+Subject: [PATCH 235/297] Support dispatchNullEvent virtual method
+
+Added for AChoreographer in I66abc2e28e60f06987ce3a54be294c94b77524fc
+
+Bug: 154874011
+Bug: 158680912
+Bug: 161406626
+Test: builds
+Change-Id: Iac1f8eafc4d25a5a7c8b6d8eed3f6686705fc2fb
+Merged-In: Iac1f8eafc4d25a5a7c8b6d8eed3f6686705fc2fb
+(cherry picked from commit 1315f1105e22066579f009facf60bc538d21d9fd)
+---
+ core/jni/android_view_DisplayEventReceiver.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/core/jni/android_view_DisplayEventReceiver.cpp b/core/jni/android_view_DisplayEventReceiver.cpp
+index 7daefd3e654..26e862f4c03 100644
+--- a/core/jni/android_view_DisplayEventReceiver.cpp
++++ b/core/jni/android_view_DisplayEventReceiver.cpp
+@@ -63,6 +63,7 @@ private:
+     void dispatchHotplug(nsecs_t timestamp, PhysicalDisplayId displayId, bool connected) override;
+     void dispatchConfigChanged(nsecs_t timestamp, PhysicalDisplayId displayId,
+                                int32_t configId, nsecs_t vsyncPeriod) override;
++    void dispatchNullEvent(nsecs_t timestamp, PhysicalDisplayId displayId) override {}
+ };
+ 
+ 
+-- 
+2.35.1
+

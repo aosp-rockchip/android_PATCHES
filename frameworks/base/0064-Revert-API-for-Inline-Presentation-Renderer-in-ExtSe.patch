@@ -1,0 +1,459 @@
+From dfd9f02228c796bd619db07228b5fc3410875b04 Mon Sep 17 00:00:00 2001
+From: Daniel Chapin <chapin@google.com>
+Date: Wed, 29 Jan 2020 18:17:44 +0000
+Subject: [PATCH 064/297] Revert "API for Inline Presentation Renderer in
+ ExtServices."
+
+Revert "Add Inline Suggestion render permissions to cts."
+
+Revert submission 10184155-inline_extservices
+
+Reason for revert: b/148428064
+Reverted Changes:
+I38878491b:Add Inline Suggestion render permissions to cts.
+I0c68730ce:API for Inline Presentation Renderer in ExtService...
+
+Change-Id: Ic1d5e2568601dd5ddb881d14caabc4c5eaab405e
+(cherry picked from commit 15ce9a5935e9909eb72534e421544a1bbcbc88ba)
+---
+ api/system-current.txt                        |   7 -
+ api/test-current.txt                          |   7 -
+ .../IInlineSuggestionRenderService.aidl       |  30 ----
+ .../autofill/IInlineSuggestionUiCallback.aidl |  29 ----
+ .../InlineSuggestionRenderService.java        |  92 ------------
+ core/res/AndroidManifest.xml                  |   7 -
+ .../autofill/AutofillManagerServiceImpl.java  |  28 ----
+ .../RemoteInlineSuggestionRenderService.java  | 135 ------------------
+ 8 files changed, 335 deletions(-)
+ delete mode 100644 core/java/android/service/autofill/IInlineSuggestionRenderService.aidl
+ delete mode 100644 core/java/android/service/autofill/IInlineSuggestionUiCallback.aidl
+ delete mode 100644 core/java/android/service/autofill/InlineSuggestionRenderService.java
+ delete mode 100644 services/autofill/java/com/android/server/autofill/RemoteInlineSuggestionRenderService.java
+
+diff --git a/api/system-current.txt b/api/system-current.txt
+index 1a039dc3ce0..b3e403a3475 100755
+--- a/api/system-current.txt
++++ b/api/system-current.txt
+@@ -10046,13 +10046,6 @@ package android.service.autofill {
+     method @NonNull public android.service.autofill.Dataset.Builder setInlinePresentation(@NonNull android.view.autofill.AutofillId, @Nullable android.view.autofill.AutofillValue, @Nullable java.util.regex.Pattern, @NonNull android.service.autofill.InlinePresentation);
+   }
+ 
+-  public abstract class InlineSuggestionRenderService extends android.app.Service {
+-    ctor public InlineSuggestionRenderService();
+-    method @Nullable public final android.os.IBinder onBind(@NonNull android.content.Intent);
+-    method @Nullable public android.view.View onRenderSuggestion(@NonNull android.service.autofill.InlinePresentation, int, int);
+-    field public static final String SERVICE_INTERFACE = "android.service.autofill.InlineSuggestionRenderService";
+-  }
+-
+ }
+ 
+ package android.service.autofill.augmented {
+diff --git a/api/test-current.txt b/api/test-current.txt
+index fec5f3df966..d0ac7232e20 100644
+--- a/api/test-current.txt
++++ b/api/test-current.txt
+@@ -2990,13 +2990,6 @@ package android.service.autofill {
+     method public void apply(@NonNull android.service.autofill.ValueFinder, @NonNull android.widget.RemoteViews, int) throws java.lang.Exception;
+   }
+ 
+-  public abstract class InlineSuggestionRenderService extends android.app.Service {
+-    ctor public InlineSuggestionRenderService();
+-    method @Nullable public final android.os.IBinder onBind(@NonNull android.content.Intent);
+-    method @Nullable public android.view.View onRenderSuggestion(@NonNull android.service.autofill.InlinePresentation, int, int);
+-    field public static final String SERVICE_INTERFACE = "android.service.autofill.InlineSuggestionRenderService";
+-  }
+-
+   public abstract class InternalOnClickAction implements android.service.autofill.OnClickAction android.os.Parcelable {
+     ctor public InternalOnClickAction();
+     method public abstract void onClick(@NonNull android.view.ViewGroup);
+diff --git a/core/java/android/service/autofill/IInlineSuggestionRenderService.aidl b/core/java/android/service/autofill/IInlineSuggestionRenderService.aidl
+deleted file mode 100644
+index decdcf586ee..00000000000
+--- a/core/java/android/service/autofill/IInlineSuggestionRenderService.aidl
++++ /dev/null
+@@ -1,30 +0,0 @@
+-/*
+- * Copyright (C) 2020 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-package android.service.autofill;
+-
+-import android.service.autofill.IInlineSuggestionUiCallback;
+-import android.service.autofill.InlinePresentation;
+-
+-/**
+- * Interface from system to the inline suggestion render service.
+- *
+- * @hide
+- */
+-oneway interface IInlineSuggestionRenderService {
+-    void renderSuggestion(in IInlineSuggestionUiCallback callback, in InlinePresentation presentation,
+-                     int width, int height);
+-}
+diff --git a/core/java/android/service/autofill/IInlineSuggestionUiCallback.aidl b/core/java/android/service/autofill/IInlineSuggestionUiCallback.aidl
+deleted file mode 100644
+index a55a2ced0b8..00000000000
+--- a/core/java/android/service/autofill/IInlineSuggestionUiCallback.aidl
++++ /dev/null
+@@ -1,29 +0,0 @@
+-/*
+- * Copyright (C) 2020 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-package android.service.autofill;
+-
+-import android.view.SurfaceControl;
+-
+-/**
+- * Interface to receive events from inline suggestions.
+- *
+- * @hide
+- */
+-oneway interface IInlineSuggestionUiCallback {
+-    void autofill();
+-    void onContent(in SurfaceControl surface);
+-}
+diff --git a/core/java/android/service/autofill/InlineSuggestionRenderService.java b/core/java/android/service/autofill/InlineSuggestionRenderService.java
+deleted file mode 100644
+index 2593aab1eb6..00000000000
+--- a/core/java/android/service/autofill/InlineSuggestionRenderService.java
++++ /dev/null
+@@ -1,92 +0,0 @@
+-/*
+- * Copyright (C) 2020 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-package android.service.autofill;
+-
+-import static com.android.internal.util.function.pooled.PooledLambda.obtainMessage;
+-
+-import android.annotation.NonNull;
+-import android.annotation.Nullable;
+-import android.annotation.SystemApi;
+-import android.annotation.TestApi;
+-import android.app.Service;
+-import android.app.slice.Slice;
+-import android.content.Intent;
+-import android.os.Handler;
+-import android.os.IBinder;
+-import android.os.Looper;
+-import android.util.Log;
+-import android.view.View;
+-
+-/**
+- * A service that renders an inline presentation given the {@link InlinePresentation} containing
+- * a {@link Slice} built using the {@link androidx.autofill.AutofillSliceBuilder}.
+- *
+- * {@hide}
+- */
+-@SystemApi
+-@TestApi
+-public abstract class InlineSuggestionRenderService extends Service {
+-
+-    private static final String TAG = "InlineSuggestionRenderService";
+-
+-    /**
+-     * The {@link Intent} that must be declared as handled by the service.
+-     *
+-     * <p>To be supported, the service must also require the
+-     * {@link android.Manifest.permission#BIND_INLINE_SUGGESTION_RENDER_SERVICE} permission so
+-     * that other applications can not abuse it.
+-     */
+-    public static final String SERVICE_INTERFACE =
+-            "android.service.autofill.InlineSuggestionRenderService";
+-
+-    private final Handler mHandler = new Handler(Looper.getMainLooper(), null, true);
+-
+-    private void handleRenderSuggestion(IInlineSuggestionUiCallback callback,
+-            InlinePresentation presentation, int width, int height) {
+-        //TODO(b/146453086): implementation in ExtService
+-    }
+-
+-    @Override
+-    @Nullable
+-    public final IBinder onBind(@NonNull Intent intent) {
+-        if (SERVICE_INTERFACE.equals(intent.getAction())) {
+-            return new IInlineSuggestionRenderService.Stub() {
+-                @Override
+-                public void renderSuggestion(@NonNull IInlineSuggestionUiCallback callback,
+-                        @NonNull InlinePresentation presentation, int width, int height) {
+-                    mHandler.sendMessage(obtainMessage(
+-                            InlineSuggestionRenderService::handleRenderSuggestion,
+-                            InlineSuggestionRenderService.this, callback, presentation,
+-                            width, height));
+-                }
+-            }.asBinder();
+-        }
+-
+-        Log.w(TAG, "Tried to bind to wrong intent (should be " + SERVICE_INTERFACE + ": " + intent);
+-        return null;
+-    }
+-
+-    /**
+-     * Renders the slice into a view.
+-     */
+-    @Nullable
+-    public View onRenderSuggestion(@NonNull InlinePresentation presentation,
+-            int width, int height) {
+-        Log.e(TAG, "service implementation (" + getClass() + " does not implement "
+-                + "onRenderSuggestion()");
+-        return null;
+-    }
+-}
+diff --git a/core/res/AndroidManifest.xml b/core/res/AndroidManifest.xml
+index 4d319dfbe52..f5c45e877ff 100644
+--- a/core/res/AndroidManifest.xml
++++ b/core/res/AndroidManifest.xml
+@@ -3339,13 +3339,6 @@
+     <permission android:name="android.permission.BIND_AUTOFILL_FIELD_CLASSIFICATION_SERVICE"
+                 android:protectionLevel="signature" />
+ 
+-    <!-- Must be required by an {@link android.service.autofill.InlineSuggestionRenderService}
+-         to ensure that only the system can bind to it.
+-         @hide This is not a third-party API (intended for OEMs and system apps).
+-    -->
+-    <permission android:name="android.permission.BIND_INLINE_SUGGESTION_RENDER_SERVICE"
+-                android:protectionLevel="signature" />
+-
+     <!-- Must be required by a android.service.textclassifier.TextClassifierService,
+          to ensure that only the system can bind to it.
+          @SystemApi @hide This is not a third-party API (intended for OEMs and system apps).
+diff --git a/services/autofill/java/com/android/server/autofill/AutofillManagerServiceImpl.java b/services/autofill/java/com/android/server/autofill/AutofillManagerServiceImpl.java
+index e28ef0f920e..bf801fc9380 100644
+--- a/services/autofill/java/com/android/server/autofill/AutofillManagerServiceImpl.java
++++ b/services/autofill/java/com/android/server/autofill/AutofillManagerServiceImpl.java
+@@ -57,7 +57,6 @@ import android.service.autofill.FillEventHistory;
+ import android.service.autofill.FillEventHistory.Event;
+ import android.service.autofill.FillResponse;
+ import android.service.autofill.IAutoFillService;
+-import android.service.autofill.InlineSuggestionRenderService;
+ import android.service.autofill.SaveInfo;
+ import android.service.autofill.UserData;
+ import android.util.ArrayMap;
+@@ -118,7 +117,6 @@ final class AutofillManagerServiceImpl
+     private final LocalLog mUiLatencyHistory;
+     private final LocalLog mWtfHistory;
+     private final FieldClassificationStrategy mFieldClassificationStrategy;
+-    private RemoteInlineSuggestionRenderService mRemoteInlineSuggestionRenderService;
+ 
+     /**
+      * Apps disabled by the service; key is package name, value is when they will be enabled again.
+@@ -214,17 +212,6 @@ final class AutofillManagerServiceImpl
+             sendStateToClients(/* resetClient= */ false);
+         }
+         updateRemoteAugmentedAutofillService();
+-
+-        final ComponentName componentName = RemoteInlineSuggestionRenderService
+-                .getServiceComponentName(getContext());
+-        if (componentName != null) {
+-            mRemoteInlineSuggestionRenderService = new RemoteInlineSuggestionRenderService(
+-                    getContext(), componentName, InlineSuggestionRenderService.SERVICE_INTERFACE,
+-                    mUserId, new InlineSuggestionRenderCallbacksImpl(),
+-                    mMaster.isBindInstantServiceAllowed(), mMaster.verbose);
+-        } else {
+-            mRemoteInlineSuggestionRenderService = null;
+-        }
+         return enabledChanged;
+     }
+ 
+@@ -1555,21 +1542,6 @@ final class AutofillManagerServiceImpl
+         return mFieldClassificationStrategy.getDefaultAlgorithm();
+     }
+ 
+-    RemoteInlineSuggestionRenderService getRemoteInlineSuggestionRenderService() {
+-        return mRemoteInlineSuggestionRenderService;
+-    }
+-
+-    private class InlineSuggestionRenderCallbacksImpl implements
+-            RemoteInlineSuggestionRenderService.InlineSuggestionRenderCallbacks {
+-
+-        @Override // from InlineSuggestionRenderCallbacksImpl
+-        public void onServiceDied(@NonNull RemoteInlineSuggestionRenderService service) {
+-            // Don't do anything; eventually the system will bind to it again...
+-            Slog.w(TAG, "remote service died: " + service);
+-            mRemoteInlineSuggestionRenderService = null;
+-        }
+-    }
+-
+     @Override
+     public String toString() {
+         return "AutofillManagerServiceImpl: [userId=" + mUserId
+diff --git a/services/autofill/java/com/android/server/autofill/RemoteInlineSuggestionRenderService.java b/services/autofill/java/com/android/server/autofill/RemoteInlineSuggestionRenderService.java
+deleted file mode 100644
+index f9e08e683b6..00000000000
+--- a/services/autofill/java/com/android/server/autofill/RemoteInlineSuggestionRenderService.java
++++ /dev/null
+@@ -1,135 +0,0 @@
+-/*
+- * Copyright (C) 2020 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-package com.android.server.autofill;
+-
+-import static com.android.server.autofill.Helper.sVerbose;
+-
+-import android.Manifest;
+-import android.annotation.NonNull;
+-import android.annotation.Nullable;
+-import android.content.ComponentName;
+-import android.content.Context;
+-import android.content.Intent;
+-import android.content.pm.PackageManager;
+-import android.content.pm.ResolveInfo;
+-import android.content.pm.ServiceInfo;
+-import android.os.IBinder;
+-import android.service.autofill.IInlineSuggestionRenderService;
+-import android.service.autofill.IInlineSuggestionUiCallback;
+-import android.service.autofill.InlinePresentation;
+-import android.service.autofill.InlineSuggestionRenderService;
+-import android.util.Slog;
+-
+-import com.android.internal.infra.AbstractMultiplePendingRequestsRemoteService;
+-
+-final class RemoteInlineSuggestionRenderService extends
+-        AbstractMultiplePendingRequestsRemoteService<RemoteInlineSuggestionRenderService,
+-                IInlineSuggestionRenderService> {
+-
+-    private static final String TAG = "RemoteInlineSuggestionRenderService";
+-
+-    private final int mIdleUnbindTimeoutMs = 5000;
+-
+-    RemoteInlineSuggestionRenderService(Context context, ComponentName componentName,
+-            String serviceInterface, int userId, InlineSuggestionRenderCallbacks callback,
+-            boolean bindInstantServiceAllowed, boolean verbose) {
+-        super(context, serviceInterface, componentName, userId, callback,
+-                context.getMainThreadHandler(),
+-                bindInstantServiceAllowed ? Context.BIND_ALLOW_INSTANT : 0, verbose,
+-                /* initialCapacity= */ 2);
+-
+-        ensureBound();
+-    }
+-
+-    @Override // from AbstractRemoteService
+-    protected IInlineSuggestionRenderService getServiceInterface(@NonNull IBinder service) {
+-        return IInlineSuggestionRenderService.Stub.asInterface(service);
+-    }
+-
+-    @Override // from AbstractRemoteService
+-    protected long getTimeoutIdleBindMillis() {
+-        return mIdleUnbindTimeoutMs;
+-    }
+-
+-    @Override // from AbstractRemoteService
+-    protected void handleOnConnectedStateChanged(boolean connected) {
+-        if (connected && getTimeoutIdleBindMillis() != PERMANENT_BOUND_TIMEOUT_MS) {
+-            scheduleUnbind();
+-        }
+-        super.handleOnConnectedStateChanged(connected);
+-    }
+-
+-    public void ensureBound() {
+-        scheduleBind();
+-    }
+-
+-    /**
+-     * Called by {@link Session} to generate a call to the
+-     * {@link RemoteInlineSuggestionRenderService} to request rendering a slice .
+-     */
+-    void renderSuggestion(@NonNull IInlineSuggestionUiCallback callback,
+-            @NonNull InlinePresentation presentation, int width, int height) {
+-        scheduleAsyncRequest((s) -> s.renderSuggestion(callback, presentation, width, height));
+-    }
+-
+-    @Nullable
+-    private static ServiceInfo getServiceInfo(Context context) {
+-        final String packageName =
+-                context.getPackageManager().getServicesSystemSharedLibraryPackageName();
+-        if (packageName == null) {
+-            Slog.w(TAG, "no external services package!");
+-            return null;
+-        }
+-
+-        final Intent intent = new Intent(InlineSuggestionRenderService.SERVICE_INTERFACE);
+-        intent.setPackage(packageName);
+-        final ResolveInfo resolveInfo = context.getPackageManager().resolveService(intent,
+-                PackageManager.GET_SERVICES | PackageManager.GET_META_DATA);
+-        final ServiceInfo serviceInfo = resolveInfo == null ? null : resolveInfo.serviceInfo;
+-        if (resolveInfo == null || serviceInfo == null) {
+-            Slog.w(TAG, "No valid components found.");
+-            return null;
+-        }
+-
+-        if (!Manifest.permission.BIND_INLINE_SUGGESTION_RENDER_SERVICE
+-                .equals(serviceInfo.permission)) {
+-            Slog.w(TAG, serviceInfo.name + " does not require permission "
+-                    + Manifest.permission.BIND_INLINE_SUGGESTION_RENDER_SERVICE);
+-            return null;
+-        }
+-
+-        return serviceInfo;
+-    }
+-
+-    @Nullable
+-    public static ComponentName getServiceComponentName(Context context) {
+-        final ServiceInfo serviceInfo = getServiceInfo(context);
+-        if (serviceInfo == null) return null;
+-
+-        final ComponentName componentName = new ComponentName(serviceInfo.packageName,
+-                serviceInfo.name);
+-
+-        if (sVerbose) Slog.v(TAG, "getServiceComponentName(): " + componentName);
+-        return componentName;
+-    }
+-
+-    interface InlineSuggestionRenderCallbacks
+-            extends VultureCallback<RemoteInlineSuggestionRenderService> {
+-        // NOTE: so far we don't need to notify the callback implementation
+-        // (AutofillManagerServiceImpl) of the request results (success, timeouts, etc..), so this
+-        // callback interface is empty.
+-    }
+-}
+-- 
+2.35.1
+

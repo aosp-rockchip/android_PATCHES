@@ -1,0 +1,31 @@
+From 720455e653fc47a1208c0b185cd634ec668f54df Mon Sep 17 00:00:00 2001
+From: chenxiao <cx@rock-chips.com>
+Date: Sun, 7 Feb 2021 10:30:37 +0800
+Subject: [PATCH 4/4] Video Recoder:      CAMERA KEYEVENT cause two
+ onShutterClick fix it.
+
+Signed-off-by: chenxiao <cx@rock-chips.com>
+Change-Id: Ieef200dc06cff22eb75d90629c401ef4acbfe07b
+---
+ src/com/android/camera/VideoModule.java | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/com/android/camera/VideoModule.java b/src/com/android/camera/VideoModule.java
+index 0b4d5723a..e5a95f5ff 100755
+--- a/src/com/android/camera/VideoModule.java
++++ b/src/com/android/camera/VideoModule.java
+@@ -1272,9 +1272,9 @@ public class VideoModule extends CameraModule
+     @Override
+     public boolean onKeyUp(int keyCode, KeyEvent event) {
+         switch (keyCode) {
+-            case KeyEvent.KEYCODE_CAMERA:
++            /*case KeyEvent.KEYCODE_CAMERA:
+                 onShutterButtonClick();
+-                return true;
++                return true;*/
+             case KeyEvent.KEYCODE_MENU:
+                 // Consume menu button presses during capture.
+                 return mMediaRecorderRecording;
+-- 
+2.35.1
+

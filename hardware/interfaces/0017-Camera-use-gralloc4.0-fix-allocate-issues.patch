@@ -1,0 +1,1452 @@
+From b2dd5cf9be745d0e27ce7a04ae53aa52561f054b Mon Sep 17 00:00:00 2001
+From: Wang Panzhenzhuan <randy.wang@rock-chips.com>
+Date: Sat, 16 Jan 2021 08:51:53 +0800
+Subject: [PATCH 17/24] Camera: use gralloc4.0 fix allocate issues
+
+Signed-off-by: Wang Panzhenzhuan <randy.wang@rock-chips.com>
+Change-Id: I9e044f868dfa2c02f6ad9f0f4a7b822ddebf83d6
+---
+ camera/device/3.4/default/Android.bp          |  47 +-
+ .../3.4/default/ExternalCameraDevice.cpp      |   5 +-
+ .../default/ExternalCameraDeviceSession.cpp   | 163 +++-
+ .../3.4/default/ExternalCameraGralloc.cpp     |   2 +
+ .../3.4/default/ExternalCameraGralloc4.cpp    | 747 ++++++++++++++++++
+ .../3.4/default/ExternalCameraMemManager.cpp  |   7 +-
+ .../3.4/default/ExternalCameraUtils.cpp       |   2 +-
+ .../ExternalCameraDeviceSession_3.4.h         |   2 +-
+ .../ExternalCameraGralloc4.h                  | 144 ++++
+ .../ExternalCameraMemManager.h                |   4 +-
+ .../ExternalCameraUtils_3.4.h                 |   1 +
+ 11 files changed, 1090 insertions(+), 34 deletions(-)
+ mode change 100644 => 100755 camera/device/3.4/default/Android.bp
+ mode change 100644 => 100755 camera/device/3.4/default/ExternalCameraDevice.cpp
+ mode change 100644 => 100755 camera/device/3.4/default/ExternalCameraDeviceSession.cpp
+ mode change 100644 => 100755 camera/device/3.4/default/ExternalCameraGralloc.cpp
+ create mode 100755 camera/device/3.4/default/ExternalCameraGralloc4.cpp
+ mode change 100644 => 100755 camera/device/3.4/default/ExternalCameraMemManager.cpp
+ mode change 100644 => 100755 camera/device/3.4/default/ExternalCameraUtils.cpp
+ mode change 100644 => 100755 camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraDeviceSession_3.4.h
+ create mode 100755 camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraGralloc4.h
+ mode change 100644 => 100755 camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraUtils_3.4.h
+
+diff --git a/camera/device/3.4/default/Android.bp b/camera/device/3.4/default/Android.bp
+old mode 100644
+new mode 100755
+index b2cf09e7d..1f147d9d3
+--- a/camera/device/3.4/default/Android.bp
++++ b/camera/device/3.4/default/Android.bp
+@@ -75,15 +75,20 @@ cc_library_shared {
+         "ExternalCameraUtils.cpp",
+         "RgaCropScale.cpp",
+         "ExternalCameraMemManager.cpp",
+-        "ExternalCameraGralloc.cpp"
++        "ExternalCameraGralloc4.cpp"
+     ],
+     include_dirs: [
+         "hardware/rockchip/libhwjpeg/inc",
+         "hardware/rockchip/libhwjpeg/inc/mpp_inc",
+-        "hardware/rockchip/librga"
++        "hardware/rockchip/librga",
++        "external/libdrm/include/drm",
+     ],
+     header_libs: [
+         "gl_headers",
++        "libbase_headers",
++        "libnativebase_headers",
++        "libhardware_headers",
++        "libui_headers",
+     ],
+     shared_libs: [
+         "libhidlbase",
+@@ -95,9 +100,6 @@ cc_library_shared {
+         "android.hardware.camera.device@3.3",
+         "android.hardware.camera.device@3.4",
+         "android.hardware.camera.provider@2.4",
+-        "android.hardware.graphics.mapper@2.0",
+-        "android.hardware.graphics.mapper@3.0",
+-        "android.hardware.graphics.mapper@4.0",
+         "liblog",
+         "libgralloctypes",
+         "libhardware",
+@@ -110,19 +112,48 @@ cc_library_shared {
+         "libtinyxml2",
+         "libui",
+         "librga",
+-        "libhwjpeg"
++        "libhwjpeg",
++        "libbase",
++        "android.hardware.graphics.allocator@2.0",
++        "android.hardware.graphics.allocator@3.0",
++        "android.hardware.graphics.allocator@4.0",
++        "android.hardware.graphics.common-ndk_platform",
++        "android.hardware.graphics.common@1.2",
++        "android.hardware.graphics.mapper@2.0",
++        "android.hardware.graphics.mapper@2.1",
++        "android.hardware.graphics.mapper@3.0",
++        "android.hardware.graphics.mapper@4.0",
+     ],
+     static_libs: [
+         "android.hardware.camera.common@1.0-helper",
++        "libgrallocusage",
+     ],
++    // bufferhub is not used when building libgui for vendors
++    target: {
++        vendor: {
++            cflags: ["-DLIBUI_IN_VNDK"],
++            exclude_srcs: [
++            ],
++            exclude_header_libs: [
++            ],
++            exclude_shared_libs: [
++            ],
++        },
++    },
+     cppflags: [
+         "-Wno-error",
+         "-Wno-unused",
+-        "-DRK_HW_JPEG_DECODER"
++        "-DRK_HW_JPEG_DECODER",
++        "-DRK_GRALLOC_4",
+     ],
+     local_include_dirs: ["include/ext_device_v3_4_impl"],
+     export_shared_lib_headers: [
+         "libfmq",
+-        "libhwjpeg"
++        "libhwjpeg",
++        "android.hardware.graphics.common@1.2",
++        "android.hardware.graphics.common-ndk_platform",
++        "android.hardware.graphics.mapper@4.0",
++        "libgralloctypes",
+     ],
++	min_sdk_version: "29",
+ }
+diff --git a/camera/device/3.4/default/ExternalCameraDevice.cpp b/camera/device/3.4/default/ExternalCameraDevice.cpp
+old mode 100644
+new mode 100755
+index 8050ca942..b32eb589e
+--- a/camera/device/3.4/default/ExternalCameraDevice.cpp
++++ b/camera/device/3.4/default/ExternalCameraDevice.cpp
+@@ -15,7 +15,7 @@
+  */
+ 
+ #define LOG_TAG "ExtCamDev@3.4"
+-//#define LOG_NDEBUG 0
++#define LOG_NDEBUG 0
+ #include <log/log.h>
+ 
+ #include <algorithm>
+@@ -737,8 +737,7 @@ status_t ExternalCameraDevice::initOutputCharsKeys(
+                 ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
+                 ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS,
+                 ANDROID_SCALER_AVAILABLE_STALL_DURATIONS);
+-    }
+-    if (hasColor_yuv) {
++    } else if (hasColor_yuv) {
+         initOutputCharskeysByFormat(metadata, V4L2_PIX_FMT_YUYV, halFormats,
+                 ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT,
+                 ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
+diff --git a/camera/device/3.4/default/ExternalCameraDeviceSession.cpp b/camera/device/3.4/default/ExternalCameraDeviceSession.cpp
+old mode 100644
+new mode 100755
+index e564f4cba..1d1ef9364
+--- a/camera/device/3.4/default/ExternalCameraDeviceSession.cpp
++++ b/camera/device/3.4/default/ExternalCameraDeviceSession.cpp
+@@ -14,11 +14,12 @@
+  * limitations under the License.
+  */
+ #define LOG_TAG "ExtCamDevSsn@3.4"
+-//#define LOG_NDEBUG 0
++#define LOG_NDEBUG 0
+ #define ATRACE_TAG ATRACE_TAG_CAMERA
+ #include <log/log.h>
+ 
+ #include <inttypes.h>
++
+ #include "ExternalCameraDeviceSession_3.4.h"
+ 
+ #include "android-base/macros.h"
+@@ -32,8 +33,11 @@
+ 
+ #include <jpeglib.h>
+ #include "RgaCropScale.h"
++#include "ExternalCameraGralloc4.h"
++
++#define RK_GRALLOC_USAGE_SPECIFY_STRIDE 1ULL << 30
+ 
+-#include "ExternalCameraGralloc.h"
++//#define DUMP_YUV
+ 
+ namespace android {
+ namespace hardware {
+@@ -119,6 +123,8 @@ void ExternalCameraDeviceSession::createPreviewBuffer() {
+     LOGD("alloc buffer W:H=%dx%d", tempWidth, tempHeight);
+     mGrallocBuf.mPerBuffersize = PAGE_ALIGN(tempWidth * tempHeight * 2);
+     mGrallocBuf.mBufType = PREVIEWBUFFER;
++    mGrallocBuf.width = tempWidth;
++    mGrallocBuf.height = tempHeight;
+     mFormatConvertThread->mCamMemManager = new GrallocDrmMemManager(false);
+     if(mFormatConvertThread->mCamMemManager->createPreviewBuffer(&mGrallocBuf)) {
+         LOGE("alloc graphic buffer failed !");
+@@ -1100,16 +1106,44 @@ bool ExternalCameraDeviceSession::FormatConvertThread::threadLoop() {
+             PREVIEWBUFFER, req->frameIn->mBufferIndex, buffer_sharre_fd);
+     mVirAddr = mCamMemManager->getBufferAddr(
+             PREVIEWBUFFER, req->frameIn->mBufferIndex, buffer_addr_vir);
++
++    LOGD("%s(%d)mShareFd(%d) mVirAddr(%p)!\n", __FUNCTION__, __LINE__, mShareFd, mVirAddr);
++
+     int tmpW = req->frameIn->mWidth;
+     int tmpH = req->frameIn->mHeight;
+     if (req->frameIn->mFourcc == V4L2_PIX_FMT_MJPEG) {
++#ifdef RK_HW_JPEG_DECODER
+         int ret = jpegDecoder(mShareFd, inData, inDataSize);
+         if(!ret) {
+             LOGE("mjpeg decode failed");
+             mFmtOutputThread->submitRequest(req);
+             return true;
+         }
++#ifdef DUMP_YUV
++        {
++            int frameCount = req->frameNumber;
++            if(frameCount > 5 && frameCount<10){
++                FILE* fp =NULL;
++                char filename[128];
++                filename[0] = 0x00;
++                sprintf(filename, "/data/camera/camera_dump_hwjpeg_%dx%d_%d.yuv",
++                        tmpW, tmpH, frameCount);
++                fp = fopen(filename, "wb+");
++                if (fp != NULL) {
++                    fwrite((char*)mVirAddr,1,tmpW*tmpH*1.5,fp);
++                    fclose(fp);
++                    ALOGI("Write success YUV data to %s",filename);
++                } else {
++                    ALOGE("Create %s failed(%d, %s)",filename,fp, strerror(errno));
++                }
++            }
++        }
++#endif
++
++#endif
+         req->mShareFd = mShareFd;
++        req->mVirAddr = mVirAddr;
++
+     } else if (req->frameIn->mFourcc == V4L2_PIX_FMT_YUYV) {
+         //yuyvToNv12(V4L2_PIX_FMT_NV12, (char*)inData,
+         //        (char*)mVirAddr, tmpW, tmpH, tmpW, tmpH);
+@@ -1725,7 +1759,7 @@ bool ExternalCameraDeviceSession::OutputThread::threadLoop() {
+     }
+ 
+     if (isBlobOrYv12 && req->frameIn->mFourcc == V4L2_PIX_FMT_MJPEG) {
+-            LOGD("format is BLOB or YV12,use software jpeg decoder");
++        LOGD("format is BLOB or YV12,use software jpeg decoder, framenumber(%d)", req->frameNumber);
+         ATRACE_BEGIN("MJPGtoI420");
+         int res = libyuv::MJPGToI420(
+             req->inData, req->inDataSize, static_cast<uint8_t*>(mYu12FrameLayout.y), mYu12FrameLayout.yStride,
+@@ -1760,7 +1794,7 @@ bool ExternalCameraDeviceSession::OutputThread::threadLoop() {
+         YCbCrLayout input;
+         input.y = (uint8_t*)req->inData;
+         input.yStride = mYu12Frame->mWidth;
+-        input.cb = (uint8_t*)(req->mShareFd) + tempFrameWidth * tempFrameHeight;
++        input.cb = (uint8_t*)(req->inData) + tempFrameWidth * tempFrameHeight;
+         input.cStride = mYu12Frame->mWidth;
+         LOGD("format is BLOB or YV12, use software YUYVtoI420");
+ 
+@@ -1930,26 +1964,115 @@ bool ExternalCameraDeviceSession::OutputThread::threadLoop() {
+                         signalRequestDone();
+                         return true;
+                     }
++#ifndef RK_HW_JPEG_DECODER
++                     int res = libyuv::MJPGToI420(
++                         req->inData, req->inDataSize, static_cast<uint8_t*>(mYu12FrameLayout.y), mYu12FrameLayout.yStride,
++                         static_cast<uint8_t*>(mYu12FrameLayout.cb), mYu12FrameLayout.cStride,
++                         static_cast<uint8_t*>(mYu12FrameLayout.cr), mYu12FrameLayout.cStride,
++                         mYu12Frame->mWidth, mYu12Frame->mHeight, mYu12Frame->mWidth, mYu12Frame->mHeight);
++                     ALOGV("%s MJPGToI420 end, I420ToNV12 start", __FUNCTION__);
++                     ATRACE_BEGIN("I420ToNV12");
++                     YCbCrLayout output;
++                     output.y = (uint8_t*)req->mVirAddr;
++                     output.yStride = mYu12Frame->mWidth;
++                     output.cb = (uint8_t*)(req->mVirAddr) + tempFrameWidth * tempFrameHeight;
++                     output.cStride = mYu12Frame->mWidth;
++
++                     res = libyuv::I420ToNV12(
++                             static_cast<uint8_t*>(mYu12FrameLayout.y),
++                             mYu12FrameLayout.yStride,
++                             static_cast<uint8_t*>(mYu12FrameLayout.cb),
++                             mYu12FrameLayout.cStride,
++                             static_cast<uint8_t*>(mYu12FrameLayout.cr),
++                             mYu12FrameLayout.cStride,
++                             static_cast<uint8_t*>(output.y),
++                             output.yStride,
++                             static_cast<uint8_t*>(output.cb),
++                             output.cStride,
++                             mYu12Frame->mWidth, mYu12Frame->mHeight);
++                    ATRACE_END();
++#ifdef DUMP_YUV
++                    {
++                        static int frameCount = req->frameNumber;
++                        if(++frameCount > 5 && frameCount<10){
++                            FILE* fp =NULL;
++                            char filename[128];
++                            filename[0] = 0x00;
++                            sprintf(filename, "/data/camera/camera_dump_%dx%d_%d.yuv",
++                                    tempFrameWidth, tempFrameHeight, frameCount);
++                            fp = fopen(filename, "wb+");
++                            if (fp != NULL) {
++                                fwrite((char*)req->mVirAddr, 1, tempFrameWidth*tempFrameHeight*1.5, fp);
++                                fclose(fp);
++                                ALOGI("Write success YUV data to %s",filename);
++                            } else {
++                                ALOGE("Create %s failed(%d, %s)",filename,fp, strerror(errno));
++                            }
++                        }
++                    }
++#endif
++#endif
++
+                     int handle_fd = -1, ret;
+-                    gralloc_module_t const* mGrallocModule;
+-                    const hw_module_t *allocMod = NULL;
+-                    const native_handle_t* tmp_hand = (const native_handle_t*)*(halBuf.bufPtr);
+-                    ret= hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &allocMod);
+-                    mGrallocModule = reinterpret_cast<gralloc_module_t const *>(allocMod);
+-                    mGrallocModule->perform(
+-                            mGrallocModule,
+-                            GRALLOC_MODULE_PERFORM_GET_HADNLE_PRIME_FD,
+-                            tmp_hand,
+-                            &handle_fd);
++                    const native_handle_t* tmp_hand = (const native_handle_t*)(*(halBuf.bufPtr));
++                    ret = ExCamGralloc4::get_share_fd(tmp_hand, &handle_fd);
+                     if (handle_fd == -1) {
+                         LOGE("convert tmp_hand to dst_fd error");
+                         return -EINVAL;
+                     }
++                    ALOGV("%s(%d): halBuf handle_fd(%d)", __FUNCTION__, __LINE__, handle_fd);
++                    ALOGV("%s(%d) halbuf_wxh(%dx%d) frameNumber(%d)", __FUNCTION__, __LINE__,
++                        halBuf.width, halBuf.height, req->frameNumber);
++
+                     camera2::RgaCropScale::rga_nv12_scale_crop(
+                         tempFrameWidth, tempFrameHeight, req->mShareFd, handle_fd,
+                         halBuf.width, halBuf.height, 100, false, true,
+                         (halBuf.format == PixelFormat::YCRCB_420_SP), is16Align,
+                         req->frameIn->mFourcc == V4L2_PIX_FMT_YUYV);
++#ifdef DUMP_YUV
++                    {
++                        void* mVirAddr = NULL;
++                        ret = ExCamGralloc4::lock(
++                                    tmp_hand,
++                                    halBuf.usage,
++                                    0,
++                                    0,
++                                    halBuf.width,
++                                    halBuf.height,
++                                    (void**)&mVirAddr);
++                        if (ret) {
++                            LOGE("lock buffer error : %s", strerror(errno));
++                        }
++                        ExCamGralloc4::unlock(tmp_hand);
++                        int frameCount = req->frameNumber;
++                        if( frameCount > 4 && frameCount<10){
++                            FILE* fp =NULL;
++                            char filename[128];
++                            filename[0] = 0x00;
++                            sprintf(filename, "/data/camera/camera_dump_%dx%d_%d.yuv",
++                                    tempFrameWidth, tempFrameHeight, frameCount);
++                            fp = fopen(filename, "wb+");
++                            if (fp != NULL) {
++                                fwrite((char*)req->mVirAddr, 1, tempFrameWidth*tempFrameHeight*1.5, fp);
++                                fclose(fp);
++                                ALOGI("Write success YUV data to %s",filename);
++                            } else {
++                                ALOGE("Create %s failed(%d, %s)",filename,fp, strerror(errno));
++                            }
++                            sprintf(filename, "/data/camera/camera_dump_halbuf_%dx%d_%d.yuv",
++                                    halBuf.width, halBuf.height, frameCount);
++                            fp = fopen(filename, "wb+");
++                            if (fp != NULL) {
++                                fwrite((char*)mVirAddr, 1, tempFrameWidth*tempFrameHeight*1.5, fp);
++                                fclose(fp);
++                                ALOGI("Write success YUV data to %s",filename);
++                            } else {
++                                ALOGE("Create %s failed(%d, %s)",filename,fp, strerror(errno));
++                            }
++                        }
++                    }
++#endif
++
+                 }
+             } break;
+             default:
+@@ -2321,6 +2444,7 @@ int ExternalCameraDeviceSession::setV4l2FpsLocked(double fps) {
+ 
+     double retFps = streamparm.parm.capture.timeperframe.denominator /
+             static_cast<double>(streamparm.parm.capture.timeperframe.numerator);
++    ALOGV("%s: retFps(%f)", __FUNCTION__, retFps);
+     if (std::fabs(fps - retFps) > 1.0) {
+         ALOGE("%s: expect fps %f, got %f instead", __FUNCTION__, fps, retFps);
+         return -1;
+@@ -2330,7 +2454,7 @@ int ExternalCameraDeviceSession::setV4l2FpsLocked(double fps) {
+ }
+ 
+ int ExternalCameraDeviceSession::configureV4l2StreamLocked(
+-        const SupportedV4L2Format& v4l2Fmt, double requestFps) {
++        SupportedV4L2Format& v4l2Fmt, double requestFps) {
+     ATRACE_CALL();
+     ALOGD("V4L configuration format:%c%c%c%c, w %d, h %d",
+         v4l2Fmt.fourcc & 0xFF,
+@@ -2381,8 +2505,11 @@ int ExternalCameraDeviceSession::configureV4l2StreamLocked(
+                 (fmt.fmt.pix.pixelformat >> 16) & 0xFF,
+                 (fmt.fmt.pix.pixelformat >> 24) & 0xFF,
+                 fmt.fmt.pix.width, fmt.fmt.pix.height);
+-        return -EINVAL;
++        //return -EINVAL;
++        v4l2Fmt.width = fmt.fmt.pix.width;
++        v4l2Fmt.height = fmt.fmt.pix.height;
+     }
++
+     uint32_t bufferSize = fmt.fmt.pix.sizeimage;
+     ALOGI("%s: V4L2 buffer size is %d", __FUNCTION__, bufferSize);
+     uint32_t expectedMaxBufferSize = kMaxBytesPerPixel * fmt.fmt.pix.width * fmt.fmt.pix.height;
+@@ -2788,7 +2915,7 @@ Status ExternalCameraDeviceSession::configureStreams(
+         mStreamMap[config.streams[i].id].usage =
+                 out->streams[i].v3_2.producerUsage = config.streams[i].usage |
+                 BufferUsage::CPU_WRITE_OFTEN |
+-                BufferUsage::CAMERA_OUTPUT;
++                BufferUsage::CAMERA_OUTPUT | RK_GRALLOC_USAGE_SPECIFY_STRIDE;
+         out->streams[i].v3_2.consumerUsage = 0;
+         out->streams[i].v3_2.maxBuffers  = mV4L2BufferCount;
+ 
+@@ -2797,10 +2924,10 @@ Status ExternalCameraDeviceSession::configureStreams(
+             case PixelFormat::YCBCR_420_888:
+             case PixelFormat::YV12: // Used by SurfaceTexture
+             case PixelFormat::Y16:
++             case PixelFormat::YCRCB_420_SP:
+                 // No override
+                 out->streams[i].v3_2.overrideFormat = config.streams[i].format;
+                 break;
+-			case PixelFormat::YCRCB_420_SP:
+             case PixelFormat::IMPLEMENTATION_DEFINED:
+ 			
+                 // Override based on VIDEO or not
+diff --git a/camera/device/3.4/default/ExternalCameraGralloc.cpp b/camera/device/3.4/default/ExternalCameraGralloc.cpp
+old mode 100644
+new mode 100755
+index 60c4fb80f..606d01f55
+--- a/camera/device/3.4/default/ExternalCameraGralloc.cpp
++++ b/camera/device/3.4/default/ExternalCameraGralloc.cpp
+@@ -15,6 +15,8 @@
+  */
+ 
+ #define LOG_TAG "CamGraBuf"
++#define LOG_NDEBUG 0
++#include <log/log.h>
+ #include <utils/threads.h>
+ #include <utils/Log.h>
+ #include <ui/GraphicBufferAllocator.h>
+diff --git a/camera/device/3.4/default/ExternalCameraGralloc4.cpp b/camera/device/3.4/default/ExternalCameraGralloc4.cpp
+new file mode 100755
+index 000000000..bc7522080
+--- /dev/null
++++ b/camera/device/3.4/default/ExternalCameraGralloc4.cpp
+@@ -0,0 +1,747 @@
++/*
++ * Copyright (c) 2018, Fuzhou Rockchip Electronics Co., Ltd
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#define LOG_TAG "ExCamGraBuf"
++#define LOG_NDEBUG 0
++#include <log/log.h>
++#include <utils/threads.h>
++#include <utils/Log.h>
++#include <ui/GraphicBufferAllocator.h>
++#include <ui/GraphicBufferMapper.h>
++#include <ui/GraphicBuffer.h>
++#include <linux/videodev2.h>
++#include "ExternalCameraGralloc4.h"
++
++#include <hwbinder/IPCThreadState.h>
++#include <sync/sync.h>
++#include <drm_fourcc.h>
++
++
++#include <hidl/ServiceManagement.h>
++
++#include <inttypes.h>
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wzero-length-array"
++#include <sync/sync.h>
++#pragma clang diagnostic pop
++
++using namespace android;
++
++#define RK_GRALLOC_USAGE_SPECIFY_STRIDE 1ULL << 30
++
++struct dma_buf_sync {
++    __u64 flags;
++};
++
++#define DMA_BUF_SYNC_READ      (1 << 0)
++#define DMA_BUF_SYNC_WRITE     (2 << 0)
++#define DMA_BUF_SYNC_RW        (DMA_BUF_SYNC_READ | DMA_BUF_SYNC_WRITE)
++#define DMA_BUF_SYNC_START     (0 << 2)
++#define DMA_BUF_SYNC_END       (1 << 2)
++#define DMA_BUF_SYNC_VALID_FLAGS_MASK \
++        (DMA_BUF_SYNC_RW | DMA_BUF_SYNC_END)
++#define DMA_BUF_BASE            'b'
++#define DMA_BUF_IOCTL_SYNC      _IOW(DMA_BUF_BASE, 0, struct dma_buf_sync)
++
++
++using android::hardware::graphics::mapper::V4_0::Error;
++using android::hardware::graphics::mapper::V4_0::IMapper;
++using android::hardware::graphics::allocator::V4_0::IAllocator;
++using android::hardware::graphics::common::V1_2::BufferUsage;
++using android::hardware::graphics::mapper::V4_0::BufferDescriptor;
++using android::hardware::hidl_vec;
++
++using android::gralloc4::MetadataType_PlaneLayouts;
++using android::gralloc4::decodePlaneLayouts;
++using android::gralloc4::MetadataType_Usage;
++using android::gralloc4::decodeUsage;
++using android::gralloc4::MetadataType_PlaneLayouts;
++using android::gralloc4::decodePlaneLayouts;
++using android::gralloc4::MetadataType_PixelFormatFourCC;
++using android::gralloc4::decodePixelFormatFourCC;
++using android::gralloc4::MetadataType_PixelFormatModifier;
++using android::gralloc4::decodePixelFormatModifier;
++using android::gralloc4::MetadataType_PixelFormatRequested;
++using android::gralloc4::decodePixelFormatRequested;
++using android::gralloc4::MetadataType_AllocationSize;
++using android::gralloc4::decodeAllocationSize;
++using android::gralloc4::MetadataType_LayerCount;
++using android::gralloc4::decodeLayerCount;
++using android::gralloc4::MetadataType_Dataspace;
++using android::gralloc4::decodeDataspace;
++using android::gralloc4::MetadataType_Crop;
++using android::gralloc4::decodeCrop;
++using android::gralloc4::MetadataType_Width;
++using android::gralloc4::decodeWidth;
++using android::gralloc4::MetadataType_Height;
++using android::gralloc4::decodeHeight;
++using ::android::Mutex;
++
++using aidl::android::hardware::graphics::common::Dataspace;
++using aidl::android::hardware::graphics::common::PlaneLayout;
++using aidl::android::hardware::graphics::common::ExtendableType;
++using aidl::android::hardware::graphics::common::PlaneLayout;
++using aidl::android::hardware::graphics::common::PlaneLayoutComponentType;
++
++#define IMPORTBUFFER_CB 1
++namespace {
++
++static constexpr Error kTransactionError = Error::NO_RESOURCES;
++
++uint64_t getValidUsageBits() {
++    static const uint64_t validUsageBits = []() -> uint64_t {
++        uint64_t bits = 0;
++        for (const auto bit :
++             hardware::hidl_enum_range<hardware::graphics::common::V1_2::BufferUsage>()) {
++            bits = bits | bit;
++        }
++        return bits;
++    }();
++    return validUsageBits;
++}
++
++static inline IMapper::Rect sGralloc4Rect(const Rect& rect) {
++    IMapper::Rect outRect{};
++    outRect.left = rect.left;
++    outRect.top = rect.top;
++    outRect.width = rect.width();
++    outRect.height = rect.height();
++    return outRect;
++}
++
++static inline void sBufferDescriptorInfo(std::string name, uint32_t width, uint32_t height,
++                                         PixelFormat format, uint32_t layerCount, uint64_t usage,
++                                         IMapper::BufferDescriptorInfo* outDescriptorInfo) {
++    outDescriptorInfo->name = name;
++    outDescriptorInfo->width = width;
++    outDescriptorInfo->height = height;
++    outDescriptorInfo->layerCount = layerCount;
++    outDescriptorInfo->format = static_cast<hardware::graphics::common::V1_2::PixelFormat>(format);
++    outDescriptorInfo->usage = usage;
++    outDescriptorInfo->reservedSize = 0;
++}
++
++} // anonymous namespace
++
++
++/*#defined in hardware/rockchip/libgralloc/bifrost/src/hidl_common/MapperMetadata.h*/
++#define GRALLOC_ARM_METADATA_TYPE_NAME "arm.graphics.ArmMetadataType"
++const static IMapper::MetadataType ArmMetadataType_PLANE_FDS
++{
++	GRALLOC_ARM_METADATA_TYPE_NAME,
++	// static_cast<int64_t>(aidl::arm::graphics::ArmMetadataType::PLANE_FDS)
++    1   // 'PLANE_FDS'
++};
++
++static IMapper &get_mapperservice()
++{
++    static android::sp<IMapper> cached_service = IMapper::getService();
++    return *cached_service;
++}
++
++static IAllocator &get_allocservice()
++{
++    static android::sp<IAllocator> cached_service = IAllocator::getService();
++    return *cached_service;
++}
++
++template <typename T>
++static int get_metadata(IMapper &mapper, buffer_handle_t handle, IMapper::MetadataType type,
++                        android::status_t (*decode)(const hidl_vec<uint8_t> &, T *), T *value)
++{
++	void *handle_arg = const_cast<native_handle_t *>(handle);
++	assert(handle_arg);
++	assert(value);
++	assert(decode);
++
++	int err = 0;
++	mapper.get(handle_arg, type, [&err, value, decode](Error error, const hidl_vec<uint8_t> &metadata)
++	            {
++		            if (error != Error::NONE)
++		            {
++			            err = android::BAD_VALUE;
++			            return;
++		            }
++		            err = decode(metadata, value);
++		        });
++	return err;
++}
++
++android::status_t static decodeArmPlaneFds(const hidl_vec<uint8_t>& input, std::vector<int64_t>* fds)
++{
++    assert (fds != nullptr);
++    int64_t size = 0;
++
++    memcpy(&size, input.data(), sizeof(int64_t));
++    if (size < 0)
++    {
++        return android::BAD_VALUE;
++    }
++
++    fds->resize(size);
++
++    const uint8_t *tmp = input.data() + sizeof(int64_t);
++    memcpy(fds->data(), tmp, sizeof(int64_t) * size);
++
++    return android::NO_ERROR;
++}
++
++
++namespace ExCamGralloc4 {
++int get_width(buffer_handle_t handle, uint64_t* width)
++{
++    auto &mapper = get_mapperservice();
++
++    int err = get_metadata(mapper, handle, MetadataType_Width, decodeWidth, width);
++    if (err != android::OK)
++    {
++        LOGE("err : %d", err);
++    }
++
++    return err;
++}
++
++int get_height(buffer_handle_t handle, uint64_t* height)
++{
++    auto &mapper = get_mapperservice();
++
++    int err = get_metadata(mapper, handle, MetadataType_Height, decodeHeight, height);
++    if (err != android::OK)
++    {
++        LOGE("err : %d", err);
++    }
++
++    return err;
++}
++
++status_t validateBufferDescriptorInfo(
++        IMapper::BufferDescriptorInfo* descriptorInfo) {
++    uint64_t validUsageBits = getValidUsageBits();
++
++    if (descriptorInfo->usage & ~validUsageBits) {
++        ALOGE("buffer descriptor contains invalid usage bits 0x%" PRIx64,
++              descriptorInfo->usage & ~validUsageBits);
++        return android::BAD_VALUE;
++    }
++    return android::NO_ERROR;
++}
++
++status_t createDescriptor(void* bufferDescriptorInfo,
++                                          void* outBufferDescriptor) {
++    IMapper::BufferDescriptorInfo* descriptorInfo =
++            static_cast<IMapper::BufferDescriptorInfo*>(bufferDescriptorInfo);
++    BufferDescriptor* outDescriptor = static_cast<BufferDescriptor*>(outBufferDescriptor);
++
++    status_t status = validateBufferDescriptorInfo(descriptorInfo);
++    if (status != android::NO_ERROR) {
++        return status;
++    }
++
++    Error error;
++    auto hidl_cb = [&](const auto& tmpError, const auto& tmpDescriptor) {
++        error = tmpError;
++        if (error != Error::NONE) {
++            return;
++        }
++        *outDescriptor = tmpDescriptor;
++    };
++
++    auto &mapper = get_mapperservice();
++    android::hardware::Return<void> ret = mapper.createDescriptor(*descriptorInfo, hidl_cb);
++
++    return static_cast<status_t>((ret.isOk()) ? error : kTransactionError);
++}
++
++int lock(buffer_handle_t bufferHandle,
++                                  uint32_t flags,
++                                  uint32_t left,
++                                  uint32_t top,
++                                  uint32_t width,
++                                  uint32_t height,
++                                  void** out_addr) {
++    LOGD("lock buffer:%p   rect(%d, %d, %d, %d) flag: 0x%08x", bufferHandle, left, top, width, height, flags);
++
++    auto &mapper = get_mapperservice();
++    auto buffer = const_cast<native_handle_t*>(bufferHandle);
++    LOGD("lock buffer pointer:%p", &buffer);
++
++    IMapper::Rect accessRegion = {(int)left, (int)top, (int)width, (int)height};
++
++    android::hardware::hidl_handle acquireFenceHandle; // dummy
++
++    Error error;
++    auto ret = mapper.lock(buffer,
++                           flags,
++                           accessRegion,
++                           acquireFenceHandle,
++                           [&](const auto& tmpError, const auto& tmpData) {
++                                error = tmpError;
++                                if (error != Error::NONE) {
++                                    return;
++                                }
++                                *out_addr = tmpData;
++                           });
++
++    error = (ret.isOk()) ? error : kTransactionError;
++
++    ALOGE_IF(error != Error::NONE, "lock(%p, ...) failed: %d", bufferHandle, error);
++
++    return (int)error;
++
++}
++
++int unlock(buffer_handle_t bufferHandle) {
++    LOGD("Unlock buffer:%p", bufferHandle);
++
++    auto &mapper = get_mapperservice();
++    auto buffer = const_cast<native_handle_t*>(bufferHandle);
++    LOGD("Unlock buffer:%p", buffer);
++
++    int releaseFence = -1;
++    Error error;
++    auto ret = mapper.unlock(buffer,
++                             [&](const auto& tmpError, const auto& tmpReleaseFence)
++                             {
++        error = tmpError;
++        if (error != Error::NONE) {
++            return;
++        }
++
++        auto fenceHandle = tmpReleaseFence.getNativeHandle(); // 预期 unlock() 不会返回有效的 release_fence.
++        if (fenceHandle && fenceHandle->numFds == 1)
++        {
++            ALOGE("got unexpected valid fd of release_fence : %d", fenceHandle->data[0]);
++
++            int fd = dup(fenceHandle->data[0]);
++            if (fd >= 0) {
++                releaseFence = fd;
++            } else {
++                ALOGE("failed to dup unlock release fence");
++                sync_wait(fenceHandle->data[0], -1);
++            }
++        }
++                             });
++
++    if (!ret.isOk()) {
++        error = kTransactionError;
++    }
++
++    if (error != Error::NONE) {
++        ALOGE("unlock(%p) failed with %d", bufferHandle, error);
++    }
++
++    return 0;
++}
++
++int get_usage(buffer_handle_t handle, uint64_t* usage)
++{
++    auto &mapper = get_mapperservice();
++
++    int err = get_metadata(mapper, handle, MetadataType_Usage, decodeUsage, usage);
++    if (err != android::OK)
++    {
++        LOGE("Failed to get pixel_format_requested. err : %d", err);
++        return err;
++    }
++
++    return err;
++}
++
++int get_allocation_size(buffer_handle_t handle, uint64_t* allocation_size)
++{
++    auto &mapper = get_mapperservice();
++
++    int err = get_metadata(mapper, handle, MetadataType_AllocationSize, decodeAllocationSize, allocation_size);
++    if (err != android::OK)
++    {
++        LOGE("Failed to get allocation_size. err : %d", err);
++        return err;
++    }
++
++    return err;
++}
++
++status_t importBuffer(buffer_handle_t rawHandle,
++                                      buffer_handle_t* outBufferHandle) {
++    LOGD("import rawBuffer :%p", rawHandle);
++    Error error;
++    auto &mapper = get_mapperservice();
++    auto ret = mapper.importBuffer(android::hardware::hidl_handle(rawHandle), [&](const auto& tmpError, const auto& tmpBuffer) {
++        error = tmpError;
++        if (error != Error::NONE) {
++            return;
++        }
++        *outBufferHandle = static_cast<buffer_handle_t>(tmpBuffer);
++        LOGD("import outBuffer :%p", outBufferHandle);
++    });
++
++    return static_cast<status_t>((ret.isOk()) ? error : kTransactionError);
++}
++
++status_t freeBuffer(buffer_handle_t bufferHandle) {
++    LOGD("freeBuffer %p", bufferHandle);
++    auto buffer = const_cast<native_handle_t*>(bufferHandle);
++    auto &mapper = get_mapperservice();
++    auto ret = mapper.freeBuffer(buffer);
++
++    auto error = (ret.isOk()) ? static_cast<Error>(ret) : kTransactionError;
++    ALOGE_IF(error != Error::NONE, "freeBuffer(%p) failed with %d", buffer, error);
++    return static_cast<status_t>((ret.isOk()) ? error : kTransactionError);
++}
++
++int get_share_fd(buffer_handle_t buffer, int* share_fd) {
++    LOGD(" buffer:%p", buffer);
++    int fd = -1;
++    int err = 0;
++    Mutex mLock;
++
++    Mutex::Autolock _l(mLock);
++    {
++        auto &mapper = get_mapperservice();
++        std::vector<int64_t> fds;
++
++        err = get_metadata(mapper, buffer, ArmMetadataType_PLANE_FDS, decodeArmPlaneFds, &fds);
++        if (err != android::OK)
++        {
++            ALOGE("Failed to get plane_fds. err : %d", err);
++            return err;
++        }
++        assert (fds.size() > 0);
++
++        *share_fd = (int)(fds[0]);
++    }
++    return err;
++}
++} // namespace ExCamGralloc4
++
++static int allocate_gralloc_buffer(size_t width,
++                                                   size_t height,
++                                                   uint32_t format,
++                                                   uint32_t usage,
++                                                   buffer_handle_t* out_buffer,
++                                                   uint32_t* out_stride) {
++    LOGD("AllocateGrallocBuffer %d, %d, %d, %d", width, height, format, usage);
++    Mutex mLock;
++    Mutex::Autolock _l(mLock);
++
++    IMapper::BufferDescriptorInfo descriptorInfo;
++    sBufferDescriptorInfo("ExternalAllocateBuffer", width, height, (PixelFormat)format, 1/*layerCount*/, usage, &descriptorInfo);
++
++    BufferDescriptor descriptor;
++    status_t error = ExCamGralloc4::createDescriptor(static_cast<void*>(&descriptorInfo),
++                                              static_cast<void*>(&descriptor));
++    if (error != android::NO_ERROR) {
++        return error;
++    }
++
++    int bufferCount = 1;
++    auto &allocator = get_allocservice();
++    auto ret = allocator.allocate(descriptor, bufferCount,
++                                    [&](const auto& tmpError, const auto& tmpStride,
++                                        const auto& tmpBuffers) {
++                                        error = static_cast<status_t>(tmpError);
++                                        if (tmpError != Error::NONE) {
++                                            return;
++                                        }
++
++                                #if IMPORTBUFFER_CB == 1
++                                            for (uint32_t i = 0; i < bufferCount; i++) {
++                                                error = ExCamGralloc4::importBuffer(tmpBuffers[i],
++                                                                             out_buffer);
++                                                if (error != android::NO_ERROR) {
++                                                    for (uint32_t j = 0; j < i; j++) {
++                                                        ExCamGralloc4::freeBuffer(*out_buffer);
++                                                        *out_buffer = nullptr;
++                                                    }
++                                                    return;
++                                                }
++                                            }
++                                #else
++                                            for (uint32_t i = 0; i < bufferCount; i++) {
++                                                *out_buffer = native_handle_clone(
++                                                        tmpBuffers[i].getNativeHandle());
++                                                if (!out_buffer) {
++                                                    for (uint32_t j = 0; j < i; j++) {
++                                                        //auto buffer = const_cast<native_handle_t*>(
++                                                        //        out_buffer);
++                                                        native_handle_close(out_buffer);
++                                                        native_handle_delete(out_buffer);
++                                                        *out_buffer = nullptr;
++                                                    }
++                                                }
++                                            }
++                                #endif
++                                        *out_stride = tmpStride;
++                                    });
++
++    if (!ret.isOk())
++        return -EINVAL;
++
++    LOGD("AllocateGrallocBuffer %p", *out_buffer);
++#if 0
++    buffer_context->usage = 1;
++    buffer_context_[*out_buffer] = std::move(buffer_context);
++#endif
++    // make sure the kernel driver sees BC_FREE_BUFFER and closes the fds now
++    android::hardware::IPCThreadState::self()->flushCommands();
++
++    return (ret.isOk()) ? error : static_cast<status_t>(kTransactionError);
++}
++
++static cam_mem_handle_t*  cam_mem_gralloc_ops_init(
++        int iommu_enabled, unsigned int mem_flag, int phy_continuos)
++{
++    int ret = 0;
++    cam_mem_handle_t* handle = NULL;
++    handle = (cam_mem_handle_t*)malloc(sizeof(cam_mem_handle_t));
++    if (!handle) {
++        LOGE("%s:can't alloc handle!",__FUNCTION__);
++        goto init_error;
++    }
++    memset(handle, 0x0, sizeof(*handle));
++
++    handle->mem_type = CAM_MEM_TYPE_GRALLOC;
++    handle->iommu_enabled = iommu_enabled;
++    handle->phy_continuos = phy_continuos;
++
++    if (mem_flag & CAM_MEM_FLAG_HW_WRITE)
++        handle->flag |= GRALLOC_USAGE_HW_CAMERA_WRITE;
++    if (mem_flag & CAM_MEM_FLAG_HW_READ)
++        handle->flag |= GRALLOC_USAGE_HW_CAMERA_READ;
++    if (mem_flag & CAM_MEM_FLAG_SW_WRITE)
++        handle->flag |= GRALLOC_USAGE_SW_WRITE_OFTEN;
++    if (mem_flag & CAM_MEM_FLAG_SW_READ)
++        handle->flag |= GRALLOC_USAGE_SW_READ_OFTEN;
++    handle->flag |= RK_GRALLOC_USAGE_SPECIFY_STRIDE;
++    return handle;
++init_error:
++    if (!handle)
++        free(handle);
++    return NULL;
++}
++
++//alloc GraphicBuffer
++static cam_mem_info_t* cam_mem_gralloc_ops_alloc(
++        cam_mem_handle_t* handle, size_t size,
++        uint32_t width, uint32_t height)
++{
++    int ret;
++    unsigned int grallocFlags = 0;
++    unsigned int halPixFmt;
++    void* mem_addr = NULL;
++    cam_mem_info_t* mem = NULL;
++    buffer_handle_t buf_handle;
++    uint32_t stride = 0;
++    int fd = -1;
++    uint64_t allocation_size;
++
++    if (!handle) {
++        LOGE("invalid ion mem handle!");
++        return NULL;
++    }
++
++    mem = (cam_mem_info_t*)malloc(sizeof(cam_mem_info_t));
++    if (!mem) {
++        LOGE("can't alloc cam_mem_info_t!");
++        goto  error_alloc;
++    }
++
++    //halPixFmt = HAL_PIXEL_FORMAT_RGB_565;
++    halPixFmt = HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED;
++    grallocFlags = handle->flag;
++    ret = allocate_gralloc_buffer(width,height, halPixFmt, grallocFlags, &buf_handle, &stride);
++    if (ret) {
++        LOGE("alloc buffer error : %s", strerror(errno));
++        goto error_alloc;
++    }
++    ret = ExCamGralloc4::lock(
++                buf_handle,
++                grallocFlags,
++                0,
++                0,
++                width,
++                height,
++                (void**)&mem_addr);
++    if (ret) {
++        LOGE("lock buffer error : %s", strerror(errno));
++        goto lock_error;
++    }
++    ExCamGralloc4::unlock(buf_handle);
++
++    ret = ExCamGralloc4::get_allocation_size(buf_handle, &allocation_size);
++    LOGD("alloc buffer size(%lld)", allocation_size);
++
++    ret = ExCamGralloc4::get_share_fd(buf_handle, &fd);
++    if (ret) {
++        LOGE("get share fd error : %s", strerror(errno));
++        goto lock_error;
++    }
++
++    mem->vir_addr = (unsigned long)mem_addr;
++    mem->handlle = handle;
++    mem->iommu_maped = 0;
++    mem->mmu_addr = 0;
++    mem->phy_addr = 0;
++    mem->size = size;
++    mem->priv = (void*)buf_handle;
++    mem->fd = fd;
++    mem->width = width;
++    mem->height = height;
++
++    LOGD("alloc graphic buffer sucess,mem %p, vir_addr %p, fd %d",
++        mem, mem_addr, mem->fd);
++
++    return mem;
++lock_error:
++    ExCamGralloc4::freeBuffer(buf_handle);
++error_alloc:
++    if (mem)
++        free(mem);
++    return NULL;
++}
++
++//free
++static int cam_mem_gralloc_ops_free(
++        cam_mem_handle_t* handle, cam_mem_info_t* mem)
++{
++    int ret = 0;
++    buffer_handle_t buf_handle;
++
++    if (!handle || !mem) {
++        LOGE("invalid ion mem handle!");
++        return -1;
++    }
++
++    if (mem->iommu_maped) {
++        LOGE("ion mem is mmumaped, should be unmapped firstly!");
++        return -1;
++    }
++    buf_handle = (buffer_handle_t)(mem->priv);
++#if IMPORTBUFFER_CB == 1
++    if (buf_handle) {
++        ExCamGralloc4::freeBuffer(buf_handle);
++        buf_handle = nullptr;
++    }
++#else
++    if (buf_handle) {
++        auto abuffer = const_cast<native_handle_t*>(
++                buf_handle);
++        native_handle_close(abuffer);
++        native_handle_delete(abuffer);
++        buf_handle = nullptr;
++    }
++#endif
++
++    free(mem);
++
++    return ret;
++}
++
++//flush cache
++static int cam_mem_gralloc_ops_flush_cache(
++        cam_mem_handle_t* handle, cam_mem_info_t* mem,
++        uint32_t width, uint32_t height)
++{
++    struct dma_buf_sync sync_args;
++    int ret = 0;
++    void* mem_addr;
++
++    buffer_handle_t* buf_handle = (buffer_handle_t*)(mem->priv);
++    if (!handle || !mem) {
++        LOGE("invalid ion mem handle!");
++        return -1;
++    }
++
++    ret = ExCamGralloc4::lock(
++                *buf_handle,
++                handle->flag,
++                0,
++                0,
++                width,
++                height,
++                (void**)&mem_addr);
++    if (ret) {
++        LOGE("lock buffer error : %s", strerror(errno));
++        return -1;
++    }
++
++    sync_args.flags = DMA_BUF_SYNC_END | DMA_BUF_SYNC_RW;
++    ret = ioctl(mem->fd, DMA_BUF_IOCTL_SYNC, &sync_args);
++    if (ret != 0)
++        LOGE("ret %d ,DMA_BUF_IOCTL_SYNC failed!", ret);
++    ExCamGralloc4::unlock(*buf_handle);
++
++    return ret;
++}
++
++//deinit
++static int cam_mem_gralloc_ops_deInit(cam_mem_handle_t* handle)
++{
++    int ret = 0;
++
++    if (!handle) {
++        LOGE("invalid ion mem handle!");
++        return -1;
++    }
++    free(handle);
++
++    return ret;
++}
++
++cam_mem_ops_t g_rk_gralloc_mem_ops {
++    //init
++    .init = cam_mem_gralloc_ops_init,
++    //alloc
++    .alloc = cam_mem_gralloc_ops_alloc,
++    //free
++    .free = cam_mem_gralloc_ops_free,
++    //flush cache
++    .flush_cache = cam_mem_gralloc_ops_flush_cache,
++    //deinit
++    .deInit = cam_mem_gralloc_ops_deInit,
++};
++
++static struct cam_mem_ops_des_s cam_mem_ops_array[] = {
++    {"ion",CAM_MEM_TYPE_ION,NULL},
++    {"ionDma",CAM_MEM_TYPE_IONDMA,NULL},
++    {"gralloc",CAM_MEM_TYPE_GRALLOC,&g_rk_gralloc_mem_ops},
++};
++
++cam_mem_ops_t* get_cam_ops(enum cam_mem_type_e mem_type)
++{
++    int ops_index = -1;
++    switch(mem_type) {
++        case CAM_MEM_TYPE_ION:
++        ops_index = 0;
++    break;
++    case CAM_MEM_TYPE_IONDMA:
++        ops_index = 1;
++    break;
++    case CAM_MEM_TYPE_GRALLOC:
++        ops_index = 2;
++    break;
++    default:
++        ops_index = -1;
++    break;
++    }
++
++    if (ops_index != -1)
++        return cam_mem_ops_array[ops_index].ops;
++    else
++        return NULL;
++}
++
++
+diff --git a/camera/device/3.4/default/ExternalCameraMemManager.cpp b/camera/device/3.4/default/ExternalCameraMemManager.cpp
+old mode 100644
+new mode 100755
+index fa09d3c29..7ac0877c8
+--- a/camera/device/3.4/default/ExternalCameraMemManager.cpp
++++ b/camera/device/3.4/default/ExternalCameraMemManager.cpp
+@@ -15,6 +15,8 @@
+  */
+ 
+ #define LOG_TAG "CamBufMgr"
++#define LOG_NDEBUG 0
++
+ #include <sys/stat.h>
+ #include <unistd.h>
+ #include <log/log.h>
+@@ -132,7 +134,8 @@ int GrallocDrmMemManager::createGrallocDrmBuffer(struct bufferinfo_s* grallocbuf
+     }
+ 
+     for(i = 0;i < numBufs; i++) {
+-        *tmpalloc = mOps->alloc(mHandle,grallocbuf->mPerBuffersize);
++        *tmpalloc = mOps->alloc(mHandle,grallocbuf->mPerBuffersize,
++                            grallocbuf->width, grallocbuf->height);
+         if (*tmpalloc) {
+             LOGD("alloc success");
+         } else {
+@@ -276,7 +279,7 @@ int GrallocDrmMemManager::flushCacheMem(buffer_type_enum buftype)
+ 
+     for(unsigned int i = 0;(tmp_buf && (i < tmp_buf->mNumBffers));i++) {
+         if(*tmpalloc && (*tmpalloc)->vir_addr) {
+-            int ret = mOps->flush_cache(mHandle, *tmpalloc);
++            int ret = mOps->flush_cache(mHandle, *tmpalloc, (*tmpalloc)->width, (*tmpalloc)->height);
+             if(ret != 0)
+                 LOGD("flush cache failed !");
+         }
+diff --git a/camera/device/3.4/default/ExternalCameraUtils.cpp b/camera/device/3.4/default/ExternalCameraUtils.cpp
+old mode 100644
+new mode 100755
+index 457b6e996..10839e390
+--- a/camera/device/3.4/default/ExternalCameraUtils.cpp
++++ b/camera/device/3.4/default/ExternalCameraUtils.cpp
+@@ -14,7 +14,7 @@
+  * limitations under the License.
+  */
+ #define LOG_TAG "ExtCamUtils@3.4"
+-//#define LOG_NDEBUG 0
++#define LOG_NDEBUG 0
+ #include <log/log.h>
+ 
+ #include <cmath>
+diff --git a/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraDeviceSession_3.4.h b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraDeviceSession_3.4.h
+old mode 100644
+new mode 100755
+index 4c52291dc..a2b9c16a3
+--- a/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraDeviceSession_3.4.h
++++ b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraDeviceSession_3.4.h
+@@ -295,7 +295,7 @@ protected:
+             uint32_t blobBufferSize = 0);
+     // fps = 0.0 means default, which is
+     // slowest fps that is at least 30, or fastest fps if 30 is not supported
+-    int configureV4l2StreamLocked(const SupportedV4L2Format& fmt, double fps = 0.0);
++    int configureV4l2StreamLocked(SupportedV4L2Format& fmt, double fps = 0.0);
+     int v4l2StreamOffLocked();
+     int setV4l2FpsLocked(double fps);
+     static Status isStreamCombinationSupported(const V3_2::StreamConfiguration& config,
+diff --git a/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraGralloc4.h b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraGralloc4.h
+new file mode 100755
+index 000000000..b4857b8ea
+--- /dev/null
++++ b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraGralloc4.h
+@@ -0,0 +1,144 @@
++/*
++ * Copyright (c) 2018, Fuzhou Rockchip Electronics Co., Ltd
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ANDROID_EXTERNAL_CAMERA_GRALLOC4
++#define ANDROID_EXTERNAL_CAMERA_GRALLOC4
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
++#include <log/log.h>
++#include "utils/Mutex.h"
++
++//#include <android/hardware/graphics/mapper/4.0/IMapper.h>
++#include <android/hardware/graphics/allocator/4.0/IAllocator.h>
++#include <android/hardware/graphics/common/1.1/types.h>
++#include <gralloctypes/Gralloc4.h>
++
++#include <stdint.h>
++
++#include <cutils/native_handle.h>
++#include <utils/Errors.h>
++//#include <base/synchronization/lock.h>
++
++//#include <ui/PixelFormat.h>
++
++#define LOGD(msg,...)       ALOGD("@%s(%d): " msg ,__FUNCTION__,__LINE__,##__VA_ARGS__)
++#define LOGE(msg,...)       ALOGE("@%s(%d): " msg ,__FUNCTION__,__LINE__,##__VA_ARGS__)
++#define PAGE_ALIGN(x)   (((x) + 0xFFF) & (~0xFFF)) // Set as multiple of 4K
++
++#ifdef __cplusplus
++extern "C"
++{
++#endif
++
++using android::status_t;
++//using android::hardware::graphics::mapper::V4_0::IMapper;
++
++enum cam_mem_type_e {
++    CAM_MEM_TYPE_INVALID,
++    CAM_MEM_TYPE_ION,
++    CAM_MEM_TYPE_IONDMA,
++    CAM_MEM_TYPE_GRALLOC,
++};
++
++enum cam_mem_flag_e {
++    CAM_MEM_FLAG_HW_WRITE	= 0x1,
++    CAM_MEM_FLAG_HW_READ	= 0x2,
++    CAM_MEM_FLAG_SW_WRITE	= 0x4,
++    CAM_MEM_FLAG_SW_READ	= 0x8,
++};
++
++typedef struct cam_mem_handle_s {
++    enum cam_mem_type_e mem_type;
++    int iommu_enabled;
++    int phy_continuos;
++    int camsys_fd;
++    unsigned int flag;
++    void* priv;
++}cam_mem_handle_t;
++
++typedef struct cam_mem_info_s {
++    cam_mem_handle_t* handlle;
++    unsigned long vir_addr;
++    unsigned long phy_addr;
++    unsigned long mmu_addr;
++    int iommu_maped;
++    size_t size;
++    int fd;
++    void* priv;
++    uint32_t width;
++    uint32_t height;
++}cam_mem_info_t;
++
++typedef struct cam_mem_ops_s {
++    //init
++    cam_mem_handle_t* (*init)(int iommu_enabled, unsigned int mem_flag, int phy_continuos);
++    //alloc
++    cam_mem_info_t* (*alloc)(cam_mem_handle_t* handle,size_t size,
++                    uint32_t width, uint32_t height);
++    //free
++    int (*free)(cam_mem_handle_t* handle, cam_mem_info_t* mem);
++    //flush cache
++    int (*flush_cache)(cam_mem_handle_t* handle, cam_mem_info_t* mem,
++                    uint32_t width, uint32_t height);
++    //deinit
++    int (*deInit)(cam_mem_handle_t* handle);
++}cam_mem_ops_t;
++
++cam_mem_ops_t* get_cam_ops(enum cam_mem_type_e mem_type);
++
++struct cam_mem_ops_des_s{
++    const char* name;
++    enum cam_mem_type_e mem_type;
++    cam_mem_ops_t* ops;
++};
++
++/* ---------------------------------------------------------------------------------------------------------
++ *  Gralloc4 Macros Definition
++ * ---------------------------------------------------------------------------------------------------------
++ */
++namespace ExCamGralloc4 {
++    static int get_width(buffer_handle_t handle, uint64_t* width);
++    static int get_height(buffer_handle_t handle, uint64_t* height);
++    static status_t validateBufferDescriptorInfo(
++        android::hardware::graphics::mapper::V4_0::IMapper::BufferDescriptorInfo* descriptorInfo);
++    static status_t createDescriptor(void* bufferDescriptorInfo,
++                                void* outBufferDescriptor);
++    int lock(buffer_handle_t bufferHandle,
++							  uint32_t flags,
++							  uint32_t left,
++							  uint32_t top,
++							  uint32_t width,
++							  uint32_t height,
++							  void** out_addr);
++    int unlock(buffer_handle_t bufferHandle);
++    int get_usage(buffer_handle_t handle, uint64_t* usage);
++    int get_allocation_size(buffer_handle_t handle, uint64_t* allocation_size);
++    int get_share_fd(buffer_handle_t handle, int* share_fd);
++
++    static status_t importBuffer(buffer_handle_t rawHandle,
++								  buffer_handle_t* outBufferHandle);
++    static status_t freeBuffer(buffer_handle_t bufferHandle);
++} // namespace ExCamGralloc4
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif // ANDROID_EXTERNAL_CAMERA_GRALLOC4
++
+diff --git a/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraMemManager.h b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraMemManager.h
+index d06d4e3f8..588c39c9c 100755
+--- a/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraMemManager.h
++++ b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraMemManager.h
+@@ -17,9 +17,9 @@
+ #ifndef ANDROID_HARDWARE_CAMERA_MEM_MANAGER
+ #define ANDROID_HARDWARE_CAMERA_MEM_MANAGER
+ 
+-#include "ExternalCameraGralloc.h"
+ #include <dlfcn.h>
+ #include "utils/LightRefBase.h"
++#include "ExternalCameraGralloc4.h"
+ 
+ namespace android {
+ 
+@@ -38,6 +38,8 @@ struct bufferinfo_s{
+     unsigned long mVirBaseAddr;
+     unsigned long mShareFd;
+     buffer_type_enum mBufType;
++    uint32_t width;
++    uint32_t height;
+ };
+ 
+ typedef enum buffer_addr_e {
+diff --git a/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraUtils_3.4.h b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraUtils_3.4.h
+old mode 100644
+new mode 100755
+index a2eff0581..f437d7a4a
+--- a/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraUtils_3.4.h
++++ b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraUtils_3.4.h
+@@ -210,6 +210,7 @@ struct HalRequest {
+     nsecs_t shutterTs;
+     std::vector<HalStreamBuffer> buffers;
+     unsigned long mShareFd;
++    unsigned long mVirAddr;
+     uint8_t* inData;
+     size_t inDataSize;
+ };
+-- 
+2.35.1
+

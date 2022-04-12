@@ -1,0 +1,55 @@
+From 3262fef41bdb9d0d95d4249f17a49c57fbf0129d Mon Sep 17 00:00:00 2001
+From: Alex Zhao <zzc@rock-chips.com>
+Date: Thu, 7 May 2020 20:16:34 +0800
+Subject: [PATCH 06/13] add rtl8821cs support
+
+Signed-off-by: Alex Zhao <zzc@rock-chips.com>
+Change-Id: I97daa1da31afffecaa9f932a22fbbe9c401257d9
+---
+ libwifi_hal/rk_wifi_ctrl.cpp    | 1 +
+ libwifi_hal/wifi_hal_common.cpp | 3 +++
+ 2 files changed, 4 insertions(+)
+
+diff --git a/libwifi_hal/rk_wifi_ctrl.cpp b/libwifi_hal/rk_wifi_ctrl.cpp
+index 3ca549900..6da15db8f 100755
+--- a/libwifi_hal/rk_wifi_ctrl.cpp
++++ b/libwifi_hal/rk_wifi_ctrl.cpp
+@@ -60,6 +60,7 @@ static wifi_device supported_wifi_devices[] = {
+ 	{"RTL8189FS",	"024c:f179"},
+ 	{"RTL8192DU",	"0bda:8194"},
+ 	{"RTL8812AU",	"0bda:8812"},
++	{"RTL8821CS",	"024c:c821"},
+ 	{"SSV6051",	"3030:3030"},
+ 	{"ESP8089",	"6666:1111"},
+ 	{"AP6354",	"02d0:4354"},
+diff --git a/libwifi_hal/wifi_hal_common.cpp b/libwifi_hal/wifi_hal_common.cpp
+index ff16305da..964f6a24d 100755
+--- a/libwifi_hal/wifi_hal_common.cpp
++++ b/libwifi_hal/wifi_hal_common.cpp
+@@ -46,6 +46,7 @@ extern "C" int delete_module(const char *, unsigned int);
+ #define RTL8192DU_DRIVER_MODULE_PATH	 WIFI_MODULE_PATH"8192du.ko"
+ #define RTL8812AU_DRIVER_MODULE_PATH	 WIFI_MODULE_PATH"8812au.ko"
+ #define RTL8822BE_DRIVER_MODULE_PATH	 WIFI_MODULE_PATH"8822be.ko"
++#define RTL8821CS_DRIVER_MODULE_PATH     WIFI_MODULE_PATH"8821cs.ko"
+ #define SSV6051_DRIVER_MODULE_PATH  	 WIFI_MODULE_PATH"ssv6051.ko"
+ #define ESP8089_DRIVER_MODULE_PATH  	 WIFI_MODULE_PATH"esp8089.ko"
+ #define BCM_DRIVER_MODULE_PATH      	 WIFI_MODULE_PATH"bcmdhd.ko"
+@@ -69,6 +70,7 @@ extern "C" int delete_module(const char *, unsigned int);
+ #define RTL8192DU_DRIVER_MODULE_NAME	 "8192du"
+ #define RTL8812AU_DRIVER_MODULE_NAME	 "8812au"
+ #define RTL8822BE_DRIVER_MODULE_NAME	 "8822be"
++#define RTL8821CS_DRIVER_MODULE_NAME	 "8821cs"
+ #define SSV6051_DRIVER_MODULE_NAME  	 "ssv6051"
+ #define ESP8089_DRIVER_MODULE_NAME  	 "esp8089"
+ #define BCM_DRIVER_MODULE_NAME      	 "bcmdhd"
+@@ -144,6 +146,7 @@ wifi_ko_file_name module_list[] =
+ 	{"RTL8812AU", RTL8812AU_DRIVER_MODULE_NAME, RTL8812AU_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
+ 	{"RTL8189FS", RTL8189FS_DRIVER_MODULE_NAME, RTL8189FS_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
+ 	{"RTL8822BE", RTL8822BE_DRIVER_MODULE_NAME, RTL8822BE_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"RTL8821CS", RTL8821CS_DRIVER_MODULE_NAME, RTL8821CS_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
+ 	{"SSV6051",     SSV6051_DRIVER_MODULE_NAME,   SSV6051_DRIVER_MODULE_PATH, SSV6051_DRIVER_MODULE_ARG},
+ 	{"ESP8089",     ESP8089_DRIVER_MODULE_NAME,   ESP8089_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
+ 	{"AP6335",          BCM_DRIVER_MODULE_NAME,       BCM_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
+-- 
+2.35.1
+

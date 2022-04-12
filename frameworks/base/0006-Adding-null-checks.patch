@@ -1,0 +1,47 @@
+From 4ef6b6d1f3b6d4a8770525adeee842519d283039 Mon Sep 17 00:00:00 2001
+From: Beth Thibodeau <ethibodeau@google.com>
+Date: Tue, 30 Jul 2019 12:22:34 -0400
+Subject: [PATCH 006/297] Adding null checks
+
+Fixes: 138638813
+Test: manual, atest NotificationMediaTemplateViewWrapperTest
+Change-Id: Ib74cf6109e4ee7e8a353f5537b566e50130bc403
+(cherry picked from commit ce92d3370cb853214c0eedec3784e67f905d576c)
+---
+ .../com/android/internal/widget/MediaNotificationView.java  | 6 ++++--
+ .../row/wrapper/NotificationMediaTemplateViewWrapper.java   | 2 +-
+ 2 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/core/java/com/android/internal/widget/MediaNotificationView.java b/core/java/com/android/internal/widget/MediaNotificationView.java
+index 0d87afa42e3..9bb45012b61 100644
+--- a/core/java/com/android/internal/widget/MediaNotificationView.java
++++ b/core/java/com/android/internal/widget/MediaNotificationView.java
+@@ -175,8 +175,10 @@ public class MediaNotificationView extends FrameLayout {
+     @Override
+     public void onVisibilityAggregated(boolean isVisible) {
+         super.onVisibilityAggregated(isVisible);
+-        for (int i = 0; i < mListeners.size(); i++) {
+-            mListeners.get(i).onAggregatedVisibilityChanged(isVisible);
++        if (mListeners != null) {
++            for (int i = 0; i < mListeners.size(); i++) {
++                mListeners.get(i).onAggregatedVisibilityChanged(isVisible);
++            }
+         }
+     }
+ 
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/wrapper/NotificationMediaTemplateViewWrapper.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/wrapper/NotificationMediaTemplateViewWrapper.java
+index 38f9bff2a63..e499814aa5b 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/wrapper/NotificationMediaTemplateViewWrapper.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/wrapper/NotificationMediaTemplateViewWrapper.java
+@@ -95,7 +95,7 @@ public class NotificationMediaTemplateViewWrapper extends NotificationTemplateVi
+         @Override
+         public void onAggregatedVisibilityChanged(boolean isVisible) {
+             mIsViewVisible = isVisible;
+-            if (isVisible) {
++            if (isVisible && mMediaController != null) {
+                 // Restart timer if we're currently playing and didn't already have one going
+                 PlaybackState state = mMediaController.getPlaybackState();
+                 if (state != null && state.getState() == PlaybackState.STATE_PLAYING
+-- 
+2.35.1
+

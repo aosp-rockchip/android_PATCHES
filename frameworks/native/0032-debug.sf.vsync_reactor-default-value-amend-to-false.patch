@@ -1,0 +1,27 @@
+From 46c656cc00d5cf4b87cca53b16dd815efda7428b Mon Sep 17 00:00:00 2001
+From: libin <bin.li@rock-chips.com>
+Date: Tue, 12 Jan 2021 17:45:39 +0800
+Subject: [PATCH 32/33] debug.sf.vsync_reactor default value amend to false.
+
+Signed-off-by: libin <bin.li@rock-chips.com>
+Change-Id: I5a2576744c362f00001eb0785f4bd929bf134033
+---
+ services/surfaceflinger/Scheduler/Scheduler.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/services/surfaceflinger/Scheduler/Scheduler.cpp b/services/surfaceflinger/Scheduler/Scheduler.cpp
+index 5c0ba01cd..d6e2a99f9 100644
+--- a/services/surfaceflinger/Scheduler/Scheduler.cpp
++++ b/services/surfaceflinger/Scheduler/Scheduler.cpp
+@@ -64,7 +64,7 @@ namespace android {
+ 
+ std::unique_ptr<DispSync> createDispSync(bool supportKernelTimer) {
+     // TODO (140302863) remove this and use the vsync_reactor system.
+-    if (property_get_bool("debug.sf.vsync_reactor", true)) {
++    if (property_get_bool("debug.sf.vsync_reactor", false)) {
+         // TODO (144707443) tune Predictor tunables.
+         static constexpr int defaultRate = 60;
+         static constexpr auto initialPeriod =
+-- 
+2.35.1
+

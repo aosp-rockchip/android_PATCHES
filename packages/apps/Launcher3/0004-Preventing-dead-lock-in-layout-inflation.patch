@@ -1,0 +1,71 @@
+From 504b0ba055dc521083523b603f51abef3a88c411 Mon Sep 17 00:00:00 2001
+From: Sunny Goyal <sunnygoyal@google.com>
+Date: Mon, 11 Nov 2019 11:08:05 -0800
+Subject: [PATCH 04/13] Preventing dead lock in layout inflation
+
+Bug: 143353100
+Change-Id: I52d0794aad26c1d1de8cb373f3398f626c15b4af
+(cherry picked from commit d1a67d0d7238cecf2c55ff095e2ec2b1621ac9a1)
+---
+ src/com/android/launcher3/util/ViewPool.java | 18 +++++++++++-------
+ 1 file changed, 11 insertions(+), 7 deletions(-)
+
+diff --git a/src/com/android/launcher3/util/ViewPool.java b/src/com/android/launcher3/util/ViewPool.java
+index 8af048d9d..5b33f1849 100644
+--- a/src/com/android/launcher3/util/ViewPool.java
++++ b/src/com/android/launcher3/util/ViewPool.java
+@@ -21,12 +21,12 @@ import android.view.LayoutInflater;
+ import android.view.View;
+ import android.view.ViewGroup;
+ 
+-import com.android.launcher3.util.ViewPool.Reusable;
+-
+ import androidx.annotation.AnyThread;
+ import androidx.annotation.Nullable;
+ import androidx.annotation.UiThread;
+ 
++import com.android.launcher3.util.ViewPool.Reusable;
++
+ /**
+  * Utility class to maintain a pool of reusable views.
+  * During initialization, views are inflated on the background thread.
+@@ -58,14 +58,18 @@ public class ViewPool<T extends View & Reusable> {
+         Preconditions.assertUIThread();
+         Handler handler = new Handler();
+ 
++        // LayoutInflater is not thread save as it maintains a global variable 'mConstructorArgs'.
++        // Create a different copy to use on the background thread.
++        LayoutInflater inflater = mInflater.cloneInContext(mInflater.getContext());
++
+         // Inflate views on a non looper thread. This allows us to catch errors like calling
+         // "new Handler()" in constructor easily.
+         new Thread(() -> {
+             for (int i = 0; i < initialSize; i++) {
+-                T view = inflateNewView();
++                T view = inflateNewView(inflater);
+                 handler.post(() -> addToPool(view));
+             }
+-        }).start();
++        }, "ViewPool-init").start();
+     }
+ 
+     @UiThread
+@@ -94,12 +98,12 @@ public class ViewPool<T extends View & Reusable> {
+             mCurrentSize--;
+             return (T) mPool[mCurrentSize];
+         }
+-        return inflateNewView();
++        return inflateNewView(mInflater);
+     }
+ 
+     @AnyThread
+-    private T inflateNewView() {
+-        return (T) mInflater.inflate(mLayoutId, mParent, false);
++    private T inflateNewView(LayoutInflater inflater) {
++        return (T) inflater.inflate(mLayoutId, mParent, false);
+     }
+ 
+     /**
+-- 
+2.35.1
+

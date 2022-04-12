@@ -1,0 +1,132 @@
+From c81e8b387489accb47bb2983eb0d1842da471c09 Mon Sep 17 00:00:00 2001
+From: Hongwei Wang <hwwang@google.com>
+Date: Tue, 10 Mar 2020 10:24:35 -0700
+Subject: [PATCH 112/297] Restores PiP to its original app bounds
+
+Deprecated the usage of display bounds in PipTaskOrganizer, instead we
+can save and restore the application bounds reported in taskAppeared.
+
+Bug: 151050577
+Test: repeatedly enter/exit PiP
+Change-Id: If40431ff37e8dd5fa8b228d6085613da23701ea7
+(cherry picked from commit 89f18ffad9fdefea59bde08e98e984491912bf78)
+---
+ .../systemui/pip/PipTaskOrganizer.java        | 35 +++++--------------
+ .../systemui/pip/phone/PipManager.java        |  6 +---
+ 2 files changed, 9 insertions(+), 32 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/pip/PipTaskOrganizer.java b/packages/SystemUI/src/com/android/systemui/pip/PipTaskOrganizer.java
+index 3933af00a47..cc5664249f0 100644
+--- a/packages/SystemUI/src/com/android/systemui/pip/PipTaskOrganizer.java
++++ b/packages/SystemUI/src/com/android/systemui/pip/PipTaskOrganizer.java
+@@ -33,10 +33,10 @@ import android.app.PictureInPictureParams;
+ import android.content.Context;
+ import android.graphics.Rect;
+ import android.os.Handler;
++import android.os.IBinder;
+ import android.os.Looper;
+ import android.os.RemoteException;
+ import android.util.Log;
+-import android.view.DisplayInfo;
+ import android.view.ITaskOrganizer;
+ import android.view.IWindowContainer;
+ import android.view.SurfaceControl;
+@@ -47,7 +47,9 @@ import com.android.systemui.R;
+ import com.android.systemui.pip.phone.PipUpdateThread;
+ 
+ import java.util.ArrayList;
++import java.util.HashMap;
+ import java.util.List;
++import java.util.Map;
+ import java.util.Objects;
+ import java.util.function.Consumer;
+ 
+@@ -76,9 +78,9 @@ public class PipTaskOrganizer extends ITaskOrganizer.Stub {
+     private final PipBoundsHandler mPipBoundsHandler;
+     private final PipAnimationController mPipAnimationController;
+     private final List<PipTransitionCallback> mPipTransitionCallbacks = new ArrayList<>();
+-    private final Rect mDisplayBounds = new Rect();
+     private final Rect mLastReportedBounds = new Rect();
+     private final int mCornerRadius;
++    private final Map<IBinder, Rect> mBoundsToRestore = new HashMap<>();
+ 
+     // These callbacks are called on the update thread
+     private final PipAnimationController.PipAnimationCallback mPipAnimationCallback =
+@@ -200,29 +202,6 @@ public class PipTaskOrganizer extends ITaskOrganizer.Stub {
+         mOneShotAnimationType = animationType;
+     }
+ 
+-    /**
+-     * Updates the display dimension with given {@link DisplayInfo}
+-     */
+-    @SuppressWarnings("unchecked")
+-    public void onDisplayInfoChanged(DisplayInfo displayInfo) {
+-        final Rect newDisplayBounds = new Rect(0, 0,
+-                displayInfo.logicalWidth, displayInfo.logicalHeight);
+-        if (!mDisplayBounds.equals(newDisplayBounds)) {
+-            // Updates the exiting PiP animation in case the screen rotation changes in the middle.
+-            // It's a legit case that PiP window is in portrait mode on home screen and
+-            // the application requests landscape once back to fullscreen mode.
+-            final PipAnimationController.PipTransitionAnimator animator =
+-                    mPipAnimationController.getCurrentAnimator();
+-            if (animator != null
+-                    && animator.getAnimationType() == ANIM_TYPE_BOUNDS
+-                    && animator.getDestinationBounds().equals(mDisplayBounds)) {
+-                animator.updateEndValue(newDisplayBounds);
+-                animator.setDestinationBounds(newDisplayBounds);
+-            }
+-        }
+-        mDisplayBounds.set(newDisplayBounds);
+-    }
+-
+     /**
+      * Callback to issue the final {@link WindowContainerTransaction} on end of movements.
+      * @param destinationBounds the final bounds.
+@@ -252,8 +231,9 @@ public class PipTaskOrganizer extends ITaskOrganizer.Stub {
+         } catch (RemoteException e) {
+             throw new RuntimeException("Unable to get leash", e);
+         }
++        final Rect currentBounds = mTaskInfo.configuration.windowConfiguration.getBounds();
++        mBoundsToRestore.put(mToken.asBinder(), currentBounds);
+         if (mOneShotAnimationType == ANIM_TYPE_BOUNDS) {
+-            final Rect currentBounds = mTaskInfo.configuration.windowConfiguration.getBounds();
+             scheduleAnimateResizePip(currentBounds, destinationBounds,
+                     TRANSITION_DIRECTION_TO_PIP, DURATION_DEFAULT_MS, null);
+         } else if (mOneShotAnimationType == ANIM_TYPE_ALPHA) {
+@@ -277,7 +257,8 @@ public class PipTaskOrganizer extends ITaskOrganizer.Stub {
+             Log.wtf(TAG, "Unrecognized token: " + token);
+             return;
+         }
+-        scheduleAnimateResizePip(mLastReportedBounds, mDisplayBounds,
++        final Rect boundsToRestore = mBoundsToRestore.remove(mToken.asBinder());
++        scheduleAnimateResizePip(mLastReportedBounds, boundsToRestore,
+                 TRANSITION_DIRECTION_TO_FULLSCREEN, DURATION_DEFAULT_MS, null);
+         mInPip = false;
+     }
+diff --git a/packages/SystemUI/src/com/android/systemui/pip/phone/PipManager.java b/packages/SystemUI/src/com/android/systemui/pip/phone/PipManager.java
+index 4b97d134761..eed81bfc07f 100644
+--- a/packages/SystemUI/src/com/android/systemui/pip/phone/PipManager.java
++++ b/packages/SystemUI/src/com/android/systemui/pip/phone/PipManager.java
+@@ -185,10 +185,7 @@ public class PipManager implements BasePipManager, PipTaskOrganizer.PipTransitio
+ 
+         @Override
+         public void onDisplayInfoChanged(DisplayInfo displayInfo) {
+-            mHandler.post(() -> {
+-                mPipBoundsHandler.onDisplayInfoChanged(displayInfo);
+-                mPipTaskOrganizer.onDisplayInfoChanged(displayInfo);
+-            });
++            mHandler.post(() -> mPipBoundsHandler.onDisplayInfoChanged(displayInfo));
+         }
+ 
+         @Override
+@@ -352,7 +349,6 @@ public class PipManager implements BasePipManager, PipTaskOrganizer.PipTransitio
+         mTouchHandler.onMovementBoundsChanged(mTmpInsetBounds, mTmpNormalBounds,
+                 animatingBounds, fromImeAdjustment, fromShelfAdjustment,
+                 mTmpDisplayInfo.rotation);
+-        mPipTaskOrganizer.onDisplayInfoChanged(mTmpDisplayInfo);
+     }
+ 
+     public void dump(PrintWriter pw) {
+-- 
+2.35.1
+

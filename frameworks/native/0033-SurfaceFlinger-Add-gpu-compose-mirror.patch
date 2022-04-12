@@ -1,0 +1,144 @@
+From 53ff05a3dc4a3acf4d3c13faa3eeb52d709d44ab Mon Sep 17 00:00:00 2001
+From: Zhixiong Lin <zhixiong.lin@rock-chips.com>
+Date: Tue, 12 Jan 2021 11:51:23 +0800
+Subject: [PATCH 33/33] SurfaceFlinger: Add gpu compose mirror
+
+rely on :
+    1.libgraphicpolicy enable mirror
+    2.libstagefright Android.bp add libgraphicpolicy
+
+specification:
+    1.persist.sf.mirror.displayid = 0
+    2.persist.sf.mirror.x = 0
+    3.persist.sf.mirror.y = 0
+
+Signed-off-by: Zhixiong Lin <zhixiong.lin@rock-chips.com>
+Change-Id: I747043b46928c3b81a9d4db859ae3bb3c4697303
+(cherry picked from commit b1ef3a80987830aff847c009e6930bb87ba49e97)
+---
+ libs/renderengine/Android.bp                  |  1 +
+ libs/renderengine/gl/GLESRenderEngine.cpp     | 48 +++++++++++++++++++
+ .../include/renderengine/DisplaySettings.h    |  1 +
+ .../CompositionEngine/src/Output.cpp          |  2 +
+ 4 files changed, 52 insertions(+)
+
+diff --git a/libs/renderengine/Android.bp b/libs/renderengine/Android.bp
+index 9193bd8e0..9ed208f02 100644
+--- a/libs/renderengine/Android.bp
++++ b/libs/renderengine/Android.bp
+@@ -33,6 +33,7 @@ cc_defaults {
+     ],
+     include_dirs:[
+         "hardware/rockchip/librga",
++        "hardware/rockchip/libgraphicpolicy",
+     ],
+     local_include_dirs: ["include"],
+     export_include_dirs: ["include"],
+diff --git a/libs/renderengine/gl/GLESRenderEngine.cpp b/libs/renderengine/gl/GLESRenderEngine.cpp
+index 661175e24..522f0332f 100755
+--- a/libs/renderengine/gl/GLESRenderEngine.cpp
++++ b/libs/renderengine/gl/GLESRenderEngine.cpp
+@@ -51,6 +51,8 @@
+ #include "ProgramCache.h"
+ #include "filters/BlurFilter.h"
+ 
++#include "graphicpolicy.h"
++
+ #if RK_NV12_10_TO_NV12_BY_RGA
+ #define UN_NEED_GL
+ #include <include/RockchipRga.h>
+@@ -355,6 +357,40 @@ EGLConfig GLESRenderEngine::chooseEglConfig(EGLDisplay display, int format, bool
+     return config;
+ }
+ 
++static int mirror_display_id = 0;
++static int need_mirror_X = 0;
++static int need_mirror_Y = 0;
++
++#define PROP_SF_MIRROR_DISPLAYID "persist.sf.mirror.displayid"
++#define PROP_SF_MIRROR_X "persist.sf.mirror.x"
++#define PROP_SF_MIRROR_Y "persist.sf.mirror.y"
++
++mat4 mirrorX = {-1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
++mat4 mirrorY = {1,0,0,0, 0,-1,0,0, 0,0,1,0, 0,0,0,1};
++
++void sf_mirror(int display_id,Description * pmState)
++{
++    if(graphic_policy(GPID_SF_MIRROR)) {
++
++        if(display_id == mirror_display_id && need_mirror_X){
++            pmState->projectionMatrix = mirrorX * pmState->projectionMatrix ;
++        }
++        if(display_id == mirror_display_id && need_mirror_Y){
++            pmState->projectionMatrix = mirrorY * pmState->projectionMatrix ;
++        }
++    }
++
++    //debug sf-mirror
++    //ALOGD("sf-mirror display_id:%d --------\n",display_id);
++    //const float * ppm =  pmState->projectionMatrix.asArray();
++    //for(int i = 0 ; i < 4; i++)
++    //{
++    //   ALOGD("sf-mirror ppm = %f %f %f %f\n",*ppm,*(ppm+1),*(ppm+2),*(ppm+3));
++    //   ppm += 4;
++    //}
++
++}
++
+ GLESRenderEngine::GLESRenderEngine(const RenderEngineCreationArgs& args, EGLDisplay display,
+                                    EGLConfig config, EGLContext ctxt, EGLSurface dummy,
+                                    EGLContext protectedContext, EGLSurface protectedDummy)
+@@ -375,6 +411,17 @@ GLESRenderEngine::GLESRenderEngine(const RenderEngineCreationArgs& args, EGLDisp
+     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+     glPixelStorei(GL_PACK_ALIGNMENT, 4);
+ 
++    //rk-ext sf gpu-compose mirror init
++    char propMirrorBuf[PROPERTY_VALUE_MAX];
++    property_get(PROP_SF_MIRROR_DISPLAYID, propMirrorBuf, "0");
++    mirror_display_id = atoi(propMirrorBuf);
++    property_get(PROP_SF_MIRROR_X, propMirrorBuf, "0");
++    need_mirror_X = atoi(propMirrorBuf);
++    property_get(PROP_SF_MIRROR_Y, propMirrorBuf, "0");
++    need_mirror_Y = atoi(propMirrorBuf);
++    ALOGI("sf-mirror config displayid:%d x:%d y:%d\n",mirror_display_id,need_mirror_X,need_mirror_Y);
++
++
+     // Initialize protected EGL Context.
+     if (mProtectedEGLContext != EGL_NO_CONTEXT) {
+         EGLBoolean success = eglMakeCurrent(display, mProtectedDummySurface, mProtectedDummySurface,
+@@ -1227,6 +1274,7 @@ status_t GLESRenderEngine::drawLayers(const DisplaySettings& display,
+         mState.maxMasteringLuminance = layer->source.buffer.maxMasteringLuminance;
+         mState.maxContentLuminance = layer->source.buffer.maxContentLuminance;
+         mState.projectionMatrix = projectionMatrix * layer->geometry.positionTransform;
++        sf_mirror(display.display_id, &mState);
+ 
+         const FloatRect bounds = layer->geometry.boundaries;
+         Mesh::VertexArray<vec2> position(mesh.getPositionArray<vec2>());
+diff --git a/libs/renderengine/include/renderengine/DisplaySettings.h b/libs/renderengine/include/renderengine/DisplaySettings.h
+index ca16d2c72..82189de26 100644
+--- a/libs/renderengine/include/renderengine/DisplaySettings.h
++++ b/libs/renderengine/include/renderengine/DisplaySettings.h
+@@ -60,6 +60,7 @@ struct DisplaySettings {
+     // capture of a device in landscape while the buffer is in portrait
+     // orientation.
+     uint32_t orientation = ui::Transform::ROT_0;
++    int display_id = -1;
+ };
+ 
+ static inline bool operator==(const DisplaySettings& lhs, const DisplaySettings& rhs) {
+diff --git a/services/surfaceflinger/CompositionEngine/src/Output.cpp b/services/surfaceflinger/CompositionEngine/src/Output.cpp
+index f9e540cd8..3b84d2280 100755
+--- a/services/surfaceflinger/CompositionEngine/src/Output.cpp
++++ b/services/surfaceflinger/CompositionEngine/src/Output.cpp
+@@ -935,6 +935,8 @@ std::optional<base::unique_fd> Output::composeSurfaces(
+                        return &settings;
+                    });
+ 
++    clientCompositionDisplay.display_id = (int)getDisplayId()->value;
++
+     const nsecs_t renderEngineStart = systemTime();
+     status_t status =
+             renderEngine.drawLayers(clientCompositionDisplay, clientCompositionLayerPointers,
+-- 
+2.35.1
+

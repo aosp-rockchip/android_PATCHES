@@ -1,0 +1,88 @@
+From 1dc9b5f160a6536d8b1a82f3b5569f4c44326eff Mon Sep 17 00:00:00 2001
+From: Alex Zhao <zzc@rock-chips.com>
+Date: Tue, 1 Sep 2020 15:05:10 +0800
+Subject: [PATCH 02/24] fix bcm wifi VtsHalWifiSupplicantV1_0Target test fail
+
+Signed-off-by: Alex Zhao <zzc@rock-chips.com>
+Change-Id: Ia6d4d6a5aaa4c04148452a3e41044cc7ec3a6868
+---
+ wifi/1.4/default/Android.mk    |  4 ++++
+ wifi/1.4/default/wifi_chip.cpp | 14 +++++++++++++-
+ 2 files changed, 17 insertions(+), 1 deletion(-)
+ mode change 100644 => 100755 wifi/1.4/default/Android.mk
+ mode change 100644 => 100755 wifi/1.4/default/wifi_chip.cpp
+
+diff --git a/wifi/1.4/default/Android.mk b/wifi/1.4/default/Android.mk
+old mode 100644
+new mode 100755
+index 6be7dad59..9f5bfd482
+--- a/wifi/1.4/default/Android.mk
++++ b/wifi/1.4/default/Android.mk
+@@ -66,6 +66,7 @@ LOCAL_SHARED_LIBRARIES := \
+     libnl \
+     libutils \
+     libwifi-hal \
++    librkwifi-ctrl \
+     libwifi-system-iface \
+     android.hardware.wifi@1.0 \
+     android.hardware.wifi@1.1 \
+@@ -94,6 +95,7 @@ LOCAL_SHARED_LIBRARIES := \
+     libnl \
+     libutils \
+     libwifi-hal \
++    librkwifi-ctrl \
+     libwifi-system-iface \
+     android.hardware.wifi@1.0 \
+     android.hardware.wifi@1.1 \
+@@ -126,6 +128,7 @@ LOCAL_SHARED_LIBRARIES := \
+     libnl \
+     libutils \
+     libwifi-hal \
++    librkwifi-ctrl \
+     libwifi-system-iface \
+     android.hardware.wifi@1.0 \
+     android.hardware.wifi@1.1 \
+@@ -173,5 +176,6 @@ LOCAL_SHARED_LIBRARIES := \
+     libnl \
+     libutils \
+     libwifi-hal \
++    librkwifi-ctrl \
+     libwifi-system-iface
+ include $(BUILD_NATIVE_TEST)
+diff --git a/wifi/1.4/default/wifi_chip.cpp b/wifi/1.4/default/wifi_chip.cpp
+old mode 100644
+new mode 100755
+index 8747e6199..e27e96641
+--- a/wifi/1.4/default/wifi_chip.cpp
++++ b/wifi/1.4/default/wifi_chip.cpp
+@@ -45,6 +45,9 @@ constexpr char kActiveWlanIfaceNameProperty[] = "wifi.active.interface";
+ constexpr char kNoActiveWlanIfaceNamePropertyValue[] = "";
+ constexpr unsigned kMaxWlanIfaces = 5;
+ 
++extern "C" int check_wifi_chip_type_string(char *type);
++static char wifi_type[64] = {0};
++
+ template <typename Iface>
+ void invalidateAndClear(std::vector<sp<Iface>>& ifaces, sp<Iface> iface) {
+     iface->invalidate();
+@@ -113,7 +116,16 @@ std::string getApIfaceName() {
+ 
+ std::string getP2pIfaceName() {
+     std::array<char, PROPERTY_VALUE_MAX> buffer;
+-    property_get("wifi.direct.interface", buffer.data(), "p2p0");
++	    if (wifi_type[0] == 0) {
++	    check_wifi_chip_type_string(wifi_type);
++    }
++    if (0 == strncmp(wifi_type, "AP", 2)) {
++		property_set("vendor.wifi.direct.interface", "p2p-dev-wlan0");
++		property_get("wifi.direct.interface", buffer.data(), "p2p-dev-wlan0");
++    } else {
++		property_set("vendor.wifi.direct.interface", "p2p0");
++		property_get("wifi.direct.interface", buffer.data(), "p2p0");
++	}
+     return buffer.data();
+ }
+ 
+-- 
+2.35.1
+

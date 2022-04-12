@@ -1,0 +1,4451 @@
+From 5ec7f7f74c05080e2c6aefa55318b2aa2c64f2a7 Mon Sep 17 00:00:00 2001
+From: aisx <aisx@rock-chips.com>
+Date: Wed, 8 Aug 2018 16:24:47 +0800
+Subject: [PATCH 15/36] add hw_output for display settings: such as hdmi mode
+ set & color set
+
+Change-Id: Idf7afd258b9012ae784c94160a1a42b9f20fc6bf
+---
+ include/hardware/hw_output.h                  |  375 +++++
+ modules/Android.mk                            |    3 +-
+ modules/hw_output/Android.bp                  |   35 +
+ modules/hw_output/hw_output.cpp               | 1419 +++++++++++++++++
+ modules/hw_output/hw_types.h                  |  113 ++
+ .../hw_output/rkdisplay/.drmresources.cpp.swp |    0
+ modules/hw_output/rkdisplay/autofd.h          |  106 ++
+ modules/hw_output/rkdisplay/drmconnector.cpp  |  254 +++
+ modules/hw_output/rkdisplay/drmconnector.h    |  119 ++
+ modules/hw_output/rkdisplay/drmcrtc.cpp       |  144 ++
+ modules/hw_output/rkdisplay/drmcrtc.h         |   87 +
+ modules/hw_output/rkdisplay/drmencoder.cpp    |   55 +
+ modules/hw_output/rkdisplay/drmencoder.h      |   58 +
+ modules/hw_output/rkdisplay/drmmode.cpp       |  239 +++
+ modules/hw_output/rkdisplay/drmmode.h         |   98 ++
+ modules/hw_output/rkdisplay/drmproperty.cpp   |  136 ++
+ modules/hw_output/rkdisplay/drmproperty.h     |   80 +
+ modules/hw_output/rkdisplay/drmresources.cpp  |  805 ++++++++++
+ modules/hw_output/rkdisplay/drmresources.h    |  161 ++
+ 19 files changed, 4286 insertions(+), 1 deletion(-)
+ create mode 100644 include/hardware/hw_output.h
+ create mode 100644 modules/hw_output/Android.bp
+ create mode 100644 modules/hw_output/hw_output.cpp
+ create mode 100644 modules/hw_output/hw_types.h
+ create mode 100644 modules/hw_output/rkdisplay/.drmresources.cpp.swp
+ create mode 100644 modules/hw_output/rkdisplay/autofd.h
+ create mode 100644 modules/hw_output/rkdisplay/drmconnector.cpp
+ create mode 100644 modules/hw_output/rkdisplay/drmconnector.h
+ create mode 100644 modules/hw_output/rkdisplay/drmcrtc.cpp
+ create mode 100644 modules/hw_output/rkdisplay/drmcrtc.h
+ create mode 100644 modules/hw_output/rkdisplay/drmencoder.cpp
+ create mode 100644 modules/hw_output/rkdisplay/drmencoder.h
+ create mode 100644 modules/hw_output/rkdisplay/drmmode.cpp
+ create mode 100644 modules/hw_output/rkdisplay/drmmode.h
+ create mode 100644 modules/hw_output/rkdisplay/drmproperty.cpp
+ create mode 100644 modules/hw_output/rkdisplay/drmproperty.h
+ create mode 100644 modules/hw_output/rkdisplay/drmresources.cpp
+ create mode 100644 modules/hw_output/rkdisplay/drmresources.h
+
+diff --git a/include/hardware/hw_output.h b/include/hardware/hw_output.h
+new file mode 100644
+index 00000000..eb7b125b
+--- /dev/null
++++ b/include/hardware/hw_output.h
+@@ -0,0 +1,375 @@
++/*
++ * Copyright 2014 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ANDROID_HW_OUTPUT_INTERFACE_H
++#define ANDROID_HW_OUTPUT_INTERFACE_H
++
++#include <stdint.h>
++#include <sys/cdefs.h>
++#include <sys/types.h>
++
++#include <hardware/hardware.h>
++#include <system/audio.h>
++#include <cutils/native_handle.h>
++
++#include "hw_types.h"
++
++__BEGIN_DECLS
++
++#define HW_OUTPUT_MODULE_API_VERSION_0_1  HARDWARE_MODULE_API_VERSION(0, 1)
++
++#define HW_OUTPUT_DEVICE_API_VERSION_0_1  HARDWARE_DEVICE_API_VERSION(0, 1)
++
++/*
++ * The id of this module
++ */
++#define HW_OUTPUT_HARDWARE_MODULE_ID "hw_output"
++
++#define HW_OUTPUT_DEFAULT_DEVICE "hw_output_device"
++
++/*****************************************************************************/
++
++/*
++ * Every hardware module must have a data structure named HAL_MODULE_INFO_SYM
++ * and the fields of this data structure must begin with hw_module_t
++ * followed by module specific information.
++ */
++typedef struct hw_output_module {
++    struct hw_module_t common;
++} hw_output_module_t;
++
++/*****************************************************************************/
++typedef struct drm_mode {
++    uint32_t width;
++    uint32_t height;
++    float refreshRate;
++    uint32_t clock;
++    uint32_t flags;
++    uint32_t interlaceFlag;
++    uint32_t yuvFlag;
++    uint32_t connectorId;
++    uint32_t mode_type;
++    uint32_t idx;
++    uint32_t hsync_start;
++    uint32_t hsync_end;
++    uint32_t htotal;
++    uint32_t hskew;
++    uint32_t vsync_start;
++    uint32_t vsync_end;
++    uint32_t vtotal;
++    uint32_t vscan;
++
++}drm_mode_t;
++
++typedef uint32_t hw_output_type_t;
++
++typedef struct hw_output_device_info {
++    /* Device ID */
++    int device_id;
++
++    /* Type of physical TV input. */
++    hw_output_type_t type;
++
++    union {
++        struct {
++            /* HDMI port ID number */
++            uint32_t port_id;
++        } hdmi;
++
++        /* TODO: add other type specific information. */
++
++        int32_t type_info_reserved[16];
++    };
++
++    /* TODO: Add capability if necessary. */
++
++    int32_t reserved[16];
++} hw_output_device_info_t;
++
++/* See tv_input_event_t for more details. */
++enum {
++    /*
++     * Hardware notifies the framework that a device is available.
++     *
++     * Note that DEVICE_AVAILABLE and DEVICE_UNAVAILABLE events do not represent
++     * hotplug events (i.e. plugging cable into or out of the physical port).
++     * These events notify the framework whether the port is available or not.
++     * For a concrete example, when a user plugs in or pulls out the HDMI cable
++     * from a HDMI port, it does not generate DEVICE_AVAILABLE and/or
++     * DEVICE_UNAVAILABLE events. However, if a user inserts a pluggable USB
++     * tuner into the Android device, it will generate a DEVICE_AVAILABLE event
++     * and when the port is removed, it should generate a DEVICE_UNAVAILABLE
++     * event.
++     *
++     * For hotplug events, please see STREAM_CONFIGURATION_CHANGED for more
++     * details.
++     *
++     * HAL implementation should register devices by using this event when the
++     * device boots up. The framework will recognize device reported via this
++     * event only. In addition, the implementation could use this event to
++     * notify the framework that a removable TV input device (such as USB tuner
++     * as stated in the example above) is attached.
++     */
++    TV_INPUT_EVENT_DEVICE_AVAILABLE = 1,
++    /*
++     * Hardware notifies the framework that a device is unavailable.
++     *
++     * HAL implementation should generate this event when a device registered
++     * by TV_INPUT_EVENT_DEVICE_AVAILABLE is no longer available. For example,
++     * the event can indicate that a USB tuner is plugged out from the Android
++     * device.
++     *
++     * Note that this event is not for indicating cable plugged out of the port;
++     * for that purpose, the implementation should use
++     * STREAM_CONFIGURATION_CHANGED event. This event represents the port itself
++     * being no longer available.
++     */
++    TV_INPUT_EVENT_DEVICE_UNAVAILABLE = 2,
++    /*
++     * Stream configurations are changed. Client should regard all open streams
++     * at the specific device are closed, and should call
++     * get_stream_configurations() again, opening some of them if necessary.
++     *
++     * HAL implementation should generate this event when the available stream
++     * configurations change for any reason. A typical use case of this event
++     * would be to notify the framework that the input signal has changed
++     * resolution, or that the cable is plugged out so that the number of
++     * available streams is 0.
++     *
++     * The implementation may use this event to indicate hotplug status of the
++     * port. the framework regards input devices with no available streams as
++     * disconnected, so the implementation can generate this event with no
++     * available streams to indicate that this device is disconnected, and vice
++     * versa.
++     */
++    TV_INPUT_EVENT_STREAM_CONFIGURATIONS_CHANGED = 3,
++    /*
++     * Hardware is done with capture request with the buffer. Client can assume
++     * ownership of the buffer again.
++     *
++     * HAL implementation should generate this event after request_capture() if
++     * it succeeded. The event shall have the buffer with the captured image.
++     */
++    TV_INPUT_EVENT_CAPTURE_SUCCEEDED = 4,
++    /*
++     * Hardware met a failure while processing a capture request or client
++     * canceled the request. Client can assume ownership of the buffer again.
++     *
++     * The event is similar to TV_INPUT_EVENT_CAPTURE_SUCCEEDED, but HAL
++     * implementation generates this event upon a failure to process
++     * request_capture(), or a request cancellation.
++     */
++    TV_INPUT_EVENT_CAPTURE_FAILED = 5,
++};
++typedef uint32_t hw_output_event_type_t;
++
++typedef struct hw_output_capture_result {
++    /* Device ID */
++    int device_id;
++
++    /* Stream ID */
++    int stream_id;
++
++    /* Sequence number of the request */
++    uint32_t seq;
++
++    /*
++     * The buffer passed to hardware in request_capture(). The content of
++     * buffer is undefined (although buffer itself is valid) for
++     * TV_INPUT_CAPTURE_FAILED event.
++     */
++    buffer_handle_t buffer;
++
++    /*
++     * Error code for the request. -ECANCELED if request is cancelled; other
++     * error codes are unknown errors.
++     */
++    int error_code;
++} hw_output_capture_result_t;
++
++typedef struct hw_output_event {
++    hw_output_event_type_t type;
++
++    union {
++        /*
++         * TV_INPUT_EVENT_DEVICE_AVAILABLE: all fields are relevant
++         * TV_INPUT_EVENT_DEVICE_UNAVAILABLE: only device_id is relevant
++         * TV_INPUT_EVENT_STREAM_CONFIGURATIONS_CHANGED: only device_id is
++         *    relevant
++         */
++        hw_output_device_info_t device_info;
++        /*
++         * TV_INPUT_EVENT_CAPTURE_SUCCEEDED: error_code is not relevant
++         * TV_INPUT_EVENT_CAPTURE_FAILED: all fields are relevant
++         */
++        hw_output_capture_result_t capture_result;
++    };
++} hw_output_event_t;
++
++typedef struct hw_output_callback_ops {
++    /*
++     * event contains the type of the event and additional data if necessary.
++     * The event object is guaranteed to be valid only for the duration of the
++     * call.
++     *
++     * data is an object supplied at device initialization, opaque to the
++     * hardware.
++     */
++    void (*notify)(struct hw_output_device* dev,
++            hw_output_event_t* event, void* data);
++} hw_output_callback_ops_t;
++
++enum {
++    TV_STREAM_TYPE_INDEPENDENT_VIDEO_SOURCE = 1,
++    TV_STREAM_TYPE_BUFFER_PRODUCER = 2,
++};
++typedef uint32_t hw_stream_type_t;
++
++typedef struct hw_stream_config {
++    /*
++     * ID number of the stream. This value is used to identify the whole stream
++     * configuration.
++     */
++    int stream_id;
++
++    /* Type of the stream */
++    hw_stream_type_t type;
++
++    /* Max width/height of the stream. */
++    uint32_t max_video_width;
++    uint32_t max_video_height;
++} hw_stream_config_t;
++
++typedef struct buffer_producer_stream {
++    /*
++     * IN/OUT: Width / height of the stream. Client may request for specific
++     * size but hardware may change it. Client must allocate buffers with
++     * specified width and height.
++     */
++    uint32_t width;
++    uint32_t height;
++
++    /* OUT: Client must set this usage when allocating buffer. */
++    uint32_t usage;
++
++    /* OUT: Client must allocate a buffer with this format. */
++    uint32_t format;
++} buffer_producer_stream_t;
++
++typedef struct hw_stream {
++    /* IN: ID in the stream configuration */
++    int stream_id;
++
++    /* OUT: Type of the stream (for convenience) */
++    hw_stream_type_t type;
++
++    /* Data associated with the stream for client's use */
++    union {
++        /* OUT: A native handle describing the sideband stream source */
++        native_handle_t* sideband_stream_source_handle;
++
++        /* IN/OUT: Details are in buffer_producer_stream_t */
++        buffer_producer_stream_t buffer_producer;
++    };
++} hw_stream_t;
++
++/*
++ * Every device data structure must begin with hw_device_t
++ * followed by module specific public methods and attributes.
++ */
++typedef struct hw_output_device {
++    struct hw_device_t common;
++
++    /*
++     * initialize:
++     *
++     * Provide callbacks to the device and start operation. At first, no device
++     * is available and after initialize() completes, currently available
++     * devices including static devices should notify via callback.
++     *
++     * Framework owns callbacks object.
++     *
++     * data is a framework-owned object which would be sent back to the
++     * framework for each callback notifications.
++     *
++     * Return 0 on success.
++     */
++    int (*initialize)(struct hw_output_device* dev,
++         void* data);
++	int (*setMode)(struct hw_output_device* dev,
++         int dpy, const char* mode);
++	int (*setGamma)(struct hw_output_device* dev,
++        int dpy,  uint32_t size, uint16_t* r, uint16_t* g, uint16_t* b);
++	int (*setBrightness)(struct hw_output_device* dev,
++         int dpy, int bright);
++	int (*setContrast)(struct hw_output_device* dev,
++         int dpy, int contrast);
++	int (*setSat)(struct hw_output_device* dev,
++         int dpy, int sat);
++	int (*setHue)(struct hw_output_device* dev,
++         int dpy, int hue);
++	int (*setScreenScale)(struct hw_output_device* dev,
++         int dpy, int direction, int value);
++	int (*setHdrMode)(struct hw_output_device* dev,
++         int dpy, int hdrMode);
++	int (*setColorMode)(struct hw_output_device* dev,
++         int dpy, const char* colorMode);
++
++	int (*getCurColorMode)(struct hw_output_device* dev,
++         int dpy, char* curColorMode);
++	int (*getCurMode)(struct hw_output_device* dev,
++         int dpy, char* curMode);
++	int (*getNumConnectors)(struct hw_output_device* dev,
++         int dpy, int* numConnectors);
++	
++	int (*getConnectorState)(struct hw_output_device* dev,
++         int dpy, int* state);
++
++	int (*getBuiltIn)(struct hw_output_device* dev,
++         int dpy, int* builtin);
++
++	int (*getColorConfigs)(struct hw_output_device* dev,
++         int dpy, int* configs);
++
++	int (*getOverscan)(struct hw_output_device* dev,
++         int dpy, uint32_t* overscans);
++
++	int (*getBcsh)(struct hw_output_device* dev,
++         int dpy, uint32_t* bcshs);
++
++	drm_mode_t* (*getDisplayModes)(struct hw_output_device* dev, 
++         int dpy, uint32_t* size);
++
++	void (*hotplug)(struct hw_output_device* dev);
++	void (*saveConfig)(struct hw_output_device* dev);
++
++    void* reserved[2];
++} hw_output_device_t;
++/** convenience API for opening and closing a supported device */
++
++static inline int hw_output_open(const struct hw_module_t* module, 
++        hw_output_device_t** device) {
++    return module->methods->open(module, 
++            HW_OUTPUT_DEFAULT_DEVICE, TO_HW_DEVICE_T_OPEN(device));
++}
++
++static inline int hw_output_close(hw_output_device_t* device) {
++    return device->common.close(&device->common);
++}
++
++__END_DECLS
++
++#endif  // ANDROID_TV_INPUT_INTERFACE_H
+diff --git a/modules/Android.mk b/modules/Android.mk
+index 9d934c5f..a430a650 100644
+--- a/modules/Android.mk
++++ b/modules/Android.mk
+@@ -1,5 +1,6 @@
+ hardware_modules := \
+     camera \
+     gralloc \
+-    sensors
++    sensors \
++    hw_output
+ include $(call all-named-subdir-makefiles,$(hardware_modules))
+diff --git a/modules/hw_output/Android.bp b/modules/hw_output/Android.bp
+new file mode 100644
+index 00000000..9d685d16
+--- /dev/null
++++ b/modules/hw_output/Android.bp
+@@ -0,0 +1,35 @@
++// Copyright (C) 2014 The Android Open Source Project
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//      http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++cc_library_shared {
++    name: "hw_output.default",
++    relative_install_path: "hw",
++    proprietary: true,
++    header_libs: ["libhardware_headers"],
++    shared_libs: [
++        "libcutils",
++        "liblog",
++		"libdrm",
++    ],
++    srcs: [
++		"rkdisplay/drmconnector.cpp",
++		"rkdisplay/drmcrtc.cpp",
++		"rkdisplay/drmencoder.cpp",
++		"rkdisplay/drmmode.cpp",
++		"rkdisplay/drmproperty.cpp",
++		"rkdisplay/drmresources.cpp",
++		"hw_output.cpp",
++		],
++    cflags: ["-Wall", "-Werror"],
++}
+diff --git a/modules/hw_output/hw_output.cpp b/modules/hw_output/hw_output.cpp
+new file mode 100644
+index 00000000..e83793dc
+--- /dev/null
++++ b/modules/hw_output/hw_output.cpp
+@@ -0,0 +1,1419 @@
++/*
++ * Copyright 2014 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++#define LOG_TAG "hw_output"
++
++#include <errno.h>
++#include <fcntl.h>
++#include <malloc.h>
++
++#include <cutils/native_handle.h>
++#include <log/log.h>
++
++#include <hardware/hw_output.h>
++#include <stdio.h>
++#include <stdint.h>
++#include <xf86drm.h>
++#include <xf86drmMode.h>
++
++#include <cutils/properties.h>
++#include <drm_fourcc.h>
++#include <string>
++#include <map>
++#include <vector>
++#include <iostream>
++#include <inttypes.h>
++
++#include "rkdisplay/drmresources.h"
++#include "rkdisplay/drmmode.h"
++#include "rkdisplay/drmconnector.h"
++
++using namespace android;
++/*****************************************************************************/
++static int timeline=0;
++typedef struct hw_output_private {
++    hw_output_device_t device;
++
++    // Callback related data
++    void* callback_data;
++	DrmResources *drm_;
++	DrmConnector* primary;
++	DrmConnector* extend;
++	struct lut_info* mlut;
++} hw_output_private_t;
++
++static int hw_output_device_open(const struct hw_module_t* module,
++        const char* name, struct hw_device_t** device);
++
++static struct hw_module_methods_t hw_output_module_methods = {
++    .open = hw_output_device_open
++};
++
++hw_output_module_t HAL_MODULE_INFO_SYM = {
++    .common = {
++        .tag = HARDWARE_MODULE_TAG,
++        .version_major = 1,
++        .version_minor = 0,
++        .id = HW_OUTPUT_HARDWARE_MODULE_ID,
++        .name = "Sample hw output module",
++        .author = "The Android Open Source Project",
++        .methods = &hw_output_module_methods,
++		.dso = NULL,
++		.reserved = {0},
++    }
++};
++
++static char const *const device_template[] =
++{
++    "/dev/block/platform/1021c000.dwmmc/by-name/baseparameter",
++    "/dev/block/platform/30020000.dwmmc/by-name/baseparameter",
++    "/dev/block/platform/fe330000.sdhci/by-name/baseparameter",
++    "/dev/block/platform/ff520000.dwmmc/by-name/baseparameter",
++    "/dev/block/platform/ff0f0000.dwmmc/by-name/baseparameter",
++    "/dev/block/rknand_baseparameter",
++    NULL
++};
++
++const char* GetBaseparameterFile(void)
++{
++    int i = 0;
++
++    while (device_template[i]) {
++        if (!access(device_template[i], R_OK | W_OK))
++            return device_template[i];
++        ALOGD("temp[%d]=%s access=%d(%s)", i,device_template[i], errno, strerror(errno));
++        i++;
++    }
++    return NULL;
++}
++
++static bool builtInHdmi(int type){
++    return type == DRM_MODE_CONNECTOR_HDMIA || type == DRM_MODE_CONNECTOR_HDMIB;
++}
++static void freeLutInfo(struct lut_info* mlut){
++    if (mlut) {
++        free(mlut);
++        mlut=NULL;
++    }
++}
++
++static void checkBcshInfo(uint32_t* mBcsh)
++{
++    if (mBcsh[0] < 0)
++        mBcsh[0] = 0;
++    else if (mBcsh[0] > 100)
++        mBcsh[0] = 100;
++
++    if (mBcsh[1] < 0)
++        mBcsh[1] = 0;
++    else if (mBcsh[1] > 100)
++        mBcsh[1] = 100;
++
++    if (mBcsh[2] < 0)
++        mBcsh[2] = 0;
++    else if (mBcsh[2] > 100)
++        mBcsh[2] = 100;
++
++    if (mBcsh[3] < 0)
++        mBcsh[3] = 0;
++    else if (mBcsh[3] > 100)
++        mBcsh[3] = 100;
++}
++
++static bool getBaseParameterInfo(struct file_base_paramer* base_paramer)
++{
++    int file;
++    const char *baseparameterfile = GetBaseparameterFile();
++    if (baseparameterfile) {
++        file = open(baseparameterfile, O_RDWR);
++        if (file > 0) {
++            unsigned int length = lseek(file, 0L, SEEK_END);
++
++            lseek(file, 0L, SEEK_SET);
++            ALOGD("getBaseParameterInfo size=%d", (int)sizeof(*base_paramer));
++            if (length >  sizeof(*base_paramer)) {
++                read(file, (void*)&(base_paramer->main), sizeof(base_paramer->main));
++                lseek(file, BASE_OFFSET, SEEK_SET);
++                read(file, (void*)&(base_paramer->aux), sizeof(base_paramer->aux));
++                return true;
++            }
++        }
++    }
++    return false;
++}
++
++static int findSuitableInfoSlot(struct disp_info* info, int type) 
++{
++    int found=0;
++    for (int i=0;i<5;i++) {
++        if (info->screen_list[i].type !=0 && info->screen_list[i].type == type) {
++            found = i;
++            break;
++        } else if (info->screen_list[i].type !=0 && found == false){
++            found++;
++        }
++    }
++    if (found == -1) {
++        found = 0;
++        ALOGD("noting saved, used the first slot");
++    }
++    ALOGD("findSuitableInfoSlot: %d type=%d", found, type);
++    return found;
++}
++
++static bool getResolutionInfo(hw_output_private_t *priv, int dpy, char* resolution)
++{
++    drmModePropertyBlobPtr blob;
++    drmModeObjectPropertiesPtr props;
++    DrmConnector* mCurConnector = NULL;
++    DrmCrtc *crtc = NULL;
++    struct drm_mode_modeinfo *drm_mode;
++    struct file_base_paramer base_paramer;
++    int value;
++    bool found = false;
++    int slot = 0;
++
++    if (dpy == HWC_DISPLAY_PRIMARY) {
++        mCurConnector = priv->primary;
++    } else if(dpy == HWC_DISPLAY_EXTERNAL) {
++        mCurConnector = priv->extend;
++    }
++
++    if (getBaseParameterInfo(&base_paramer)) {
++        if (dpy == HWC_DISPLAY_PRIMARY) {
++            slot = findSuitableInfoSlot(&base_paramer.main, mCurConnector->get_type());
++            if (!base_paramer.main.screen_list[slot].resolution.hdisplay ||
++                    !base_paramer.main.screen_list[slot].resolution.clock ||
++                    !base_paramer.main.screen_list[slot].resolution.vdisplay) {
++                sprintf(resolution, "%s", "Auto");
++                return resolution;
++            }
++        } else if (dpy == HWC_DISPLAY_EXTERNAL) {
++            slot = findSuitableInfoSlot(&base_paramer.aux, mCurConnector->get_type());
++            if (!base_paramer.aux.screen_list[slot].resolution.hdisplay ||
++                    !base_paramer.aux.screen_list[slot].resolution.clock ||
++                    !base_paramer.aux.screen_list[slot].resolution.vdisplay) {
++                sprintf(resolution, "%s", "Auto");
++                return resolution;
++            }
++        }
++    }
++
++    if (mCurConnector != NULL) {
++        crtc = priv->drm_->GetCrtcFromConnector(mCurConnector);
++        if (crtc == NULL) {
++            return false;
++        }
++        props = drmModeObjectGetProperties(priv->drm_->fd(), crtc->id(), DRM_MODE_OBJECT_CRTC);
++        for (int i = 0; !found && (size_t)i < props->count_props; ++i) {
++            drmModePropertyPtr p = drmModeGetProperty(priv->drm_->fd(), props->props[i]);
++            if (!strcmp(p->name, "MODE_ID")) {
++                found = true;
++                if (!drm_property_type_is(p, DRM_MODE_PROP_BLOB)) {
++                    ALOGE("%s:line=%d,is not blob",__FUNCTION__,__LINE__);
++                    drmModeFreeProperty(p);
++                    drmModeFreeObjectProperties(props);
++                    return false;
++                }
++                if (!p->count_blobs)
++                    value = props->prop_values[i];
++                else
++                    value = p->blob_ids[0];
++                blob = drmModeGetPropertyBlob(priv->drm_->fd(), value);
++                if (!blob) {
++                    ALOGE("%s:line=%d, blob is null",__FUNCTION__,__LINE__);
++                    drmModeFreeProperty(p);
++                    drmModeFreeObjectProperties(props);
++                    return false;
++                }
++
++                float vfresh;
++                drm_mode = (struct drm_mode_modeinfo *)blob->data;
++                if (drm_mode->flags & DRM_MODE_FLAG_INTERLACE)
++                    vfresh = drm_mode->clock *2/ (float)(drm_mode->vtotal * drm_mode->htotal) * 1000.0f;
++                else
++                    vfresh = drm_mode->clock / (float)(drm_mode->vtotal * drm_mode->htotal) * 1000.0f;
++                ALOGD("nativeGetCurMode: crtc_id=%d clock=%d w=%d %d %d %d %d %d flag=0x%x vfresh %.2f drm.vrefresh=%.2f", 
++                        crtc->id(), drm_mode->clock, drm_mode->hdisplay, drm_mode->hsync_start,
++                        drm_mode->hsync_end, drm_mode->vdisplay, drm_mode->vsync_start, drm_mode->vsync_end, drm_mode->flags,
++                        vfresh, (float)drm_mode->vrefresh);
++                sprintf(resolution, "%dx%d@%.2f-%d-%d-%d-%d-%d-%d-%x", drm_mode->hdisplay, drm_mode->vdisplay, vfresh,
++                        drm_mode->hsync_start, drm_mode->hsync_end, drm_mode->htotal, 
++                        drm_mode->vsync_start, drm_mode->vsync_end, drm_mode->vtotal,
++                        drm_mode->flags);
++                drmModeFreePropertyBlob(blob);
++            }
++            drmModeFreeProperty(p);
++        }
++        drmModeFreeObjectProperties(props);
++    } else {
++        return false;
++    }
++
++    return true;
++}
++
++static void updateConnectors(hw_output_private_t *priv){
++    if (priv->drm_->connectors().size() == 2) {
++        bool foundHdmi=false;
++        int cnt=0,crtcId1=0,crtcId2=0;
++        for (auto &conn : priv->drm_->connectors()) {
++            if (cnt == 0 && priv->drm_->GetCrtcFromConnector(conn.get())) {
++                ALOGD("encoderId1: %d", conn->encoder()->id());
++                crtcId1 = priv->drm_->GetCrtcFromConnector(conn.get())->id();
++            } else if (priv->drm_->GetCrtcFromConnector(conn.get())){
++                ALOGD("encoderId2: %d", conn->encoder()->id());
++                crtcId2 = priv->drm_->GetCrtcFromConnector(conn.get())->id();
++            }
++
++            if (builtInHdmi(conn->get_type()))
++                foundHdmi=true;
++            cnt++;
++        }
++        ALOGD("crtc: %d %d foundHdmi %d 2222", crtcId1, crtcId2, foundHdmi);
++        char property[PROPERTY_VALUE_MAX];
++        property_get("sys.hwc.device.primary", property, "null");
++        if (crtcId1 == crtcId2 && foundHdmi && strstr(property, "HDMI-A") == NULL) {
++            for (auto &conn : priv->drm_->connectors()) {
++                if (builtInHdmi(conn->get_type()) && conn->state() == DRM_MODE_CONNECTED) {
++                    priv->extend = conn.get();
++                    conn->set_display(1);
++                } else if(!builtInHdmi(conn->get_type()) && conn->state() == DRM_MODE_CONNECTED) {
++                    priv->primary = conn.get();
++                    conn->set_display(0);
++                }
++            }
++        } else {
++            priv->primary = priv->drm_->GetConnectorFromType(HWC_DISPLAY_PRIMARY);
++            priv->extend = priv->drm_->GetConnectorFromType(HWC_DISPLAY_EXTERNAL);
++        }
++
++    } else {
++        priv->primary = priv->drm_->GetConnectorFromType(HWC_DISPLAY_PRIMARY);
++        priv->extend = priv->drm_->GetConnectorFromType(HWC_DISPLAY_EXTERNAL);
++    }
++}
++
++static void saveBcshConfig(struct file_base_paramer *base_paramer, int dpy){
++    if (dpy == HWC_DISPLAY_PRIMARY_BIT){
++        char property[PROPERTY_VALUE_MAX];
++
++        memset(property,0,sizeof(property));
++        property_get("persist.sys.brightness.main", property, "0");
++        if (atoi(property) > 0)
++            base_paramer->main.bcsh.brightness = atoi(property);
++        else
++            base_paramer->main.bcsh.brightness = DEFAULT_BRIGHTNESS;
++
++        memset(property,0,sizeof(property));
++        property_get("persist.sys.contrast.main", property, "0");
++        if (atoi(property) > 0)
++            base_paramer->main.bcsh.contrast = atoi(property);
++        else
++            base_paramer->main.bcsh.contrast = DEFAULT_CONTRAST;
++
++        memset(property,0,sizeof(property));
++        property_get("persist.sys.saturation.main", property, "0");
++        if (atoi(property) > 0)
++            base_paramer->main.bcsh.saturation = atoi(property);
++        else
++            base_paramer->main.bcsh.saturation = DEFAULT_SATURATION;
++
++        memset(property,0,sizeof(property));
++        property_get("persist.sys.hue.main", property, "0");
++        if (atoi(property) > 0)
++            base_paramer->main.bcsh.hue = atoi(property);
++        else
++            base_paramer->main.bcsh.hue = DEFAULT_HUE;
++    } else {
++        char property[PROPERTY_VALUE_MAX];
++
++        memset(property,0,sizeof(property));
++        property_get("persist.sys.brightness.aux", property, "0");
++        if (atoi(property) > 0)
++            base_paramer->aux.bcsh.brightness = atoi(property);
++        else
++            base_paramer->aux.bcsh.brightness = DEFAULT_BRIGHTNESS;
++
++        memset(property,0,sizeof(property));
++        property_get("persist.sys.contrast.aux", property, "0");
++        if (atoi(property) > 0)
++            base_paramer->aux.bcsh.contrast = atoi(property);
++        else
++            base_paramer->aux.bcsh.contrast = DEFAULT_CONTRAST;
++
++        memset(property,0,sizeof(property));
++        property_get("persist.sys.saturation.aux", property, "0");
++        if (atoi(property) > 0)
++            base_paramer->aux.bcsh.saturation = atoi(property);
++        else
++            base_paramer->aux.bcsh.saturation = DEFAULT_SATURATION;
++
++        memset(property,0,sizeof(property));
++        property_get("persist.sys.hue.aux", property, "0");
++        if (atoi(property) > 0)
++            base_paramer->aux.bcsh.hue = atoi(property);
++        else
++            base_paramer->aux.bcsh.hue = DEFAULT_HUE;
++    }
++}
++
++/*****************************************************************************/
++static void hw_output_save_config(struct hw_output_device* dev){
++	hw_output_private_t* priv = (hw_output_private_t*)dev;
++	char buf[BUFFER_LENGTH];
++	bool isMainHdmiConnected=false;
++	bool isAuxHdmiConnected = false;
++	int foundMainIdx=-1,foundAuxIdx=-1;
++	struct file_base_paramer base_paramer;
++	DrmResources *drm_ = priv->drm_;
++	DrmConnector* primary = priv->primary;
++	DrmConnector* extend = priv->extend;
++
++	if (primary != NULL) {
++		std::vector<DrmMode> mModes = primary->modes();
++		char resolution[PROPERTY_VALUE_MAX];
++		unsigned int w=0,h=0,hsync_start=0,hsync_end=0,htotal=0;
++		unsigned int vsync_start=0,vsync_end=0,vtotal=0,flags=0;
++		float vfresh=0.0000;
++
++		property_get("persist.sys.resolution.main", resolution, "0x0@0.00-0-0-0-0-0-0-0");
++		if (strncmp(resolution, "Auto", 4) != 0 && strncmp(resolution, "0x0p0-0", 7) !=0)
++			sscanf(resolution,"%dx%d@%f-%d-%d-%d-%d-%d-%d-%x", &w, &h, &vfresh, &hsync_start,&hsync_end,
++					&htotal,&vsync_start,&vsync_end, &vtotal, &flags);
++		for (size_t c = 0; c < mModes.size(); ++c){
++			const DrmMode& info = mModes[c];
++			char curDrmModeRefresh[16];
++			char curRefresh[16];
++			float mModeRefresh;
++			if (info.flags() & DRM_MODE_FLAG_INTERLACE)
++				mModeRefresh = info.clock()*2 / (float)(info.v_total()* info.h_total()) * 1000.0f;
++			else
++				mModeRefresh = info.clock()/ (float)(info.v_total()* info.h_total()) * 1000.0f;
++			sprintf(curDrmModeRefresh, "%.2f", mModeRefresh);
++			sprintf(curRefresh, "%.2f", vfresh);
++			if (info.h_display() == w &&
++					info.v_display() == h &&
++					info.h_sync_start() == hsync_start &&
++					info.h_sync_end() == hsync_end &&
++					info.h_total() == htotal &&
++					info.v_sync_start() == vsync_start &&
++					info.v_sync_end() == vsync_end &&
++					info.v_total()==vtotal &&
++					atof(curDrmModeRefresh)==atof(curRefresh)) {
++				ALOGD("***********************found main idx %d ****************", (int)c);
++				foundMainIdx = c;
++				sprintf(buf, "display=%d,iface=%d,enable=%d,mode=%s\n",
++						primary->display(), primary->get_type(), primary->state(), resolution);
++				break;
++			}
++		}
++	}
++
++	if (extend != NULL) {
++		std::vector<DrmMode> mModes = extend->modes();
++		char resolution[PROPERTY_VALUE_MAX];
++		unsigned int w=0,h=0,hsync_start=0,hsync_end=0,htotal=0;
++		unsigned int vsync_start=0,vsync_end=0,vtotal=0,flags;
++		float vfresh=0;
++
++		property_get("persist.sys.resolution.aux", resolution, "0x0@0.00-0-0-0-0-0-0-0");
++		if (strncmp(resolution, "Auto", 4) != 0 && strncmp(resolution, "0x0p0-0", 7) !=0)
++			sscanf(resolution,"%dx%d@%f-%d-%d-%d-%d-%d-%d-%x", &w, &h, &vfresh, &hsync_start,&hsync_end,&htotal,&vsync_start,&vsync_end,
++					&vtotal, &flags);
++		for (size_t c = 0; c < mModes.size(); ++c){
++			const DrmMode& info = mModes[c];
++			char curDrmModeRefresh[16];
++			char curRefresh[16];
++			float mModeRefresh;
++			if (info.flags() & DRM_MODE_FLAG_INTERLACE)
++				mModeRefresh = info.clock()*2 / (float)(info.v_total()* info.h_total()) * 1000.0f;
++			else
++				mModeRefresh = info.clock()/ (float)(info.v_total()* info.h_total()) * 1000.0f;
++			sprintf(curDrmModeRefresh, "%.2f", mModeRefresh);
++			sprintf(curRefresh, "%.2f", vfresh);
++			if (info.h_display() == w &&
++					info.v_display() == h &&
++					info.h_sync_start() == hsync_start &&
++					info.h_sync_end() == hsync_end &&
++					info.h_total() == htotal &&
++					info.v_sync_start() == vsync_start &&
++					info.v_sync_end() == vsync_end &&
++					info.v_total()==vtotal &&
++					atof(curDrmModeRefresh)==atoi(curRefresh)) {
++				ALOGD("***********************found aux idx %d ****************", (int)c);
++				foundAuxIdx = c;
++				break;
++			}
++		}
++	}
++
++	int file;
++	const char *baseparameterfile = GetBaseparameterFile();
++	if (!baseparameterfile) {
++		sync();
++		return;
++	}
++	file = open(baseparameterfile, O_RDWR);
++	if (file < 0) {
++		ALOGW("base paramter file can not be opened");
++		sync();
++		return;
++	}
++	// caculate file's size and read it
++	unsigned int length = lseek(file, 0L, SEEK_END);
++	lseek(file, 0L, SEEK_SET);
++	if(length < sizeof(base_paramer)) {
++		ALOGE("BASEPARAME data's length is error\n");
++		sync();
++		close(file);
++		return;
++	}
++
++	read(file, (void*)&(base_paramer.main), sizeof(base_paramer.main));
++	lseek(file, BASE_OFFSET, SEEK_SET);
++	read(file, (void*)&(base_paramer.aux), sizeof(base_paramer.aux));
++
++	for (auto &conn : drm_->connectors()) {
++		if (conn->state() == DRM_MODE_CONNECTED 
++				&& (conn->get_type() == DRM_MODE_CONNECTOR_HDMIA)
++				&& (conn->possible_displays() & HWC_DISPLAY_PRIMARY_BIT))
++			isMainHdmiConnected = true;
++		else if(conn->state() == DRM_MODE_CONNECTED 
++				&& (conn->get_type() == DRM_MODE_CONNECTOR_HDMIA)
++				&& (conn->possible_displays() & HWC_DISPLAY_EXTERNAL_BIT))
++			isAuxHdmiConnected = true;
++	}
++	ALOGD("nativeSaveConfig: size=%d isMainHdmiConnected=%d", (int)sizeof(base_paramer.main), isMainHdmiConnected);
++	for (auto &conn : drm_->connectors()) {
++		if (conn->state() == DRM_MODE_CONNECTED 
++				&& (conn->possible_displays() & HWC_DISPLAY_PRIMARY_BIT)) {
++			char property[PROPERTY_VALUE_MAX];
++			int w=0,h=0,hsync_start=0,hsync_end=0,htotal=0;
++			int vsync_start=0,vsync_end=0,vtotal=0,flags=0;
++			int left=0,top=0,right=0,bottom=0;
++			float vfresh=0;
++			int slot = findSuitableInfoSlot(&base_paramer.main, conn->get_type());
++			if (isMainHdmiConnected && conn->get_type() == DRM_MODE_CONNECTOR_TV)
++				continue;
++
++			base_paramer.main.screen_list[slot].type = conn->get_type();
++			base_paramer.main.screen_list[slot].feature &= AUTO_BIT_RESET;
++			property_get("persist.sys.resolution.main", property, "0x0@0.00-0-0-0-0-0-0-0");
++			if (strncmp(property, "Auto", 4) != 0 && strncmp(property, "0x0p0-0", 7) !=0) {
++				ALOGD("saveConfig resolution = %s", property);
++				std::vector<DrmMode> mModes = primary->modes();
++				sscanf(property,"%dx%d@%f-%d-%d-%d-%d-%d-%d-%x", &w, &h, &vfresh, &hsync_start,&hsync_end,&htotal,&vsync_start,&vsync_end,
++						&vtotal, &flags);
++
++				ALOGD("last base_paramer.main.resolution.hdisplay = %d,  vdisplay=%d(%s@%f)",
++						base_paramer.main.screen_list[slot].resolution.hdisplay,
++						base_paramer.main.screen_list[slot].resolution.vdisplay,
++						base_paramer.main.hwc_info.device,	base_paramer.main.hwc_info.fps);
++				base_paramer.main.screen_list[slot].resolution.hdisplay = w;
++				base_paramer.main.screen_list[slot].resolution.vdisplay = h;
++				base_paramer.main.screen_list[slot].resolution.hsync_start = hsync_start;
++				base_paramer.main.screen_list[slot].resolution.hsync_end = hsync_end;
++				if (foundMainIdx != -1)
++					base_paramer.main.screen_list[slot].resolution.clock = mModes[foundMainIdx].clock();
++				else if (flags & DRM_MODE_FLAG_INTERLACE)
++					base_paramer.main.screen_list[slot].resolution.clock = (htotal*vtotal*vfresh/2)/1000.0f;
++				else
++					base_paramer.main.screen_list[slot].resolution.clock = (htotal*vtotal*vfresh)/1000.0f;
++				base_paramer.main.screen_list[slot].resolution.htotal = htotal;
++				base_paramer.main.screen_list[slot].resolution.vsync_start = vsync_start;
++				base_paramer.main.screen_list[slot].resolution.vsync_end = vsync_end;
++				base_paramer.main.screen_list[slot].resolution.vtotal = vtotal;
++				base_paramer.main.screen_list[slot].resolution.flags = flags;
++				ALOGD("saveBaseParameter foundMainIdx=%d clock=%d", foundMainIdx, base_paramer.main.screen_list[slot].resolution.clock);
++			} else {
++				base_paramer.main.screen_list[slot].feature|= RESOLUTION_AUTO;
++				memset(&base_paramer.main.screen_list[slot].resolution, 0, sizeof(base_paramer.main.screen_list[slot].resolution));
++			}
++
++			memset(property,0,sizeof(property));
++			property_get("persist.sys.overscan.main", property, "overscan 100,100,100,100");
++			sscanf(property, "overscan %d,%d,%d,%d",
++					&left,
++					&top,
++					&right,
++					&bottom);
++			base_paramer.main.scan.leftscale = (unsigned short)left;
++			base_paramer.main.scan.topscale = (unsigned short)top;
++			base_paramer.main.scan.rightscale = (unsigned short)right;
++			base_paramer.main.scan.bottomscale = (unsigned short)bottom;
++
++			memset(property,0,sizeof(property));
++			property_get("persist.sys.color.main", property, "Auto");
++			if (strncmp(property, "Auto", 4) != 0){
++				if (strstr(property, "RGB") != 0)
++					base_paramer.main.screen_list[slot].format = output_rgb;
++				else if (strstr(property, "YCBCR444") != 0)
++					base_paramer.main.screen_list[slot].format = output_ycbcr444;
++				else if (strstr(property, "YCBCR422") != 0)
++					base_paramer.main.screen_list[slot].format = output_ycbcr422;
++				else if (strstr(property, "YCBCR420") != 0)
++					base_paramer.main.screen_list[slot].format = output_ycbcr420;
++				else {
++					base_paramer.main.screen_list[slot].feature |= COLOR_AUTO;
++					base_paramer.main.screen_list[slot].format = output_ycbcr_high_subsampling;
++				}
++
++				if (strstr(property, "8bit") != NULL)
++					base_paramer.main.screen_list[slot].depthc = depth_24bit;
++				else if (strstr(property, "10bit") != NULL)
++					base_paramer.main.screen_list[slot].depthc = depth_30bit;
++				else
++					base_paramer.main.screen_list[slot].depthc = Automatic;
++				ALOGD("saveConfig: color=%d-%d", base_paramer.main.screen_list[slot].format, base_paramer.main.screen_list[slot].depthc);
++			} else {
++				base_paramer.main.screen_list[slot].depthc = Automatic;
++				base_paramer.main.screen_list[slot].format = output_ycbcr_high_subsampling;
++				base_paramer.main.screen_list[slot].feature |= COLOR_AUTO;
++			}
++
++			memset(property,0,sizeof(property));
++			property_get("persist.sys.hdcp1x.main", property, "0");
++			if (atoi(property) > 0)
++				base_paramer.main.screen_list[slot].feature |= HDCP1X_EN;
++
++			memset(property,0,sizeof(property));
++			property_get("persist.sys.resolution_white.main", property, "0");
++			if (atoi(property) > 0)
++				base_paramer.main.screen_list[slot].feature |= RESOLUTION_WHITE_EN;
++			saveBcshConfig(&base_paramer, HWC_DISPLAY_PRIMARY_BIT);
++#ifdef TEST_BASE_PARMARTER
++			/*save aux fb & device*/
++			saveHwcInitalInfo(&base_paramer, HWC_DISPLAY_PRIMARY_BIT);
++#endif
++		} else if(conn->state() == DRM_MODE_CONNECTED 
++				&& (conn->possible_displays() & HWC_DISPLAY_EXTERNAL_BIT) 
++				&& (conn->encoder() != NULL)) {
++			char property[PROPERTY_VALUE_MAX];
++			int w=0,h=0,hsync_start=0,hsync_end=0,htotal=0;
++			int vsync_start=0,vsync_end=0,vtotal=0,flags=0;
++			float vfresh=0;
++			int left=0,top=0,right=0,bottom=0;
++			int slot = findSuitableInfoSlot(&base_paramer.aux, conn->get_type());
++
++			if (isAuxHdmiConnected && conn->get_type() == DRM_MODE_CONNECTOR_TV)
++				continue;
++
++			base_paramer.aux.screen_list[slot].type = conn->get_type();
++			base_paramer.aux.screen_list[slot].feature &= AUTO_BIT_RESET;
++			property_get("persist.sys.resolution.aux", property, "0x0p0-0");
++			if (strncmp(property, "Auto", 4) != 0 && strncmp(property, "0x0p0-0", 7) !=0) {
++				std::vector<DrmMode> mModes = extend->modes();
++				sscanf(property,"%dx%d@%f-%d-%d-%d-%d-%d-%d-%x", &w, &h, &vfresh, &hsync_start,&hsync_end,&htotal,&vsync_start,&vsync_end,
++						&vtotal, &flags);
++				base_paramer.aux.screen_list[slot].resolution.hdisplay = w;
++				base_paramer.aux.screen_list[slot].resolution.vdisplay = h;
++				if (foundMainIdx != -1)
++					base_paramer.aux.screen_list[slot].resolution.clock = mModes[foundMainIdx].clock();
++				else if (flags & DRM_MODE_FLAG_INTERLACE)
++					base_paramer.aux.screen_list[slot].resolution.clock = (htotal*vtotal*vfresh/2) / 1000.0f;
++				else
++					base_paramer.aux.screen_list[slot].resolution.clock = (htotal*vtotal*vfresh) / 1000.0f;
++				base_paramer.aux.screen_list[slot].resolution.hsync_start = hsync_start;
++				base_paramer.aux.screen_list[slot].resolution.hsync_end = hsync_end;
++				base_paramer.aux.screen_list[slot].resolution.htotal = htotal;
++				base_paramer.aux.screen_list[slot].resolution.vsync_start = vsync_start;
++				base_paramer.aux.screen_list[slot].resolution.vsync_end = vsync_end;
++				base_paramer.aux.screen_list[slot].resolution.vtotal = vtotal;
++				base_paramer.aux.screen_list[slot].resolution.flags = flags;
++			} else {
++				base_paramer.aux.screen_list[slot].feature |= RESOLUTION_AUTO;
++				memset(&base_paramer.aux.screen_list[slot].resolution, 0, sizeof(base_paramer.aux.screen_list[slot].resolution));
++			}
++
++			memset(property,0,sizeof(property));
++			property_get("persist.sys.overscan.aux", property, "overscan 100,100,100,100");
++			sscanf(property, "overscan %d,%d,%d,%d",
++					&left,
++					&top,
++					&right,
++					&bottom);
++			base_paramer.aux.scan.leftscale = (unsigned short)left;
++			base_paramer.aux.scan.topscale = (unsigned short)top;
++			base_paramer.aux.scan.rightscale = (unsigned short)right;
++			base_paramer.aux.scan.bottomscale = (unsigned short)bottom;
++
++			memset(property,0,sizeof(property));
++			property_get("persist.sys.color.aux", property, "Auto");
++			if (strncmp(property, "Auto", 4) != 0){
++				char color[16];
++				char depth[16];
++
++				sscanf(property, "%s-%s", color, depth);
++				if (strncmp(color, "RGB", 3) == 0)
++					base_paramer.aux.screen_list[slot].format = output_rgb;
++				else if (strncmp(color, "YCBCR444", 8) == 0)
++					base_paramer.aux.screen_list[slot].format = output_ycbcr444;
++				else if (strncmp(color, "YCBCR422", 8) == 0)
++					base_paramer.aux.screen_list[slot].format = output_ycbcr422;
++				else if (strncmp(color, "YCBCR420", 8) == 0)
++					base_paramer.aux.screen_list[slot].format = output_ycbcr420;
++				else {
++					base_paramer.aux.screen_list[slot].feature |= COLOR_AUTO;
++					base_paramer.aux.screen_list[slot].format = output_ycbcr_high_subsampling;
++				}
++
++				if (strncmp(depth, "8bit", 4) == 0)
++					base_paramer.aux.screen_list[slot].depthc = depth_24bit;
++				else if (strncmp(depth, "10bit", 5) == 0)
++					base_paramer.aux.screen_list[slot].depthc = depth_30bit;
++				else
++					base_paramer.aux.screen_list[slot].depthc = Automatic;
++			} else {
++				base_paramer.aux.screen_list[slot].feature |= COLOR_AUTO;
++				base_paramer.aux.screen_list[slot].depthc = Automatic;
++				base_paramer.aux.screen_list[slot].format = output_ycbcr_high_subsampling;
++			}
++
++			memset(property,0,sizeof(property));
++			property_get("persist.sys.hdcp1x.aux", property, "0");
++			if (atoi(property) > 0)
++				base_paramer.aux.screen_list[slot].feature |= HDCP1X_EN;
++
++			memset(property,0,sizeof(property));
++			property_get("persist.sys.resolution_white.aux", property, "0");
++			if (atoi(property) > 0)
++				base_paramer.aux.screen_list[slot].feature |= RESOLUTION_WHITE_EN;
++			/*add for BCSH*/
++			saveBcshConfig(&base_paramer, HWC_DISPLAY_EXTERNAL_BIT);
++#ifdef TEST_BASE_PARMARTER
++			/*save aux fb & device*/
++			saveHwcInitalInfo(&base_paramer, HWC_DISPLAY_EXTERNAL_BIT);
++#endif
++		}
++	}
++
++	if (priv->mlut != NULL) {
++		int mainLutSize = priv->mlut->main.size*sizeof(uint16_t);
++		int auxLutSize = priv->mlut->aux.size*sizeof(uint16_t);
++		if (mainLutSize) {
++			base_paramer.main.mlutdata.size = priv->mlut->main.size;
++			memcpy(base_paramer.main.mlutdata.lred, priv->mlut->main.lred, mainLutSize);
++			memcpy(base_paramer.main.mlutdata.lgreen, priv->mlut->main.lred, mainLutSize);
++			memcpy(base_paramer.main.mlutdata.lblue, priv->mlut->main.lred, mainLutSize);
++		}
++
++		if (auxLutSize) {
++			base_paramer.aux.mlutdata.size = priv->mlut->aux.size;
++			memcpy(base_paramer.aux.mlutdata.lred, priv->mlut->aux.lred, mainLutSize);
++			memcpy(base_paramer.aux.mlutdata.lgreen, priv->mlut->aux.lred, mainLutSize);
++			memcpy(base_paramer.aux.mlutdata.lblue, priv->mlut->aux.lred, mainLutSize);
++		}
++	}
++	freeLutInfo(priv->mlut);
++	lseek(file, 0L, SEEK_SET);
++	write(file, (char*)(&base_paramer.main), sizeof(base_paramer.main));
++	lseek(file, BASE_OFFSET, SEEK_SET);
++	write(file, (char*)(&base_paramer.aux), sizeof(base_paramer.aux));
++	close(file);
++	sync();
++	/*
++	   ALOGD("[%s] hdmi:%d,%d,%d,%d,%d,%d foundMainIdx %d\n", __FUNCTION__,
++	   base_paramer.main.resolution.hdisplay,
++	   base_paramer.main.resolution.vdisplay,
++	   base_paramer.main.resolution.hsync_start,
++	   base_paramer.main.resolution.hsync_end,
++	   base_paramer.main.resolution.htotal,
++	   base_paramer.main.resolution.flags,
++	   foundMainIdx);
++
++	   ALOGD("[%s] tve:%d,%d,%d,%d,%d,%d foundAuxIdx %d\n", __FUNCTION__,
++	   base_paramer.aux.resolution.hdisplay,
++	   base_paramer.aux.resolution.vdisplay,
++	   base_paramer.aux.resolution.hsync_start,
++	   base_paramer.aux.resolution.hsync_end,
++	   base_paramer.aux.resolution.htotal,
++	   base_paramer.aux.resolution.flags,
++	   foundAuxIdx);
++	 */
++}
++
++static void hw_output_hotplug_update(struct hw_output_device* dev){
++	hw_output_private_t* priv = (hw_output_private_t*)dev;
++
++    DrmConnector *mextend = NULL;
++    DrmConnector *mprimary = NULL;
++
++    for (auto &conn : priv->drm_->connectors()) {
++        drmModeConnection old_state = conn->state();
++
++        conn->UpdateModes();
++
++        drmModeConnection cur_state = conn->state();
++        ALOGD("old_state %d cur_state %d conn->get_type() %d", old_state, cur_state, conn->get_type());
++
++        if (cur_state == old_state)
++            continue;
++        ALOGI("%s event  for connector %u\n",
++                cur_state == DRM_MODE_CONNECTED ? "Plug" : "Unplug", conn->id());
++
++        if (cur_state == DRM_MODE_CONNECTED) {
++            if (conn->possible_displays() & HWC_DISPLAY_EXTERNAL_BIT)
++                mextend = conn.get();
++            else if (conn->possible_displays() & HWC_DISPLAY_PRIMARY_BIT)
++                mprimary = conn.get();
++        }
++    }
++
++    /*
++     * status changed?
++     */
++    priv->drm_->DisplayChanged();
++
++    DrmConnector *old_primary = priv->drm_->GetConnectorFromType(HWC_DISPLAY_PRIMARY);
++    mprimary = mprimary ? mprimary : old_primary;
++    if (!mprimary || mprimary->state() != DRM_MODE_CONNECTED) {
++        mprimary = NULL;
++        for (auto &conn : priv->drm_->connectors()) {
++            if (!(conn->possible_displays() & HWC_DISPLAY_PRIMARY_BIT))
++                continue;
++            if (conn->state() == DRM_MODE_CONNECTED) {
++                mprimary = conn.get();
++                break;
++            }
++        }
++    }
++
++    if (!mprimary) {
++        ALOGE("%s %d Failed to find primary display\n", __FUNCTION__, __LINE__);
++        return;
++    }
++    if (mprimary != old_primary) {
++        priv->drm_->SetPrimaryDisplay(mprimary);
++    }
++
++    DrmConnector *old_extend = priv->drm_->GetConnectorFromType(HWC_DISPLAY_EXTERNAL);
++    mextend = mextend ? mextend : old_extend;
++    if (!mextend || mextend->state() != DRM_MODE_CONNECTED) {
++        mextend = NULL;
++        for (auto &conn : priv->drm_->connectors()) {
++            if (!(conn->possible_displays() & HWC_DISPLAY_EXTERNAL_BIT))
++                continue;
++            if (conn->id() == mprimary->id())
++                continue;
++            if (conn->state() == DRM_MODE_CONNECTED) {
++                mextend = conn.get();
++                break;
++            }
++        }
++    }
++    priv->drm_->SetExtendDisplay(mextend);
++    priv->drm_->DisplayChanged();
++    priv->drm_->UpdateDisplayRoute();
++    priv->drm_->ClearDisplay();
++
++    updateConnectors(priv);
++}
++
++static int hw_output_initialize(struct hw_output_device* dev, void* data)
++{
++    hw_output_private_t* priv = (hw_output_private_t*)dev;
++	
++	priv->drm_ = NULL;
++	priv->primary = NULL;
++	priv->extend = NULL;
++	priv->mlut = NULL;
++    priv->callback_data = data;
++
++	if (priv->drm_ == NULL) {
++		priv->drm_ = new DrmResources();
++		priv->drm_->Init();
++		ALOGD("nativeInit: ");
++		hw_output_hotplug_update(dev);
++		if (priv->primary == NULL) {
++			for (auto &conn : priv->drm_->connectors()) {
++				if ((conn->possible_displays() & HWC_DISPLAY_PRIMARY_BIT)) {
++					priv->drm_->SetPrimaryDisplay(conn.get());
++					priv->primary = conn.get();
++				}
++				if ((conn->possible_displays() & HWC_DISPLAY_EXTERNAL_BIT) && conn->state() == DRM_MODE_CONNECTED) {
++					priv->drm_->SetExtendDisplay(conn.get());
++					priv->extend = conn.get();
++				}
++			}
++		}
++			ALOGD("primary: %p extend: %p ", priv->primary, priv->extend);
++		}
++    return 0;
++}
++
++
++/*****************************************************************************/
++
++static int hw_output_set_mode(struct hw_output_device*, int dpy, const char* mode)
++{
++	char property[PROPERTY_VALUE_MAX];
++
++    if (dpy == HWC_DISPLAY_PRIMARY){
++		property_get("persist.sys.resolution.main", property, NULL);
++        property_set("persist.sys.resolution.main", mode);	
++	} else {
++		property_get("persist.sys.resolution.main", property, NULL);
++        property_set("persist.sys.resolution.aux", mode);
++	}
++    ALOGD("nativeSetMode %s display %d ", mode, dpy);
++
++	if (strcmp(mode, property) !=0) {
++		char tmp[128];
++		timeline++;
++		sprintf(tmp, "%d", timeline);
++		property_set("sys.display.timeline", tmp);
++	}
++	return 0;
++}
++
++static int hw_output_set_gamma(struct hw_output_device* dev, int dpy, uint32_t size, uint16_t* r, uint16_t* g, uint16_t* b)
++{
++    hw_output_private_t* priv = (hw_output_private_t*)dev;
++    int ret = -1;
++    int crtc_id = 0;
++
++	if (dpy == HWC_DISPLAY_PRIMARY && priv->primary)
++    	crtc_id = priv->drm_->GetCrtcFromConnector(priv->primary)->id();
++	else if (priv->extend)
++		crtc_id = priv->drm_->GetCrtcFromConnector(priv->extend)->id();
++	ret = drmModeCrtcSetGamma(priv->drm_->fd(), crtc_id, size, r, g, b);
++    if (ret < 0)
++	    ALOGE("fail to SetGamma %d(%s)", ret, strerror(errno));
++    return ret;
++}
++
++static int hw_output_set_brightness(struct hw_output_device*, int dpy, int brightness)
++{
++	char property[PROPERTY_VALUE_MAX];
++	char tmp[128];
++
++	sprintf(tmp, "%d", brightness);
++	if (dpy == HWC_DISPLAY_PRIMARY){
++		property_get("persist.sys.brightness.main", property, "50");
++		property_set("persist.sys.brightness.main", tmp);
++	} else {
++		property_get("persist.sys.brightness.aux", property, "50");
++		property_set("persist.sys.brightness.aux", tmp);
++	}
++
++	if (atoi(property) != brightness) {
++		timeline++;
++		memset(tmp, 0, sizeof(tmp));
++		sprintf(tmp, "%d", timeline);
++		property_set("sys.display.timeline", tmp);
++	}
++	return 0;
++}
++
++static int hw_output_set_contrast(struct hw_output_device*, int dpy, int contrast)
++{
++	char property[PROPERTY_VALUE_MAX];
++	char tmp[128];
++
++	sprintf(tmp, "%d", contrast);
++	if (dpy == HWC_DISPLAY_PRIMARY){
++		property_get("persist.sys.contrast.main", property, "50");
++		property_set("persist.sys.contrast.main", tmp);
++	} else {
++		property_get("persist.sys.contrast.aux", property, "50");
++		property_set("persist.sys.contrast.aux", tmp);
++	}
++
++	if (atoi(property) != contrast) {
++		timeline++;
++		memset(tmp, 0, sizeof(tmp));
++		sprintf(tmp, "%d", timeline);
++		property_set("sys.display.timeline", tmp);
++	}
++	return 0;
++}
++
++static int hw_output_set_sat(struct hw_output_device*, int dpy, int sat)
++{
++	char property[PROPERTY_VALUE_MAX];
++	char tmp[128];
++
++	sprintf(tmp, "%d", sat);
++	if (dpy == HWC_DISPLAY_PRIMARY){
++		property_get("persist.sys.saturation.main", property, "50");
++		property_set("persist.sys.saturation.main", tmp);
++	} else {
++		property_get("persist.sys.saturation.aux", property, "50");
++		property_set("persist.sys.saturation.aux", tmp);
++	}
++
++	if (atoi(property) != sat) {
++		timeline++;
++		memset(tmp, 0, sizeof(tmp));
++		sprintf(tmp, "%d", timeline);
++		property_set("sys.display.timeline", tmp);
++	}
++	return 0;
++}
++
++static int hw_output_set_hue(struct hw_output_device*, int dpy, int hue)
++{
++	char property[PROPERTY_VALUE_MAX];
++	char tmp[128];
++
++	sprintf(tmp, "%d", hue);
++	if (dpy == HWC_DISPLAY_PRIMARY){
++		property_get("persist.sys.hue.main", property, "50");
++		property_set("persist.sys.hue.main", tmp);
++	} else {
++		property_get("persist.sys.hue.aux", property, "50");
++		property_set("persist.sys.hue.aux", tmp);
++	}
++
++	if (atoi(property) != hue) {
++		timeline++;
++		memset(tmp, 0, sizeof(tmp));
++		sprintf(tmp, "%d", timeline);
++		property_set("sys.display.timeline", tmp);
++	}
++	return 0;
++}
++
++static int hw_output_set_screen_scale(struct hw_output_device*, int dpy, int direction, int value)
++{
++	char property[PROPERTY_VALUE_MAX];
++	char overscan[128];
++	int left,top,right,bottom;
++
++	if(dpy == HWC_DISPLAY_PRIMARY)
++		property_get("persist.sys.overscan.main", property, "overscan 100,100,100,100");
++	else
++		property_get("persist.sys.overscan.aux", property, "overscan 100,100,100,100");
++
++	sscanf(property, "overscan %d,%d,%d,%d", &left, &top, &right, &bottom);
++
++	if (direction == OVERSCAN_LEFT)
++		left = value;
++	else if (direction == OVERSCAN_TOP)
++		top = value;
++	else if (direction == OVERSCAN_RIGHT)
++		right = value;
++	else if (direction == OVERSCAN_BOTTOM)
++		bottom = value;
++
++	sprintf(overscan, "overscan %d,%d,%d,%d", left, top, right, bottom);
++	
++	if(dpy == HWC_DISPLAY_PRIMARY)
++		property_set("persist.sys.overscan.main", overscan);
++	else
++		property_set("persist.sys.overscan.aux", overscan);
++
++	if (strcmp(property, overscan) != 0) {
++		char tmp[128];
++		timeline++;
++		sprintf(tmp, "%d", timeline);
++		property_set("sys.display.timeline", tmp);
++	}
++
++	return 0;
++}
++
++static int hw_output_set_hdr_mode(struct hw_output_device*, int dpy, int hdr_mode)
++{
++	char property[PROPERTY_VALUE_MAX];
++	char tmp[128];
++
++	sprintf(tmp, "%d", hdr_mode);
++	if (dpy == HWC_DISPLAY_PRIMARY){
++		property_get("persist.sys.hdr_mode.main", property, "50");
++		property_set("persist.sys.hdr_mode.main", tmp);
++	} else {
++		property_get("persist.sys.hdr_mode.aux", property, "50");
++		property_set("persist.sys.hdr_mode.aux", tmp);
++	}
++
++	if (atoi(property) != hdr_mode) {
++		timeline++;
++		memset(tmp, 0, sizeof(tmp));
++		sprintf(tmp, "%d", timeline);
++		property_set("sys.display.timeline", tmp);
++	}
++	return 0;
++}
++
++static int hw_output_set_color_mode(struct hw_output_device*, int dpy, const char* color_mode)
++{
++	char property[PROPERTY_VALUE_MAX];
++
++    if (dpy == HWC_DISPLAY_PRIMARY){
++		property_get("persist.sys.color.main", property, NULL);
++        property_set("persist.sys.color.main", color_mode);
++	} else {
++		property_get("persist.sys.color.aux", property, NULL);
++        property_set("persist.sys.color.aux", color_mode);
++	}
++    ALOGD("hw_output_set_color_mode %s display %d ", color_mode, dpy);
++
++	if (strcmp(color_mode, property) !=0) {
++		char tmp[128];
++		timeline++;
++		sprintf(tmp, "%d", timeline);
++		property_set("sys.display.timeline", tmp);
++	}
++	return 0;
++}
++
++static int hw_output_get_cur_mode(struct hw_output_device* dev, int dpy, char* curMode)
++{
++    hw_output_private_t* priv = (hw_output_private_t*)dev;
++    bool found=false;
++
++	if (curMode != NULL)
++    	found = getResolutionInfo(priv, dpy, curMode);
++	else
++		return -1;
++
++    if (!found) {
++        sprintf(curMode, "%s", "Auto");
++    }
++
++	return 0;
++}
++
++static int hw_output_get_cur_color_mode(struct hw_output_device* dev, int dpy, char* curColorMode)
++{
++    hw_output_private_t* priv = (hw_output_private_t*)dev;
++    char colorMode[PROPERTY_VALUE_MAX];
++    struct file_base_paramer base_paramer;
++    int len=0;
++    DrmConnector* mCurConnector;
++
++    if (dpy == HWC_DISPLAY_PRIMARY) {
++        len = property_get("persist.sys.color.main", colorMode, NULL);
++    } else if (dpy == HWC_DISPLAY_EXTERNAL) {
++        len = property_get("persist.sys.color.aux", colorMode, NULL);
++    }
++
++    ALOGD("nativeGetCurCorlorMode: property=%s", colorMode);
++    if (dpy == HWC_DISPLAY_PRIMARY) {
++        mCurConnector = priv->primary;
++    }else if (dpy == HWC_DISPLAY_EXTERNAL){
++        mCurConnector = priv->extend;
++    } 
++    if (!len) {
++        if (getBaseParameterInfo(&base_paramer) && mCurConnector != NULL) {
++            int slot = 0;
++            if (dpy == HWC_DISPLAY_PRIMARY)
++                slot = findSuitableInfoSlot(&base_paramer.main, mCurConnector->get_type());
++            else
++                slot = findSuitableInfoSlot(&base_paramer.aux, mCurConnector->get_type());
++
++            if (dpy == HWC_DISPLAY_PRIMARY) {
++                if (base_paramer.main.screen_list[slot].depthc == Automatic &&
++                        base_paramer.main.screen_list[slot].format == output_ycbcr_high_subsampling)
++                    sprintf(colorMode, "%s", "Auto");
++            } else if (dpy == HWC_DISPLAY_EXTERNAL) {
++                if (base_paramer.aux.screen_list[slot].depthc == Automatic &&
++                        base_paramer.aux.screen_list[slot].format == output_ycbcr_high_subsampling)
++                    sprintf(colorMode, "%s", "Auto");
++            }
++            ALOGD("nativeGetCurCorlorMode:  %d-%d", 
++                    base_paramer.main.screen_list[slot].format, base_paramer.main.screen_list[slot].depthc);
++        }
++    }
++	sprintf(curColorMode, "%s", colorMode);
++    ALOGD("nativeGetCurCorlorMode: colorMode=%s", colorMode);
++	
++	return 0;
++}
++
++static int hw_output_get_num_connectors(struct hw_output_device* dev, int, int* numConnectors)
++{
++	hw_output_private_t* priv = (hw_output_private_t*)dev;
++	
++	*numConnectors = priv->drm_->connectors().size();
++	return 0;
++}
++
++static int hw_output_get_connector_state(struct hw_output_device* dev, int dpy, int* state)
++{
++	hw_output_private_t* priv = (hw_output_private_t*)dev;
++	int ret = 0;
++
++    if (dpy == HWC_DISPLAY_PRIMARY && priv->primary)
++        *state = priv->primary->state();
++    else if (dpy == HWC_DISPLAY_EXTERNAL && priv->extend)
++        *state = priv->extend->state();
++	else
++		ret = -1;
++
++	return ret;
++}
++
++static int hw_output_get_color_configs(struct hw_output_device* dev, int dpy, int* configs)
++{
++	hw_output_private_t* priv = (hw_output_private_t*)dev;
++    DrmConnector* mCurConnector;
++    uint64_t color_capacity=0;
++    uint64_t depth_capacity=0;
++
++
++    if (dpy == HWC_DISPLAY_PRIMARY) {
++        mCurConnector = priv->primary;
++    }else if (dpy == HWC_DISPLAY_EXTERNAL){
++        mCurConnector = priv->extend;
++    } else {
++        return -1;
++    }
++
++    if (mCurConnector != NULL) {
++        if (mCurConnector->hdmi_output_mode_capacity_property().id())
++            mCurConnector->hdmi_output_mode_capacity_property().value( &color_capacity);
++
++        if (mCurConnector->hdmi_output_depth_capacity_property().id())
++            mCurConnector->hdmi_output_depth_capacity_property().value(&depth_capacity);
++
++		configs[0] = (int)color_capacity;
++		configs[1] = (int)depth_capacity;
++        ALOGD("nativeGetCorlorModeConfigs: corlor=%d depth=%d configs:%d %d",(int)color_capacity,(int)depth_capacity, configs[0], configs[1]);
++    }
++	return 0;
++}
++
++static int hw_output_get_overscan(struct hw_output_device*, int dpy, uint32_t* overscans)
++{
++	char property[PROPERTY_VALUE_MAX];
++	int left,top,right,bottom;
++
++	if(dpy == HWC_DISPLAY_PRIMARY)
++		property_get("persist.sys.overscan.main", property, "overscan 100,100,100,100");
++	else
++		property_get("persist.sys.overscan.aux", property, "overscan 100,100,100,100");
++
++	sscanf(property, "overscan %d,%d,%d,%d", &left, &top, &right, &bottom);
++	overscans[0] = left;
++	overscans[1] = top;
++	overscans[2] = right;
++	overscans[3] = bottom;
++	return 0;
++}
++
++static int hw_output_get_bcsh(struct hw_output_device*, int dpy, uint32_t* bcshs)
++{
++    char mBcshProperty[PROPERTY_VALUE_MAX];
++    struct file_base_paramer base_paramer;
++    bool foudBaseParameter=false;
++
++    foudBaseParameter = getBaseParameterInfo(&base_paramer);
++    if (dpy == HWC_DISPLAY_PRIMARY) {
++        if (property_get("persist.sys.brightness.main", mBcshProperty, NULL) > 0)
++            bcshs[0] = atoi(mBcshProperty);
++        else if (foudBaseParameter)
++            bcshs[0] = base_paramer.main.bcsh.brightness;
++        else
++            bcshs[0] = DEFAULT_BRIGHTNESS;
++
++        memset(mBcshProperty, 0, sizeof(mBcshProperty));
++        if (property_get("persist.sys.contrast.main", mBcshProperty, NULL) > 0)
++            bcshs[1] = atoi(mBcshProperty);
++        else if (foudBaseParameter)
++            bcshs[1] = base_paramer.main.bcsh.contrast;
++        else
++            bcshs[1] = DEFAULT_CONTRAST;
++
++        memset(mBcshProperty, 0, sizeof(mBcshProperty));
++        if (property_get("persist.sys.saturation.main", mBcshProperty, NULL) > 0)
++            bcshs[2] = atoi(mBcshProperty);
++        else if (foudBaseParameter)
++            bcshs[2] = base_paramer.main.bcsh.saturation;
++        else
++            bcshs[2] = DEFAULT_SATURATION;
++
++        memset(mBcshProperty, 0, sizeof(mBcshProperty));
++        if (property_get("persist.sys.hue.main",mBcshProperty, NULL) > 0)
++            bcshs[3] = atoi(mBcshProperty);
++        else if (foudBaseParameter)
++            bcshs[3] = base_paramer.main.bcsh.hue;
++        else
++            bcshs[3] = DEFAULT_HUE;
++    } else if (dpy == HWC_DISPLAY_EXTERNAL){
++        if (property_get("persist.sys.brightness.aux", mBcshProperty, NULL) > 0)
++            bcshs[0] = atoi(mBcshProperty);
++        else if (foudBaseParameter)
++            bcshs[0] = base_paramer.aux.bcsh.brightness;
++        else 
++            bcshs[0] = DEFAULT_BRIGHTNESS;
++
++        memset(mBcshProperty, 0, sizeof(mBcshProperty));
++        if (property_get("persist.sys.contrast.aux", mBcshProperty, NULL) > 0)
++            bcshs[1] = atoi(mBcshProperty);
++        else if (foudBaseParameter)
++            bcshs[1] = base_paramer.aux.bcsh.contrast;
++        else
++            bcshs[1] = DEFAULT_CONTRAST;
++
++        memset(mBcshProperty, 0, sizeof(mBcshProperty));
++        if (property_get("persist.sys.saturation.aux", mBcshProperty, NULL) > 0)
++            bcshs[2] = atoi(mBcshProperty);
++        else if (foudBaseParameter)
++            bcshs[2] = base_paramer.aux.bcsh.saturation;
++        else
++            bcshs[2] = DEFAULT_SATURATION;
++
++        memset(mBcshProperty, 0, sizeof(mBcshProperty));
++        if (property_get("persist.sys.hue.aux",mBcshProperty, NULL) > 0)
++            bcshs[3] = atoi(mBcshProperty);
++        else if (foudBaseParameter)
++            bcshs[3] = base_paramer.aux.bcsh.hue;
++        else
++            bcshs[3] = DEFAULT_HUE;
++    }
++    checkBcshInfo(bcshs);
++    ALOGD("Bcsh: %d %d %d %d main.bcsh: %d %d %d %d", bcshs[0], bcshs[1], bcshs[2], bcshs[3],
++            base_paramer.main.bcsh.brightness, base_paramer.main.bcsh.contrast, base_paramer.main.bcsh.saturation, base_paramer.main.bcsh.hue);
++	return 0;
++}
++
++static int hw_output_get_builtin(struct hw_output_device* dev, int dpy, int* builtin)
++{
++	hw_output_private_t* priv = (hw_output_private_t*)dev;
++
++    if (dpy == HWC_DISPLAY_PRIMARY && priv->primary)
++        *builtin = priv->primary->get_type();
++    else if (dpy == HWC_DISPLAY_EXTERNAL && priv->extend)
++        *builtin = priv->extend->get_type();
++    else
++        *builtin = 0;
++
++	return 0;
++}
++
++static drm_mode_t* hw_output_get_display_modes(struct hw_output_device* dev, int dpy, uint32_t* size)
++{
++	hw_output_private_t* priv = (hw_output_private_t*)dev;
++    std::vector<DrmMode> mModes;
++    DrmConnector* mCurConnector;
++	drm_mode_t* drm_modes = NULL;
++    int idx=0;
++
++	*size = 0;
++    if (dpy == HWC_DISPLAY_PRIMARY) {
++        mCurConnector = priv->primary;
++        if (priv->primary != NULL)
++            mModes = priv->primary->modes();
++        ALOGD("primary built_in %d", mCurConnector->built_in());
++    }else if (dpy == HWC_DISPLAY_EXTERNAL){
++        if (priv->extend != NULL) {
++            mCurConnector = priv->extend;
++            mModes = priv->extend->modes();
++            ALOGD("extend : %d", priv->extend->built_in());
++        } else
++            return NULL;
++    } else {
++        return NULL;
++    }
++
++    if (mModes.size() == 0)
++        return NULL;
++
++	drm_modes = (drm_mode_t*)malloc(sizeof(drm_mode_t) * mModes.size());
++
++    for (size_t c = 0; c < mModes.size(); ++c) {
++        const DrmMode& info = mModes[c];
++        float vfresh;
++
++        if (info.flags() & DRM_MODE_FLAG_INTERLACE)
++            vfresh = info.clock()*2 / (float)(info.v_total()* info.h_total()) * 1000.0f;
++        else
++            vfresh = info.clock()/ (float)(info.v_total()* info.h_total()) * 1000.0f;
++		drm_modes[c].width = info.h_display();
++		drm_modes[c].height = info.v_display();
++		drm_modes[c].refreshRate = vfresh;
++		drm_modes[c].clock = info.clock();
++		drm_modes[c].flags = info.flags();
++		drm_modes[c].interlaceFlag = info.flags()&(1<<4);
++		drm_modes[c].yuvFlag = (info.flags()&(1<<24) || info.flags()&(1<<23));
++		drm_modes[c].connectorId = mCurConnector->id();
++		drm_modes[c].mode_type = info.type();
++		drm_modes[c].idx = idx;
++		drm_modes[c].hsync_start = info.h_sync_start();	
++		drm_modes[c].hsync_end = info.h_sync_end();
++		drm_modes[c].htotal = info.h_total();
++		drm_modes[c].hskew = info.h_skew();
++		drm_modes[c].vsync_start = info.v_sync_start();
++		drm_modes[c].vsync_end = info.v_sync_end();
++		drm_modes[c].vtotal = info.v_total();
++		drm_modes[c].vscan = info.v_scan();
++		idx++;
++        ALOGV("display%d. mode[%d]  %dx%d info.fps %f clock %d   hsync_start %d hsync_enc %d htotal %d hskew %d", 
++                dpy,(int)c, info.h_display(), info.v_display(), info.v_refresh(), info.clock(),  info.h_sync_start(),info.h_sync_end(),
++                info.h_total(), info.h_skew());
++        ALOGV("vsync_start %d vsync_end %d vtotal %d vscan %d flags 0x%x", info.v_sync_start(), info.v_sync_end(),
++                info.v_total(), info.v_scan(), info.flags());
++    }
++	*size = idx;
++	return drm_modes;
++}
++
++/*****************************************************************************/
++static int hw_output_device_close(struct hw_device_t *dev)
++{
++    hw_output_private_t* priv = (hw_output_private_t*)dev;
++    if (priv) {
++        free(priv);
++    }
++    return 0;
++}
++
++static int hw_output_device_open(const struct hw_module_t* module,
++        const char* name, struct hw_device_t** device)
++{
++    int status = -EINVAL;
++    if (!strcmp(name, HW_OUTPUT_DEFAULT_DEVICE)) {
++        hw_output_private_t* dev = (hw_output_private_t*)malloc(sizeof(*dev));
++
++        /* initialize our state here */
++        memset(dev, 0, sizeof(*dev));
++
++        /* initialize the procs */
++        dev->device.common.tag = HARDWARE_DEVICE_TAG;
++        dev->device.common.version = HW_OUTPUT_DEVICE_API_VERSION_0_1;
++        dev->device.common.module = const_cast<hw_module_t*>(module);
++		dev->device.common.close = hw_output_device_close;
++
++        dev->device.initialize = hw_output_initialize;
++		dev->device.setMode = hw_output_set_mode;
++		dev->device.setBrightness = hw_output_set_brightness;
++		dev->device.setContrast = hw_output_set_contrast;
++		dev->device.setSat = hw_output_set_sat;
++		dev->device.setHue = hw_output_set_hue;
++		dev->device.setColorMode = hw_output_set_color_mode;
++		dev->device.setHdrMode = hw_output_set_hdr_mode;
++		dev->device.setGamma = hw_output_set_gamma;
++		dev->device.setScreenScale = hw_output_set_screen_scale;
++
++		dev->device.getCurColorMode = hw_output_get_cur_color_mode;
++		dev->device.getBcsh = hw_output_get_bcsh;
++		dev->device.getBuiltIn = hw_output_get_builtin;
++		dev->device.getColorConfigs = hw_output_get_color_configs;
++		dev->device.getConnectorState = hw_output_get_connector_state;
++		dev->device.getCurMode = hw_output_get_cur_mode;
++		dev->device.getDisplayModes = hw_output_get_display_modes;
++		dev->device.getNumConnectors = hw_output_get_num_connectors;
++		dev->device.getOverscan = hw_output_get_overscan;
++		
++		dev->device.hotplug = hw_output_hotplug_update;
++		dev->device.saveConfig = hw_output_save_config;
++        *device = &dev->device.common;
++        status = 0;
++    }
++    return status;
++}
+diff --git a/modules/hw_output/hw_types.h b/modules/hw_output/hw_types.h
+new file mode 100644
+index 00000000..8926d62b
+--- /dev/null
++++ b/modules/hw_output/hw_types.h
+@@ -0,0 +1,113 @@
++#ifndef ANDROID_HW_TYPES_H
++#define ANDROID_HW_TYPES_H
++#include <stdint.h>
++
++#define BASE_OFFSET 8*1024
++#define DEFAULT_BRIGHTNESS  50
++#define DEFAULT_CONTRAST  50
++#define DEFAULT_SATURATION  50
++#define DEFAULT_HUE  50
++#define DEFAULT_OVERSCAN_VALUE 100
++
++#define OVERSCAN_LEFT 0
++#define OVERSCAN_TOP 1
++#define OVERSCAN_RIGHT 2
++#define OVERSCAN_BOTTOM 3
++
++struct lut_data{
++    uint16_t size;
++    uint16_t lred[1024];
++    uint16_t lgreen[1024];
++    uint16_t lblue[1024];
++};
++
++struct lut_info{
++    struct lut_data main;
++    struct lut_data aux;
++};
++
++#define BUFFER_LENGTH    256
++#define AUTO_BIT_RESET 0x00
++#define RESOLUTION_AUTO 1<<0
++#define COLOR_AUTO (1<<1)
++#define HDCP1X_EN (1<<2)
++#define RESOLUTION_WHITE_EN (1<<3)
++
++struct drm_display_mode {
++    /* Proposed mode values */
++    int clock;      /* in kHz */
++    int hdisplay;
++    int hsync_start;
++    int hsync_end;
++    int htotal;
++    int vdisplay;
++    int vsync_start;
++    int vsync_end;
++    int vtotal;
++    int vrefresh;
++    int vscan;
++    unsigned int flags;
++    int picture_aspect_ratio;
++};
++
++enum output_format {
++    output_rgb=0,
++    output_ycbcr444=1,
++    output_ycbcr422=2,
++    output_ycbcr420=3,
++    output_ycbcr_high_subsampling=4,  // (YCbCr444 > YCbCr422 > YCbCr420 > RGB)
++    output_ycbcr_low_subsampling=5  , // (RGB > YCbCr420 > YCbCr422 > YCbCr444)
++    invalid_output=6,
++};
++
++enum  output_depth{
++    Automatic=0,
++    depth_24bit=8,
++    depth_30bit=10,
++};
++
++struct overscan {
++    unsigned int maxvalue;
++    unsigned short leftscale;
++    unsigned short rightscale;
++    unsigned short topscale;
++    unsigned short bottomscale;
++};
++
++struct hwc_inital_info{
++    char device[128];
++    unsigned int framebuffer_width;
++    unsigned int framebuffer_height;
++    float fps;
++};
++
++struct bcsh_info {
++    unsigned short brightness;
++    unsigned short contrast;
++    unsigned short saturation;
++    unsigned short hue;
++};
++
++struct screen_info {
++    int type;
++    struct drm_display_mode resolution;// 52 bytes
++    enum output_format  format; // 4 bytes
++    enum output_depth depthc; // 4 bytes
++    unsigned int feature;//4 //4 bytes
++};
++
++struct disp_info {
++    struct screen_info screen_list[5];
++    struct overscan scan;//12 bytes
++    struct hwc_inital_info hwc_info; //140 bytes
++    struct bcsh_info bcsh;
++    unsigned int reserve[128];
++    struct lut_data mlutdata;/*6k+4*/
++};
++
++struct file_base_paramer
++{
++    struct disp_info main;
++    struct disp_info aux;
++};
++#endif
+diff --git a/modules/hw_output/rkdisplay/.drmresources.cpp.swp b/modules/hw_output/rkdisplay/.drmresources.cpp.swp
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/modules/hw_output/rkdisplay/autofd.h b/modules/hw_output/rkdisplay/autofd.h
+new file mode 100644
+index 00000000..1edc9c50
+--- /dev/null
++++ b/modules/hw_output/rkdisplay/autofd.h
+@@ -0,0 +1,106 @@
++/*
++ * Copyright (C) 2015 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ANDROID_AUTO_FD_H_
++#define ANDROID_AUTO_FD_H_
++
++#include <unistd.h>
++
++namespace android {
++
++class UniqueFd {
++ public:
++  UniqueFd() = default;
++  UniqueFd(int fd) : fd_(fd) {
++  }
++  UniqueFd(UniqueFd &&rhs) {
++    fd_ = rhs.fd_;
++    rhs.fd_ = -1;
++  }
++
++  UniqueFd &operator=(UniqueFd &&rhs) {
++    Set(rhs.Release());
++    return *this;
++  }
++
++  ~UniqueFd() {
++    if (fd_ >= 0)
++      close(fd_);
++  }
++
++  int Release() {
++    int old_fd = fd_;
++    fd_ = -1;
++    return old_fd;
++  }
++
++  int Set(int fd) {
++    if (fd_ >= 0)
++      close(fd_);
++    fd_ = fd;
++    return fd_;
++  }
++
++  void Close() {
++    if (fd_ >= 0)
++      close(fd_);
++    fd_ = -1;
++  }
++
++  int get() const {
++    return fd_;
++  }
++
++ private:
++  int fd_ = -1;
++};
++
++struct OutputFd {
++  OutputFd() = default;
++  OutputFd(int *fd) : fd_(fd) {
++  }
++  OutputFd(OutputFd &&rhs) {
++    fd_ = rhs.fd_;
++    rhs.fd_ = NULL;
++  }
++
++  OutputFd &operator=(OutputFd &&rhs) {
++    fd_ = rhs.fd_;
++    rhs.fd_ = NULL;
++    return *this;
++  }
++
++  int Set(int fd) {
++    if (*fd_ >= 0)
++      close(*fd_);
++    *fd_ = fd;
++    return fd;
++  }
++
++  int get() {
++    return *fd_;
++  }
++
++  operator bool() const {
++    return fd_ != NULL;
++  }
++
++ private:
++  int *fd_ = NULL;
++};
++}
++
++#endif
+diff --git a/modules/hw_output/rkdisplay/drmconnector.cpp b/modules/hw_output/rkdisplay/drmconnector.cpp
+new file mode 100644
+index 00000000..877cfdac
+--- /dev/null
++++ b/modules/hw_output/rkdisplay/drmconnector.cpp
+@@ -0,0 +1,254 @@
++/*
++ * Copyright (C) 2015 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#define LOG_TAG "hwc-drm-connector"
++
++#include "drmconnector.h"
++#include "drmresources.h"
++
++#include <errno.h>
++#include <stdint.h>
++
++#include <log/log.h>
++#include <xf86drmMode.h>
++
++namespace android {
++
++DrmConnector::DrmConnector(DrmResources *drm, drmModeConnectorPtr c,
++                           DrmEncoder *current_encoder,
++                           std::vector<DrmEncoder *> &possible_encoders)
++    : drm_(drm),
++      id_(c->connector_id),
++      encoder_(current_encoder),
++      display_(-1),
++      type_(c->connector_type),
++      state_(c->connection),
++      force_disconnect_(false),
++      mm_width_(c->mmWidth),
++      mm_height_(c->mmHeight),
++      possible_encoders_(possible_encoders),
++      connector_(c) {
++}
++
++int DrmConnector::Init() {
++  int ret = drm_->GetConnectorProperty(*this, "DPMS", &dpms_property_);
++  if (ret) {
++    ALOGE("Could not get DPMS property\n");
++    return ret;
++  }
++  ret = drm_->GetConnectorProperty(*this, "CRTC_ID", &crtc_id_property_);
++  ALOGD("crtc_id_property_: name %s ", crtc_id_property_.name().c_str());
++  if (ret) {
++    ALOGE("Could not get CRTC_ID property\n");
++    return ret;
++  }
++
++  ret = drm_->GetConnectorProperty(*this, "hdmi_output_mode_capacity", &hdmi_output_mode_capacity_);
++  if (ret)
++    ALOGW("Could not get hdmi_output_colorimetry property\n");
++
++  ret = drm_->GetConnectorProperty(*this, "hdmi_color_depth_capacity", &hdmi_color_depth_capacity_);
++  if (ret) {
++    ALOGW("Could not get hdmi_output_format property\n");
++  }
++
++  return 0;
++}
++
++uint32_t DrmConnector::id() const {
++  return id_;
++}
++
++int DrmConnector::display() const {
++  return display_;
++}
++
++void DrmConnector::set_display(int display) {
++  display_ = display;
++}
++
++void DrmConnector::set_display_possible(int possible_displays) {
++  possible_displays_ = possible_displays;
++}
++
++bool DrmConnector::built_in() const {
++  return type_ == DRM_MODE_CONNECTOR_LVDS || type_ == DRM_MODE_CONNECTOR_eDP ||
++         type_ == DRM_MODE_CONNECTOR_DSI || type_ == DRM_MODE_CONNECTOR_VIRTUAL ||
++         type_ == DRM_MODE_CONNECTOR_TV;
++}
++
++
++const DrmMode &DrmConnector::best_mode() const {
++  return best_mode_;
++}
++
++int DrmConnector::UpdateModes() {
++  int fd = drm_->fd();
++  int ret;
++
++  drmModeConnectorPtr c = drmModeGetConnector(fd, id_);
++  if (!c) {
++    ALOGE("Failed to get connector %d", id_);
++    return -ENODEV;
++  }
++
++  state_ = c->connection;
++  if (!c->count_modes)
++    state_ = DRM_MODE_DISCONNECTED;
++
++  std::vector<DrmMode> new_modes;
++  for (int i = 0; i < c->count_modes; ++i) {
++    bool exists = false;
++    for (const DrmMode &mode : modes_) {
++      if (mode == c->modes[i]) {
++        new_modes.push_back(mode);
++        exists = true;
++        break;
++      }
++    }
++    if (exists)
++      continue;
++
++    DrmMode m(&c->modes[i]);
++
++    m.set_id(drm_->next_mode_id());
++    new_modes.push_back(m);
++  }
++  modes_.swap(new_modes);
++
++  ret = drm_->GetConnectorProperty(*this, "hdmi_output_mode_capacity", &hdmi_output_mode_capacity_);
++  if (ret)
++    ALOGW("UpdateModes Could not get hdmi_output_colorimetry property\n");
++
++  ret = drm_->GetConnectorProperty(*this, "hdmi_color_depth_capacity", &hdmi_color_depth_capacity_);
++  if (ret) {
++    ALOGW("UpdateModes Could not get hdmi_output_format property\n");
++  }
++  return 0;
++}
++
++void DrmConnector::update_size(int w, int h) {
++    mm_width_ = w;
++    mm_height_ = h;
++}
++
++void DrmConnector::update_state(drmModeConnection state) {
++    state_ = state;
++}
++
++const DrmMode &DrmConnector::active_mode() const {
++    return active_mode_;
++}
++
++const DrmMode &DrmConnector::current_mode() const {
++  return current_mode_;
++}
++
++void DrmConnector::SetDpmsMode(uint32_t dpms_mode) {
++  int ret = drmModeConnectorSetProperty(drm_->fd(), id_, dpms_property_.id(), dpms_mode);
++  if (ret) {
++    ALOGE("Failed to set dpms mode %d %d", ret, dpms_mode);
++    return;
++  }
++}
++
++void DrmConnector::set_best_mode(const DrmMode &mode) {
++  best_mode_ = mode;
++}
++
++void DrmConnector::set_active_mode(const DrmMode &mode) {
++  active_mode_ = mode;
++}
++
++void DrmConnector::set_current_mode(const DrmMode &mode) {
++  current_mode_ = mode;
++}
++
++const DrmProperty &DrmConnector::dpms_property() const {
++  return dpms_property_;
++}
++
++const DrmProperty &DrmConnector::crtc_id_property() const {
++  return crtc_id_property_;
++}
++
++const DrmProperty &DrmConnector::hdmi_output_mode_capacity_property() const {
++  return hdmi_output_mode_capacity_;
++}
++
++const DrmProperty &DrmConnector::hdmi_output_depth_capacity_property() const {
++  return hdmi_color_depth_capacity_;
++}
++
++DrmEncoder *DrmConnector::encoder() const {
++  return encoder_;
++}
++
++void DrmConnector::set_encoder(DrmEncoder *encoder) {
++  encoder_ = encoder;
++}
++
++void DrmConnector::force_disconnect(bool force) {
++    force_disconnect_ = force;
++}
++
++drmModeConnection DrmConnector::state() const {
++  if (force_disconnect_)
++    return DRM_MODE_DISCONNECTED;
++  return state_;
++}
++
++uint32_t DrmConnector::mm_width() const {
++  return mm_width_;
++}
++
++uint32_t DrmConnector::mm_height() const {
++  return mm_height_;
++}
++
++void DrmConnector::dump_connector(std::ostringstream *out) const {
++    int j;
++
++    *out << connector_->connector_id << "\t"
++         << connector_->encoder_id << "\t"
++         << drm_->connector_status_str(connector_->connection) << "\t"
++         << drm_->connector_type_str(connector_->connector_type) << "\t"
++         << connector_->mmWidth << "\t"
++         << connector_->mmHeight << "\t"
++         << connector_->count_modes << "\t";
++
++		for (j = 0; j < connector_->count_encoders; j++) {
++			if(j > 0) {
++                *out << ", ";
++			} else {
++			    *out << "";
++			}
++			*out << connector_->encoders[j];
++	    }
++		*out << "\n";
++
++		if (connector_->count_modes) {
++			*out << "  modes:\n";
++			*out << "\tname refresh (Hz) hdisp hss hse htot vdisp "
++			       "vss vse vtot)\n";
++			for (j = 0; j < connector_->count_modes; j++)
++				drm_->dump_mode(&connector_->modes[j],out);
++		}
++
++		drm_->DumpConnectorProperty(*this,out);
++}
++
++}
+diff --git a/modules/hw_output/rkdisplay/drmconnector.h b/modules/hw_output/rkdisplay/drmconnector.h
+new file mode 100644
+index 00000000..36276145
+--- /dev/null
++++ b/modules/hw_output/rkdisplay/drmconnector.h
+@@ -0,0 +1,119 @@
++/*
++ * Copyright (C) 2015 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ANDROID_DRM_CONNECTOR_H_
++#define ANDROID_DRM_CONNECTOR_H_
++
++#include "drmencoder.h"
++#include "drmmode.h"
++#include "drmproperty.h"
++
++#include <stdint.h>
++#include <vector>
++#include <xf86drmMode.h>
++
++namespace android {
++
++class DrmResources;
++
++class DrmConnector {
++ public:
++  DrmConnector(DrmResources *drm, drmModeConnectorPtr c,
++               DrmEncoder *current_encoder,
++               std::vector<DrmEncoder *> &possible_encoders);
++  DrmConnector(const DrmProperty &) = delete;
++  DrmConnector &operator=(const DrmProperty &) = delete;
++
++  int Init();
++
++  uint32_t id() const;
++
++  int display() const;
++  void set_display(int display);
++
++  void set_display_possible(int display_bit);
++
++  bool built_in() const;
++
++  int UpdateModes();
++
++  const std::vector<DrmMode> &modes() const {
++    return modes_;
++  }
++  const DrmMode &best_mode() const;
++  const DrmMode &active_mode() const;
++  const DrmMode &current_mode() const;
++  void set_best_mode(const DrmMode &mode);
++  void set_active_mode(const DrmMode &mode);
++  void set_current_mode(const DrmMode &mode);
++  void SetDpmsMode(uint32_t dpms_mode);
++
++  const DrmProperty &dpms_property() const;
++  const DrmProperty &crtc_id_property() const;
++  const DrmProperty &hdmi_output_mode_capacity_property() const;
++  const DrmProperty &hdmi_output_depth_capacity_property() const;
++  const std::vector<DrmEncoder *> &possible_encoders() const {
++    return possible_encoders_;
++  }
++  DrmEncoder *encoder() const;
++  void set_encoder(DrmEncoder *encoder);
++
++  drmModeConnection state() const;
++  void force_disconnect(bool force);
++
++  uint32_t get_type() { return type_; }
++  int possible_displays() { return possible_displays_; }
++
++  uint32_t mm_width() const;
++  uint32_t mm_height() const;
++  drmModeConnectorPtr get_connector() { return connector_; }
++  void update_state(drmModeConnection state);
++  void update_size(int w, int h);
++  void dump_connector(std::ostringstream *out) const;
++
++ private:
++  DrmResources *drm_;
++
++  uint32_t id_;
++  DrmEncoder *encoder_;
++  int display_;
++
++  uint32_t type_;
++  drmModeConnection state_;
++  bool force_disconnect_;
++
++  uint32_t mm_width_;
++  uint32_t mm_height_;
++
++  DrmMode active_mode_;
++  DrmMode current_mode_;
++  DrmMode best_mode_;
++  std::vector<DrmMode> modes_;
++
++  DrmProperty dpms_property_;
++  DrmProperty crtc_id_property_;
++
++  DrmProperty hdmi_output_mode_capacity_;
++  DrmProperty hdmi_color_depth_capacity_;
++
++  std::vector<DrmEncoder *> possible_encoders_;
++  uint32_t possible_displays_;
++
++  drmModeConnectorPtr connector_;
++};
++}
++
++#endif  // ANDROID_DRM_PLANE_H_
+diff --git a/modules/hw_output/rkdisplay/drmcrtc.cpp b/modules/hw_output/rkdisplay/drmcrtc.cpp
+new file mode 100644
+index 00000000..65f3ce37
+--- /dev/null
++++ b/modules/hw_output/rkdisplay/drmcrtc.cpp
+@@ -0,0 +1,144 @@
++/*
++ * Copyright (C) 2015 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#define LOG_TAG "hwc-drm-crtc"
++
++#include "drmcrtc.h"
++#include "drmresources.h"
++
++#include <stdint.h>
++#include <xf86drmMode.h>
++
++#include <log/log.h>
++
++namespace android {
++
++DrmCrtc::DrmCrtc(DrmResources *drm, drmModeCrtcPtr c, unsigned pipe)
++    : drm_(drm),
++      id_(c->crtc_id),
++      pipe_(pipe),
++      display_(-1),
++      x_(c->x),
++      y_(c->y),
++      width_(c->width),
++      height_(c->height),
++      b_afbc_(false),
++      mode_(&c->mode),
++      mode_valid_(c->mode_valid),
++      crtc_(c) {
++}
++
++int DrmCrtc::Init() {
++  int ret = drm_->GetCrtcProperty(*this, "ACTIVE", &active_property_);
++  if (ret) {
++    ALOGE("Failed to get ACTIVE property");
++    return ret;
++  }
++
++  ret = drm_->GetCrtcProperty(*this, "MODE_ID", &mode_property_);
++  if (ret) {
++    ALOGE("Failed to get MODE_ID property");
++    return ret;
++  }
++
++  ret = drm_->GetCrtcProperty(*this, "FEATURE", &feature_property_);
++  if (ret)
++    ALOGE("Could not get FEATURE property");
++
++    uint64_t feature=0;
++    feature_property_.set_feature("afbdc");
++    feature_property_.value(&feature);
++    b_afbc_ = (feature ==1)?true:false;
++
++  can_overscan_ = true;
++  ret = drm_->GetCrtcProperty(*this, "left margin", &left_margin_property_);
++  if (ret) {
++    ALOGE("Failed to get left margin property");
++    can_overscan_ = false;
++  }
++  ret = drm_->GetCrtcProperty(*this, "right margin", &right_margin_property_);
++  if (ret) {
++    ALOGE("Failed to get right margin property");
++    can_overscan_ = false;
++  }
++  ret = drm_->GetCrtcProperty(*this, "top margin", &top_margin_property_);
++  if (ret) {
++    ALOGE("Failed to get top margin property");
++    can_overscan_ = false;
++  }
++  ret = drm_->GetCrtcProperty(*this, "bottom margin", &bottom_margin_property_);
++  if (ret) {
++    ALOGE("Failed to get bottom margin property");
++    can_overscan_ = false;
++  }
++
++  return 0;
++}
++
++bool DrmCrtc::get_afbc() const {
++    return b_afbc_;
++}
++
++uint32_t DrmCrtc::id() const {
++  return id_;
++}
++
++unsigned DrmCrtc::pipe() const {
++  return pipe_;
++}
++
++bool DrmCrtc::can_overscan() const {
++  return can_overscan_;
++}
++
++const DrmProperty &DrmCrtc::active_property() const {
++  return active_property_;
++}
++
++const DrmProperty &DrmCrtc::mode_property() const {
++  return mode_property_;
++}
++
++const DrmProperty &DrmCrtc::left_margin_property() const {
++  return left_margin_property_;
++}
++
++const DrmProperty &DrmCrtc::right_margin_property() const {
++  return right_margin_property_;
++}
++
++const DrmProperty &DrmCrtc::top_margin_property() const {
++  return top_margin_property_;
++}
++
++const DrmProperty &DrmCrtc::bottom_margin_property() const {
++  return bottom_margin_property_;
++}
++
++void DrmCrtc::dump_crtc(std::ostringstream *out) const
++{
++
++	*out << crtc_->crtc_id << "\t"
++	     << crtc_->buffer_id << "\t"
++	     << "(" << crtc_->x << "," << crtc_->y << ")\t("
++	     << crtc_->width << "x" << crtc_->height << ")\n";
++
++	drm_->dump_mode(&crtc_->mode, out);
++
++	drm_->DumpCrtcProperty(*this,out);
++}
++
++}
+diff --git a/modules/hw_output/rkdisplay/drmcrtc.h b/modules/hw_output/rkdisplay/drmcrtc.h
+new file mode 100644
+index 00000000..fab60d7d
+--- /dev/null
++++ b/modules/hw_output/rkdisplay/drmcrtc.h
+@@ -0,0 +1,87 @@
++/*
++ * Copyright (C) 2015 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ANDROID_DRM_CRTC_H_
++#define ANDROID_DRM_CRTC_H_
++
++#include "drmmode.h"
++#include "drmproperty.h"
++
++#include <stdint.h>
++#include <xf86drmMode.h>
++
++namespace android {
++
++class DrmResources;
++
++class DrmCrtc {
++ public:
++  DrmCrtc(DrmResources *drm, drmModeCrtcPtr c, unsigned pipe);
++  DrmCrtc(const DrmCrtc &) = delete;
++  DrmCrtc &operator=(const DrmCrtc &) = delete;
++
++  int Init();
++
++  uint32_t id() const;
++  unsigned pipe() const;
++
++  bool can_bind(int display) const;
++  bool can_overscan() const;
++
++  const DrmProperty &active_property() const;
++  const DrmProperty &mode_property() const;
++  bool get_afbc() const;
++  const DrmProperty &left_margin_property() const;
++  const DrmProperty &right_margin_property() const;
++  const DrmProperty &top_margin_property() const;
++  const DrmProperty &bottom_margin_property() const;
++  void dump_crtc(std::ostringstream *out) const;
++
++
++  DrmResources *getDrmReoources()
++  {
++        return drm_;
++  }
++
++ private:
++  DrmResources *drm_;
++
++  uint32_t id_;
++  unsigned pipe_;
++  int display_;
++
++  uint32_t x_;
++  uint32_t y_;
++  uint32_t width_;
++  uint32_t height_;
++  bool b_afbc_;
++
++  DrmMode mode_;
++  bool mode_valid_;
++  bool can_overscan_;
++
++  DrmProperty active_property_;
++  DrmProperty mode_property_;
++  DrmProperty feature_property_;
++  DrmProperty left_margin_property_;
++  DrmProperty top_margin_property_;
++  DrmProperty right_margin_property_;
++  DrmProperty bottom_margin_property_;
++  drmModeCrtcPtr crtc_;
++};
++}
++
++#endif  // ANDROID_DRM_CRTC_H_
+diff --git a/modules/hw_output/rkdisplay/drmencoder.cpp b/modules/hw_output/rkdisplay/drmencoder.cpp
+new file mode 100644
+index 00000000..1b3a02c8
+--- /dev/null
++++ b/modules/hw_output/rkdisplay/drmencoder.cpp
+@@ -0,0 +1,55 @@
++/*
++ * Copyright (C) 2015 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#include "drmcrtc.h"
++#include "drmencoder.h"
++#include "drmresources.h"
++
++#include <stdint.h>
++#include <xf86drmMode.h>
++
++namespace android {
++
++DrmEncoder::DrmEncoder(DrmResources *drm, drmModeEncoderPtr e, DrmCrtc *current_crtc,
++                       const std::vector<DrmCrtc *> &possible_crtcs)
++    : id_(e->encoder_id),
++      crtc_(current_crtc),
++      drm_(drm),
++      type_(e->encoder_type),
++      possible_crtcs_(possible_crtcs),
++      encoder_(e) {
++}
++
++uint32_t DrmEncoder::id() const {
++  return id_;
++}
++
++DrmCrtc *DrmEncoder::crtc() const {
++  return crtc_;
++}
++
++void DrmEncoder::set_crtc(DrmCrtc *crtc) {
++  crtc_ = crtc;
++}
++
++void DrmEncoder::dump_encoder(std::ostringstream *out) const {
++    *out << encoder_->encoder_id << "\t"
++         << encoder_->crtc_id << "\t"
++         << drm_->encoder_type_str(encoder_->encoder_type) << "\t"
++         << std::hex << encoder_->possible_crtcs << "\t"
++         << std::hex << encoder_->possible_clones << "\n";
++}
++}
+diff --git a/modules/hw_output/rkdisplay/drmencoder.h b/modules/hw_output/rkdisplay/drmencoder.h
+new file mode 100644
+index 00000000..d7ce67aa
+--- /dev/null
++++ b/modules/hw_output/rkdisplay/drmencoder.h
+@@ -0,0 +1,58 @@
++/*
++ * Copyright (C) 2015 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ANDROID_DRM_ENCODER_H_
++#define ANDROID_DRM_ENCODER_H_
++
++#include "drmcrtc.h"
++
++#include <stdint.h>
++#include <vector>
++#include <xf86drmMode.h>
++
++namespace android {
++
++class DrmEncoder {
++ public:
++  DrmEncoder(DrmResources *drm, drmModeEncoderPtr e, DrmCrtc *current_crtc,
++             const std::vector<DrmCrtc *> &possible_crtcs);
++  DrmEncoder(const DrmEncoder &) = delete;
++  DrmEncoder &operator=(const DrmEncoder &) = delete;
++
++  uint32_t id() const;
++  uint32_t get_type();
++  DrmCrtc *crtc() const;
++  void set_crtc(DrmCrtc *crtc);
++
++  const std::vector<DrmCrtc *> &possible_crtcs() const {
++    return possible_crtcs_;
++  }
++  void dump_encoder(std::ostringstream *out) const;
++
++ private:
++  uint32_t id_;
++  DrmCrtc *crtc_;
++  DrmResources *drm_;
++
++  uint32_t type_;
++
++  std::vector<DrmCrtc *> possible_crtcs_;
++
++  drmModeEncoderPtr encoder_;
++};
++}
++
++#endif  // ANDROID_DRM_ENCODER_H_
+diff --git a/modules/hw_output/rkdisplay/drmmode.cpp b/modules/hw_output/rkdisplay/drmmode.cpp
+new file mode 100644
+index 00000000..cec6a9e6
+--- /dev/null
++++ b/modules/hw_output/rkdisplay/drmmode.cpp
+@@ -0,0 +1,239 @@
++/*
++ * Copyright (C) 2015 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#include "drmmode.h"
++#include "drmresources.h"
++
++#include <stdint.h>
++#include <math.h>
++#include <string>
++#include <xf86drm.h>
++#include <xf86drmMode.h>
++#include <log/log.h>
++
++namespace android {
++
++DrmMode::DrmMode(drmModeModeInfoPtr m)
++    : id_(0),
++      clock_(m->clock),
++      h_display_(m->hdisplay),
++      h_sync_start_(m->hsync_start),
++      h_sync_end_(m->hsync_end),
++      h_total_(m->htotal),
++      h_skew_(m->hskew),
++      v_display_(m->vdisplay),
++      v_sync_start_(m->vsync_start),
++      v_sync_end_(m->vsync_end),
++      v_total_(m->vtotal),
++      v_scan_(m->vscan),
++      v_refresh_(m->vrefresh),
++      flags_(m->flags),
++      type_(m->type),
++      name_(m->name) {
++      interlaced_ = !!(flags_ & DRM_MODE_FLAG_INTERLACE);
++}
++
++DrmMode::~DrmMode()
++{
++  if (blob_id_ && fd_) {
++    struct drm_mode_destroy_blob destroy_blob;
++    memset(&destroy_blob, 0, sizeof(destroy_blob));
++    destroy_blob.blob_id = (__u32)blob_id_;
++    int ret = drmIoctl(fd_, DRM_IOCTL_MODE_DESTROYPROPBLOB, &destroy_blob);
++    if (ret)
++      ALOGE("Failed to destroy mode property blob %d, ret=%d", blob_id_, ret);
++  }
++}
++
++bool DrmMode::operator==(const drmModeModeInfo &m) const {
++  return clock_ == m.clock && h_display_ == m.hdisplay &&
++         h_sync_start_ == m.hsync_start && h_sync_end_ == m.hsync_end &&
++         h_total_ == m.htotal && h_skew_ == m.hskew &&
++         v_display_ == m.vdisplay && v_sync_start_ == m.vsync_start &&
++         v_sync_end_ == m.vsync_end && v_total_ == m.vtotal &&
++         v_scan_ == m.vscan && flags_ == m.flags && type_ == m.type;
++}
++
++bool DrmMode::operator==(const DrmMode &m) const {
++  return clock_ == m.clock() && h_display_ == m.h_display()&&
++         h_sync_start_ == m.h_sync_start() && h_sync_end_ == m.h_sync_end() &&
++         h_total_ == m.h_total() && h_skew_ == m.h_skew() &&
++         v_display_ == m.v_display() && v_sync_start_ == m.v_sync_start() &&
++         v_sync_end_ == m.v_sync_end() && v_total_ == m.v_total() &&
++         v_scan_ == m.v_scan() && flags_ == m.flags() && type_ == m.type();
++}
++
++bool DrmMode::equal(const DrmMode &m) const {
++  if (clock_ == m.clock() && h_display_ == m.h_display()&&
++      h_sync_start_ == m.h_sync_start() && h_sync_end_ == m.h_sync_end() &&
++      h_total_ == m.h_total()&&
++      v_display_ == m.v_display() && v_sync_start_ == m.v_sync_start() &&
++      v_sync_end_ == m.v_sync_end() && v_total_ == m.v_total()
++      && flags_ == m.flags())
++        return true;
++  return false;
++}
++
++bool DrmMode::equal(uint32_t width, uint32_t height, uint32_t vrefresh,
++                    bool interlaced) const
++{
++  if (h_display_ == width && v_display_ == height &&
++      interlaced_ == interlaced && v_refresh_ == vrefresh)
++    return true;
++  return false;
++}
++
++bool DrmMode::equal(uint32_t width, uint32_t height, float vrefresh,
++                    uint32_t hsync_start, uint32_t hsync_end, uint32_t htotal,
++                    uint32_t vsync_start, uint32_t vsync_end, uint32_t vtotal,
++                    uint32_t flags) const
++{
++  float v_refresh = clock_ / (float)(v_total_ * h_total_) * 1000.0f;
++  uint32_t flags_temp;
++  if (flags_ & DRM_MODE_FLAG_INTERLACE)
++    v_refresh *= 2;
++  if (flags_ & DRM_MODE_FLAG_DBLSCAN)
++    v_refresh /= 2;
++  if (v_scan_ > 1)
++    v_refresh /= v_scan_ ;
++
++  /* vrefresh within 1 HZ */
++  if (fabs(v_refresh - vrefresh) > 1.0f)
++    return false;
++
++  if (h_display_ == width && v_display_ == height &&
++      hsync_start == h_sync_start_ && hsync_end == h_sync_end_ &&
++      vsync_start == v_sync_start_ && vsync_end == v_sync_end_ &&
++      htotal == h_total_ && vtotal == v_total_ && flags == flags_)
++    return true;
++
++  if (h_display_ == width && v_display_ == height &&
++      hsync_start == h_sync_start_ && hsync_end == h_sync_end_ &&
++      vsync_start == v_sync_start_ && vsync_end == v_sync_end_ &&
++      htotal == h_total_ && vtotal == v_total_ ) {
++        flags_temp = DRM_MODE_FLAG_PHSYNC|DRM_MODE_FLAG_NHSYNC|DRM_MODE_FLAG_PVSYNC|
++                         DRM_MODE_FLAG_NVSYNC|DRM_MODE_FLAG_INTERLACE|
++                         DRM_MODE_FLAG_420_MASK;
++        if((flags & flags_temp) == (flags_ & flags_temp))
++          return true;
++      }
++  return false;
++}
++
++
++bool DrmMode::equal(uint32_t width, uint32_t height, uint32_t vrefresh,
++                     uint32_t flag, uint32_t clk, bool interlaced) const
++{
++  ALOGV("DrmMode h=%d,v=%d,interlaced=%d,v_refresh_=%d,flags=%d,clk=%d",
++         h_display_, v_display_, interlaced_, v_refresh_, flags_,clock_);
++  if (h_display_ == width && v_display_ == height &&
++      interlaced_ == interlaced && v_refresh_ == vrefresh &&
++      flags_ == flag && clock_ == clk)
++    return true;
++  return false;
++}
++
++void DrmMode::ToDrmModeModeInfo(drm_mode_modeinfo *m) const {
++  m->clock = clock_;
++  m->hdisplay = h_display_;
++  m->hsync_start = h_sync_start_;
++  m->hsync_end = h_sync_end_;
++  m->htotal = h_total_;
++  m->hskew = h_skew_;
++  m->vdisplay = v_display_;
++  m->vsync_start = v_sync_start_;
++  m->vsync_end = v_sync_end_;
++  m->vtotal = v_total_;
++  m->vscan = v_scan_;
++  m->vrefresh = v_refresh_;
++  m->flags = flags_;
++  m->type = type_;
++  strncpy(m->name, name_.c_str(), DRM_DISPLAY_MODE_LEN);
++}
++
++uint32_t DrmMode::id() const {
++  return id_;
++}
++
++void DrmMode::set_id(uint32_t id) {
++  id_ = id;
++}
++
++uint32_t DrmMode::clock() const {
++  return clock_;
++}
++
++uint32_t DrmMode::h_display() const {
++  return h_display_;
++}
++
++uint32_t DrmMode::h_sync_start() const {
++  return h_sync_start_;
++}
++
++uint32_t DrmMode::h_sync_end() const {
++  return h_sync_end_;
++}
++
++uint32_t DrmMode::h_total() const {
++  return h_total_;
++}
++
++uint32_t DrmMode::h_skew() const {
++  return h_skew_;
++}
++
++uint32_t DrmMode::v_display() const {
++  return v_display_;
++}
++
++uint32_t DrmMode::v_sync_start() const {
++  return v_sync_start_;
++}
++
++uint32_t DrmMode::v_sync_end() const {
++  return v_sync_end_;
++}
++
++uint32_t DrmMode::v_total() const {
++  return v_total_;
++}
++
++uint32_t DrmMode::v_scan() const {
++  return v_scan_;
++}
++
++float DrmMode::v_refresh() const {
++  return v_refresh_ ? v_refresh_ * 1.0f :
++                      clock_ / (float)(v_total_ * h_total_) * 1000.0f;
++}
++
++uint32_t DrmMode::flags() const {
++  return flags_;
++}
++
++uint32_t DrmMode::interlaced() const {
++    return interlaced_;
++}
++
++uint32_t DrmMode::type() const {
++  return type_;
++}
++
++std::string DrmMode::name() const {
++  return name_;
++}
++}
+diff --git a/modules/hw_output/rkdisplay/drmmode.h b/modules/hw_output/rkdisplay/drmmode.h
+new file mode 100644
+index 00000000..3fd83cc4
+--- /dev/null
++++ b/modules/hw_output/rkdisplay/drmmode.h
+@@ -0,0 +1,98 @@
++/*
++ * Copyright (C) 2015 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ANDROID_DRM_MODE_H_
++#define ANDROID_DRM_MODE_H_
++
++#include <stdint.h>
++#include <string>
++#include <xf86drmMode.h>
++
++#define DRM_MODE_FLAG_420_MASK			(0x03<<23)
++
++namespace android {
++
++class DrmMode {
++ public:
++  DrmMode() = default;
++  DrmMode(drmModeModeInfoPtr m);
++  ~DrmMode();
++
++  bool operator==(const drmModeModeInfo &m) const;
++  bool operator==(const DrmMode &m) const;
++  bool equal(const DrmMode &m) const;
++  bool equal(uint32_t width, uint32_t height, uint32_t vrefresh, bool interlaced) const;
++  bool equal(uint32_t width, uint32_t height, uint32_t vrefresh,
++                     uint32_t flag, uint32_t clk, bool interlaced) const;
++  bool equal(uint32_t width, uint32_t height, float vrefresh,
++             uint32_t hsync_start, uint32_t hsync_end, uint32_t htotal,
++             uint32_t vsync_start, uint32_t vsync_end, uint32_t vtotal,
++             uint32_t flag) const;
++  void ToDrmModeModeInfo(drm_mode_modeinfo *m) const;
++
++  uint32_t id() const;
++  void set_id(uint32_t id);
++
++  uint32_t clock() const;
++
++  uint32_t h_display() const;
++  uint32_t h_sync_start() const;
++  uint32_t h_sync_end() const;
++  uint32_t h_total() const;
++  uint32_t h_skew() const;
++
++  uint32_t v_display() const;
++  uint32_t v_sync_start() const;
++  uint32_t v_sync_end() const;
++  uint32_t v_total() const;
++  uint32_t v_scan() const;
++  float v_refresh() const;
++
++  uint32_t flags() const;
++  uint32_t interlaced() const;
++  uint32_t type() const;
++
++  std::string name() const;
++
++ private:
++  int fd_ = 0;
++  uint32_t id_ = 0;
++  uint32_t blob_id_ = 0;
++
++  uint32_t clock_ = 0;
++
++  uint32_t h_display_ = 0;
++  uint32_t h_sync_start_ = 0;
++  uint32_t h_sync_end_ = 0;
++  uint32_t h_total_ = 0;
++  uint32_t h_skew_ = 0;
++
++  uint32_t v_display_ = 0;
++  uint32_t v_sync_start_ = 0;
++  uint32_t v_sync_end_ = 0;
++  uint32_t v_total_ = 0;
++  uint32_t v_scan_ = 0;
++  uint32_t v_refresh_ = 0;
++
++  uint32_t flags_ = 0;
++  uint32_t type_ = 0;
++  int interlaced_ =0;
++
++  std::string name_;
++};
++}
++
++#endif  // ANDROID_DRM_MODE_H_
+diff --git a/modules/hw_output/rkdisplay/drmproperty.cpp b/modules/hw_output/rkdisplay/drmproperty.cpp
+new file mode 100644
+index 00000000..80796060
+--- /dev/null
++++ b/modules/hw_output/rkdisplay/drmproperty.cpp
+@@ -0,0 +1,136 @@
++/*
++ * Copyright (C) 2015 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#include "drmproperty.h"
++#include "drmresources.h"
++
++#include <errno.h>
++#include <stdint.h>
++#include <string>
++
++#include <xf86drmMode.h>
++
++namespace android {
++
++DrmProperty::DrmPropertyEnum::DrmPropertyEnum(drm_mode_property_enum *e)
++    : value_(e->value), name_(e->name) {
++}
++
++DrmProperty::DrmPropertyEnum::~DrmPropertyEnum() {
++}
++
++DrmProperty::DrmProperty(drmModePropertyPtr p, uint64_t value)
++    : id_(0), type_(DRM_PROPERTY_TYPE_INVALID), flags_(0), name_(""), p_(p) {
++  Init(p, value);
++}
++
++void DrmProperty::Init(drmModePropertyPtr p, uint64_t value) {
++  id_ = p->prop_id;
++  flags_ = p->flags;
++  name_ = p->name;
++  value_ = value;
++
++  for (int i = 0; i < p->count_values; ++i)
++    values_.push_back(p->values[i]);
++
++  for (int i = 0; i < p->count_enums; ++i)
++    enums_.push_back(DrmPropertyEnum(&p->enums[i]));
++
++  for (int i = 0; i < p->count_blobs; ++i)
++    blob_ids_.push_back(p->blob_ids[i]);
++
++
++  if (flags_ & DRM_MODE_PROP_RANGE)
++    type_ = DRM_PROPERTY_TYPE_INT;
++  else if (flags_ & DRM_MODE_PROP_ENUM)
++    type_ = DRM_PROPERTY_TYPE_ENUM;
++  else if (flags_ & DRM_MODE_PROP_OBJECT)
++    type_ = DRM_PROPERTY_TYPE_OBJECT;
++  else if (flags_ & DRM_MODE_PROP_BLOB)
++    type_ = DRM_PROPERTY_TYPE_BLOB;
++  else if (flags_ & DRM_MODE_PROP_BITMASK)
++    type_ = DRM_PROPERTY_TYPE_BITMASK;
++
++  feature_name_ = NULL;
++}
++
++uint32_t DrmProperty::id() const {
++  return id_;
++}
++
++std::string DrmProperty::name() const {
++  return name_;
++}
++
++void DrmProperty::set_feature(const char* pcFeature) const{
++  feature_name_ = pcFeature;
++}
++
++int DrmProperty::value(uint64_t *value) const {
++  if (type_ == DRM_PROPERTY_TYPE_BLOB) {
++    *value = value_;
++    return 0;
++  }
++
++  if (values_.size() == 0)
++    return -ENOENT;
++
++  switch (type_) {
++    case DRM_PROPERTY_TYPE_INT:
++      *value = value_;
++      return 0;
++
++    case DRM_PROPERTY_TYPE_ENUM:
++      if (value_ >= enums_.size())
++        return -ENOENT;
++
++      *value = enums_[value_].value_;
++      return 0;
++
++    case DRM_PROPERTY_TYPE_OBJECT:
++      *value = value_;
++      return 0;
++
++    case DRM_PROPERTY_TYPE_BITMASK:
++        if(feature_name_ == NULL)
++        {
++            ALOGE("You don't set feature name for %s",name_.c_str());
++            return -EINVAL;
++        }
++        //if(!strcmp(feature_name_,"scale"))
++        if(strlen(feature_name_) > 0)
++        {
++            for (auto &drm_enum : enums_)
++            {
++                if(!strncmp(drm_enum.name_.c_str(),(const char*)feature_name_,strlen(feature_name_)))
++                {
++                    *value = (value_ & (1LL << drm_enum.value_));
++                    break;
++                }
++            }
++        }
++        else
++        {
++            *value = value_;
++        }
++
++        return 0;
++
++    default:
++      return -EINVAL;
++  }
++}
++}
+diff --git a/modules/hw_output/rkdisplay/drmproperty.h b/modules/hw_output/rkdisplay/drmproperty.h
+new file mode 100644
+index 00000000..15bd1fef
+--- /dev/null
++++ b/modules/hw_output/rkdisplay/drmproperty.h
+@@ -0,0 +1,80 @@
++/*
++ * Copyright (C) 2015 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ANDROID_DRM_PROPERTY_H_
++#define ANDROID_DRM_PROPERTY_H_
++
++#include <stdint.h>
++#include <string>
++#include <xf86drmMode.h>
++#include <vector>
++#include <log/log.h>
++
++namespace android {
++
++enum DrmPropertyType {
++  DRM_PROPERTY_TYPE_INT,
++  DRM_PROPERTY_TYPE_ENUM,
++  DRM_PROPERTY_TYPE_OBJECT,
++  DRM_PROPERTY_TYPE_BLOB,
++  DRM_PROPERTY_TYPE_BITMASK,
++  DRM_PROPERTY_TYPE_INVALID,
++};
++
++class DrmProperty {
++ public:
++  DrmProperty() = default;
++  DrmProperty(drmModePropertyPtr p, uint64_t value);
++  DrmProperty(const DrmProperty &) = delete;
++  DrmProperty &operator=(const DrmProperty &) = delete;
++
++  void Init(drmModePropertyPtr p, uint64_t value);
++
++  uint32_t id() const;
++  std::string name() const;
++
++  int value(uint64_t *value) const;
++
++  void set_feature(const char* pcFeature)const;
++
++  drmModePropertyPtr get_raw_property()const { return p_; }
++
++ private:
++  class DrmPropertyEnum {
++   public:
++    DrmPropertyEnum(drm_mode_property_enum *e);
++    ~DrmPropertyEnum();
++
++    uint64_t value_;
++    std::string name_;
++  };
++
++  uint32_t id_ = 0;
++
++  DrmPropertyType type_ = DRM_PROPERTY_TYPE_INVALID;
++  uint32_t flags_ = 0;
++  std::string name_;
++  mutable const char* feature_name_;
++  uint64_t value_ = 0;
++
++  std::vector<uint64_t> values_;
++  std::vector<DrmPropertyEnum> enums_;
++  std::vector<uint32_t> blob_ids_;
++  drmModePropertyPtr p_;
++};
++}
++
++#endif  // ANDROID_DRM_PROPERTY_H_
+diff --git a/modules/hw_output/rkdisplay/drmresources.cpp b/modules/hw_output/rkdisplay/drmresources.cpp
+new file mode 100644
+index 00000000..ad1500fc
+--- /dev/null
++++ b/modules/hw_output/rkdisplay/drmresources.cpp
+@@ -0,0 +1,805 @@
++/*
++ * Copyright (C) 2015 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#define LOG_TAG "rkdisplay-resources"
++
++#include "drmconnector.h"
++#include "drmcrtc.h"
++#include "drmencoder.h"
++#include "drmresources.h"
++
++#include <cinttypes>
++#include <errno.h>
++#include <fcntl.h>
++#include <stdint.h>
++#include <xf86drm.h>
++#include <xf86drmMode.h>
++
++#include <log/log.h>
++#include <cutils/properties.h>
++#include <drm_fourcc.h>
++
++//you can define it in external/libdrm/include/drm/drm.h
++#define DRM_CLIENT_CAP_SHARE_PLANES     4
++
++namespace android {
++
++DrmResources::DrmResources()  {
++  extend_ = NULL;
++  primary_ = NULL;
++}
++
++DrmResources::~DrmResources() {
++}
++
++void DrmResources::ConfigurePossibleDisplays()
++{
++  char primary_name[PROPERTY_VALUE_MAX];
++  char extend_name[PROPERTY_VALUE_MAX];
++  int primary_length, extend_length;
++  int default_display_possible = 0;
++  std::string conn_name;
++
++  primary_length = property_get("sys.hwc.device.primary", primary_name, NULL);
++  extend_length = property_get("sys.hwc.device.extend", extend_name, NULL);
++
++  if (!primary_length)
++    default_display_possible |= HWC_DISPLAY_PRIMARY_BIT;
++  if (!extend_length)
++    default_display_possible |= HWC_DISPLAY_EXTERNAL_BIT;
++
++  for (auto &conn : connectors_) {
++    /*
++     * build_in connector default only support on primary display
++     */
++    if (conn->built_in())
++      conn->set_display_possible(default_display_possible & HWC_DISPLAY_PRIMARY_BIT);
++    else
++      conn->set_display_possible(default_display_possible & HWC_DISPLAY_EXTERNAL_BIT);
++  }
++
++  if (primary_length) {
++    std::stringstream ss(primary_name);
++
++    while(getline(ss, conn_name, ',')) {
++      for (auto &conn : connectors_) {
++        if (!strcmp(connector_type_str(conn->get_type()), conn_name.c_str()))
++          conn->set_display_possible(HWC_DISPLAY_PRIMARY_BIT);
++      }
++    }
++  }
++
++  if (extend_length) {
++    std::stringstream ss(extend_name);
++
++    while(getline(ss, conn_name, ',')) {
++      for (auto &conn : connectors_) {
++        if (!strcmp(connector_type_str(conn->get_type()), conn_name.c_str()))
++          conn->set_display_possible(conn->possible_displays() | HWC_DISPLAY_EXTERNAL_BIT);
++      }
++    }
++  }
++}
++int DrmResources::Init() {
++  char path[PROPERTY_VALUE_MAX];
++  property_get("hwc.drm.device", path, "/dev/dri/card0");
++
++  /* TODO: Use drmOpenControl here instead */
++  fd_.Set(open(path, O_RDWR));
++  if (fd() < 0) {
++    ALOGE("Failed to open dri- %s", strerror(-errno));
++    return -ENODEV;
++  }
++
++  int ret = drmSetClientCap(fd(), DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
++  if (ret) {
++    ALOGE("Failed to set universal plane cap %d", ret);
++    return ret;
++  }
++
++  ret = drmSetClientCap(fd(), DRM_CLIENT_CAP_ATOMIC, 1);
++  if (ret) {
++    ALOGE("Failed to set atomic cap %d", ret);
++    return ret;
++  }
++
++  //Enable 3d function.
++  ret = drmSetClientCap(fd(), DRM_CLIENT_CAP_STEREO_3D, 1);
++  if (ret) {
++    ALOGE("Failed to set stereo 3d cap %d", ret);
++    return ret;
++  }
++
++#if USE_MULTI_AREAS
++  //Open Multi-area support.
++  ret = drmSetClientCap(fd(), DRM_CLIENT_CAP_SHARE_PLANES, 1);
++  if (ret) {
++    ALOGE("Failed to set share planes %d", ret);
++    return ret;
++  }
++#endif
++
++  drmModeResPtr res = drmModeGetResources(fd());
++  if (!res) {
++    ALOGE("Failed to get DrmResources resources");
++    return -ENODEV;
++  }
++
++  bool found_primary = false;
++  int display_num = 1;
++
++    std::ostringstream out;
++    out << "Frame buffers:\n";
++    out << "id\tsize\tpitch\n";
++    for (int i = 0; !ret && i < res->count_fbs; ++i) {
++        drmModeFBPtr fb = drmModeGetFB(fd(), res->fbs[i]);
++        if (!fb) {
++          ALOGE("Failed to get FB %d", res->fbs[i]);
++          ret = -ENODEV;
++          break;
++        }
++
++        out << fb->fb_id << "\t("
++            << fb->width << "x"
++            << fb->height << ")\t"
++            << fb->pitch << "\n";
++
++        drmModeFreeFB(fb);
++    }
++
++  ALOGD_IF(1,"%s",out.str().c_str());
++  out.str("");
++
++  out << "CRTCs:\n";
++  out << "id\tfb\tpos\tsize\n";
++
++  for (int i = 0; !ret && i < res->count_crtcs; ++i) {
++    drmModeCrtcPtr c = drmModeGetCrtc(fd(), res->crtcs[i]);
++    if (!c) {
++      ALOGE("Failed to get crtc %d", res->crtcs[i]);
++      ret = -ENODEV;
++      break;
++    }
++
++    std::unique_ptr<DrmCrtc> crtc(new DrmCrtc(this, c, i));
++
++    crtc->dump_crtc(&out);
++    out << "\n";
++
++    drmModeFreeCrtc(c);
++
++    ret = crtc->Init();
++    if (ret) {
++      ALOGE("Failed to initialize crtc %d", res->crtcs[i]);
++      break;
++    }
++    crtcs_.emplace_back(std::move(crtc));
++  }
++
++  ALOGD_IF(1,"%s",out.str().c_str());
++  out.str("");
++
++  out << "Encoders:\n";
++  out << "id\tcrtc\ttype\tpossible crtcs\tpossible clones\t\n";
++
++  for (int i = 0; !ret && i < res->count_encoders; ++i) {
++    drmModeEncoderPtr e = drmModeGetEncoder(fd(), res->encoders[i]);
++    if (!e) {
++      ALOGE("Failed to get encoder %d", res->encoders[i]);
++      ret = -ENODEV;
++      break;
++    }
++
++    std::vector<DrmCrtc *> possible_crtcs;
++    DrmCrtc *current_crtc = NULL;
++    for (auto &crtc : crtcs_) {
++      if ((1 << crtc->pipe()) & e->possible_crtcs)
++        possible_crtcs.push_back(crtc.get());
++
++      if (crtc->id() == e->crtc_id)
++        current_crtc = crtc.get();
++    }
++
++    std::unique_ptr<DrmEncoder> enc(
++        new DrmEncoder(this, e, current_crtc, possible_crtcs));
++    ALOGD("current_crtc id : %d  crtid : %d", enc->id(), e->crtc_id);
++
++    enc->dump_encoder(&out);
++    out << "\n";
++
++    drmModeFreeEncoder(e);
++
++    encoders_.emplace_back(std::move(enc));
++  }
++  ALOGD_IF(1,"%s",out.str().c_str());
++  out.str("");
++
++
++  out << "Connectors:\n";
++  out << "id\tencoder\tstatus\t\ttype\tsize (mm)\tmodes\tencoders\n";
++  for (int i = 0; !ret && i < res->count_connectors; ++i) {
++    drmModeConnectorPtr c = drmModeGetConnector(fd(), res->connectors[i]);
++    if (!c) {
++      ALOGE("Failed to get connector %d", res->connectors[i]);
++      ret = -ENODEV;
++      break;
++    }
++
++    std::vector<DrmEncoder *> possible_encoders;
++    DrmEncoder *current_encoder = NULL;
++    for (int j = 0; j < c->count_encoders; ++j) {
++      for (auto &encoder : encoders_) {
++        if (encoder->id() == c->encoders[j])
++          possible_encoders.push_back(encoder.get());
++        if (encoder->id() == c->encoder_id)
++          current_encoder = encoder.get();
++      }
++    }
++
++    std::unique_ptr<DrmConnector> conn(
++        new DrmConnector(this, c, current_encoder, possible_encoders));
++
++    conn->dump_connector(&out);
++    out << "\n";
++
++    drmModeFreeConnector(c);
++
++    ret = conn->Init();
++    if (ret) {
++      ALOGE("Init connector %d failed", res->connectors[i]);
++      break;
++    }
++    conn->UpdateModes();
++
++    conn->set_display(display_num);
++    display_num++;
++
++    connectors_.emplace_back(std::move(conn));
++  }
++  
++  ConfigurePossibleDisplays();
++  for (auto &conn : connectors_) {
++    if (!(conn->possible_displays() & HWC_DISPLAY_PRIMARY_BIT))
++      continue;
++    if (conn->built_in())
++      continue;
++    if (conn->state() != DRM_MODE_CONNECTED)
++      continue;
++    found_primary = true;
++    SetPrimaryDisplay(conn.get());
++  }
++  
++  if (!found_primary) {
++    for (auto &conn : connectors_) {
++      if (!(conn->possible_displays() & HWC_DISPLAY_PRIMARY_BIT))
++        continue;
++      if (conn->state() != DRM_MODE_CONNECTED)
++        continue;
++      found_primary = true;
++      SetPrimaryDisplay(conn.get());
++    }
++  }
++
++  if (!found_primary) {
++    for (auto &conn : connectors_) {
++      if (!(conn->possible_displays() & HWC_DISPLAY_PRIMARY_BIT))
++        continue;
++      found_primary = true;
++      SetPrimaryDisplay(conn.get());
++    }
++  }
++
++  if (!found_primary) {
++    ALOGE("failed to find primary display\n");
++    return -ENODEV;
++  }
++
++  for (auto &conn : connectors_) {
++      if (!(conn->possible_displays() & HWC_DISPLAY_EXTERNAL_BIT))
++        continue;
++      if (conn->state() != DRM_MODE_CONNECTED)
++        continue;
++      SetExtendDisplay(conn.get());
++  }
++
++  ALOGD_IF(1,"%s",out.str().c_str());
++  out.str("");
++
++  if (res)
++    drmModeFreeResources(res);
++
++  // Catch-all for the above loops
++  if (ret)
++    return ret;
++
++
++  return 0;
++}
++
++void DrmResources::DisplayChanged(void) {
++    enable_changed_ = true;
++};
++
++void DrmResources::SetPrimaryDisplay(DrmConnector *c) {
++  if (primary_ != c) {
++    primary_ = c;
++  }
++    enable_changed_ = true;
++};
++
++void DrmResources::SetExtendDisplay(DrmConnector *c) {
++  if (extend_ != c) {
++    if (extend_)
++      extend_->force_disconnect(false);
++    extend_ = c;
++    enable_changed_ = true;
++  }
++};
++
++DrmConnector *DrmResources::GetConnectorFromType(int display_type) const {
++  if (display_type == HWC_DISPLAY_PRIMARY)
++    return primary_;
++  else if (display_type == HWC_DISPLAY_EXTERNAL)
++    return extend_;
++  return NULL;
++}
++
++DrmCrtc *DrmResources::GetCrtcFromConnector(DrmConnector *conn) const {
++   if (conn->encoder())
++     return conn->encoder()->crtc();
++   return NULL;
++}
++
++
++uint32_t DrmResources::next_mode_id() {
++  return ++mode_id_;
++}
++
++void DrmResources::ClearDisplay(void)
++{
++    for (int i = 0; i < HWC_NUM_PHYSICAL_DISPLAY_TYPES; i++) {
++      DrmConnector *conn = GetConnectorFromType(i);
++      if (conn && conn->state() == DRM_MODE_CONNECTED &&
++          conn->current_mode().id() && conn->encoder() &&
++          conn->encoder()->crtc())
++        continue;
++    }
++}
++
++int DrmResources::UpdateDisplayRoute(void)
++{
++  bool mode_changed = false;
++  int i;
++
++  for (i = 0; i < HWC_NUM_PHYSICAL_DISPLAY_TYPES; i++) {
++    DrmConnector *conn = GetConnectorFromType(i);
++
++    if (!conn || conn->state() != DRM_MODE_CONNECTED || !conn->current_mode().id())
++      continue;
++    if (conn->current_mode() == conn->active_mode())
++      continue;
++    mode_changed = true;
++  }
++
++  if (!enable_changed_ && !mode_changed)
++    return 0;
++
++  DrmConnector *primary = GetConnectorFromType(HWC_DISPLAY_PRIMARY);
++  if (!primary) {
++    ALOGE("Failed to find primary display\n");
++    return -EINVAL;
++  }
++  DrmConnector *extend = GetConnectorFromType(HWC_DISPLAY_EXTERNAL);
++  if (enable_changed_) {
++    primary->set_encoder(NULL);
++    if (extend)
++      extend->set_encoder(NULL);
++    if (primary->state() == DRM_MODE_CONNECTED) {
++      for (DrmEncoder *enc : primary->possible_encoders()) {
++        for (DrmCrtc *crtc : enc->possible_crtcs()) {
++          if (crtc->get_afbc()) {
++            enc->set_crtc(crtc);
++            primary->set_encoder(enc);
++            ALOGD_IF(log_level(DBG_VERBOSE), "set primary with conn[%d] crtc=%d\n",primary->id(), crtc->id());
++          }
++        }
++      }
++      /*
++       * not limit
++       */
++      if (!primary->encoder() || !primary->encoder()->crtc()) {
++        for (DrmEncoder *enc : primary->possible_encoders()) {
++          for (DrmCrtc *crtc : enc->possible_crtcs()) {
++              enc->set_crtc(crtc);
++              primary->set_encoder(enc);
++              ALOGD_IF(log_level(DBG_VERBOSE), "set primary with conn[%d] crtc=%d\n",primary->id(), crtc->id());
++          }
++        }
++      }
++    }
++    if (extend && extend->state() == DRM_MODE_CONNECTED) {
++      for (DrmEncoder *enc : extend->possible_encoders()) {
++        for (DrmCrtc *crtc : enc->possible_crtcs()) {
++          if (primary && primary->encoder() && primary->encoder()->crtc()) {
++            if (crtc == primary->encoder()->crtc())
++              continue;
++          }
++          ALOGD_IF(log_level(DBG_VERBOSE), "set extend[%d] with crtc=%d\n", extend->id(), crtc->id());
++          enc->set_crtc(crtc);
++          extend->set_encoder(enc);
++        }
++      }
++      if (!extend->encoder() || !extend->encoder()->crtc()) {
++        for (DrmEncoder *enc : extend->possible_encoders()) {
++          for (DrmCrtc *crtc : enc->possible_crtcs()) {
++            enc->set_crtc(crtc);
++            extend->set_encoder(enc);
++            ALOGD_IF(log_level(DBG_VERBOSE), "set extend[%d] with crtc=%d\n", extend->id(), crtc->id());
++            if (primary && primary->encoder() && primary->encoder()->crtc()) {
++              if (crtc == primary->encoder()->crtc()) {
++                primary->encoder()->set_crtc(NULL);
++                primary->set_encoder(NULL);
++                for (DrmEncoder *primary_enc : primary->possible_encoders()) {
++                  for (DrmCrtc *primary_crtc : primary_enc->possible_crtcs()) {
++                    if (extend && extend->encoder() && extend->encoder()->crtc()) {
++                      if (primary_crtc == extend->encoder()->crtc())
++                        continue;
++                    }
++
++                    primary_enc->set_crtc(primary_crtc);
++                    primary->set_encoder(primary_enc);
++                    ALOGD_IF(log_level(DBG_VERBOSE), "set primary with conn[%d] crtc=%d\n",primary->id(), primary_crtc->id());
++                  }
++                }
++              }
++            }
++          }
++        }
++      }
++    }
++  }
++
++  enable_changed_ = false;
++
++  return 0;
++}
++
++int DrmResources::CreatePropertyBlob(void *data, size_t length,
++                                     uint32_t *blob_id) {
++  struct drm_mode_create_blob create_blob;
++  memset(&create_blob, 0, sizeof(create_blob));
++  create_blob.length = length;
++  create_blob.data = (__u64)data;
++
++  int ret = drmIoctl(fd(), DRM_IOCTL_MODE_CREATEPROPBLOB, &create_blob);
++  if (ret) {
++    ALOGE("Failed to create mode property blob %d", ret);
++    return ret;
++  }
++  *blob_id = create_blob.blob_id;
++  return 0;
++}
++
++int DrmResources::DestroyPropertyBlob(uint32_t blob_id) {
++  if (!blob_id)
++    return 0;
++
++  struct drm_mode_destroy_blob destroy_blob;
++  memset(&destroy_blob, 0, sizeof(destroy_blob));
++  destroy_blob.blob_id = (__u32)blob_id;
++  int ret = drmIoctl(fd(), DRM_IOCTL_MODE_DESTROYPROPBLOB, &destroy_blob);
++  if (ret) {
++    ALOGE("Failed to destroy mode property blob %" PRIu32 "/%d", blob_id, ret);
++    return ret;
++  }
++  return 0;
++}
++
++
++int DrmResources::GetProperty(uint32_t obj_id, uint32_t obj_type,
++                              const char *prop_name, DrmProperty *property) {
++  drmModeObjectPropertiesPtr props;
++
++  props = drmModeObjectGetProperties(fd(), obj_id, obj_type);
++  if (!props) {
++    ALOGE("Failed to get properties for %d/%x", obj_id, obj_type);
++    return -ENODEV;
++  }
++
++  bool found = false;
++  for (int i = 0; !found && (size_t)i < props->count_props; ++i) {
++    drmModePropertyPtr p = drmModeGetProperty(fd(), props->props[i]);
++    if (!strcmp(p->name, prop_name)) {
++      property->Init(p, props->prop_values[i]);
++      found = true;
++    }
++    drmModeFreeProperty(p);
++  }
++
++  drmModeFreeObjectProperties(props);
++  return found ? 0 : -ENOENT;
++}
++
++#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
++static inline int64_t U642I64(uint64_t val)
++{
++	return (int64_t)*((int64_t *)&val);
++}
++
++struct type_name {
++	int type;
++	const char *name;
++};
++
++#define type_name_fn(res) \
++const char * DrmResources::res##_str(int type) {			\
++	unsigned int i;					\
++	for (i = 0; i < ARRAY_SIZE(res##_names); i++) { \
++		if (res##_names[i].type == type)	\
++			return res##_names[i].name;	\
++	}						\
++	return "(invalid)";				\
++}
++
++struct type_name encoder_type_names[] = {
++	{ DRM_MODE_ENCODER_NONE, "none" },
++	{ DRM_MODE_ENCODER_DAC, "DAC" },
++	{ DRM_MODE_ENCODER_TMDS, "TMDS" },
++	{ DRM_MODE_ENCODER_LVDS, "LVDS" },
++	{ DRM_MODE_ENCODER_TVDAC, "TVDAC" },
++};
++
++type_name_fn(encoder_type)
++
++struct type_name connector_status_names[] = {
++	{ DRM_MODE_CONNECTED, "connected" },
++	{ DRM_MODE_DISCONNECTED, "disconnected" },
++	{ DRM_MODE_UNKNOWNCONNECTION, "unknown" },
++};
++
++type_name_fn(connector_status)
++
++struct type_name connector_type_names[] = {
++	{ DRM_MODE_CONNECTOR_Unknown, "unknown" },
++	{ DRM_MODE_CONNECTOR_VGA, "VGA" },
++	{ DRM_MODE_CONNECTOR_DVII, "DVI-I" },
++	{ DRM_MODE_CONNECTOR_DVID, "DVI-D" },
++	{ DRM_MODE_CONNECTOR_DVIA, "DVI-A" },
++	{ DRM_MODE_CONNECTOR_Composite, "composite" },
++	{ DRM_MODE_CONNECTOR_SVIDEO, "s-video" },
++	{ DRM_MODE_CONNECTOR_LVDS, "LVDS" },
++	{ DRM_MODE_CONNECTOR_Component, "component" },
++	{ DRM_MODE_CONNECTOR_9PinDIN, "9-pin DIN" },
++	{ DRM_MODE_CONNECTOR_DisplayPort, "DP" },
++	{ DRM_MODE_CONNECTOR_HDMIA, "HDMI-A" },
++	{ DRM_MODE_CONNECTOR_HDMIB, "HDMI-B" },
++	{ DRM_MODE_CONNECTOR_TV, "TV" },
++	{ DRM_MODE_CONNECTOR_eDP, "eDP" },
++	{ DRM_MODE_CONNECTOR_VIRTUAL, "Virtual" },
++	{ DRM_MODE_CONNECTOR_DSI, "DSI" },
++};
++
++type_name_fn(connector_type)
++
++#define bit_name_fn(res)					\
++const char * res##_str(int type, std::ostringstream *out) {				\
++	unsigned int i;						\
++	const char *sep = "";					\
++	for (i = 0; i < ARRAY_SIZE(res##_names); i++) {		\
++		if (type & (1 << i)) {				\
++			*out << sep << res##_names[i];	\
++			sep = ", ";				\
++		}						\
++	}							\
++	return NULL;						\
++}
++
++static const char *mode_type_names[] = {
++	"builtin",
++	"clock_c",
++	"crtc_c",
++	"preferred",
++	"default",
++	"userdef",
++	"driver",
++};
++
++static bit_name_fn(mode_type)
++
++static const char *mode_flag_names[] = {
++	"phsync",
++	"nhsync",
++	"pvsync",
++	"nvsync",
++	"interlace",
++	"dblscan",
++	"csync",
++	"pcsync",
++	"ncsync",
++	"hskew",
++	"bcast",
++	"pixmux",
++	"dblclk",
++	"clkdiv2"
++};
++static bit_name_fn(mode_flag)
++
++void DrmResources::dump_mode(drmModeModeInfo *mode, std::ostringstream *out) {
++	*out << mode->name << " " << mode->vrefresh << " "
++	     << mode->hdisplay << " " << mode->hsync_start << " "
++	     << mode->hsync_end << " " << mode->htotal << " "
++	     << mode->vdisplay << " " << mode->vsync_start << " "
++	     << mode->vsync_end << " " << mode->vtotal;
++
++	*out << " flags: ";
++	mode_flag_str(mode->flags, out);
++	*out << " types: " << mode->type << "\n";
++    mode_type_str(mode->type, out);
++}
++
++void DrmResources::dump_blob(uint32_t blob_id, std::ostringstream *out) {
++	uint32_t i;
++	unsigned char *blob_data;
++	drmModePropertyBlobPtr blob;
++
++	blob = drmModeGetPropertyBlob(fd(), blob_id);
++	if (!blob) {
++		*out << "\n";
++		return;
++	}
++
++	blob_data = (unsigned char*)blob->data;
++
++	for (i = 0; i < blob->length; i++) {
++		if (i % 16 == 0)
++			*out << "\n\t\t\t";
++		*out << std::hex << blob_data[i];
++	}
++	*out << "\n";
++
++	drmModeFreePropertyBlob(blob);
++}
++
++void DrmResources::dump_prop(drmModePropertyPtr prop,
++		      uint32_t prop_id, uint64_t value, std::ostringstream *out) {
++	int i;
++
++	*out << "\t" << prop_id;
++	if (!prop) {
++		*out << "\n";
++		return;
++	}
++ALOGD_IF(log_level(DBG_VERBOSE),"%s",out->str().c_str());
++out->str("");
++	*out << " " << prop->name << ":\n";
++
++	*out << "\t\tflags:";
++	if (prop->flags & DRM_MODE_PROP_PENDING)
++		*out << " pending";
++	if (prop->flags & DRM_MODE_PROP_IMMUTABLE)
++		*out << " immutable";
++	if (drm_property_type_is(prop, DRM_MODE_PROP_SIGNED_RANGE))
++		*out << " signed range";
++	if (drm_property_type_is(prop, DRM_MODE_PROP_RANGE))
++		*out << " range";
++	if (drm_property_type_is(prop, DRM_MODE_PROP_ENUM))
++		*out << " enum";
++	if (drm_property_type_is(prop, DRM_MODE_PROP_BITMASK))
++		*out << " bitmask";
++	if (drm_property_type_is(prop, DRM_MODE_PROP_BLOB))
++		*out << " blob";
++	if (drm_property_type_is(prop, DRM_MODE_PROP_OBJECT))
++		*out << " object";
++	*out << "\n";
++
++	if (drm_property_type_is(prop, DRM_MODE_PROP_SIGNED_RANGE)) {
++		*out << "\t\tvalues:";
++		for (i = 0; i < prop->count_values; i++)
++			*out << U642I64(prop->values[i]);
++		*out << "\n";
++	}
++
++	if (drm_property_type_is(prop, DRM_MODE_PROP_RANGE)) {
++		*out << "\t\tvalues:";
++		for (i = 0; i < prop->count_values; i++)
++			*out << prop->values[i];
++		*out << "\n";
++	}
++
++	if (drm_property_type_is(prop, DRM_MODE_PROP_ENUM)) {
++		*out << "\t\tenums:";
++		for (i = 0; i < prop->count_enums; i++)
++			*out << prop->enums[i].name << "=" << prop->enums[i].value;
++		*out << "\n";
++	} else if (drm_property_type_is(prop, DRM_MODE_PROP_BITMASK)) {
++		*out << "\t\tvalues:";
++		for (i = 0; i < prop->count_enums; i++)
++			*out << prop->enums[i].name << "=" << std::hex << (1LL << prop->enums[i].value);
++		*out << "\n";
++	} else {
++		//assert(prop->count_enums == 0);
++	}
++
++	if (drm_property_type_is(prop, DRM_MODE_PROP_BLOB)) {
++		*out << "\t\tblobs:\n";
++		for (i = 0; i < prop->count_blobs; i++)
++			dump_blob(prop->blob_ids[i], out);
++		*out << "\n";
++	} else {
++		//assert(prop->count_blobs == 0);
++	}
++
++	*out << "\t\tvalue:";
++	if (drm_property_type_is(prop, DRM_MODE_PROP_BLOB))
++		dump_blob(value, out);
++	else
++		*out << value;
++
++    *out << "\n";
++}
++
++int DrmResources::DumpProperty(uint32_t obj_id, uint32_t obj_type, std::ostringstream *out) {
++  drmModePropertyPtr* prop_info;
++  drmModeObjectPropertiesPtr props;
++
++  props = drmModeObjectGetProperties(fd(), obj_id, obj_type);
++  if (!props) {
++    ALOGE("Failed to get properties for %d/%x", obj_id, obj_type);
++    return -ENODEV;
++  }
++  prop_info = (drmModePropertyPtr*)malloc(props->count_props * sizeof *prop_info);
++  if (!prop_info) {
++    ALOGE("Malloc drmModePropertyPtr array failed");
++    return -ENOMEM;
++  }
++
++  *out << "  props:\n";
++  for (int i = 0;(size_t)i < props->count_props; ++i) {
++    prop_info[i] = drmModeGetProperty(fd(), props->props[i]);
++
++    dump_prop(prop_info[i],props->props[i],props->prop_values[i],out);
++
++    drmModeFreeProperty(prop_info[i]);
++  }
++
++  drmModeFreeObjectProperties(props);
++  free(prop_info);
++  return 0;
++}
++
++int DrmResources::DumpCrtcProperty(const DrmCrtc &crtc, std::ostringstream *out) {
++  return DumpProperty(crtc.id(), DRM_MODE_OBJECT_CRTC, out);
++}
++
++int DrmResources::DumpConnectorProperty(const DrmConnector &connector, std::ostringstream *out) {
++   return DumpProperty(connector.id(), DRM_MODE_OBJECT_CONNECTOR, out);
++}
++
++
++int DrmResources::GetCrtcProperty(const DrmCrtc &crtc, const char *prop_name,
++                                  DrmProperty *property) {
++  return GetProperty(crtc.id(), DRM_MODE_OBJECT_CRTC, prop_name, property);
++}
++
++int DrmResources::GetConnectorProperty(const DrmConnector &connector,
++                                       const char *prop_name,
++                                       DrmProperty *property) {
++  return GetProperty(connector.id(), DRM_MODE_OBJECT_CONNECTOR, prop_name,
++                     property);
++}
++
++
++}
+diff --git a/modules/hw_output/rkdisplay/drmresources.h b/modules/hw_output/rkdisplay/drmresources.h
+new file mode 100644
+index 00000000..c7da0682
+--- /dev/null
++++ b/modules/hw_output/rkdisplay/drmresources.h
+@@ -0,0 +1,161 @@
++/*
++ * Copyright (C) 2015 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ANDROID_DRM_H_
++#define ANDROID_DRM_H_
++
++#include "drmconnector.h"
++#include "drmcrtc.h"
++#include "drmencoder.h"
++#include "autofd.h"
++
++#include <sstream>
++#include <stdint.h>
++#if RK_RGA
++#include <RockchipRga.h>
++#endif
++
++namespace android {
++  enum LOG_LEVEL
++  {
++      //Log level flag
++      /*1*/
++      DBG_VERBOSE = 1 << 0,
++      /*2*/
++      DBG_DEBUG = 1 << 1,
++      /*4*/
++      DBG_INFO = 1 << 2,
++      /*8*/
++      DBG_WARN = 1 << 3,
++      /*16*/
++      DBG_ERROR = 1 << 4,
++      /*32*/
++      DBG_FETAL = 1 << 5,
++      /*64*/
++      DBG_SILENT = 1 << 6,
++  };
++
++  enum {
++      HWC_DISPLAY_PRIMARY     = 0,
++      HWC_DISPLAY_EXTERNAL    = 1,    // HDMI, DP, etc.
++      HWC_DISPLAY_VIRTUAL     = 2,
++  
++      HWC_NUM_PHYSICAL_DISPLAY_TYPES = 2,
++      HWC_NUM_DISPLAY_TYPES          = 3,
++  };
++
++  enum {
++      HWC_DISPLAY_PRIMARY_BIT     = 1 << HWC_DISPLAY_PRIMARY,
++      HWC_DISPLAY_EXTERNAL_BIT    = 1 << HWC_DISPLAY_EXTERNAL,
++      HWC_DISPLAY_VIRTUAL_BIT     = 1 << HWC_DISPLAY_VIRTUAL,
++  };
++
++
++
++#define type_name_define(res) \
++const char * res##_str(int type);
++
++class DrmResources {
++ public:
++  DrmResources();
++  ~DrmResources();
++
++  int Init();
++
++  int fd() const {
++    return fd_.get();
++  }
++
++  const std::vector<std::unique_ptr<DrmConnector>> &connectors() const {
++    return connectors_;
++  }
++
++
++  bool mode_verify(const DrmMode &mode);
++  void DisplayChanged(void);
++  void SetPrimaryDisplay(DrmConnector *c);
++  void SetExtendDisplay(DrmConnector *c);
++
++  DrmCrtc *GetCrtcFromConnector(DrmConnector *conn) const;
++  DrmConnector *GetConnectorFromType(int display_type) const;
++  int GetCrtcProperty(const DrmCrtc &crtc, const char *prop_name,
++                      DrmProperty *property);
++  int GetConnectorProperty(const DrmConnector &connector, const char *prop_name,
++                           DrmProperty *property);
++
++  uint32_t next_mode_id();
++  int SetDisplayActiveMode(int display, const DrmMode &mode);
++  int SetDpmsMode(int display, uint64_t mode);
++  int UpdateDisplayRoute(void);
++  void ClearDisplay(void);
++
++  int CreatePropertyBlob(void *data, size_t length, uint32_t *blob_id);
++  int DestroyPropertyBlob(uint32_t blob_id);
++  type_name_define(encoder_type);
++  type_name_define(connector_status);
++  type_name_define(connector_type);
++  
++  int DumpCrtcProperty(const DrmCrtc &crtc, std::ostringstream *out);
++  int DumpConnectorProperty(const DrmConnector &connector, std::ostringstream *out);
++  void dump_mode(drmModeModeInfo *mode,std::ostringstream *out);
++  bool log_level(LOG_LEVEL log_level)
++  {
++      return g_log_level & log_level;
++  }
++
++#if RK_RGA
++  bool isSupportRkRga() {
++	RockchipRga& rkRga(RockchipRga::get());
++	return rkRga.RkRgaIsReady();
++  }
++#endif
++
++ private:
++  void ConfigurePossibleDisplays();
++  int TryEncoderForDisplay(int display, DrmEncoder *enc);
++  int GetProperty(uint32_t obj_id, uint32_t obj_type, const char *prop_name,
++                  DrmProperty *property);
++
++  void dump_blob(uint32_t blob_id, std::ostringstream *out);
++  void dump_prop(drmModePropertyPtr prop,
++                     uint32_t prop_id, uint64_t value, std::ostringstream *out);
++  int DumpProperty(uint32_t obj_id, uint32_t obj_type, std::ostringstream *out);
++
++  UniqueFd fd_;
++  uint32_t mode_id_ = 0;
++  bool enable_changed_;
++  DrmConnector *primary_;
++  DrmConnector *extend_;
++
++  std::vector<std::unique_ptr<DrmConnector>> connectors_;
++  std::vector<std::unique_ptr<DrmEncoder>> encoders_;
++  std::vector<std::unique_ptr<DrmCrtc>> crtcs_;
++
++  unsigned int g_log_level;
++  
++  enum {
++      HWC_DISPLAY_PRIMARY     = 0,
++      HWC_DISPLAY_EXTERNAL    = 1,    // HDMI, DP, etc.
++      HWC_DISPLAY_VIRTUAL     = 2,
++  
++      HWC_NUM_PHYSICAL_DISPLAY_TYPES = 2,
++      HWC_NUM_DISPLAY_TYPES          = 3,
++  };
++
++};
++}
++
++#endif  // ANDROID_DRM_H_
+-- 
+2.35.1
+

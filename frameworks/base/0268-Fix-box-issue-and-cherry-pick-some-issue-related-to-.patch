@@ -1,0 +1,510 @@
+From e422c182492e5400b8e5ad6f419b4f9ee8db4a21 Mon Sep 17 00:00:00 2001
+From: Alex Wang <alex.wang@rock-chips.com>
+Date: Fri, 6 Nov 2020 17:07:17 +0800
+Subject: [PATCH 268/297] Fix box issue and cherry-pick some issue related to
+ box from AndroidQ
+
+Change-Id: Iefbd07e8713cf52299d3050ef00076f1f6a43c0d
+---
+ cmds/bootanimation/Android.bp                 |   1 +
+ cmds/bootanimation/BootAnimation.cpp          | 141 +++++++++++++++++-
+ cmds/bootanimation/BootAnimation.h            |   6 +
+ .../packageinstaller/InstallStart.java        |   3 +
+ .../android/server/audio/AudioService.java    |  49 +++++-
+ .../hdmi/HdmiCecLocalDevicePlayback.java      |   2 +-
+ .../android/server/policy/GlobalActions.java  |   3 +-
+ .../server/policy/PhoneWindowManager.java     |   6 +
+ .../wm/DeprecatedTargetSdkVersionDialog.java  |   2 +
+ .../com/android/server/wm/DisplayContent.java |   6 +
+ .../android/server/wm/DisplayRotation.java    |   8 +
+ 11 files changed, 212 insertions(+), 15 deletions(-)
+ mode change 100644 => 100755 services/core/java/com/android/server/policy/GlobalActions.java
+ mode change 100644 => 100755 services/core/java/com/android/server/wm/DisplayContent.java
+ mode change 100644 => 100755 services/core/java/com/android/server/wm/DisplayRotation.java
+
+diff --git a/cmds/bootanimation/Android.bp b/cmds/bootanimation/Android.bp
+index befb67bcf26..2e6bb89aaae 100644
+--- a/cmds/bootanimation/Android.bp
++++ b/cmds/bootanimation/Android.bp
+@@ -59,6 +59,7 @@ cc_library_shared {
+     shared_libs: [
+         "libui",
+         "libhwui",
++        "libmedia",
+         "libEGL",
+         "libGLESv1_CM",
+         "libgui",
+diff --git a/cmds/bootanimation/BootAnimation.cpp b/cmds/bootanimation/BootAnimation.cpp
+index 3abf919eda7..6f5d0fc8977 100644
+--- a/cmds/bootanimation/BootAnimation.cpp
++++ b/cmds/bootanimation/BootAnimation.cpp
+@@ -65,6 +65,9 @@
+ #include <EGL/eglext.h>
+ 
+ #include "BootAnimation.h"
++#include "audioplay.h"
++#include <media/mediaplayer.h>
++#include <media/IMediaHTTPService.h>
+ 
+ #define ANIM_PATH_MAX 255
+ #define STR(x)   #x
+@@ -87,6 +90,10 @@ static constexpr const char* PRODUCT_USERSPACE_REBOOT_ANIMATION_FILE = "/product
+ static constexpr const char* OEM_USERSPACE_REBOOT_ANIMATION_FILE = "/oem/media/userspace-reboot.zip";
+ static constexpr const char* SYSTEM_USERSPACE_REBOOT_ANIMATION_FILE = "/system/media/userspace-reboot.zip";
+ 
++//support boot video
++static const char DATA_BOOTVIDEO_FILE[] = "/data/local/bootanimation.ts";
++static const char SYSTEM_BOOTVIDEO_FILE[] = "/product/media/bootanimation.ts";
++
+ static const char SYSTEM_DATA_DIR_PATH[] = "/data/system";
+ static const char SYSTEM_TIME_DIR_NAME[] = "time";
+ static const char SYSTEM_TIME_DIR_PATH[] = "/data/system/time";
+@@ -531,6 +538,26 @@ void BootAnimation::findBootAnimationFile() {
+     bool encryptedAnimation = atoi(decrypt) != 0 ||
+         !strcmp("trigger_restart_min_framework", decrypt);
+ 
++    //add for boot video
++       mVideoAnimation = false;
++       if (access(SYSTEM_BOOTVIDEO_FILE, R_OK) == 0){
++          mVideoFile = (char*)SYSTEM_BOOTVIDEO_FILE;
++       }
++       if (access(DATA_BOOTVIDEO_FILE, R_OK) == 0){
++          mVideoFile = (char*)DATA_BOOTVIDEO_FILE;
++       }
++       property_get("persist.sys.bootvideo.enable",decrypt, "false");
++       char value[PROPERTY_VALUE_MAX];
++       property_get("persist.sys.bootvideo.showtime", value, "-1");
++       ALOGD("findBootAnimationFile()-->bootvideo.enable=%s, showtime=%s", decrypt, value);
++       if(mVideoFile != NULL && !strcmp(decrypt, "true") &&(atoi(value)!=0)) {
++            mVideoAnimation = true;
++            ALOGD("mVideoAnimation = true");
++       }else{
++            ALOGD("bootvideo:No boot video animation,EXIT_VIDEO_NAME:%s,bootvideo.showtime:%s\n",decrypt,value);
++       }
++       //add end
++
+     if (!mShuttingDown && encryptedAnimation) {
+         static const std::vector<std::string> encryptedBootFiles = {
+             PRODUCT_ENCRYPTED_BOOTANIMATION_FILE, SYSTEM_ENCRYPTED_BOOTANIMATION_FILE,
+@@ -564,12 +591,20 @@ void BootAnimation::findBootAnimationFile() {
+ 
+ bool BootAnimation::threadLoop() {
+     bool result;
+-    // We have no bootanimation file, so we use the stock android logo
+-    // animation.
+-    if (mZipFileName.isEmpty()) {
+-        result = android();
++    //add for boot video function
++    mStartbootanimaTime = 0;
++    mBootVideoTime = -1;
++
++    if (mVideoAnimation){
++        result = video();
+     } else {
+-        result = movie();
++        // We have no bootanimation file, so we use the stock android logo
++        // animation.
++        if (mZipFileName.isEmpty()) {
++            result = android();
++        } else {
++            result = movie();
++        }
+     }
+ 
+     eglMakeCurrent(mDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+@@ -656,9 +691,25 @@ void BootAnimation::checkExit() {
+     char value[PROPERTY_VALUE_MAX];
+     property_get(EXIT_PROP_NAME, value, "0");
+     int exitnow = atoi(value);
++    //add for boot video function
++     property_get("persist.sys.bootvideo.enable",value, "false");
++     const nsecs_t realBootanimaTime = systemTime()-mStartbootanimaTime;
+     if (exitnow) {
+-        requestExit();
+-        mCallbacks->shutdown();
++        //add for boot video function
++        if(!strcmp(value,"true")){
++        //ALOGD("checkExit,requestExit bootvideo====realBootanimaTime:%lld,mBootVideoTime:%d"
++        //        ,realBootanimaTime,mBootVideoTime);
++          if((ns2ms(realBootanimaTime)/1000) > mBootVideoTime){
++           ALOGD("checkExit,requestExit for bootvideo");
++             //close bootvolume for audioflinger
++             property_set("sys.bootvideo.closed", "1");
++             requestExit();
++             mCallbacks->shutdown();
++           }
++        } else {
++           requestExit();
++           mCallbacks->shutdown();
++        }
+     }
+ }
+ 
+@@ -1443,6 +1494,82 @@ status_t BootAnimation::TimeCheckThread::readyToRun() {
+     return NO_ERROR;
+ }
+ 
++//add for boot video
++bool BootAnimation::video()
++{
++    const bool LOOP = false;
++    const float CHECK_DELAY = 500*1000;//500ms
++    int duration = 0;
++    char delay[64];
++    sp<IMediaHTTPService> httpService;
++
++    char value[PROPERTY_VALUE_MAX];
++    property_get("persist.sys.bootvideo.showtime", value, "-2");
++    int bootvideo_time = atoi(value);//s
++    if(bootvideo_time > 120)
++          bootvideo_time = 120;
++
++//add delaytime set ,default 0.
++    property_get("persist.sys.bootvideo.delaytime", value, "0");
++    int delay_new = atoi(value);//s
++    usleep(CHECK_DELAY*2*delay_new);
++
++//    ALOGD("bootvideo:start MediaPlayer init");
++    sp<MediaPlayer> mp = new MediaPlayer();
++//    ALOGD("bootvideo:end MediaPlayer init");
++    // create the native surface
++    sp<SurfaceControl> control = session()->createSurface(String8("BootAnimation_video"),mWidth, mHeight, PIXEL_FORMAT_RGB_565);
++    SurfaceComposerClient::Transaction t;
++    t.setLayer(control, 0x40000001)
++        .apply();
++    sp<Surface> surface = control->getSurface();
++    mp->setDataSource(httpService,mVideoFile, NULL);
++    mp->setLooping(LOOP);
++    mp->setVideoSurfaceTexture(surface->getIGraphicBufferProducer());
++    mp->prepare();
++//set vol
++    property_get("persist.sys.bootvideo.vol", value, "-1");
++    if(strcmp(value, "-1")){
++       float vol = 1.00f *atoi(value) / 100;//max 100
++       ALOGD("bootVideo vol=%f", vol);
++       mp->setVolume(vol,vol);
++    }
++
++    mp->getDuration(&duration);//persist.sys.pic_time
++    if(bootvideo_time > 0){
++        sprintf(delay, "%d", bootvideo_time);
++    } else if (bootvideo_time == -2){
++        sprintf(delay, "%d", (duration/1000)+1);
++    }else if(bootvideo_time == -1){
++        sprintf(delay, "%d", 0);
++    }
++    //property_set("persist.sys.pic_time", delay);
++    mBootVideoTime = atoi(delay);
++    ALOGD("bootvideo:vol=%s,showtime=%d, duration=%d, delay=%s\n",value,bootvideo_time,duration, delay);
++
++    mp->start();
++    mStartbootanimaTime = systemTime();
++    while(true) {
++        const nsecs_t realVideoTime = systemTime()-mStartbootanimaTime;
++        checkExit();
++        property_set("sys.bootvideo.closed", "0");
++        usleep(CHECK_DELAY);
++        if(!mp->isPlaying()||(((ns2ms(realVideoTime)/1000) > bootvideo_time) && (bootvideo_time > -1))){
++          mp->pause();
++        }
++        if(exitPending()){
++           ALOGD("bootvideo:-----------------stop bootanimationvedio");
++           break;
++          }
++    }
++    property_set("sys.bootvideo.closed", "1");
++    mp->stop();
++    mp->reset();
++    surface.clear();
++    control.clear();
++    mp = NULL;
++    return false;
++}
+ // ---------------------------------------------------------------------------
+ 
+ } // namespace android
+diff --git a/cmds/bootanimation/BootAnimation.h b/cmds/bootanimation/BootAnimation.h
+index 50aa3875e89..c6a0f5bdce9 100644
+--- a/cmds/bootanimation/BootAnimation.h
++++ b/cmds/bootanimation/BootAnimation.h
+@@ -158,6 +158,8 @@ private:
+     status_t initFont(Font* font, const char* fallback);
+     bool android();
+     bool movie();
++    //add for bootvideo
++    bool video();
+     void drawText(const char* str, const Font& font, bool bold, int* x, int* y);
+     void drawClock(const Font& font, const int xPos, const int yPos);
+     bool validClock(const Animation::Part& part);
+@@ -199,6 +201,10 @@ private:
+     bool        mTimeFormat12Hour;
+     bool        mShuttingDown;
+     String8     mZipFileName;
++    bool mVideoAnimation;
++    char* mVideoFile;
++    nsecs_t mStartbootanimaTime;
++    int  mBootVideoTime;
+     SortedVector<String8> mLoadedFiles;
+     sp<TimeCheckThread> mTimeCheckThread = nullptr;
+     sp<Callbacks> mCallbacks;
+diff --git a/packages/PackageInstaller/src/com/android/packageinstaller/InstallStart.java b/packages/PackageInstaller/src/com/android/packageinstaller/InstallStart.java
+index c412387a2a0..b78fb89974c 100644
+--- a/packages/PackageInstaller/src/com/android/packageinstaller/InstallStart.java
++++ b/packages/PackageInstaller/src/com/android/packageinstaller/InstallStart.java
+@@ -107,7 +107,10 @@ public class InstallStart extends Activity {
+         if (null == callingPackage && null != intent.getDataString()
+                 && intent.getDataString().startsWith("content://com.android.rk.")) {
+             callingPackage = "com.android.rk";
++        } else if(callingPackage == null) {
++            callingPackage = intent.getStringExtra(PackageInstallerActivity.EXTRA_CALLING_PACKAGE);
+         }
++
+         Intent nextActivity = new Intent(intent);
+         nextActivity.setFlags(Intent.FLAG_ACTIVITY_FORWARD_RESULT);
+ 
+diff --git a/services/core/java/com/android/server/audio/AudioService.java b/services/core/java/com/android/server/audio/AudioService.java
+index 4424fd23c30..82c5ae62868 100755
+--- a/services/core/java/com/android/server/audio/AudioService.java
++++ b/services/core/java/com/android/server/audio/AudioService.java
+@@ -736,7 +736,9 @@ public class AudioService extends IAudioService.Stub
+         if (maxMusicVolume != -1) {
+             MAX_STREAM_VOLUME[AudioSystem.STREAM_MUSIC] = maxMusicVolume;
+         }
+-
++        if(isBox()){
++            mFixedVolumeDevices.clear();
++        }
+         int defaultMusicVolume = SystemProperties.getInt("ro.config.media_vol_default", -1);
+         if (defaultMusicVolume != -1 &&
+                 defaultMusicVolume <= MAX_STREAM_VOLUME[AudioSystem.STREAM_MUSIC] &&
+@@ -829,7 +831,9 @@ public class AudioService extends IAudioService.Stub
+         // mSafeUsbMediaVolumeIndex must be initialized after createStreamStates() because it
+         // relies on audio policy having correct ranges for volume indexes.
+         mSafeUsbMediaVolumeIndex = getSafeUsbMediaVolumeIndex();
+-
++        if(isBox()){
++            mSafeUsbMediaVolumeIndex = mSafeMediaVolumeIndex;
++        }
+         mPlaybackMonitor =
+                 new PlaybackActivityMonitor(context, MAX_STREAM_VOLUME[AudioSystem.STREAM_ALARM]);
+ 
+@@ -939,6 +943,9 @@ public class AudioService extends IAudioService.Stub
+                             AudioSystem.DEVICE_ALL_HDMI_SYSTEM_AUDIO_AND_SPEAKER_SET);
+                 }
+                 mHdmiPlaybackClient = mHdmiManager.getPlaybackClient();
++                if(isBox()){
++                    mFullVolumeDevices.clear();
++                }
+                 mHdmiAudioSystemClient = mHdmiManager.getAudioSystemClient();
+             }
+         }
+@@ -4900,7 +4907,9 @@ public class AudioService extends IAudioService.Stub
+                 device = AudioSystem.DEVICE_OUT_SPDIF;
+             } else if ((device & AudioSystem.DEVICE_OUT_AUX_LINE) != 0) {
+                 device = AudioSystem.DEVICE_OUT_AUX_LINE;
+-            } else {
++            } else if ((device & AudioSystem.DEVICE_OUT_AUX_DIGITAL) != 0) {
++                device = AudioSystem.DEVICE_OUT_AUX_DIGITAL;
++                } else {
+                 for (int deviceType : AudioSystem.DEVICE_OUT_ALL_A2DP_SET) {
+                     if ((deviceType & device) == deviceType) {
+                         return deviceType;
+@@ -5805,6 +5814,18 @@ public class AudioService extends IAudioService.Stub
+                     hasModifyAudioSettings);
+         }
+ 
++        public void restoreAllDeviceIndex(){
++            if(mStreamType == AudioSystem.STREAM_MUSIC){
++                for (int i = 0; i < mIndexMap.size(); i++) {
++                    int device = mIndexMap.keyAt(i);
++                    System.putIntForUser(mContentResolver,
++                          getSettingNameForDevice(device),
++                         (getIndex(device) + 5)/ 10,
++                          UserHandle.USER_CURRENT);
++                }
++            }
++        }
++
+         public boolean setIndex(int index, int device, String caller,
+                 boolean hasModifyAudioSettings) {
+             boolean changed;
+@@ -5817,7 +5838,13 @@ public class AudioService extends IAudioService.Stub
+                         index = mIndexMax;
+                     }
+                     mIndexMap.put(device, index);
+-
++                    if(isBox()){
++                       if(mStreamType == AudioSystem.STREAM_MUSIC){
++                          for (int i = 0;i<mIndexMap.size();i++){
++                             mIndexMap.put(mIndexMap.keyAt(i), index);
++                          }
++                       }
++                    }
+                     changed = oldIndex != index;
+                     // Apply change to all streams using this one as alias if:
+                     // - the index actually changed OR
+@@ -6251,6 +6278,8 @@ public class AudioService extends IAudioService.Stub
+                         streamState.getSettingNameForDevice(device),
+                         (streamState.getIndex(device) + 5)/ 10,
+                         UserHandle.USER_CURRENT);
++                if(isBox())
++                    streamState.restoreAllDeviceIndex();
+             }
+         }
+ 
+@@ -7145,7 +7174,11 @@ public class AudioService extends IAudioService.Stub
+     private void enforceSafeMediaVolume(String caller) {
+         VolumeStreamState streamState = mStreamStates[AudioSystem.STREAM_MUSIC];
+         Set<Integer> devices = mSafeMediaVolumeDevices;
+-
++        if(isBox() &&
++           ("false".equals(SystemProperties.get("persist.sys.audio.enforce_safevolume","true")))){
++            Log.d(TAG,"no need enforce safe media volume now!");
++            return ;
++        }
+         for (int device : devices) {
+             int index = streamState.getIndex(device);
+             if (index > safeMediaVolumeIndex(device)) {
+@@ -9132,7 +9165,11 @@ public class AudioService extends IAudioService.Stub
+             Log.d(TAG, "Adding DeviceType: 0x" + Integer.toHexString(audioSystemDeviceOut)
+                     + " to mFullVolumeDevices");
+         }
+-        mFullVolumeDevices.add(audioSystemDeviceOut);
++        if (isBox()) {
++            mFullVolumeDevices.clear();
++        } else {
++            mFullVolumeDevices.add(audioSystemDeviceOut);
++        }
+     }
+ 
+     private void removeAudioSystemDeviceOutFromFullVolumeDevices(int audioSystemDeviceOut) {
+diff --git a/services/core/java/com/android/server/hdmi/HdmiCecLocalDevicePlayback.java b/services/core/java/com/android/server/hdmi/HdmiCecLocalDevicePlayback.java
+index ef2781082a2..41b41a5330c 100644
+--- a/services/core/java/com/android/server/hdmi/HdmiCecLocalDevicePlayback.java
++++ b/services/core/java/com/android/server/hdmi/HdmiCecLocalDevicePlayback.java
+@@ -224,7 +224,7 @@ public class HdmiCecLocalDevicePlayback extends HdmiCecLocalDeviceSource {
+     private ActiveWakeLock getWakeLock() {
+         assertRunOnServiceThread();
+         if (mWakeLock == null) {
+-            if (SystemProperties.getBoolean(Constants.PROPERTY_KEEP_AWAKE, true)) {
++            if (SystemProperties.getBoolean(Constants.PROPERTY_KEEP_AWAKE, false)) {
+                 mWakeLock = new SystemWakeLock();
+             } else {
+                 // Create a dummy lock object that doesn't do anything about wake lock,
+diff --git a/services/core/java/com/android/server/policy/GlobalActions.java b/services/core/java/com/android/server/policy/GlobalActions.java
+old mode 100644
+new mode 100755
+index e1461356cc4..ecd1eabc857
+--- a/services/core/java/com/android/server/policy/GlobalActions.java
++++ b/services/core/java/com/android/server/policy/GlobalActions.java
+@@ -21,6 +21,7 @@ import android.util.Slog;
+ import com.android.server.LocalServices;
+ import com.android.server.policy.WindowManagerPolicy.WindowManagerFuncs;
+ import com.android.server.policy.GlobalActionsProvider;
++import android.os.SystemProperties;
+ 
+ class GlobalActions implements GlobalActionsProvider.GlobalActionsListener {
+ 
+@@ -64,7 +65,7 @@ class GlobalActions implements GlobalActionsProvider.GlobalActionsListener {
+         mKeyguardShowing = keyguardShowing;
+         mDeviceProvisioned = deviceProvisioned;
+         mShowing = true;
+-        if (mGlobalActionsAvailable) {
++        if (mGlobalActionsAvailable && !"box".equals(SystemProperties.get("ro.target.product","unkonw"))) {
+             mHandler.postDelayed(mShowTimeout, 5000);
+             mGlobalActionsProvider.showGlobalActions();
+         } else {
+diff --git a/services/core/java/com/android/server/policy/PhoneWindowManager.java b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+index f7222fcd300..37b9eb63aeb 100755
+--- a/services/core/java/com/android/server/policy/PhoneWindowManager.java
++++ b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+@@ -3686,6 +3686,12 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         if (isBox) {
+             isWakeKey = false;
+         }
++        if (isBox && keyCode == KeyEvent.KEYCODE_POWER &&
++        "true".equals(SystemProperties.get("persist.sys.poweroff_now"))) {
++            SystemProperties.set("sys.powerctl", "shutdown");
++            return 0;
++        }
++
+         if (interactive || (isInjected && !isWakeKey)) {
+             // When the device is interactive or the key is injected pass the
+             // key to the application.
+diff --git a/services/core/java/com/android/server/wm/DeprecatedTargetSdkVersionDialog.java b/services/core/java/com/android/server/wm/DeprecatedTargetSdkVersionDialog.java
+index 37244bd5bd0..1cd05bd73b7 100644
+--- a/services/core/java/com/android/server/wm/DeprecatedTargetSdkVersionDialog.java
++++ b/services/core/java/com/android/server/wm/DeprecatedTargetSdkVersionDialog.java
+@@ -31,6 +31,7 @@ import android.view.WindowManager;
+ 
+ import com.android.internal.R;
+ import com.android.server.utils.AppInstallerUtil;
++import android.os.SystemProperties;
+ 
+ public class DeprecatedTargetSdkVersionDialog {
+     private static final String TAG = TAG_WITH_CLASS_NAME ? "DeprecatedTargetSdkVersionDialog" : TAG_ATM;
+@@ -82,6 +83,7 @@ public class DeprecatedTargetSdkVersionDialog {
+ 
+     public void show() {
+         Log.w(TAG, "Showing SDK deprecation warning for package " + mPackageName);
++        if(!"box".equals(SystemProperties.get("ro.target.product","unknow")))
+         mDialog.show();
+     }
+ 
+diff --git a/services/core/java/com/android/server/wm/DisplayContent.java b/services/core/java/com/android/server/wm/DisplayContent.java
+old mode 100644
+new mode 100755
+index 5acaf14df15..6559d82afb3
+--- a/services/core/java/com/android/server/wm/DisplayContent.java
++++ b/services/core/java/com/android/server/wm/DisplayContent.java
+@@ -169,6 +169,7 @@ import android.os.RemoteException;
+ import android.os.SystemClock;
+ import android.os.Trace;
+ import android.os.UserHandle;
++import android.content.pm.PackageManager;
+ import android.provider.Settings;
+ import android.util.ArraySet;
+ import android.util.DisplayMetrics;
+@@ -2021,6 +2022,11 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
+         // Let the policy update hidden states.
+         config.keyboardHidden = Configuration.KEYBOARDHIDDEN_NO;
+         config.hardKeyboardHidden = Configuration.HARDKEYBOARDHIDDEN_NO;
++        boolean isTV = mWmService.mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK) ||
++                    mWmService.mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_TELEVISION);
++        if (isTV) {
++            config.hardKeyboardHidden = Configuration.HARDKEYBOARDHIDDEN_YES;
++        }
+         config.navigationHidden = Configuration.NAVIGATIONHIDDEN_NO;
+         mWmService.mPolicy.adjustConfigurationLw(config, keyboardPresence, navigationPresence);
+     }
+diff --git a/services/core/java/com/android/server/wm/DisplayRotation.java b/services/core/java/com/android/server/wm/DisplayRotation.java
+old mode 100644
+new mode 100755
+index 37ecee8e3db..c0e86838250
+--- a/services/core/java/com/android/server/wm/DisplayRotation.java
++++ b/services/core/java/com/android/server/wm/DisplayRotation.java
+@@ -368,6 +368,9 @@ public class DisplayRotation {
+         mLastOrientation = newOrientation;
+         if (newOrientation != mCurrentAppOrientation) {
+             mCurrentAppOrientation = newOrientation;
++            String rot = SystemProperties.get("persist.sys.app.rotation", "middle_port");
++            if (rot.equals("force_land") && "box".equals(SystemProperties.get("ro.target.product")))
++                mCurrentAppOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
+             if (isDefaultDisplay) {
+                 updateOrientationListenerLw();
+             }
+@@ -1185,6 +1188,11 @@ public class DisplayRotation {
+             preferredRotation = -1;
+         }
+ 
++        String rot = SystemProperties.get("persist.sys.app.rotation", "middle_port");
++        if (rot.equals("force_land") && "box".equals(SystemProperties.get("ro.target.product"))) {
++            Slog.v(TAG, "asx force_land :" + mLandscapeRotation);
++            return mLandscapeRotation;
++        }
+         switch (orientation) {
+             case ActivityInfo.SCREEN_ORIENTATION_PORTRAIT:
+                 // Return portrait unless overridden.
+-- 
+2.35.1
+

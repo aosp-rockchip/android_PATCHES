@@ -1,0 +1,36 @@
+From 57b309e61e21be3ddab28412c82a5c26c299290a Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Fri, 15 Jan 2021 16:28:40 +0800
+Subject: [PATCH 285/297] services: Do not show error dialog on EINK device.
+
+Signed-ofr-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+Change-Id: I004b1aff59c8b05c3533af21c3635b3d0454c78d
+---
+ .../com/android/server/wm/ActivityTaskManagerService.java     | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/wm/ActivityTaskManagerService.java b/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
+index 64d4112c33c..e4cf423ab83 100755
+--- a/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
++++ b/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
+@@ -43,6 +43,7 @@ import static android.content.pm.ApplicationInfo.FLAG_FACTORY_TEST;
+ import static android.content.pm.ConfigurationInfo.GL_ES_VERSION_UNDEFINED;
+ import static android.content.pm.PackageManager.FEATURE_ACTIVITIES_ON_SECONDARY_DISPLAYS;
+ import static android.content.pm.PackageManager.FEATURE_CANT_SAVE_STATE;
++import static android.content.pm.PackageManager.FEATURE_EINK;
+ import static android.content.pm.PackageManager.FEATURE_FREEFORM_WINDOW_MANAGEMENT;
+ import static android.content.pm.PackageManager.FEATURE_LEANBACK;
+ import static android.content.pm.PackageManager.FEATURE_TELEVISION;
+@@ -6502,7 +6503,8 @@ public class ActivityTaskManagerService extends IActivityTaskManager.Stub {
+                 } catch (RemoteException e) {
+                 }
+ 
+-                if (!Build.isBuildConsistent()) {
++                if (!getContext().getPackageManager().hasSystemFeature(FEATURE_EINK)/*EINK*/ &&
++                    !Build.isBuildConsistent()) {
+                     Slog.e(TAG, "Build fingerprint is not consistent, warning user");
+                     mUiHandler.post(() -> {
+                         if (mShowDialogs) {
+-- 
+2.35.1
+

@@ -1,0 +1,93 @@
+From 9465d6c288586d3f78282f8a71077e4542b9872c Mon Sep 17 00:00:00 2001
+From: Weixin Zhou <zwx@rock-chips.com>
+Date: Fri, 15 Jan 2021 19:38:03 +0800
+Subject: [PATCH 1/2] suspend: add ultra mode
+
+enter ultra mode when wifi and bt are both disbaled.
+otherwise, enter mem mode by default
+
+Signed-off-by: Weixin Zhou <zwx@rock-chips.com>
+Change-Id: I67667e94fc0a9a0e337b1c860d965eacd9f5164a
+---
+ suspend/1.0/default/SystemSuspend.cpp | 40 +++++++++++++++++++++++++--
+ 1 file changed, 38 insertions(+), 2 deletions(-)
+
+diff --git a/suspend/1.0/default/SystemSuspend.cpp b/suspend/1.0/default/SystemSuspend.cpp
+index 8f89de3..ba364b7 100644
+--- a/suspend/1.0/default/SystemSuspend.cpp
++++ b/suspend/1.0/default/SystemSuspend.cpp
+@@ -30,6 +30,7 @@
+ 
+ using ::android::base::Error;
+ using ::android::base::ReadFdToString;
++using ::android::base::ReadFileToString;
+ using ::android::base::WriteStringToFd;
+ using ::android::hardware::Void;
+ using ::std::string;
+@@ -40,10 +41,13 @@ namespace suspend {
+ namespace V1_0 {
+ 
+ static const char kSleepState[] = "mem";
++static const char kSleepStateUltra[] = "ultra";
+ // TODO(b/128923994): we only need /sys/power/wake_[un]lock to export debugging info via
+ // /sys/kernel/debug/wakeup_sources.
+ static constexpr char kSysPowerWakeLock[] = "/sys/power/wake_lock";
+ static constexpr char kSysPowerWakeUnlock[] = "/sys/power/wake_unlock";
++static constexpr char mkSysWifiState[] = "/sys/class/net/wlan0/carrier";
++static constexpr char mkSysBtState[] = "/sys/class/rfkill/rfkill0/state";
+ 
+ // This function assumes that data in fd is small enough that it can be read in one go.
+ // We use this function instead of the ones available in libbase because it doesn't block
+@@ -129,7 +133,23 @@ bool SystemSuspend::forceSuspend() {
+     //  returns from suspend, the wakelocks and SuspendCounter will not have
+     //  changed.
+     auto counterLock = std::unique_lock(mCounterLock);
+-    bool success = WriteStringToFd(kSleepState, mStateFd);
++
++    bool success;
++    string btState;
++    ReadFileToString(mkSysBtState, &btState, 0);
++    string wifiState;;
++    ReadFileToString(mkSysWifiState, &wifiState, 0);
++    wifiState = android::base::Trim(wifiState);
++    btState = android::base::Trim(btState);
++
++    if (btState=="1" || wifiState=="1") {
++	    LOG(ERROR) << "forceSuspend: is Mem btState " << btState << " wifiState " << wifiState;
++	    success = WriteStringToFd(kSleepState, mStateFd);
++    } else {
++	    LOG(ERROR) << "forceSuspend: is Ultra btState " << btState << " wifiState " << wifiState;
++	    success = WriteStringToFd(kSleepStateUltra, mStateFd);
++    }
++
+     counterLock.unlock();
+ 
+     if (!success) {
+@@ -192,7 +212,23 @@ void SystemSuspend::initAutosuspend() {
+                 PLOG(VERBOSE) << "error writing from /sys/power/wakeup_count";
+                 continue;
+             }
+-            bool success = WriteStringToFd(kSleepState, mStateFd);
++
++	    bool success;
++            string btState;
++            ReadFileToString(mkSysBtState, &btState, 0);
++	    string wifiState;
++	    ReadFileToString(mkSysWifiState, &wifiState, 0);
++	    wifiState = android::base::Trim(wifiState);
++	    btState = android::base::Trim(btState);
++
++	    if (btState=="1" || wifiState=="1") {
++		    LOG(ERROR) << "is Mem btState " << btState << " wifiState " << wifiState;
++		    success = WriteStringToFd(kSleepState, mStateFd);
++	    } else {
++		    LOG(ERROR) << "is Ultra btState " << btState << " wifiState " << wifiState;
++		    success = WriteStringToFd(kSleepStateUltra, mStateFd);
++	    }
++
+             counterLock.unlock();
+ 
+             if (!success) {
+-- 
+2.35.1
+

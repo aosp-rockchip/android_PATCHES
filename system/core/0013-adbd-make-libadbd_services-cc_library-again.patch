@@ -1,0 +1,87 @@
+From 91a32148fe182fbad99dfe459c711b224353bbf0 Mon Sep 17 00:00:00 2001
+From: Josh Gao <jmgao@google.com>
+Date: Mon, 9 Mar 2020 15:20:55 -0700
+Subject: [PATCH 13/21] adbd: make libadbd_services cc_library again.
+
+For currently unknown reasons, sideloading is broken with
+libadbd_services as a cc_library_static.
+
+Partial revert of commit a9b62d545275ca32775a0bc5f004abe03aaa38ad.
+
+Bug: http://b/151056300
+Test: xunchang@ tested manually
+Change-Id: Iaffad9c476ba0adcffc5db512ba4a7ee0fb5cb22
+(cherry picked from commit 7f8a37c8c7b038f1ea1a91a0ab91c503dcf7d7e6)
+(cherry picked from commit cc8e30e9aa7f0459707337a289e269820d8006c4)
+---
+ adb/Android.bp       | 5 +++--
+ libcutils/Android.bp | 7 ++-----
+ 2 files changed, 5 insertions(+), 7 deletions(-)
+
+diff --git a/adb/Android.bp b/adb/Android.bp
+index a26017fc2..e02a54e64 100644
+--- a/adb/Android.bp
++++ b/adb/Android.bp
+@@ -429,7 +429,7 @@ cc_library_static {
+     },
+ }
+ 
+-cc_library_static {
++cc_library {
+     name: "libadbd_services",
+     defaults: ["adbd_defaults", "host_adbd_supported"],
+     recovery_available: true,
+@@ -464,6 +464,7 @@ cc_library_static {
+         "libbase",
+         "libcrypto",
+         "libcrypto_utils",
++        "libcutils_sockets",
+         "liblog",
+     ],
+ 
+@@ -515,6 +516,7 @@ cc_library {
+         "libadb_tls_connection",
+         "libadbd_auth",
+         "libadbd_fs",
++        "libadbd_services",
+         "libasyncio",
+         "libbase",
+         "libcrypto",
+@@ -533,7 +535,6 @@ cc_library {
+     },
+ 
+     static_libs: [
+-        "libadbd_services",
+         "libcutils_sockets",
+         "libdiagnose_usb",
+         "libmdnssd",
+diff --git a/libcutils/Android.bp b/libcutils/Android.bp
+index 4e93df370..fc06c1d1b 100644
+--- a/libcutils/Android.bp
++++ b/libcutils/Android.bp
+@@ -45,13 +45,9 @@ cc_library_headers {
+ }
+ 
+ // Socket specific parts of libcutils that are safe to statically link into an APEX.
+-cc_library_static {
++cc_library {
+     name: "libcutils_sockets",
+     vendor_available: true,
+-    vndk: {
+-        enabled: true,
+-        support_system_process: true,
+-    },
+     recovery_available: true,
+     host_supported: true,
+     native_bridge_supported: true,
+@@ -62,6 +58,7 @@ cc_library_static {
+ 
+     export_include_dirs: ["include"],
+ 
++    shared_libs: ["liblog"],
+     srcs: ["sockets.cpp"],
+     target: {
+         linux_bionic: {
+-- 
+2.35.1
+

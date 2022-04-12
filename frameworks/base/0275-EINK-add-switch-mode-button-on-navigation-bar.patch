@@ -1,0 +1,249 @@
+From 60428e8b1e92a8c64e9d4bd1a1f2a64200c6f4f4 Mon Sep 17 00:00:00 2001
+From: "alex.lin" <alex.lin@rock-chips.com>
+Date: Wed, 30 Dec 2020 19:14:11 +0800
+Subject: [PATCH 275/297] EINK: add switch mode button on navigation bar
+
+Signed-off-by: alex.lin <alex.lin@rock-chips.com>
+Change-Id: I813fc0e6c3218b21425a1687dc6eb1eabfd286fb
+---
+ .../drawable/ic_sysbar_switch_mode_button.xml |  9 ++++++
+ packages/SystemUI/res/layout/switch_mode.xml  | 30 +++++++++++++++++++
+ .../SystemUI/res/values-sw400dp/config.xml    |  2 +-
+ .../SystemUI/res/values-sw600dp/config.xml    |  2 +-
+ packages/SystemUI/res/values/config.xml       |  2 +-
+ packages/SystemUI/res/values/strings.xml      |  1 +
+ .../phone/NavigationBarFragment.java          | 24 +++++++++++----
+ .../phone/NavigationBarInflaterView.java      |  3 ++
+ .../statusbar/phone/NavigationBarView.java    |  8 +++++
+ 9 files changed, 73 insertions(+), 8 deletions(-)
+ create mode 100644 packages/SystemUI/res/drawable/ic_sysbar_switch_mode_button.xml
+ create mode 100644 packages/SystemUI/res/layout/switch_mode.xml
+
+diff --git a/packages/SystemUI/res/drawable/ic_sysbar_switch_mode_button.xml b/packages/SystemUI/res/drawable/ic_sysbar_switch_mode_button.xml
+new file mode 100644
+index 00000000000..6961afc9959
+--- /dev/null
++++ b/packages/SystemUI/res/drawable/ic_sysbar_switch_mode_button.xml
+@@ -0,0 +1,9 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="20dp"
++    android:height="20dp"
++    android:viewportWidth="975"
++    android:viewportHeight="975">
++    <path
++        android:fillColor="@android:color/white"
++        android:pathData="M405.76,19.48C408.78,18.67 411.84,17.81 414.99,17.74C456.34,17.75 497.69,17.73 539.04,17.75C543.3,18.25 547.93,18.82 551.36,21.65C554.54,23.9 556.67,27.36 558.24,30.87C677,322.04 795.76,613.21 914.52,904.37C917.67,912.94 922.3,921.05 923.67,930.18C923.15,934.45 922.33,939.02 919.32,942.32C915.47,947.26 908.92,948.43 903.05,949C859.68,949 816.31,949.01 772.95,948.99C768.49,948.48 763.68,947.8 760.09,944.88C756.46,942.33 754.19,938.32 752.85,934.18C720.22,848.77 687.47,763.41 654.83,678.01C538.24,677.99 421.64,678.01 305.05,678C274.3,763.3 243.71,848.66 213.1,934.01C211.58,939.76 207.56,944.86 202.02,947.16C198.77,948.07 195.45,949.03 192.05,949.02C152.04,948.95 112.02,949.08 72.01,948.95C67.62,948.19 62.77,947.75 59.24,944.75C54.54,941.45 52.79,935.62 52.34,930.17C53.45,922.58 56.81,915.63 59.42,908.5C171.52,615.6 283.66,322.72 395.75,29.83C397.63,25.32 401.05,21.16 405.76,19.48M475.6,197.97C465.58,237.49 452.91,276.3 438.62,314.47C422.44,357.99 406.29,401.53 390.12,445.05C377.78,478.64 364.99,512.07 352.92,545.75C436.66,545.72 520.4,545.75 604.14,545.74C603.23,541.64 601.37,537.85 600.01,533.91C572.83,461.42 545.65,388.94 518.42,316.47C504.68,280.24 491.45,243.81 479.12,207.07C477.99,204.02 477.41,200.72 475.6,197.97Z" />
++</vector>
+diff --git a/packages/SystemUI/res/layout/switch_mode.xml b/packages/SystemUI/res/layout/switch_mode.xml
+new file mode 100644
+index 00000000000..0475573bca6
+--- /dev/null
++++ b/packages/SystemUI/res/layout/switch_mode.xml
+@@ -0,0 +1,30 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Copyright (C) 2016 The Android Open Source Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++
++<com.android.systemui.statusbar.policy.KeyButtonView
++    xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:systemui="http://schemas.android.com/apk/res-auto"
++    android:id="@+id/switch_mode"
++    android:layout_width="@dimen/navigation_key_width"
++    android:layout_height="match_parent"
++    android:layout_weight="0"
++    systemui:keyCode="0"
++    android:scaleType="center"
++    android:contentDescription="@string/accessibility_switch_mode"
++    android:paddingStart="@dimen/navigation_key_padding"
++    android:paddingEnd="@dimen/navigation_key_padding"
++    />
++
+diff --git a/packages/SystemUI/res/values-sw400dp/config.xml b/packages/SystemUI/res/values-sw400dp/config.xml
+index be18f2cfe0d..59a6f230304 100644
+--- a/packages/SystemUI/res/values-sw400dp/config.xml
++++ b/packages/SystemUI/res/values-sw400dp/config.xml
+@@ -22,6 +22,6 @@
+ <resources>
+ 
+     <!-- Nav bar button default ordering/layout -->
+-    <string name="config_navBarLayout" translatable="false">left;volume_sub,back,home,recent,volume_add,refresh,screenshot;right</string>
++    <string name="config_navBarLayout" translatable="false">left;volume_sub,back,home,recent,volume_add,refresh,switch_mode,screenshot;right</string>
+ 
+ </resources>
+diff --git a/packages/SystemUI/res/values-sw600dp/config.xml b/packages/SystemUI/res/values-sw600dp/config.xml
+index f4dd9609c05..e799040931d 100644
+--- a/packages/SystemUI/res/values-sw600dp/config.xml
++++ b/packages/SystemUI/res/values-sw600dp/config.xml
+@@ -27,7 +27,7 @@
+     <integer name="quick_settings_user_time_settings_tile_span">1</integer>
+ 
+     <!-- Nav bar button default ordering/layout -->
+-    <string name="config_navBarLayout" translatable="false">left;volume_sub,back,home,recent,volume_add,refresh,screenshot;right</string>
++    <string name="config_navBarLayout" translatable="false">left;volume_sub,back,home,recent,volume_add,refresh,switch_mode,screenshot;right</string>
+ 
+     <!-- Animation duration when using long press on recents to dock -->
+     <integer name="long_press_dock_anim_duration">290</integer>
+diff --git a/packages/SystemUI/res/values/config.xml b/packages/SystemUI/res/values/config.xml
+index 2f099c41873..e0e017cfd93 100644
+--- a/packages/SystemUI/res/values/config.xml
++++ b/packages/SystemUI/res/values/config.xml
+@@ -317,7 +317,7 @@
+     </string-array>
+ 
+     <!-- Nav bar button default ordering/layout -->
+-    <string name="config_navBarLayout" translatable="false">left[.5W];volume_sub,back,home,recent,volume_add,refresh,screenshot;right[.5W]</string>
++    <string name="config_navBarLayout" translatable="false">left[.5W];volume_sub,back,home,recent,volume_add,refresh,switch_mode,screenshot;right[.5W]</string>
+     <string name="config_navBarLayoutQuickstep" translatable="false">back[1.7WC];home;contextual[1.7WC]</string>
+     <string name="config_navBarLayoutHandle" translatable="false">back[40AC];home_handle;ime_switcher[40AC]</string>
+ 
+diff --git a/packages/SystemUI/res/values/strings.xml b/packages/SystemUI/res/values/strings.xml
+index 38e5b69c226..e6280241b19 100644
+--- a/packages/SystemUI/res/values/strings.xml
++++ b/packages/SystemUI/res/values/strings.xml
+@@ -306,6 +306,7 @@
+     <string name="accessibility_back">Back</string>
+ 
+     <string name="accessibility_refresh">Refresh</string>
++    <string name="accessibility_switch_mode">Switch mode</string>
+     <!-- Content description of the home button for accessibility (not shown on the screen). [CHAR LIMIT=NONE] -->
+     <string name="accessibility_home">Home</string>
+     <!-- Content description of the menu button for accessibility (not shown on the screen). [CHAR LIMIT=NONE] -->
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
+index 8ccf1fbdbca..58bf9f64ebc 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
+@@ -234,6 +234,7 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+     private boolean mShowOrientedHandleForImmersiveMode;
+     private static EinkManager mEinkManager;
+     private long mLastClickScreenshotTime = 0;
++    private String mPreMode = null;
+ 
+     @com.android.internal.annotations.VisibleForTesting
+     public enum NavBarActionEvent implements UiEventLogger.UiEventEnum {
+@@ -1010,18 +1011,19 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+ 
+         ButtonDispatcher backButton = mNavigationBarView.getBackButton();
+         backButton.setLongClickable(true);
++        ButtonDispatcher refreshButton = mNavigationBarView.getRefreshButton();
++        ButtonDispatcher switchModeButton = mNavigationBarView.getSwitchModeButton();
+         if (getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)) {
+-            ButtonDispatcher refreshButton = mNavigationBarView.getRefreshButton();
+             refreshButton.setLongClickable(true);
+             refreshButton.setOnClickListener(this:: onRefreshClick);
+             refreshButton.setOnTouchListener(this:: onRefreshTouch);
+             refreshButton.setVisibility(View.VISIBLE);
++            switchModeButton.setLongClickable(true);
++            switchModeButton.setOnClickListener(this:: onSwitchModeClick);
++            switchModeButton.setVisibility(View.VISIBLE);
+         } else {
+-            ButtonDispatcher refreshButton = mNavigationBarView.getRefreshButton();
+-            refreshButton.setLongClickable(true);
+-            refreshButton.setOnClickListener(this:: onRefreshClick);
+-            refreshButton.setOnTouchListener(this:: onRefreshTouch);
+             refreshButton.setVisibility(View.GONE);
++            switchModeButton.setVisibility(View.GONE);
+         }
+         ButtonDispatcher homeButton = mNavigationBarView.getHomeButton();
+         homeButton.setOnTouchListener(this::onHomeTouch);
+@@ -1077,6 +1079,18 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+             onRefreshRepaintEverything();
+     }
+ 
++    private void onSwitchModeClick(View v) {
++        if(mEinkManager != null){
++            String curMode = mEinkManager.getMode();
++            if(!EinkManager.EinkMode.EPD_A2.equals(curMode)){
++                mPreMode = curMode;
++                mEinkManager.setMode(EinkManager.EinkMode.EPD_A2);
++            } else if(mPreMode != null){
++                mEinkManager.setMode(mPreMode);
++            }
++        }
++    }
++
+     private boolean onHomeTouch(View v, MotionEvent event) {
+         if (mHomeBlockedThisTouch && event.getActionMasked() != MotionEvent.ACTION_DOWN) {
+             return true;
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarInflaterView.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarInflaterView.java
+index 2d6416c7e1a..59dac593b8f 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarInflaterView.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarInflaterView.java
+@@ -67,6 +67,7 @@ public class NavigationBarInflaterView extends FrameLayout
+     public static final String SCREENSHOT = "screenshot";
+     public static final String VOLUME_ADD = "volume_add";
+     public static final String REFRESH = "refresh";
++    public static final String SWITCH_MODE = "switch_mode";
+     public static final String VOLUME_SUB = "volume_sub";
+ 
+     public static final String GRAVITY_SEPARATOR = ";";
+@@ -406,6 +407,8 @@ public class NavigationBarInflaterView extends FrameLayout
+             v = inflater.inflate(R.layout.volume_add, parent, false);
+         } else if (REFRESH.equals(button)) {
+             v = inflater.inflate(R.layout.refresh, parent, false);
++        } else if (SWITCH_MODE.equals(button)) {
++            v = inflater.inflate(R.layout.switch_mode, parent, false);
+         } else if (VOLUME_SUB.equals(button)) {
+             v = inflater.inflate(R.layout.volume_sub, parent, false);
+         } else if (button.startsWith(KEY)) {
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarView.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarView.java
+index d3cf15ec295..0342e2e18dd 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarView.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarView.java
+@@ -129,6 +129,7 @@ public class NavigationBarView extends FrameLayout implements
+     private KeyButtonDrawable mRefreshIcon;
+     private KeyButtonDrawable mVolumeSubIcon;
+     private KeyButtonDrawable mScreenshotIcon;
++    private KeyButtonDrawable mSwitchModeIcon;
+ 
+     private EdgeBackGestureHandler mEdgeBackGestureHandler;
+     private final DeadZone mDeadZone;
+@@ -338,6 +339,7 @@ public class NavigationBarView extends FrameLayout implements
+         mButtonDispatchers.put(R.id.screenshot, new ButtonDispatcher(R.id.screenshot));
+         mButtonDispatchers.put(R.id.volume_add, new ButtonDispatcher(R.id.volume_add));
+         mButtonDispatchers.put(R.id.refresh, new ButtonDispatcher(R.id.refresh));
++        mButtonDispatchers.put(R.id.switch_mode, new ButtonDispatcher(R.id.switch_mode));
+         mButtonDispatchers.put(R.id.volume_sub, new ButtonDispatcher(R.id.volume_sub));
+         mDeadZone = new DeadZone(this);
+ 
+@@ -491,6 +493,10 @@ public class NavigationBarView extends FrameLayout implements
+         return mButtonDispatchers.get(R.id.refresh);
+     }
+ 
++    public ButtonDispatcher getSwitchModeButton() {
++        return mButtonDispatchers.get(R.id.switch_mode);
++    }
++
+     public ButtonDispatcher getVolumeSubButton() {
+         return mButtonDispatchers.get(R.id.volume_sub);
+     }
+@@ -540,6 +546,7 @@ public class NavigationBarView extends FrameLayout implements
+             mBackIcon = getBackDrawable();
+         }
+         mRefreshIcon = getDrawable(R.drawable.ic_sysbar_refresh_button);
++        mSwitchModeIcon = getDrawable(R.drawable.ic_sysbar_switch_mode_button);
+         mVolumeAddIcon = getDrawable(R.drawable.ic_sysbar_volume_add_button);
+         mVolumeSubIcon = getDrawable(R.drawable.ic_sysbar_volume_sub_button);
+         mScreenshotIcon = getDrawable(R.drawable.ic_sysbar_capture_button);
+@@ -697,6 +704,7 @@ public class NavigationBarView extends FrameLayout implements
+         getHomeButton().setImageDrawable(homeIcon);
+         getBackButton().setImageDrawable(backIcon);
+         getRefreshButton().setImageDrawable(mRefreshIcon);
++        getSwitchModeButton().setImageDrawable(mSwitchModeIcon);
+         getVolumeAddButton().setImageDrawable(mVolumeAddIcon);
+         getVolumeSubButton().setImageDrawable(mVolumeSubIcon);
+         getScreenshotButton().setImageDrawable(mScreenshotIcon);
+-- 
+2.35.1
+

@@ -1,0 +1,78 @@
+From f2a59eba955ec7ddb6721260438c322967fb0b86 Mon Sep 17 00:00:00 2001
+From: ZhuangXiaoLiang <zhuangxl@rock-chips.com>
+Date: Thu, 6 Jul 2017 20:14:56 +0800
+Subject: [PATCH 01/36] Add perform operation commands for rk gralloc. From:
+ commit 4e9596c.
+
+Change-Id: I970b714942f979dd8d16bcc4e231219f3f36a225
+Signed-off-by: cw <cw@rock-chips.com>
+---
+ include/hardware/gralloc.h | 52 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 52 insertions(+)
+
+diff --git a/include/hardware/gralloc.h b/include/hardware/gralloc.h
+index 5dafea02..8cb8f422 100644
+--- a/include/hardware/gralloc.h
++++ b/include/hardware/gralloc.h
+@@ -144,6 +144,58 @@ enum {
+     GRALLOC_USAGE_PRIVATE_MASK          = 0xF0000000U,
+ };
+ 
++/**
++ * perform operation commands for rk gralloc.
++ * Helpers for using the non-type-safe perform() extension functions. Use
++ * these helpers instead of calling perform() directly in your application.
++ */
++enum {
++  /****************Implement****************/
++  GRALLOC_MODULE_PERFORM_GET_HADNLE_PRIME_FD       = 0x08100002,
++  GRALLOC_MODULE_PERFORM_GET_HADNLE_ATTRIBUTES     = 0x08100004,
++  GRALLOC_MODULE_PERFORM_GET_INTERNAL_FORMAT       = 0x08100006,
++  GRALLOC_MODULE_PERFORM_GET_HADNLE_WIDTH          = 0x08100008,
++  GRALLOC_MODULE_PERFORM_GET_HADNLE_HEIGHT         = 0x0810000A,
++  GRALLOC_MODULE_PERFORM_GET_HADNLE_STRIDE         = 0x0810000C,
++  GRALLOC_MODULE_PERFORM_GET_HADNLE_BYTE_STRIDE    = 0x0810000E,
++  GRALLOC_MODULE_PERFORM_GET_HADNLE_FORMAT         = 0x08100010,
++  GRALLOC_MODULE_PERFORM_GET_HADNLE_SIZE           = 0x08100012,
++
++  /* perform(const struct gralloc_module_t *mod,
++   *     int op,
++   *     buffer_handle_t buffer,
++   *     int *usage);
++   */
++  GRALLOC_MODULE_PERFORM_GET_USAGE = 0x0feeff03,
++
++
++  /****************Not Implement****************/
++  GRALLOC_MODULE_PERFORM_GET_DRM_FD                = 0x08000002,
++  /* perform(const struct gralloc_module_t *mod,
++   *       int op,
++   *       int drm_fd,
++   *       buffer_handle_t buffer,
++   *       struct hwc_drm_bo *bo);
++   */
++  GRALLOC_MODULE_PERFORM_DRM_IMPORT = 0xffeeff00,
++
++  /* perform(const struct gralloc_module_t *mod,
++   *       int op,
++   *       buffer_handle_t buffer,
++   *       void (*free_callback)(void *),
++   *       void *priv);
++   */
++  GRALLOC_MODULE_PERFORM_SET_IMPORTER_PRIVATE = 0xffeeff01,
++
++  /* perform(const struct gralloc_module_t *mod,
++   *       int op,
++   *       buffer_handle_t buffer,
++   *       void (*free_callback)(void *),
++   *       void **priv);
++   */
++  GRALLOC_MODULE_PERFORM_GET_IMPORTER_PRIVATE = 0xffeeff02,
++};
++
+ /*****************************************************************************/
+ 
+ /**
+-- 
+2.35.1
+

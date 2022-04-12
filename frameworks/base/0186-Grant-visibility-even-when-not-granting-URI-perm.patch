@@ -1,0 +1,128 @@
+From cc051fe9cfb890030b2972ec369d6115d35ba360 Mon Sep 17 00:00:00 2001
+From: Patrick Baumann <patb@google.com>
+Date: Wed, 22 Jul 2020 11:48:57 -0700
+Subject: [PATCH 186/297] Grant visibility even when not granting URI perm
+
+This change modifies the flow of uri permission grants to ensure that
+even when we're not granting URI permissions, we still take the
+opportunity to grant app visibility.
+
+This change also re-grants visibility based on any persisted URI grants
+at boot time.
+
+Bug: 161912313
+Bug: 161721834
+Change-Id: I077b263fc3dc01f3505c39fc0e36d3419bab3c5f
+(cherry picked from commit 9406f1dea8be7f1a72738990f536480bdf488a7c)
+---
+ .../server/uri/UriGrantsManagerService.java   |  9 +++++++++
+ .../uri/UriGrantsManagerServiceTest.java      | 19 +++++++++++++++++++
+ 2 files changed, 28 insertions(+)
+
+diff --git a/services/core/java/com/android/server/uri/UriGrantsManagerService.java b/services/core/java/com/android/server/uri/UriGrantsManagerService.java
+index 4b3ddd856c6..f14c3a53940 100644
+--- a/services/core/java/com/android/server/uri/UriGrantsManagerService.java
++++ b/services/core/java/com/android/server/uri/UriGrantsManagerService.java
+@@ -51,6 +51,7 @@ import android.app.AppGlobals;
+ import android.app.GrantedUriPermission;
+ import android.app.IUriGrantsManager;
+ import android.content.ClipData;
++import android.content.ComponentName;
+ import android.content.ContentProvider;
+ import android.content.ContentResolver;
+ import android.content.Context;
+@@ -698,6 +699,11 @@ public class UriGrantsManagerService extends IUriGrantsManager.Stub {
+                                 final UriPermission perm = findOrCreateUriPermissionLocked(
+                                         sourcePkg, targetPkg, targetUid, grantUri);
+                                 perm.initPersistedModes(modeFlags, createdTime);
++                                mPmInternal.grantImplicitAccess(
++                                        targetUserId, null,
++                                        UserHandle.getAppId(targetUid),
++                                        pi.applicationInfo.uid,
++                                        false /* direct */);
+                             }
+                         } else {
+                             Slog.w(TAG, "Persisted grant for " + uri + " had source " + sourcePkg
+@@ -1171,6 +1177,9 @@ public class UriGrantsManagerService extends IUriGrantsManager.Stub {
+             // grant, we can skip generating any bookkeeping; when any advanced
+             // features have been requested, we proceed below to make sure the
+             // provider supports granting permissions
++            mPmInternal.grantImplicitAccess(
++                    UserHandle.getUserId(targetUid), null,
++                    UserHandle.getAppId(targetUid), pi.applicationInfo.uid, false);
+             return -1;
+         }
+ 
+diff --git a/services/tests/servicestests/src/com/android/server/uri/UriGrantsManagerServiceTest.java b/services/tests/servicestests/src/com/android/server/uri/UriGrantsManagerServiceTest.java
+index 62b6a65cc6c..614949c91b9 100644
+--- a/services/tests/servicestests/src/com/android/server/uri/UriGrantsManagerServiceTest.java
++++ b/services/tests/servicestests/src/com/android/server/uri/UriGrantsManagerServiceTest.java
+@@ -43,11 +43,19 @@ import static org.junit.Assert.assertFalse;
+ import static org.junit.Assert.assertNull;
+ import static org.junit.Assert.assertTrue;
+ import static org.junit.Assert.fail;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.anyBoolean;
++import static org.mockito.ArgumentMatchers.anyInt;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.ArgumentMatchers.isNull;
++import static org.mockito.Mockito.never;
++import static org.mockito.Mockito.verify;
+ 
+ import android.content.ClipData;
+ import android.content.Intent;
+ import android.content.pm.ProviderInfo;
+ import android.net.Uri;
++import android.os.UserHandle;
+ import android.util.ArraySet;
+ 
+ import androidx.test.InstrumentationRegistry;
+@@ -62,6 +70,12 @@ public class UriGrantsManagerServiceTest {
+     private UriGrantsMockContext mContext;
+     private UriGrantsManagerInternal mService;
+ 
++    // we expect the following only during grant if a grant is expected
++    private void verifyNoVisibilityGrant() {
++        verify(mContext.mPmInternal, never())
++                .grantImplicitAccess(anyInt(), any(), anyInt(), anyInt(), anyBoolean());
++    }
++
+     @Before
+     public void setUp() throws Exception {
+         mContext = new UriGrantsMockContext(InstrumentationRegistry.getContext());
+@@ -83,6 +97,7 @@ public class UriGrantsManagerServiceTest {
+         assertEquals(UID_PRIMARY_SOCIAL, needed.targetUid);
+         assertEquals(FLAG_READ, needed.flags);
+         assertEquals(asSet(expectedGrant), needed.uris);
++        verifyNoVisibilityGrant();
+     }
+ 
+     /**
+@@ -100,6 +115,7 @@ public class UriGrantsManagerServiceTest {
+         assertEquals(UID_SECONDARY_SOCIAL, needed.targetUid);
+         assertEquals(FLAG_READ, needed.flags);
+         assertEquals(asSet(expectedGrant), needed.uris);
++        verifyNoVisibilityGrant();
+     }
+ 
+     /**
+@@ -111,6 +127,8 @@ public class UriGrantsManagerServiceTest {
+         final NeededUriGrants needed = mService.checkGrantUriPermissionFromIntent(
+                 intent, UID_PRIMARY_PUBLIC, PKG_SOCIAL, USER_PRIMARY);
+         assertNull(needed);
++        verify(mContext.mPmInternal).grantImplicitAccess(eq(USER_PRIMARY), isNull(), eq(
++                UserHandle.getAppId(UID_PRIMARY_SOCIAL)), eq(UID_PRIMARY_PUBLIC), eq(false));
+     }
+ 
+     /**
+@@ -128,6 +146,7 @@ public class UriGrantsManagerServiceTest {
+         assertEquals(UID_SECONDARY_SOCIAL, needed.targetUid);
+         assertEquals(FLAG_READ, needed.flags);
+         assertEquals(asSet(expectedGrant), needed.uris);
++        verifyNoVisibilityGrant();
+     }
+ 
+     /**
+-- 
+2.35.1
+

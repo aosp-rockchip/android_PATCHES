@@ -1,0 +1,728 @@
+From df18614225808e2cbddd07af3fd609faa2fab3cd Mon Sep 17 00:00:00 2001
+From: Alex Zhao <zzc@rock-chips.com>
+Date: Tue, 1 Sep 2020 10:27:15 +0800
+Subject: [PATCH 03/13] Initial commit for android11
+
+Signed-off-by: Alex Zhao <zzc@rock-chips.com>
+Change-Id: Ie037432a9a0990ed26f251bf05089b0894d9ef82
+---
+ libwifi_hal/Android.bp                        |  35 ++
+ libwifi_hal/Android.mk                        |   5 +-
+ libwifi_hal/include/hardware_legacy/rk_wifi.h |  31 ++
+ libwifi_hal/rk_wifi_ctrl.cpp                  | 160 ++++++++++
+ libwifi_hal/wifi_hal_common.cpp               | 302 +++++++++++++++---
+ libwifi_system/supplicant_manager.cpp         |   1 +
+ .../android/server/wifi/ClientModeImpl.java   |   2 +-
+ 7 files changed, 490 insertions(+), 46 deletions(-)
+ create mode 100755 libwifi_hal/Android.bp
+ mode change 100644 => 100755 libwifi_hal/Android.mk
+ create mode 100755 libwifi_hal/include/hardware_legacy/rk_wifi.h
+ create mode 100755 libwifi_hal/rk_wifi_ctrl.cpp
+ mode change 100644 => 100755 libwifi_hal/wifi_hal_common.cpp
+
+diff --git a/libwifi_hal/Android.bp b/libwifi_hal/Android.bp
+new file mode 100755
+index 000000000..4e04435b4
+--- /dev/null
++++ b/libwifi_hal/Android.bp
+@@ -0,0 +1,35 @@
++// Copyright (C) 2016 The Android Open Source Project
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//      http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++wifi_hal_cflags = [
++    "-Wall",
++    "-Werror",
++    "-Wextra",
++    "-Winit-self",
++    "-Wno-unused-function",
++    "-Wno-unused-parameter",
++    "-Wshadow",
++    "-Wunused-variable",
++    "-Wwrite-strings",
++]
++
++cc_library_shared {
++    name: "librkwifi-ctrl",
++    vendor: true,
++    cflags: wifi_hal_cflags,
++    local_include_dirs: ["include"],
++    shared_libs: ["libbase"],
++    header_libs: ["libcutils_headers"],
++    srcs: ["rk_wifi_ctrl.cpp"],
++}
+diff --git a/libwifi_hal/Android.mk b/libwifi_hal/Android.mk
+old mode 100644
+new mode 100755
+index 7bdbc3259..ba22df160
+--- a/libwifi_hal/Android.mk
++++ b/libwifi_hal/Android.mk
+@@ -66,7 +66,7 @@ include $(CLEAR_VARS)
+ LOCAL_MODULE := libwifi-hal-common
+ LOCAL_VENDOR_MODULE := true
+ LOCAL_CFLAGS := $(wifi_hal_cflags)
+-LOCAL_C_INCLUDES := $(LOCAL_PATH)/include
++LOCAL_C_INCLUDES := $(LOCAL_PATH)/include system/core/include
+ LOCAL_SHARED_LIBRARIES := libbase
+ LOCAL_HEADER_LIBRARIES := libcutils_headers
+ LOCAL_SRC_FILES := wifi_hal_common.cpp
+@@ -90,6 +90,8 @@ VENDOR_LOCAL_SHARED_LIBRARIES :=
+ ifeq ($(BOARD_WLAN_DEVICE), bcmdhd)
+   LIB_WIFI_HAL := libwifi-hal-bcm
+   VENDOR_LOCAL_SHARED_LIBRARIES := libcrypto
++else ifeq ($(BOARD_WLAN_DEVICE), ssv)
++  LIB_WIFI_HAL := libwifi-hal-ssv
+ else ifeq ($(BOARD_WLAN_DEVICE), qcwcn)
+   LIB_WIFI_HAL := libwifi-hal-qcom
+   VENDOR_LOCAL_SHARED_LIBRARIES := libcld80211
+@@ -124,6 +126,7 @@ LOCAL_SHARED_LIBRARIES := \
+     liblog \
+     libnl \
+     libutils \
++    librkwifi-ctrl \
+     $(VENDOR_LOCAL_SHARED_LIBRARIES)
+ LOCAL_SRC_FILES := \
+     driver_tool.cpp \
+diff --git a/libwifi_hal/include/hardware_legacy/rk_wifi.h b/libwifi_hal/include/hardware_legacy/rk_wifi.h
+new file mode 100755
+index 000000000..77266fdde
+--- /dev/null
++++ b/libwifi_hal/include/hardware_legacy/rk_wifi.h
+@@ -0,0 +1,31 @@
++/*
++ * Copyright (C) 2016 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef HARDWARE_LEGACY_RK_WIFI_H
++#define HARDWARE_LEGACY_RK_WIFI_H
++
++#ifdef __cplusplus
++extern "C"
++{
++#endif /* __cplusplus */
++
++int check_wifi_chip_type_string(char *type);
++
++#ifdef __cplusplus
++}
++#endif /* __cplusplus */
++
++#endif  /* HARDWARE_LEGACY_WIFI_H */
+diff --git a/libwifi_hal/rk_wifi_ctrl.cpp b/libwifi_hal/rk_wifi_ctrl.cpp
+new file mode 100755
+index 000000000..3ca549900
+--- /dev/null
++++ b/libwifi_hal/rk_wifi_ctrl.cpp
+@@ -0,0 +1,160 @@
++/*
++ * Copyright 2016, The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#include "hardware_legacy/rk_wifi.h"
++
++#include <fcntl.h>
++#include <stdlib.h>
++#include <dirent.h>
++#include <sys/stat.h>
++#include <unistd.h>
++#include <errno.h>
++#include <sys/syscall.h>
++
++#include <android-base/logging.h>
++#include <cutils/misc.h>
++#include <cutils/properties.h>
++//#include <private/android_filesystem_config.h>
++
++static int identify_sucess = -1;
++static char recoginze_wifi_chip[64];
++static const char USB_DIR[] = "/sys/bus/usb/devices";
++static const char SDIO_DIR[]= "/sys/bus/sdio/devices";
++static const char PCIE_DIR[]= "/sys/bus/pci/devices";
++static const char PREFIX_SDIO[] = "SDIO_ID=";
++static const char PREFIX_PCIE[] = "PCI_ID=";
++static const char PREFIX_USB[] = "PRODUCT=";
++
++static int invalid_wifi_device_id = -1;
++
++typedef struct _wifi_devices
++{
++  char wifi_name[64];
++  char wifi_vid_pid[64];
++} wifi_device;
++
++static wifi_device supported_wifi_devices[] = {
++	{"RTL8188EU",	"0bda:8179"},
++	{"RTL8188EU",	"0bda:0179"},
++	{"RTL8723BU",	"0bda:b720"},
++	{"RTL8723BS",	"024c:b723"},
++	{"RTL8822BS",	"024c:b822"},
++	{"RTL8723CS",	"024c:b703"},
++	{"RTL8723DS",	"024c:d723"},
++	{"RTL8188FU",	"0bda:f179"},
++	{"RTL8822BU",	"0bda:b82c"},
++	{"RTL8189ES",	"024c:8179"},
++	{"RTL8189FS",	"024c:f179"},
++	{"RTL8192DU",	"0bda:8194"},
++	{"RTL8812AU",	"0bda:8812"},
++	{"SSV6051",	"3030:3030"},
++	{"ESP8089",	"6666:1111"},
++	{"AP6354",	"02d0:4354"},
++	{"AP6330",	"02d0:4330"},
++	{"AP6356S",	"02d0:4356"},
++	{"AP6335",	"02d0:4335"},
++	{"AP6255",      "02d0:a9bf"},
++	{"RTL8822BE",	"10ec:b822"},
++	{"MVL88W8977",	"02df:9145"},
++	{"SPRDWL",	"0000:0000"},
++};
++
++int get_wifi_device_id(const char *bus_dir, const char *prefix)
++{
++	int idnum;
++	int i = 0;
++	int ret = invalid_wifi_device_id;
++	DIR *dir;
++	struct dirent *next;
++	FILE *fp = NULL;
++	idnum = sizeof(supported_wifi_devices) / sizeof(supported_wifi_devices[0]);
++	dir = opendir(bus_dir);
++	if (!dir) {
++		PLOG(ERROR) << "open dir failed:" << strerror(errno);
++		return invalid_wifi_device_id;
++	}
++
++	while ((next = readdir(dir)) != NULL) {
++		char line[256];
++		char uevent_file[256] = {0};
++		sprintf(uevent_file, "%s/%s/uevent", bus_dir, next->d_name);
++		PLOG(DEBUG) << "uevent path:" << uevent_file;
++		fp = fopen(uevent_file, "r");
++		if (NULL == fp) {
++			continue;
++		}
++
++		while (fgets(line, sizeof(line), fp)) {
++			char *pos = NULL;
++			int product_vid = 0;
++			int product_did = 0;
++			int producd_bcddev = 0;
++			char temp[10] = {0};
++			pos = strstr(line, prefix);
++			PLOG(DEBUG) << "line:" << line << ", prefix:" << prefix << ".";
++			if (pos != NULL) {
++				if (strncmp(bus_dir, USB_DIR, sizeof(USB_DIR)) == 0)
++					sscanf(pos + 8, "%x/%x/%x", &product_vid, &product_did, &producd_bcddev);
++				else if (strncmp(bus_dir, SDIO_DIR, sizeof(SDIO_DIR)) == 0)
++					sscanf(pos + 8, "%x:%x", &product_vid, &product_did);
++				else if (strncmp(bus_dir, PCIE_DIR, sizeof(PCIE_DIR)) == 0)
++					sscanf(pos + 7, "%x:%x", &product_vid, &product_did);
++				else
++					return invalid_wifi_device_id;
++
++				sprintf(temp, "%04x:%04x", product_vid, product_did);
++				PLOG(DEBUG) << "pid:vid :" << temp;
++				for (i = 0; i < idnum; i++) {
++					if (0 == strncmp(temp, supported_wifi_devices[i].wifi_vid_pid, 9)) {
++						PLOG(ERROR) << "found device pid:vid :" << temp;
++						strcpy(recoginze_wifi_chip, supported_wifi_devices[i].wifi_name);
++						identify_sucess = 1 ;
++						ret = 0;
++						fclose(fp);
++						goto ready;
++					}
++				}
++			}
++		}
++		fclose(fp);
++	}
++
++	ret = invalid_wifi_device_id;
++ready:
++	closedir(dir);
++	PLOG(DEBUG) << "wifi detectd return ret:" << ret;
++	return ret;
++}
++int check_wifi_chip_type_string(char *type)
++{
++	if (identify_sucess == -1) {
++		if (get_wifi_device_id(SDIO_DIR, PREFIX_SDIO) == 0)
++			PLOG(DEBUG) << "SDIO WIFI identify sucess";
++		else if (get_wifi_device_id(USB_DIR, PREFIX_USB) == 0)
++			PLOG(DEBUG) << "USB WIFI identify sucess";
++		else if (get_wifi_device_id(PCIE_DIR, PREFIX_PCIE) == 0)
++			PLOG(DEBUG) << "PCIE WIFI identify sucess";
++		else {
++			PLOG(DEBUG) << "maybe there is no usb wifi or sdio or pcie wifi,set default wifi module Brocom APXXX";
++			strcpy(recoginze_wifi_chip, "APXXX");
++			identify_sucess = 1 ;
++		}
++	}
++
++	strcpy(type, recoginze_wifi_chip);
++	PLOG(ERROR) << "check_wifi_chip_type_string : " << type;
++	return 0;
++}
+diff --git a/libwifi_hal/wifi_hal_common.cpp b/libwifi_hal/wifi_hal_common.cpp
+old mode 100644
+new mode 100755
+index 0d8e0fbe0..ff16305da
+--- a/libwifi_hal/wifi_hal_common.cpp
++++ b/libwifi_hal/wifi_hal_common.cpp
+@@ -18,15 +18,64 @@
+ 
+ #include <fcntl.h>
+ #include <stdlib.h>
++#include <dirent.h>
++#include <sys/stat.h>
+ #include <unistd.h>
++#include <errno.h>
++#include <sys/syscall.h>
+ 
+ #include <android-base/logging.h>
+ #include <cutils/misc.h>
+ #include <cutils/properties.h>
+-#include <sys/syscall.h>
++#include <private/android_filesystem_config.h>
+ 
+ extern "C" int init_module(void *, unsigned long, const char *);
+ extern "C" int delete_module(const char *, unsigned int);
++#define WIFI_MODULE_PATH		"/vendor/lib/modules/"
++#define RTL8188EU_DRIVER_MODULE_PATH	 WIFI_MODULE_PATH"8188eu.ko"
++#define RTL8723BU_DRIVER_MODULE_PATH 	 WIFI_MODULE_PATH"8723bu.ko"
++#define RTL8723BS_DRIVER_MODULE_PATH	 WIFI_MODULE_PATH"8723bs.ko"
++#define RTL8723BS_VQ0_DRIVER_MODULE_PATH WIFI_MODULE_PATH"8723bs-vq0.ko"
++#define RTL8723CS_DRIVER_MODULE_PATH	 WIFI_MODULE_PATH"8723cs.ko"
++#define RTL8723DS_DRIVER_MODULE_PATH	 WIFI_MODULE_PATH"8723ds.ko"
++#define RTL8188FU_DRIVER_MODULE_PATH	 WIFI_MODULE_PATH"8188fu.ko"
++#define RTL8822BU_DRIVER_MODULE_PATH	 WIFI_MODULE_PATH"8822bu.ko"
++#define RTL8822BS_DRIVER_MODULE_PATH	 WIFI_MODULE_PATH"8822bs.ko"
++#define RTL8189ES_DRIVER_MODULE_PATH	 WIFI_MODULE_PATH"8189es.ko"
++#define RTL8189FS_DRIVER_MODULE_PATH	 WIFI_MODULE_PATH"8189fs.ko"
++#define RTL8192DU_DRIVER_MODULE_PATH	 WIFI_MODULE_PATH"8192du.ko"
++#define RTL8812AU_DRIVER_MODULE_PATH	 WIFI_MODULE_PATH"8812au.ko"
++#define RTL8822BE_DRIVER_MODULE_PATH	 WIFI_MODULE_PATH"8822be.ko"
++#define SSV6051_DRIVER_MODULE_PATH  	 WIFI_MODULE_PATH"ssv6051.ko"
++#define ESP8089_DRIVER_MODULE_PATH  	 WIFI_MODULE_PATH"esp8089.ko"
++#define BCM_DRIVER_MODULE_PATH      	 WIFI_MODULE_PATH"bcmdhd.ko"
++#define MLAN_DRIVER_MODULE_PATH      	 WIFI_MODULE_PATH"mlan.ko"
++#define MVL_DRIVER_MODULE_PATH      	 WIFI_MODULE_PATH"sd8xxx.ko"
++#define RK912_DRIVER_MODULE_PATH         WIFI_MODULE_PATH"rk912.ko"
++#define SPRDWL_DRIVER_MODULE_PATH	 WIFI_MODULE_PATH"sprdwl_ng.ko"
++#define DRIVER_MODULE_PATH_UNKNOW   	 ""
++
++#define RTL8188EU_DRIVER_MODULE_NAME	 "8188eu"
++#define RTL8723BU_DRIVER_MODULE_NAME	 "8723bu"
++#define RTL8723BS_DRIVER_MODULE_NAME	 "8723bs"
++#define RTL8723BS_VQ0_DRIVER_MODULE_NAME "8723bs-vq0"
++#define RTL8723CS_DRIVER_MODULE_NAME	 "8723cs"
++#define RTL8723DS_DRIVER_MODULE_NAME	 "8723ds"
++#define RTL8188FU_DRIVER_MODULE_NAME	 "8188fu"
++#define RTL8822BU_DRIVER_MODULE_NAME	 "8822bu"
++#define RTL8822BS_DRIVER_MODULE_NAME	 "8822bs"
++#define RTL8189ES_DRIVER_MODULE_NAME	 "8189es"
++#define RTL8189FS_DRIVER_MODULE_NAME	 "8189fs"
++#define RTL8192DU_DRIVER_MODULE_NAME	 "8192du"
++#define RTL8812AU_DRIVER_MODULE_NAME	 "8812au"
++#define RTL8822BE_DRIVER_MODULE_NAME	 "8822be"
++#define SSV6051_DRIVER_MODULE_NAME  	 "ssv6051"
++#define ESP8089_DRIVER_MODULE_NAME  	 "esp8089"
++#define BCM_DRIVER_MODULE_NAME      	 "bcmdhd"
++#define MVL_DRIVER_MODULE_NAME      	 "sd8xxx"
++#define RK912_DRIVER_MODULE_NAME         "rk912"
++#define SPRDWL_DRIVER_MODULE_NAME	 "sprdwl"
++#define DRIVER_MODULE_NAME_UNKNOW   	 ""
+ 
+ #ifndef WIFI_DRIVER_FW_PATH_STA
+ #define WIFI_DRIVER_FW_PATH_STA NULL
+@@ -43,15 +92,149 @@ extern "C" int delete_module(const char *, unsigned int);
+ #endif
+ 
+ static const char DRIVER_PROP_NAME[] = "wlan.driver.status";
+-static bool is_driver_loaded = false;
++
++
++#ifndef WIFI_DRIVER_MODULE_PATH
++#define WIFI_DRIVER_MODULE_PATH		"/vendor/lib/modules/none"
++#endif
++#ifndef WIFI_DRIVER_MODULE_NAME
++#define WIFI_DRIVER_MODULE_NAME    "wlan"
++#endif
+ #ifdef WIFI_DRIVER_MODULE_PATH
+-static const char DRIVER_MODULE_NAME[] = WIFI_DRIVER_MODULE_NAME;
++//static const char DRIVER_MODULE_NAME[] = WIFI_DRIVER_MODULE_NAME;
+ static const char DRIVER_MODULE_TAG[] = WIFI_DRIVER_MODULE_NAME " ";
+-static const char DRIVER_MODULE_PATH[] = WIFI_DRIVER_MODULE_PATH;
+-static const char DRIVER_MODULE_ARG[] = WIFI_DRIVER_MODULE_ARG;
++//static const char DRIVER_MODULE_PATH[] = WIFI_DRIVER_MODULE_PATH;
++//static const char DRIVER_MODULE_ARG[] = WIFI_DRIVER_MODULE_ARG;
+ static const char MODULE_FILE[] = "/proc/modules";
+ #endif
+ 
++enum {
++    KERNEL_VERSION_3_0_8 = 1,
++    KERNEL_VERSION_3_0_36,
++    KERNEL_VERSION_3_10,
++    KERNEL_VERSION_4_4,
++    KERNEL_VERSION_4_19,
++};
++
++typedef struct _wifi_ko_file_name
++{
++	char wifi_name[64];
++	char wifi_driver_name[64];
++	char wifi_module_path[128];
++	char wifi_module_arg[128];
++
++}wifi_ko_file_name;
++
++#define UNKKOWN_DRIVER_MODULE_ARG ""
++#define SSV6051_DRIVER_MODULE_ARG "stacfgpath=/vendor/etc/firmware/ssv6051-wifi.cfg"
++#define MVL88W8977_DRIVER_MODULE_ARG "drv_mode=1 fw_name=mrvl/sd8977_wlan_v2.bin cal_data_cfg=none cfg80211_wext=0xf"
++
++wifi_ko_file_name module_list[] =
++{
++	{"RTL8723BU", RTL8723BU_DRIVER_MODULE_NAME, RTL8723BU_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"RTL8188EU", RTL8188EU_DRIVER_MODULE_NAME, RTL8188EU_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"RTL8192DU", RTL8192DU_DRIVER_MODULE_NAME, RTL8192DU_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"RTL8822BU", RTL8822BU_DRIVER_MODULE_NAME, RTL8822BU_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"RTL8822BS", RTL8822BS_DRIVER_MODULE_NAME, RTL8822BS_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"RTL8188FU", RTL8188FU_DRIVER_MODULE_NAME, RTL8188FU_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"RTL8189ES", RTL8189ES_DRIVER_MODULE_NAME, RTL8189ES_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"RTL8723BS", RTL8723BS_DRIVER_MODULE_NAME, RTL8723BS_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"RTL8723CS", RTL8723CS_DRIVER_MODULE_NAME, RTL8723CS_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"RTL8723DS", RTL8723DS_DRIVER_MODULE_NAME, RTL8723DS_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"RTL8812AU", RTL8812AU_DRIVER_MODULE_NAME, RTL8812AU_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"RTL8189FS", RTL8189FS_DRIVER_MODULE_NAME, RTL8189FS_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"RTL8822BE", RTL8822BE_DRIVER_MODULE_NAME, RTL8822BE_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"SSV6051",     SSV6051_DRIVER_MODULE_NAME,   SSV6051_DRIVER_MODULE_PATH, SSV6051_DRIVER_MODULE_ARG},
++	{"ESP8089",     ESP8089_DRIVER_MODULE_NAME,   ESP8089_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"AP6335",          BCM_DRIVER_MODULE_NAME,       BCM_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"AP6330",          BCM_DRIVER_MODULE_NAME,       BCM_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"AP6354",          BCM_DRIVER_MODULE_NAME,       BCM_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"AP6356S",         BCM_DRIVER_MODULE_NAME,       BCM_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"AP6255",          BCM_DRIVER_MODULE_NAME,       BCM_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"APXXX",           BCM_DRIVER_MODULE_NAME,       BCM_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"MVL88W8977",      MVL_DRIVER_MODULE_NAME,       MVL_DRIVER_MODULE_PATH, MVL88W8977_DRIVER_MODULE_ARG},
++        {"RK912",         RK912_DRIVER_MODULE_NAME,     RK912_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"SPRDWL",	    SPRDWL_DRIVER_MODULE_NAME, SPRDWL_DRIVER_MODULE_PATH, UNKKOWN_DRIVER_MODULE_ARG},
++	{"UNKNOW",       DRIVER_MODULE_NAME_UNKNOW,    DRIVER_MODULE_PATH_UNKNOW, UNKKOWN_DRIVER_MODULE_ARG}
++
++};
++
++static char wifi_type[64] = {0};
++extern "C" int check_wifi_chip_type_string(char *type);
++
++int get_kernel_version(void)
++{
++    int fd, version = 0;
++    char buf[64];
++
++    fd = open("/proc/version", O_RDONLY);
++    if (fd < 0) {
++        PLOG(ERROR) << "Can't open '/proc/version', errno = " << errno;
++        goto fderror;
++    }
++    memset(buf, 0, 64);
++    if( 0 == read(fd, buf, 64) ){
++        PLOG(ERROR) << "read '/proc/version' failed";
++        close(fd);
++        goto fderror;
++    }
++    close(fd);
++    if (strstr(buf, "Linux version 3.10") != NULL) {
++        version = KERNEL_VERSION_3_10;
++        PLOG(ERROR) << "Kernel version is 3.10.";
++    } else if (strstr(buf, "Linux version 4.4") != NULL) {
++	version = KERNEL_VERSION_4_4;
++	PLOG(ERROR) << "Kernel version is 4.4.";
++    } else if (strstr(buf, "Linux version 4.19") != NULL) {
++	version = KERNEL_VERSION_4_19;
++	PLOG(ERROR) << "Kernel version is 4.19.";
++    }else {
++        version = KERNEL_VERSION_3_0_36;
++        PLOG(ERROR) << "Kernel version is 3.0.36.";
++    }
++
++    return version;
++
++fderror:
++    return -1;
++}
++
++/* 0 - not ready; 1 - ready. */
++int check_wireless_ready(void)
++{
++	char line[1024];
++	FILE *fp = NULL;
++
++	if (get_kernel_version() == KERNEL_VERSION_4_4 ||
++			get_kernel_version() == KERNEL_VERSION_4_19) {
++		fp = fopen("/proc/net/dev", "r");
++		if (fp == NULL) {
++			PLOG(ERROR) << "Couldn't open /proc/net/dev";
++			return 0;
++		}
++	} else {
++		fp = fopen("/proc/net/wireless", "r");
++		if (fp == NULL) {
++			PLOG(ERROR) << "Couldn't open /proc/net/wireless";
++			return 0;
++		}
++	}
++
++	while(fgets(line, 1024, fp)) {
++		if ((strstr(line, "wlan0:") != NULL) || (strstr(line, "p2p0:") != NULL)) {
++			PLOG(ERROR) << "Wifi driver is ready for now...";
++			property_set(DRIVER_PROP_NAME, "ok");
++			fclose(fp);
++			return 1;
++		}
++	}
++
++	fclose(fp);
++
++	PLOG(ERROR) << "Wifi driver is not ready.";
++	return 0;
++}
++
+ static int insmod(const char *filename, const char *args) {
+   int ret;
+   int fd;
+@@ -112,21 +295,17 @@ int wifi_change_driver_state(const char *state) {
+ #endif
+ 
+ int is_wifi_driver_loaded() {
+-  char driver_status[PROPERTY_VALUE_MAX];
+ #ifdef WIFI_DRIVER_MODULE_PATH
+   FILE *proc;
+   char line[sizeof(DRIVER_MODULE_TAG) + 10];
+ #endif
+-
+-  if (!property_get(DRIVER_PROP_NAME, driver_status, NULL)) {
++#if 0
++  if (!property_get(DRIVER_PROP_NAME, driver_status, NULL) ||
++      strcmp(driver_status, "ok") != 0) {
+     return 0; /* driver not loaded */
+   }
+-
+-  if (!is_driver_loaded) {
+-    return 0;
+-  } /* driver not loaded */
+-
+-#ifdef WIFI_DRIVER_MODULE_PATH
++#endif
++if (check_wireless_ready() == 0) {
+   /*
+    * If the property says the driver is loaded, check to
+    * make sure that the property setting isn't just left
+@@ -135,10 +314,7 @@ int is_wifi_driver_loaded() {
+    */
+   if ((proc = fopen(MODULE_FILE, "r")) == NULL) {
+     PLOG(WARNING) << "Could not open " << MODULE_FILE;
+-    is_driver_loaded = false;
+-    if (strcmp(driver_status, "unloaded") != 0) {
+-      property_set(DRIVER_PROP_NAME, "unloaded");
+-    }
++    property_set(DRIVER_PROP_NAME, "unloaded");
+     return 0;
+   }
+   while ((fgets(line, sizeof(line), proc)) != NULL) {
+@@ -148,23 +324,45 @@ int is_wifi_driver_loaded() {
+     }
+   }
+   fclose(proc);
+-  is_driver_loaded = false;
+-  if (strcmp(driver_status, "unloaded") != 0) {
+-    property_set(DRIVER_PROP_NAME, "unloaded");
+-  }
++  property_set(DRIVER_PROP_NAME, "unloaded");
+   return 0;
+-#else
++} else {
+   return 1;
+-#endif
++}
+ }
+ 
+ int wifi_load_driver() {
+ #ifdef WIFI_DRIVER_MODULE_PATH
+-  if (is_wifi_driver_loaded()) {
+-    return 0;
+-  }
++	char* wifi_ko_path = NULL ;
++	char* wifi_ko_arg =NULL;
++	int i = 0;
++	int count = 100;
++	if (is_wifi_driver_loaded()) {
++		return 0;
++	}
++	if (wifi_type[0] == 0) {
++		check_wifi_chip_type_string(wifi_type);
++	}
++	for (i=0; i< (int)(sizeof(module_list) / sizeof(module_list[0])); i++) {
++		if (!strcmp(wifi_type , module_list[i].wifi_name)) {
++			wifi_ko_path = module_list[i].wifi_module_path;
++			wifi_ko_arg = module_list[i].wifi_module_arg;
++			PLOG(ERROR) << "matched ko file path " << wifi_ko_path;
++			break;
++		}
++	}
++	if (wifi_ko_path == NULL) {
++		PLOG(ERROR) << "falied to find wifi driver for type=" << wifi_type;
++		return -1;
++	}
++
++	if (strstr(wifi_ko_path, MVL_DRIVER_MODULE_NAME)) {
++		insmod(MLAN_DRIVER_MODULE_PATH, "");
++	}
+ 
+-  if (insmod(DRIVER_MODULE_PATH, DRIVER_MODULE_ARG) < 0) return -1;
++  if (insmod(wifi_ko_path, wifi_ko_arg) < 0) {
++	  return -1;
++  }
+ #endif
+ 
+ #ifdef WIFI_DRIVER_STATE_CTRL_PARAM
+@@ -172,30 +370,41 @@ int wifi_load_driver() {
+     return 0;
+   }
+ 
+-  if (wifi_change_driver_state(WIFI_DRIVER_STATE_ON) < 0) {
+-#ifdef WIFI_DRIVER_MODULE_PATH
+-    PLOG(WARNING) << "Driver unloading, err='fail to change driver state'";
+-    if (rmmod(DRIVER_MODULE_NAME) == 0) {
+-      PLOG(DEBUG) << "Driver unloaded";
+-    } else {
+-      // Set driver prop to "ok", expect HL to restart Wi-Fi.
+-      PLOG(DEBUG) << "Driver unload failed! set driver prop to 'ok'.";
+-      property_set(DRIVER_PROP_NAME, "ok");
+-    }
++  if (wifi_change_driver_state(WIFI_DRIVER_STATE_ON) < 0) return -1;
+ #endif
+-    return -1;
++  while (count-- > 0) {
++	  if (is_wifi_driver_loaded()) {
++		property_set(DRIVER_PROP_NAME, "ok");
++		return 0;
++	  }
++	  usleep(200000);
+   }
+-#endif
+-  is_driver_loaded = true;
+-  return 0;
++  property_set(DRIVER_PROP_NAME, "timeout");
++  return -1;
+ }
+ 
+ int wifi_unload_driver() {
++#if 0
+   if (!is_wifi_driver_loaded()) {
++    property_set(DRIVER_PROP_NAME, "unloaded");
+     return 0;
+   }
++
++  usleep(200000); /* allow to finish interface down */
+ #ifdef WIFI_DRIVER_MODULE_PATH
+-  if (rmmod(DRIVER_MODULE_NAME) == 0) {
++  char* wifi_ko_name = NULL ;
++  int i = 0;
++  if (wifi_type[0] == 0) {
++	check_wifi_chip_type_string(wifi_type);
++  }
++  for (i=0; i< (int)(sizeof(module_list) / sizeof(module_list[0])); i++) {
++	if (!strcmp(wifi_type , module_list[i].wifi_name)) {
++		wifi_ko_name = module_list[i].wifi_driver_name;
++		PLOG(ERROR) << "matched ko file name " << wifi_ko_name;
++		break;
++	}
++  }
++  if (rmmod(wifi_ko_name) == 0) {
+     int count = 20; /* wait at most 10 seconds for completion */
+     while (count-- > 0) {
+       if (!is_wifi_driver_loaded()) break;
+@@ -214,10 +423,12 @@ int wifi_unload_driver() {
+     if (wifi_change_driver_state(WIFI_DRIVER_STATE_OFF) < 0) return -1;
+   }
+ #endif
+-  is_driver_loaded = false;
+   property_set(DRIVER_PROP_NAME, "unloaded");
+   return 0;
+ #endif
++#endif
++  property_set(DRIVER_PROP_NAME, "unloaded");
++  return 0;
+ }
+ 
+ const char *wifi_get_fw_path(int fw_type) {
+@@ -237,6 +448,9 @@ int wifi_change_fw_path(const char *fwpath) {
+   int fd;
+   int ret = 0;
+ 
++  if (wifi_type[0] == 0)
++	check_wifi_chip_type_string(wifi_type);
++  if (0 != strncmp(wifi_type, "AP", 2)) return ret;
+   if (!fwpath) return ret;
+   fd = TEMP_FAILURE_RETRY(open(WIFI_DRIVER_FW_PATH_PARAM, O_WRONLY));
+   if (fd < 0) {
+diff --git a/libwifi_system/supplicant_manager.cpp b/libwifi_system/supplicant_manager.cpp
+index 60720d40f..617f61033 100644
+--- a/libwifi_system/supplicant_manager.cpp
++++ b/libwifi_system/supplicant_manager.cpp
+@@ -100,6 +100,7 @@ bool SupplicantManager::StopSupplicant() {
+   property_set("ctl.stop", kSupplicantServiceName);
+   sched_yield();
+ 
++  usleep(200000);
+   while (count-- > 0) {
+     if (property_get(kSupplicantInitProperty, supp_status, NULL)) {
+       if (strcmp(supp_status, "stopped") == 0) return true;
+diff --git a/service/java/com/android/server/wifi/ClientModeImpl.java b/service/java/com/android/server/wifi/ClientModeImpl.java
+index 6c31185da..a81c5e75b 100644
+--- a/service/java/com/android/server/wifi/ClientModeImpl.java
++++ b/service/java/com/android/server/wifi/ClientModeImpl.java
+@@ -255,7 +255,7 @@ public class ClientModeImpl extends StateMachine {
+     private int mLastSubId;
+     private String mLastSimBasedConnectionCarrierName;
+ 
+-    private boolean mIpReachabilityDisconnectEnabled = true;
++    private boolean mIpReachabilityDisconnectEnabled = false;
+ 
+     private void processRssiThreshold(byte curRssi, int reason,
+             WifiNative.WifiRssiEventHandler rssiHandler) {
+-- 
+2.35.1
+

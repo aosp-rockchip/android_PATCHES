@@ -1,0 +1,3795 @@
+From 54c0fff73dbf41c8ca5f318b265fe2b387c791f1 Mon Sep 17 00:00:00 2001
+From: android-autoroll
+ <android-autoroll@skia-corp.google.com.iam.gserviceaccount.com>
+Date: Wed, 10 Jul 2019 22:18:28 +0000
+Subject: [PATCH 1/5] Roll external/skia 4b40a1d5b..49d32524f (14 commits)
+
+https://skia.googlesource.com/skia.git/+log/4b40a1d5b..49d32524f
+
+2019-07-10 mtklein@google.com lifetime analysis readability refactor
+2019-07-10 brianosman@google.com Remove MSVC 2015 toolchain remnants
+2019-07-10 robertphillips@google.com Fix assert
+2019-07-10 bsalomon@google.com Try GrGLSizedInternalFormat enum
+2019-07-10 senorblanco@chromium.org Add first Dawn dependencies.
+2019-07-10 bsalomon@google.com Blacklist  ColorTypeBackendAllocationTest on MoltenVK
+2019-07-10 recipe-mega-autoroller@chops-service-accounts.iam.gserviceaccount.com Roll recipe dependencies (trivial).
+2019-07-10 reed@google.com Move test around in cubic_solver to test function, not delta_t.
+2019-07-10 robertphillips@google.com Fix SkPixmap and SkBitmap dox for computeByteSize
+2019-07-10 bsalomon@google.com Reland "Revert "Restore GL_UNPACK_ROW_LENGTH to 0 between MIP levles""
+2019-07-10 fmalita@chromium.org [skottie] Caching motion tile
+2019-07-10 nigeltao@google.com Update Wuffs version
+2019-07-10 borenet@google.com Revert "[infra] No relative path for infra_tests.isolate"
+2019-07-10 robertphillips@google.com Add protected status to SkSurfaceCharacterization
+
+The AutoRoll server is located here: https://skia-autoroll.corp.goog/r/android-master-autoroll
+
+Documentation for the AutoRoller is here:
+https://skia.googlesource.com/buildbot/+/master/autoroll/README.md
+
+If the roll is causing failures, please contact the current sheriff, who should
+be CC'd on the roll, and stop the roller if necessary.
+
+Test: Presubmit checks will test this change.
+Change-Id: Ia3aca36a1f1d0635fbdec553c148b6c3273ab2f3
+Exempt-From-Owner-Approval: The autoroll bot does not require owner approval.
+(cherry picked from commit 22210580f2de90dc0c6e502335c4347f53a2f51b)
+---
+ BUILD.gn                                      |  32 +-
+ DEPS                                          |   3 +-
+ gm/asyncrescaleandread.cpp                    |   6 +-
+ gm/wacky_yuv_formats.cpp                      |  33 +-
+ include/core/SkBitmap.h                       |   2 +-
+ include/core/SkPixmap.h                       |   2 +-
+ include/core/SkSurfaceCharacterization.h      |   7 +
+ include/gpu/GrContextThreadSafeProxy.h        |   4 +-
+ include/private/GrGLTypesPriv.h               |  33 +
+ include/private/SkFloatingPoint.h             |   9 +
+ infra/bots/assets/win_toolchain_2015/VERSION  |   1 -
+ .../bots/assets/win_toolchain_2015/common.py  |  26 -
+ .../assets/win_toolchain_2015/download.py     |  16 -
+ infra/bots/gen_tasks.go                       |   5 +-
+ ...0M-x86_64-Release-All-MoltenVK_Vulkan.json |   1 +
+ infra/bots/recipes/test.py                    |   1 +
+ infra/config/recipes.cfg                      |   2 +-
+ .../skottie/src/effects/MotionTileEffect.cpp  |  73 +-
+ modules/sksg/include/SkSGNode.h               |   1 +
+ modules/sksg/include/SkSGRenderNode.h         |   2 +
+ modules/sksg/sksg.gni                         |   2 +
+ modules/sksg/src/SkSGNodePriv.h               |  27 +
+ modules/sksg/src/SkSGRenderNode.cpp           |  11 +
+ public.bzl                                    |   5 +-
+ src/codec/SkWuffsCodec.cpp                    |   2 +-
+ src/core/SkCubicMap.cpp                       | 117 +--
+ src/core/SkCubicSolver.h                      |  71 ++
+ src/core/SkDeferredDisplayListRecorder.cpp    |   1 +
+ src/core/SkGpuBlurUtils.cpp                   |   2 +-
+ src/core/SkOpts.cpp                           |   4 +
+ src/core/SkOpts.h                             |   2 +
+ src/core/SkSurfaceCharacterization.cpp        |   8 +-
+ src/core/SkVM.cpp                             |  38 +-
+ src/gpu/GrContext.cpp                         |   6 +-
+ src/gpu/GrContextThreadSafeProxy.cpp          |  23 +-
+ src/gpu/gl/GrGLCaps.cpp                       | 141 +---
+ src/gpu/gl/GrGLCaps.h                         |  30 +-
+ src/gpu/gl/GrGLGpu.cpp                        |  40 +-
+ src/gpu/gl/GrGLUtil.cpp                       |  30 -
+ src/gpu/gl/GrGLUtil.h                         |  38 +-
+ src/gpu/vk/GrVkSecondaryCBDrawContext.cpp     |   3 +
+ src/image/SkSurface_Gpu.cpp                   |   5 +
+ src/opts/SkOpts_hsw.cpp                       |   3 +
+ tests/CodecTest.cpp                           |  53 +-
+ tests/DeferredDisplayListTest.cpp             | 114 ++-
+ tests/VkProtectedContextTest.cpp              |  27 +
+ third_party/dawn/BUILD.gn                     | 615 +++++++++++++++
+ third_party/dawn/third_party/BUILD.gn         | 717 ++++++++++++++++++
+ 48 files changed, 1885 insertions(+), 509 deletions(-)
+ delete mode 100644 infra/bots/assets/win_toolchain_2015/VERSION
+ delete mode 100755 infra/bots/assets/win_toolchain_2015/common.py
+ delete mode 100755 infra/bots/assets/win_toolchain_2015/download.py
+ create mode 100644 modules/sksg/src/SkSGNodePriv.h
+ create mode 100644 src/core/SkCubicSolver.h
+ create mode 100644 third_party/dawn/BUILD.gn
+ create mode 100644 third_party/dawn/third_party/BUILD.gn
+
+diff --git a/BUILD.gn b/BUILD.gn
+index 3bbc66b353..8e2ec150db 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -36,16 +36,19 @@ declare_args() {
+   skia_use_wuffs = false
+   skia_use_zlib = true
+   skia_use_metal = false
++  skia_use_dawn = false
+   skia_use_libheif = is_skia_dev_build
+   skia_use_x11 = is_linux
+   skia_use_xps = true
++}
+ 
++declare_args() {
+   skia_android_serial = ""
+   skia_enable_ccpr = true
+   skia_enable_nvpr = !skia_enable_flutter_defines
+   skia_enable_discrete_gpu = true
+   skia_enable_pdf = true
+-  skia_enable_spirv_validation = is_skia_dev_build && is_debug
++  skia_enable_spirv_validation = is_skia_dev_build && is_debug && !skia_use_dawn
+   skia_enable_skpicture = true
+   skia_enable_sksl_interpreter = is_skia_dev_build
+   skia_enable_skvm_jit = is_skia_dev_build && target_cpu == "x64" && is_linux
+@@ -63,6 +66,11 @@ declare_args() {
+   skia_tools_require_resources = false
+   skia_include_multiframe_procs = false
+ }
++
++if (skia_use_dawn) {
++  import("third_party/externals/dawn/scripts/dawn_features.gni")
++}
++
+ declare_args() {
+   skia_use_dng_sdk = !is_fuchsia && skia_use_libjpeg_turbo && skia_use_zlib
+   skia_use_sfntly = skia_use_icu
+@@ -637,6 +645,24 @@ optional("gpu") {
+     }
+   }
+ 
++  if (skia_use_dawn) {
++    public_defines += [ "SK_DAWN" ]
++    public_deps += [
++      "//third_party/dawn:dawn_headers",
++      "//third_party/dawn:libdawn",
++      "//third_party/dawn:libdawn_native_sources",
++    ]
++    if (dawn_enable_d3d12) {
++      libs += [
++        "d3d12.lib",
++        "dxgi.lib",
++        "d3dcompiler.lib",
++      ]
++    } else if (dawn_enable_metal) {
++      libs += [ "Metal.framework" ]
++    }
++  }
++
+   cflags_objcc = []
+   if (skia_use_metal) {
+     public_defines += [ "SK_METAL" ]
+@@ -1252,6 +1278,10 @@ if (skia_enable_tools) {
+       "modules/skottie",
+       "modules/skshaper",
+     ]
++
++    if (skia_use_dawn) {
++      deps += [ "//third_party/dawn:dawn_headers" ]
++    }
+   }
+ 
+   template("test_lib") {
+diff --git a/DEPS b/DEPS
+index 602abb2a36..bcda78da70 100644
+--- a/DEPS
++++ b/DEPS
+@@ -8,6 +8,7 @@ deps = {
+   "buildtools"                            : "https://chromium.googlesource.com/chromium/buildtools.git@505de88083136eefd056e5ee4ca0f01fe9b33de8",
+   "common"                                : "https://skia.googlesource.com/common.git@9737551d7a52c3db3262db5856e6bcd62c462b92",
+   "third_party/externals/angle2"          : "https://chromium.googlesource.com/angle/angle.git@4e71b2bc254677bdeac521a371402a92f6747776",
++  "third_party/externals/dawn"            : "https://dawn.googlesource.com/dawn.git@2d4b5294432f254c8ab093ff399cdf9aa59260a6",
+   "third_party/externals/dng_sdk"         : "https://android.googlesource.com/platform/external/dng_sdk.git@c8d0c9b",
+   "third_party/externals/egl-registry"    : "https://skia.googlesource.com/external/github.com/KhronosGroup/EGL-Registry@a0bca08de07c7d7651047bedc0b653cfaaa4f2ae",
+   "third_party/externals/expat"           : "https://android.googlesource.com/platform/external/expat.git@android-6.0.1_r55",
+@@ -30,7 +31,7 @@ deps = {
+   "third_party/externals/spirv-tools"     : "https://skia.googlesource.com/external/github.com/KhronosGroup/SPIRV-Tools.git@e9e4393b1c5aad7553c05782acefbe32b42644bd",
+   "third_party/externals/swiftshader"     : "https://swiftshader.googlesource.com/SwiftShader@8c4c9e37bf96db64cbec5b7e26f12fc1af0b3e99",
+   #"third_party/externals/v8"              : "https://chromium.googlesource.com/v8/v8.git@5f1ae66d5634e43563b2d25ea652dfb94c31a3b4",
+-  "third_party/externals/wuffs"           : "https://skia.googlesource.com/external/github.com/google/wuffs.git@f58ffbc927899b9534a273d3057094ce6ac1ed61",
++  "third_party/externals/wuffs"           : "https://skia.googlesource.com/external/github.com/google/wuffs.git@6ad7d00a262e862549e4963b4a43d148a8285e50",
+   "third_party/externals/zlib"            : "https://chromium.googlesource.com/chromium/src/third_party/zlib@47af7c547f8551bd25424e56354a2ae1e9062859",
+ 
+   "../src": {
+diff --git a/gm/asyncrescaleandread.cpp b/gm/asyncrescaleandread.cpp
+index 723212ad60..cc2abac290 100644
+--- a/gm/asyncrescaleandread.cpp
++++ b/gm/asyncrescaleandread.cpp
+@@ -101,14 +101,14 @@ static sk_sp<SkImage> do_read_and_scale_yuv(SkSurface* surface, SkYUVColorSpace
+     GrBackendFormat format =
+             gr->priv().caps()->getBackendFormatFromColorType(GrColorType::kAlpha_8);
+     backendTextures[0] = gr->priv().getGpu()->createBackendTexture(
+-            dstW, dstH, format, GrMipMapped::kNo, GrRenderable::kNo, yData.get(), dstW, nullptr,
++            dstW, dstH, format, GrMipMapped::kNo, GrRenderable::kNo, yData.get(), 0, nullptr,
+             GrProtected::kNo);
+     backendTextures[1] = gr->priv().getGpu()->createBackendTexture(
+             dstW / 2, dstH / 2, format, GrMipMapped::kNo, GrRenderable::kNo,
+-            uData.get(), dstW / 2, nullptr, GrProtected::kNo);
++            uData.get(), 0, nullptr, GrProtected::kNo);
+     backendTextures[2] = gr->priv().getGpu()->createBackendTexture(
+             dstW / 2, dstH / 2, format, GrMipMapped::kNo, GrRenderable::kNo,
+-            vData.get(), dstW / 2, nullptr, GrProtected::kNo);
++            vData.get(), 0, nullptr, GrProtected::kNo);
+     auto config = gr->priv().caps()->getConfigFromBackendFormat(format, GrColorType::kAlpha_8);
+     SkColorChannel channel;
+     if (config == kAlpha_8_as_Red_GrPixelConfig) {
+diff --git a/gm/wacky_yuv_formats.cpp b/gm/wacky_yuv_formats.cpp
+index d7c9682237..37b174c9a8 100644
+--- a/gm/wacky_yuv_formats.cpp
++++ b/gm/wacky_yuv_formats.cpp
+@@ -917,12 +917,11 @@ static void draw_row_label(SkCanvas* canvas, int y, int yuvFormat) {
+ static void make_RG_88(const GrCaps* caps,
+                        const SkBitmap& bm, YUVFormat yuvFormat,
+                        SkAutoTMalloc<uint8_t>* pixels,
+-                       GrBackendFormat* format, size_t* rowBytes) {
++                       GrBackendFormat* format) {
+     SkASSERT(kNV12_YUVFormat == yuvFormat || kNV21_YUVFormat == yuvFormat);
+     SkASSERT(kRGBA_8888_SkColorType == bm.colorType());     // uv stored in rg
+ 
+-    *rowBytes = bm.width() * 2 * sizeof(uint8_t);
+-    pixels->reset(*rowBytes * bm.height());
++    pixels->reset(2 * sizeof(uint8_t) * bm.width() * bm.height());
+     uint8_t* currPixel = pixels->get();
+     for (int y = 0; y < bm.height(); ++y) {
+         for (int x = 0; x < bm.width(); ++x) {
+@@ -941,13 +940,12 @@ static void make_RG_88(const GrCaps* caps,
+ static void make_RG_1616(const GrCaps* caps,
+                          const SkBitmap& bm, YUVFormat yuvFormat,
+                          SkAutoTMalloc<uint8_t>* pixels,
+-                         GrBackendFormat* format, size_t* rowBytes) {
++                         GrBackendFormat* format) {
+     SkASSERT(kP016_YUVFormat == yuvFormat || kP010_YUVFormat == yuvFormat);
+     SkASSERT(kRGBA_8888_SkColorType == bm.colorType());     // uv stored in rg
+ 
+     uint16_t u16, v16;
+-    *rowBytes = bm.width() * 2 * sizeof(uint16_t);
+-    pixels->reset(*rowBytes * bm.height());
++    pixels->reset(2 * sizeof(uint16_t) * bm.width() * bm.height());
+     uint16_t* currPixel = (uint16_t*) pixels->get();
+     for (int y = 0; y < bm.height(); ++y) {
+         for (int x = 0; x < bm.width(); ++x) {
+@@ -976,14 +974,12 @@ static void make_RGBA_16(const GrCaps* caps,
+                          const SkBitmap& bm,
+                          YUVFormat yuvFormat,
+                          SkAutoTMalloc<uint8_t>* pixels,
+-                         GrBackendFormat* format,
+-                         size_t* rowBytes) {
++                         GrBackendFormat* format) {
+     SkASSERT(kY416_YUVFormat == yuvFormat);
+     SkASSERT(kRGBA_8888_SkColorType == bm.colorType());
+ 
+     uint16_t y16, u16, v16, a16;
+-    *rowBytes = 4 * sizeof(uint16_t) * bm.width();
+-    pixels->reset(*rowBytes * bm.height());
++    pixels->reset(4 * sizeof(uint16_t) * bm.width() * bm.height());
+     uint16_t* currPixel = (uint16_t*) pixels->get();
+     for (int y = 0; y < bm.height(); ++y) {
+         for (int x = 0; x < bm.width(); ++x) {
+@@ -1010,14 +1006,12 @@ static void make_R_16(const GrCaps* caps,
+                       const SkBitmap& bm,
+                       YUVFormat yuvFormat,
+                       SkAutoTMalloc<uint8_t>* pixels,
+-                      GrBackendFormat* format,
+-                      size_t* rowBytes) {
++                      GrBackendFormat* format) {
+     SkASSERT(kP016_YUVFormat == yuvFormat || kP010_YUVFormat == yuvFormat);
+     SkASSERT(kAlpha_8_SkColorType == bm.colorType());
+ 
+     uint16_t y16;
+-    *rowBytes = sizeof(uint16_t) * bm.width();
+-    pixels->reset(*rowBytes * bm.height());
++    pixels->reset(sizeof(uint16_t) * bm.width() * bm.height());
+     uint16_t* currPixel = (uint16_t*) pixels->get();
+     for (int y = 0; y < bm.height(); ++y) {
+         for (int x = 0; x < bm.width(); ++x) {
+@@ -1058,25 +1052,24 @@ static GrBackendTexture create_yuva_texture(GrContext* context, const SkBitmap&
+ 
+         SkAutoTMalloc<uint8_t> pixels;
+         GrBackendFormat format;
+-        size_t rowBytes;
+ 
+         if (2 == channelCount) {
+             if (format_uses_16_bpp(yuvFormat)) {
+-                make_RG_1616(caps, bm, yuvFormat, &pixels, &format, &rowBytes);
++                make_RG_1616(caps, bm, yuvFormat, &pixels, &format);
+             } else {
+-                make_RG_88(caps, bm, yuvFormat, &pixels, &format, &rowBytes);
++                make_RG_88(caps, bm, yuvFormat, &pixels, &format);
+             }
+         } else {
+             if (kRGBA_8888_SkColorType == bm.colorType()) {
+-                make_RGBA_16(caps, bm, yuvFormat, &pixels, &format, &rowBytes);
++                make_RGBA_16(caps, bm, yuvFormat, &pixels, &format);
+             } else {
+-                make_R_16(caps, bm, yuvFormat, &pixels, &format, &rowBytes);
++                make_R_16(caps, bm, yuvFormat, &pixels, &format);
+             }
+         }
+ 
+         tex = gpu->createBackendTexture(bm.width(), bm.height(), format,
+                                         GrMipMapped::kNo, GrRenderable::kNo,
+-                                        pixels, rowBytes, nullptr, GrProtected::kNo);
++                                        pixels, 0, nullptr, GrProtected::kNo);
+     } else {
+         tex = context->priv().createBackendTexture(&bm.pixmap(), 1,
+                                                    GrRenderable::kNo, GrProtected::kNo);
+diff --git a/include/core/SkBitmap.h b/include/core/SkBitmap.h
+index 2ee23f42f4..d561321bc0 100644
+--- a/include/core/SkBitmap.h
++++ b/include/core/SkBitmap.h
+@@ -265,7 +265,7 @@ public:
+ 
+     /** Returns minimum memory required for pixel storage.
+         Does not include unused memory on last row when rowBytesAsPixels() exceeds width().
+-        Returns zero if result does not fit in size_t.
++        Returns SIZE_MAX if result does not fit in size_t.
+         Returns zero if height() or width() is 0.
+         Returns height() times rowBytes() if colorType() is kUnknown_SkColorType.
+ 
+diff --git a/include/core/SkPixmap.h b/include/core/SkPixmap.h
+index 121110ac59..7d460275ff 100644
+--- a/include/core/SkPixmap.h
++++ b/include/core/SkPixmap.h
+@@ -220,7 +220,7 @@ public:
+ 
+     /** Returns minimum memory required for pixel storage.
+         Does not include unused memory on last row when rowBytesAsPixels() exceeds width().
+-        Returns zero if result does not fit in size_t.
++        Returns SIZE_MAX if result does not fit in size_t.
+         Returns zero if height() or width() is 0.
+         Returns height() times rowBytes() if colorType() is kUnknown_SkColorType.
+ 
+diff --git a/include/core/SkSurfaceCharacterization.h b/include/core/SkSurfaceCharacterization.h
+index 53703ad4a5..f0bade6dac 100644
+--- a/include/core/SkSurfaceCharacterization.h
++++ b/include/core/SkSurfaceCharacterization.h
+@@ -45,6 +45,7 @@ public:
+             , fIsMipMapped(MipMapped::kYes)
+             , fUsesGLFBO0(UsesGLFBO0::kNo)
+             , fVulkanSecondaryCBCompatible(VulkanSecondaryCBCompatible::kNo)
++            , fIsProtected(GrProtected::kNo)
+             , fSurfaceProps(0, kUnknown_SkPixelGeometry) {
+     }
+ 
+@@ -79,6 +80,7 @@ public:
+     bool vulkanSecondaryCBCompatible() const {
+         return VulkanSecondaryCBCompatible::kYes == fVulkanSecondaryCBCompatible;
+     }
++    GrProtected isProtected() const { return fIsProtected; }
+     SkColorSpace* colorSpace() const { return fImageInfo.colorSpace(); }
+     sk_sp<SkColorSpace> refColorSpace() const { return fImageInfo.refColorSpace(); }
+     const SkSurfaceProps& surfaceProps()const { return fSurfaceProps; }
+@@ -105,6 +107,7 @@ private:
+                               MipMapped isMipMapped,
+                               UsesGLFBO0 usesGLFBO0,
+                               VulkanSecondaryCBCompatible vulkanSecondaryCBCompatible,
++                              GrProtected isProtected,
+                               const SkSurfaceProps& surfaceProps)
+             : fContextInfo(std::move(contextInfo))
+             , fCacheMaxResourceBytes(cacheMaxResourceBytes)
+@@ -116,6 +119,7 @@ private:
+             , fIsMipMapped(isMipMapped)
+             , fUsesGLFBO0(usesGLFBO0)
+             , fVulkanSecondaryCBCompatible(vulkanSecondaryCBCompatible)
++            , fIsProtected(isProtected)
+             , fSurfaceProps(surfaceProps) {
+         SkDEBUGCODE(this->validate());
+     }
+@@ -130,6 +134,7 @@ private:
+              MipMapped isMipMapped,
+              UsesGLFBO0 usesGLFBO0,
+              VulkanSecondaryCBCompatible vulkanSecondaryCBCompatible,
++             GrProtected isProtected,
+              const SkSurfaceProps& surfaceProps) {
+         SkASSERT(MipMapped::kNo == isMipMapped || Textureable::kYes == isTextureable);
+         SkASSERT(Textureable::kNo == isTextureable || UsesGLFBO0::kNo == usesGLFBO0);
+@@ -150,6 +155,7 @@ private:
+         fIsMipMapped = isMipMapped;
+         fUsesGLFBO0 = usesGLFBO0;
+         fVulkanSecondaryCBCompatible = vulkanSecondaryCBCompatible;
++        fIsProtected = isProtected;
+         fSurfaceProps = surfaceProps;
+ 
+         SkDEBUGCODE(this->validate());
+@@ -166,6 +172,7 @@ private:
+     MipMapped                       fIsMipMapped;
+     UsesGLFBO0                      fUsesGLFBO0;
+     VulkanSecondaryCBCompatible     fVulkanSecondaryCBCompatible;
++    GrProtected                     fIsProtected;
+     SkSurfaceProps                  fSurfaceProps;
+ };
+ 
+diff --git a/include/gpu/GrContextThreadSafeProxy.h b/include/gpu/GrContextThreadSafeProxy.h
+index 7e67c0598c..8dc68fde37 100644
+--- a/include/gpu/GrContextThreadSafeProxy.h
++++ b/include/gpu/GrContextThreadSafeProxy.h
+@@ -53,6 +53,7 @@ public:
+      *  @param willUseGLFBO0         Will the surface the DDL will be replayed into be backed by GL
+      *                               FBO 0. This flag is only valid if using an GL backend.
+      *  @param isTextureable         Will the surface be able to act as a texture?
++     *  @param isProtected           Will the (Vulkan) surface be DRM protected?
+      */
+     SkSurfaceCharacterization createCharacterization(
+                                   size_t cacheMaxResourceBytes,
+@@ -61,7 +62,8 @@ public:
+                                   const SkSurfaceProps& surfaceProps,
+                                   bool isMipMapped,
+                                   bool willUseGLFBO0 = false,
+-                                  bool isTextureable = true);
++                                  bool isTextureable = true,
++                                  GrProtected isProtected = GrProtected::kNo);
+ 
+     bool operator==(const GrContextThreadSafeProxy& that) const {
+         // Each GrContext should only ever have a single thread-safe proxy.
+diff --git a/include/private/GrGLTypesPriv.h b/include/private/GrGLTypesPriv.h
+index 2562e5483d..3a672e1df9 100644
+--- a/include/private/GrGLTypesPriv.h
++++ b/include/private/GrGLTypesPriv.h
+@@ -11,6 +11,39 @@
+ #ifndef GrGLTypesPriv_DEFINED
+ #define GrGLTypesPriv_DEFINED
+ 
++// These are the GL sized internal formats we support as an enum. Naming convention is the GL
++// name with "k" substituted for the initial "GL_".
++enum class GrGLSizedInternalFormat {
++    kUnknown,
++
++    kRGBA8,
++    kR8,
++    kALPHA8,
++    kLUMINANCE8,
++    kBGRA8,
++    kRGB565,
++    kRGBA16F,
++    kR16F,
++    kRGB8,
++    kRG8,
++    kRGB10_A2,
++    kRGBA4,
++    kRGBA32F,
++    kRG32F,
++    kSRGB8_ALPHA8,
++    kCOMPRESSED_RGB8_ETC2,
++    kCOMPRESSED_ETC1_RGB8,
++    kR16,
++    kRG16,
++    kRGBA16,
++    kRG16F,
++
++    kLast = kRG16F
++};
++
++static constexpr int kGrGLSizedInternalFormatCount =
++        static_cast<int>(GrGLSizedInternalFormat::kLast) + 1;
++
+ class GrGLTextureParameters : public SkNVRefCnt<GrGLTextureParameters> {
+ public:
+     // We currently consider texture parameters invalid on all textures
+diff --git a/include/private/SkFloatingPoint.h b/include/private/SkFloatingPoint.h
+index 984a436319..adac6897c0 100644
+--- a/include/private/SkFloatingPoint.h
++++ b/include/private/SkFloatingPoint.h
+@@ -13,6 +13,7 @@
+ #include "include/private/SkSafe_math.h"
+ #include <float.h>
+ #include <math.h>
++#include <cmath>
+ #include <cstring>
+ #include <limits>
+ 
+@@ -248,4 +249,12 @@ static inline float sk_ieee_double_divide_TODO_IS_DIVIDE_BY_ZERO_SAFE_HERE(doubl
+     return sk_ieee_double_divide(n,d);
+ }
+ 
++static inline float sk_fmaf(float f, float m, float a) {
++#if defined(FP_FAST_FMA)
++    return std::fmaf(f,m,a);
++#else
++    return f*m+a;
++#endif
++}
++
+ #endif
+diff --git a/infra/bots/assets/win_toolchain_2015/VERSION b/infra/bots/assets/win_toolchain_2015/VERSION
+deleted file mode 100644
+index 1e8b314962..0000000000
+--- a/infra/bots/assets/win_toolchain_2015/VERSION
++++ /dev/null
+@@ -1 +0,0 @@
+-6
+diff --git a/infra/bots/assets/win_toolchain_2015/common.py b/infra/bots/assets/win_toolchain_2015/common.py
+deleted file mode 100755
+index 4920c9b4fb..0000000000
+--- a/infra/bots/assets/win_toolchain_2015/common.py
++++ /dev/null
+@@ -1,26 +0,0 @@
+-#!/usr/bin/env python
+-#
+-# Copyright 2016 Google Inc.
+-#
+-# Use of this source code is governed by a BSD-style license that can be
+-# found in the LICENSE file.
+-
+-
+-"""Common vars used by scripts in this directory."""
+-
+-
+-import os
+-import sys
+-
+-FILE_DIR = os.path.dirname(os.path.abspath(__file__))
+-INFRA_BOTS_DIR = os.path.realpath(os.path.join(FILE_DIR, os.pardir, os.pardir))
+-
+-sys.path.insert(0, INFRA_BOTS_DIR)
+-from assets import assets
+-
+-ASSET_NAME = os.path.basename(FILE_DIR)
+-
+-
+-def run(cmd):
+-  """Run a command, eg. "upload" or "download". """
+-  assets.main([cmd, ASSET_NAME] + sys.argv[1:])
+diff --git a/infra/bots/assets/win_toolchain_2015/download.py b/infra/bots/assets/win_toolchain_2015/download.py
+deleted file mode 100755
+index 96cc87d43f..0000000000
+--- a/infra/bots/assets/win_toolchain_2015/download.py
++++ /dev/null
+@@ -1,16 +0,0 @@
+-#!/usr/bin/env python
+-#
+-# Copyright 2016 Google Inc.
+-#
+-# Use of this source code is governed by a BSD-style license that can be
+-# found in the LICENSE file.
+-
+-
+-"""Download the current version of the asset."""
+-
+-
+-import common
+-
+-
+-if __name__ == '__main__':
+-  common.run('download')
+diff --git a/infra/bots/gen_tasks.go b/infra/bots/gen_tasks.go
+index 5734e0430a..fd8a7eb85c 100644
+--- a/infra/bots/gen_tasks.go
++++ b/infra/bots/gen_tasks.go
+@@ -1058,14 +1058,11 @@ func infra(b *specs.TasksCfgBuilder, name string) string {
+ 		}
+ 	}
+ 	extraProps := map[string]string{
+-		"repository": specs.PLACEHOLDER_REPO,
++		"repository":           specs.PLACEHOLDER_REPO,
+ 	}
+ 	task := kitchenTask(name, "infra", "infra_tests.isolate", SERVICE_ACCOUNT_COMPILE, dims, extraProps, OUTPUT_NONE)
+ 	task.CipdPackages = append(task.CipdPackages, CIPD_PKGS_GSUTIL...)
+ 	task.Idempotent = true
+-	// Repos which call into Skia's gen_tasks.go should define their own
+-	// infra_tests.isolate and therefore should not use relpath().
+-	task.Isolate = "infra_tests.isolate"
+ 	usesGit(task, name) // We don't run bot_update, but Go needs a git repo.
+ 	usesGo(b, task, name)
+ 	b.MustAddTask(name, task)
+diff --git a/infra/bots/recipes/test.expected/Test-Mac10.13-Clang-MacBookPro11.5-GPU-RadeonHD8870M-x86_64-Release-All-MoltenVK_Vulkan.json b/infra/bots/recipes/test.expected/Test-Mac10.13-Clang-MacBookPro11.5-GPU-RadeonHD8870M-x86_64-Release-All-MoltenVK_Vulkan.json
+index a18ca46a36..dc6380c1b7 100644
+--- a/infra/bots/recipes/test.expected/Test-Mac10.13-Clang-MacBookPro11.5-GPU-RadeonHD8870M-x86_64-Release-All-MoltenVK_Vulkan.json
++++ b/infra/bots/recipes/test.expected/Test-Mac10.13-Clang-MacBookPro11.5-GPU-RadeonHD8870M-x86_64-Release-All-MoltenVK_Vulkan.json
+@@ -521,6 +521,7 @@
+       "~^WritePixelsNonTextureMSAA_Gpu$",
+       "~^AsyncReadPixels$",
+       "~^VkBackendAllocationTest$",
++      "~^ColorTypeBackendAllocationTest$",
+       "--nonativeFonts",
+       "--verbose"
+     ],
+diff --git a/infra/bots/recipes/test.py b/infra/bots/recipes/test.py
+index 0dc43cd2d3..5328c45d5a 100644
+--- a/infra/bots/recipes/test.py
++++ b/infra/bots/recipes/test.py
+@@ -739,6 +739,7 @@ def dm_flags(api, bot):
+     match.append('~^WritePixelsNonTextureMSAA_Gpu$')
+     match.append('~^AsyncReadPixels$')
+     match.append('~^VkBackendAllocationTest$')
++    match.append('~^ColorTypeBackendAllocationTest$')
+ 
+   if 'ANGLE' in bot:
+     # skia:7835
+diff --git a/infra/config/recipes.cfg b/infra/config/recipes.cfg
+index efcabe1544..f15b1f6bbb 100644
+--- a/infra/config/recipes.cfg
++++ b/infra/config/recipes.cfg
+@@ -14,7 +14,7 @@
+   "deps": {
+     "depot_tools": {
+       "branch": "master",
+-      "revision": "3b07526aec5572513374e26191e83d367a6e1f7b",
++      "revision": "986505f4893ae4c0cd11f0f2a6ea4a2cc27f9488",
+       "url": "https://chromium.googlesource.com/chromium/tools/depot_tools.git"
+     },
+     "recipe_engine": {
+diff --git a/modules/skottie/src/effects/MotionTileEffect.cpp b/modules/skottie/src/effects/MotionTileEffect.cpp
+index c9b4005b9b..cee630b52f 100644
+--- a/modules/skottie/src/effects/MotionTileEffect.cpp
++++ b/modules/skottie/src/effects/MotionTileEffect.cpp
+@@ -55,8 +55,17 @@ protected:
+     const RenderNode* onNodeAt(const SkPoint&) const override { return nullptr; } // no hit-testing
+ 
+     SkRect onRevalidate(sksg::InvalidationController* ic, const SkMatrix& ctm) override {
+-        SkASSERT(this->children().size() == 1ul);
+-        this->children()[0]->revalidate(ic, ctm);
++        // Re-record the layer picture if needed.
++        if (!fLayerPicture || this->hasChildrenInval()) {
++            SkASSERT(this->children().size() == 1ul);
++            const auto& layer = this->children()[0];
++
++            layer->revalidate(ic, ctm);
++
++            SkPictureRecorder recorder;
++            layer->render(recorder.beginRecording(fLayerSize.width(), fLayerSize.height()));
++            fLayerPicture = recorder.finishRecordingAsPicture();
++        }
+ 
+         // tileW and tileH use layer size percentage units.
+         const auto tileW = SkTPin(fTileW, 0.0f, 100.0f) * 0.01f * fLayerSize.width(),
+@@ -68,9 +77,12 @@ protected:
+                                             tile_size.width(),
+                                             tile_size.height());
+ 
+-        fLayerShaderMatrix = SkMatrix::MakeRectToRect(SkRect::MakeWH(fLayerSize.width(),
+-                                                                     fLayerSize.height()),
+-                                                      tile, SkMatrix::kFill_ScaleToFit);
++        const auto layerShaderMatrix = SkMatrix::MakeRectToRect(
++                    SkRect::MakeWH(fLayerSize.width(), fLayerSize.height()),
++                    tile, SkMatrix::kFill_ScaleToFit);
++
++        const auto tm = fMirrorEdges ? SkTileMode::kMirror : SkTileMode::kRepeat;
++        auto layer_shader = fLayerPicture->makeShader(tm, tm, &layerShaderMatrix);
+ 
+         if (fPhase) {
+             // To implement AE phase semantics, we construct a mask shader for the pass-through
+@@ -79,10 +91,10 @@ protected:
+             const auto phase_vec = fHorizontalPhase
+                     ? SkVector::Make(tile.width(), 0)
+                     : SkVector::Make(0, tile.height());
+-            const auto phase_shift = SkVector::Make(phase_vec.fX / fLayerShaderMatrix.getScaleX(),
+-                                                    phase_vec.fY / fLayerShaderMatrix.getScaleY())
++            const auto phase_shift = SkVector::Make(phase_vec.fX / layerShaderMatrix.getScaleX(),
++                                                    phase_vec.fY / layerShaderMatrix.getScaleY())
+                                      * std::fmod(fPhase * (1/360.0f), 1);
+-            fPhaseShaderMatrix.setTranslate(phase_shift);
++            const auto phase_shader_matrix = SkMatrix::MakeTrans(phase_shift.x(), phase_shift.y());
+ 
+             // The mask is generated using a step gradient shader, spanning 2 x tile width/height,
+             // and perpendicular to the phase vector.
+@@ -93,11 +105,18 @@ protected:
+                                    { tile.x() + 2 * (tile.width()  - phase_vec.fX),
+                                      tile.y() + 2 * (tile.height() - phase_vec.fY) }};
+ 
+-            fMaskShader = SkGradientShader::MakeLinear(pts, colors, pos,
+-                                                       SK_ARRAY_COUNT(colors),
+-                                                       SkTileMode::kRepeat);
++            auto mask_shader = SkGradientShader::MakeLinear(pts, colors, pos,
++                                                            SK_ARRAY_COUNT(colors),
++                                                            SkTileMode::kRepeat);
++
++            // First drawing pass: in-place masked layer content.
++            fMainPassShader  = SkShaders::Blend(SkBlendMode::kSrcIn , mask_shader, layer_shader);
++            // Second pass: phased-shifted layer content, with an inverse mask.
++            fPhasePassShader = SkShaders::Blend(SkBlendMode::kSrcOut, mask_shader, layer_shader,
++                                                &phase_shader_matrix);
+         } else {
+-            fMaskShader = nullptr;
++            fMainPassShader  = std::move(layer_shader);
++            fPhasePassShader = nullptr;
+         }
+ 
+         // outputW and outputH also use layer size percentage units.
+@@ -115,32 +134,14 @@ protected:
+             return;
+         }
+ 
+-        const auto tm = fMirrorEdges ? SkTileMode::kMirror : SkTileMode::kRepeat;
+-
+-        SkPictureRecorder recorder;
+-        SkASSERT(this->children().size() == 1ul);
+-        this->children()[0]->render(recorder.beginRecording(fLayerSize.width(),
+-                                                            fLayerSize.height()));
+-        const auto layer_shader =
+-            recorder.finishRecordingAsPicture()->makeShader(tm, tm, &fLayerShaderMatrix);
+-
+         SkPaint paint;
+         paint.setAntiAlias(true);
+ 
+-        // First drawing pass: pass-through layer content, with an optional phase mask.
+-        paint.setShader(fMaskShader
+-                ? SkShaders::Blend(SkBlendMode::kSrcIn, fMaskShader, layer_shader)
+-                : layer_shader);
++        paint.setShader(fMainPassShader);
+         canvas->drawRect(this->bounds(), paint);
+ 
+-        if (fMaskShader) {
+-            // Second pass: phased/shifted layer rows/columns, with an inverse mask.
+-
+-            // TODO: would be nice for SkShaders::* to take an optional local matrix.
+-            paint.setShader(
+-                SkShaders::Blend(SkBlendMode::kSrcOut,
+-                                 fMaskShader,
+-                                 layer_shader->makeWithLocalMatrix(fPhaseShaderMatrix)));
++        if (fPhasePassShader) {
++            paint.setShader(fPhasePassShader);
+             canvas->drawRect(this->bounds(), paint);
+         }
+     }
+@@ -158,9 +159,9 @@ private:
+     bool     fHorizontalPhase = false;
+ 
+     // These are computed/cached on revalidation.
+-    SkMatrix        fLayerShaderMatrix, // matrix for the pass-through layer content shader
+-                    fPhaseShaderMatrix; // matrix for the phased (shifted) rows/columns
+-    sk_sp<SkShader> fMaskShader;        // cached mask shader for the pass-through rows/columns
++    sk_sp<SkPicture> fLayerPicture;      // cached picture for layer content
++    sk_sp<SkShader>  fMainPassShader,    // shader for the main tile(s)
++                     fPhasePassShader;   // shader for the phased tile(s)
+ 
+     using INHERITED = sksg::CustomRenderNode;
+ };
+diff --git a/modules/sksg/include/SkSGNode.h b/modules/sksg/include/SkSGNode.h
+index d2f955d34f..271aa39daf 100644
+--- a/modules/sksg/include/SkSGNode.h
++++ b/modules/sksg/include/SkSGNode.h
+@@ -88,6 +88,7 @@ private:
+     uint32_t                fNodeFlags   :  8; // Accessible from select subclasses.
+     // Free bits                         : 18;
+ 
++    friend class NodePriv;
+     friend class RenderNode; // node flags access
+ 
+     typedef SkRefCnt INHERITED;
+diff --git a/modules/sksg/include/SkSGRenderNode.h b/modules/sksg/include/SkSGRenderNode.h
+index 0ef60d1c58..7c81f7942b 100644
+--- a/modules/sksg/include/SkSGRenderNode.h
++++ b/modules/sksg/include/SkSGRenderNode.h
+@@ -134,6 +134,8 @@ protected:
+ 
+     const std::vector<sk_sp<RenderNode>>& children() const { return fChildren; }
+ 
++    bool hasChildrenInval() const;
++
+ private:
+     std::vector<sk_sp<RenderNode>> fChildren;
+ 
+diff --git a/modules/sksg/sksg.gni b/modules/sksg/sksg.gni
+index c202c1790a..b9d222db8a 100644
+--- a/modules/sksg/sksg.gni
++++ b/modules/sksg/sksg.gni
+@@ -20,6 +20,7 @@ skia_sksg_sources = [
+   "$_src/SkSGMaskEffect.cpp",
+   "$_src/SkSGMerge.cpp",
+   "$_src/SkSGNode.cpp",
++  "$_src/SkSGNodePriv.h",
+   "$_src/SkSGOpacityEffect.cpp",
+   "$_src/SkSGPaint.cpp",
+   "$_src/SkSGPath.cpp",
+@@ -31,5 +32,6 @@ skia_sksg_sources = [
+   "$_src/SkSGScene.cpp",
+   "$_src/SkSGText.cpp",
+   "$_src/SkSGTransform.cpp",
++  "$_src/SkSGTransformPriv.h",
+   "$_src/SkSGTrimEffect.cpp",
+ ]
+diff --git a/modules/sksg/src/SkSGNodePriv.h b/modules/sksg/src/SkSGNodePriv.h
+new file mode 100644
+index 0000000000..1ce0cc62e8
+--- /dev/null
++++ b/modules/sksg/src/SkSGNodePriv.h
+@@ -0,0 +1,27 @@
++/*
++ * Copyright 2019 Google Inc.
++ *
++ * Use of this source code is governed by a BSD-style license that can be
++ * found in the LICENSE file.
++ */
++
++#ifndef SkSGNodePriv_DEFINED
++#define SkSGNodePriv_DEFINED
++
++#include "modules/sksg/include/SkSGNode.h"
++
++namespace sksg {
++
++// Helper for accessing implementation-private Node methods.
++class NodePriv final {
++public:
++
++    static bool HasInval(const sk_sp<Node>& node) { return node->hasInval(); }
++
++private:
++    NodePriv() = delete;
++};
++
++} // namespace sksg
++
++#endif // SkSGNodePriv_DEFINED
+diff --git a/modules/sksg/src/SkSGRenderNode.cpp b/modules/sksg/src/SkSGRenderNode.cpp
+index e317dc0435..557383c52b 100644
+--- a/modules/sksg/src/SkSGRenderNode.cpp
++++ b/modules/sksg/src/SkSGRenderNode.cpp
+@@ -10,6 +10,7 @@
+ #include "include/core/SkCanvas.h"
+ #include "include/core/SkImageFilter.h"
+ #include "include/core/SkPaint.h"
++#include "modules/sksg/src/SkSGNodePriv.h"
+ 
+ namespace sksg {
+ 
+@@ -200,4 +201,14 @@ CustomRenderNode::~CustomRenderNode() {
+     }
+ }
+ 
++bool CustomRenderNode::hasChildrenInval() const {
++    for (const auto& child : fChildren) {
++        if (NodePriv::HasInval(child)) {
++            return true;
++        }
++    }
++
++    return false;
++}
++
+ } // namespace sksg
+diff --git a/public.bzl b/public.bzl
+index 2cf1e3ffb6..dcd3a27733 100644
+--- a/public.bzl
++++ b/public.bzl
+@@ -670,7 +670,10 @@ def sksg_lib_hdrs():
+     return native.glob(["modules/sksg/include/*.h"])
+ 
+ def sksg_lib_srcs():
+-    return native.glob(["modules/sksg/src/*.cpp"])
++    return native.glob([
++        "modules/sksg/src/*.cpp",
++        "modules/sksg/src/*.h",
++    ])
+ 
+ ################################################################################
+ ## skparagraph_lib
+diff --git a/src/codec/SkWuffsCodec.cpp b/src/codec/SkWuffsCodec.cpp
+index 72120a3995..b4c840b5d6 100644
+--- a/src/codec/SkWuffsCodec.cpp
++++ b/src/codec/SkWuffsCodec.cpp
+@@ -29,7 +29,7 @@
+ #error "SkWuffsCodec should not #define WUFFS_IMPLEMENTATION"
+ #endif
+ #include "wuffs-v0.2.c"
+-#if WUFFS_VERSION_BUILD_METADATA_COMMIT_COUNT < 1675
++#if WUFFS_VERSION_BUILD_METADATA_COMMIT_COUNT < 1776
+ #error "Wuffs version is too old. Upgrade to the latest version."
+ #endif
+ 
+diff --git a/src/core/SkCubicMap.cpp b/src/core/SkCubicMap.cpp
+index b6366d66ae..30cd3b4bed 100644
+--- a/src/core/SkCubicMap.cpp
++++ b/src/core/SkCubicMap.cpp
+@@ -7,6 +7,7 @@
+ 
+ #include "include/core/SkCubicMap.h"
+ #include "include/private/SkNx.h"
++#include "src/core/SkOpts.h"
+ 
+ //#define CUBICMAP_TRACK_MAX_ERROR
+ 
+@@ -14,126 +15,15 @@
+ #include "src/pathops/SkPathOpsCubic.h"
+ #endif
+ 
+-static float eval_poly3(float a, float b, float c, float d, float t) {
+-    return ((a * t + b) * t + c) * t + d;
+-}
+-
+-static float eval_poly2(float a, float b, float c, float t) {
+-    return (a * t + b) * t + c;
+-}
+-
+-static float eval_poly1(float a, float b, float t) {
+-    return a * t + b;
+-}
+-
+-static float guess_nice_cubic_root(float A, float B, float C, float D) {
+-    return -D;
+-}
+-
+-#ifdef SK_DEBUG
+-static bool valid(float r) {
+-    return r >= 0 && r <= 1;
+-}
+-#endif
+-
+ static inline bool nearly_zero(SkScalar x) {
+     SkASSERT(x >= 0);
+     return x <= 0.0000000001f;
+ }
+ 
+-static inline bool delta_nearly_zero(float delta) {
+-    return sk_float_abs(delta) <= 0.0001f;
+-}
+-
+ #ifdef CUBICMAP_TRACK_MAX_ERROR
+     static int max_iters;
+ #endif
+ 
+-/*
+- *  TODO: will this be faster if we algebraically compute the polynomials for the numer and denom
+- *        rather than compute them in parts?
+- */
+-static float solve_nice_cubic_halley(float A, float B, float C, float D) {
+-    const int MAX_ITERS = 8;
+-    const float A3 = 3 * A;
+-    const float B2 = B + B;
+-
+-    float t = guess_nice_cubic_root(A, B, C, D);
+-    int iters = 0;
+-    for (; iters < MAX_ITERS; ++iters) {
+-        float f = eval_poly3(A, B, C, D, t);    // f   = At^3 + Bt^2 + Ct + D
+-        float fp = eval_poly2(A3, B2, C, t);    // f'  = 3At^2 + 2Bt + C
+-        float fpp = eval_poly1(A3 + A3, B2, t); // f'' = 6At + 2B
+-
+-        float numer = 2 * fp * f;
+-        if (numer == 0) {
+-            break;
+-        }
+-        float denom = 2 * fp * fp - f * fpp;
+-        float delta = numer / denom;
+-//      SkDebugf("[%d] delta %g t %g\n", iters, delta, t);
+-        if (delta_nearly_zero(delta)) {
+-            break;
+-        }
+-        float new_t = t - delta;
+-        SkASSERT(valid(new_t));
+-        t = new_t;
+-    }
+-    SkASSERT(valid(t));
+-#ifdef CUBICMAP_TRACK_MAX_ERROR
+-    if (iters > max_iters) {
+-        max_iters = iters;
+-        SkDebugf("max_iters %d\n", max_iters);
+-    }
+-#endif
+-    return t;
+-}
+-
+-// At the moment, this technique does not appear to be better (i.e. faster at same precision)
+-// but the code is left here (at least for a while) to document the attempt.
+-static float solve_nice_cubic_householder(float A, float B, float C, float D) {
+-    const int MAX_ITERS = 8;
+-    const float A3 = 3 * A;
+-    const float B2 = B + B;
+-
+-    float t = guess_nice_cubic_root(A, B, C, D);
+-    int iters = 0;
+-    for (; iters < MAX_ITERS; ++iters) {
+-        float f    = eval_poly3(A, B, C, D, t);     // f    = At^3 + Bt^2 + Ct + D
+-        float fp   = eval_poly2(A3, B2, C, t);      // f'   = 3At^2 + 2Bt + C
+-        float fpp  = eval_poly1(A3 + A3, B2, t);    // f''  = 6At + 2B
+-        float fppp = A3 + A3;                       // f''' = 6A
+-
+-        float f2 = f * f;
+-        float fp2 = fp * fp;
+-
+-//        float numer = 6 * f * fp * fp - 3 * f * f * fpp;
+-//        float denom = 6 * fp * fp * fp - 6 * f * fp * fpp + f * f * fppp;
+-
+-        float numer = 6 * f * fp2 - 3 * f2 * fpp;
+-        if (numer == 0) {
+-            break;
+-        }
+-        float denom = 6 * (fp2 * fp - f * fp * fpp) + f2 * fppp;
+-        float delta = numer / denom;
+-        //      SkDebugf("[%d] delta %g t %g\n", iters, delta, t);
+-        if (delta_nearly_zero(delta)) {
+-            break;
+-        }
+-        float new_t = t - delta;
+-        SkASSERT(valid(new_t));
+-        t = new_t;
+-    }
+-    SkASSERT(valid(t));
+-#ifdef CUBICMAP_TRACK_MAX_ERROR
+-    if (iters > max_iters) {
+-        max_iters = iters;
+-        SkDebugf("max_iters %d\n", max_iters);
+-    }
+-#endif
+-    return t;
+-}
+-
+ #ifdef CUBICMAP_TRACK_MAX_ERROR
+ static float compute_slow(float A, float B, float C, float x) {
+     double roots[3];
+@@ -149,9 +39,8 @@ static float compute_t_from_x(float A, float B, float C, float x) {
+ #ifdef CUBICMAP_TRACK_MAX_ERROR
+     float answer = compute_slow(A, B, C, x);
+ #endif
+-    float answer2 = true ?
+-                    solve_nice_cubic_halley(A, B, C, -x) :
+-                    solve_nice_cubic_householder(A, B, C, -x);
++    float answer2 = SkOpts::cubic_solver(A, B, C, -x);
++
+ #ifdef CUBICMAP_TRACK_MAX_ERROR
+     float err = sk_float_abs(answer - answer2);
+     if (err > max_err) {
+diff --git a/src/core/SkCubicSolver.h b/src/core/SkCubicSolver.h
+new file mode 100644
+index 0000000000..f5bd9fef62
+--- /dev/null
++++ b/src/core/SkCubicSolver.h
+@@ -0,0 +1,71 @@
++/*
++ * Copyright 2018 Google Inc.
++ *
++ * Use of this source code is governed by a BSD-style license that can be
++ * found in the LICENSE file.
++ */
++
++#ifndef SkCubicSolver_DEFINED
++#define SkCubicSolver_DEFINED
++
++#include "include/core/SkTypes.h"
++#include "include/private/SkFloatingPoint.h"
++
++//#define CUBICMAP_TRACK_MAX_ERROR
++
++namespace SK_OPTS_NS {
++
++    static float eval_poly(float t, float b) {
++        return b;
++    }
++
++    template <typename... Rest>
++    static float eval_poly(float t, float m, float b, Rest... rest) {
++        return eval_poly(t, sk_fmaf(m,t,b), rest...);
++    }
++
++    inline float cubic_solver(float A, float B, float C, float D) {
++    #ifdef CUBICMAP_TRACK_MAX_ERROR
++        static int max_iters = 0;
++    #endif
++
++    #ifdef SK_DEBUG
++        auto valid = [](float t) {
++            return t >= 0 && t <= 1;
++        };
++    #endif
++
++        auto guess_nice_cubic_root = [](float a, float b, float c, float d) {
++            return -d;
++        };
++        float t = guess_nice_cubic_root(A, B, C, D);
++
++        int iters = 0;
++        const int MAX_ITERS = 8;
++        for (; iters < MAX_ITERS; ++iters) {
++            SkASSERT(valid(t));
++            float f = eval_poly(t, A,B,C,D);        // f   = At^3 + Bt^2 + Ct + D
++            if (sk_float_abs(f) <= 0.00005f) {
++                break;
++            }
++            float fp  = eval_poly(t, 3*A, 2*B, C);  // f'  = 3At^2 + 2Bt + C
++            float fpp = eval_poly(t, 3*A+3*A, 2*B); // f'' = 6At + 2B
++
++            float numer = 2 * fp * f;
++            float denom = sk_fmaf(2*fp, fp, -(f*fpp));
++
++            t -= numer / denom;
++        }
++
++    #ifdef CUBICMAP_TRACK_MAX_ERROR
++        if (max_iters < iters) {
++            max_iters = iters;
++            SkDebugf("max_iters %d\n", max_iters);
++        }
++    #endif
++        SkASSERT(valid(t));
++        return t;
++    }
++
++}  // namespace SK_OPTS_NS
++#endif
+diff --git a/src/core/SkDeferredDisplayListRecorder.cpp b/src/core/SkDeferredDisplayListRecorder.cpp
+index a7cf33bd60..a17f8a4263 100644
+--- a/src/core/SkDeferredDisplayListRecorder.cpp
++++ b/src/core/SkDeferredDisplayListRecorder.cpp
+@@ -142,6 +142,7 @@ bool SkDeferredDisplayListRecorder::init() {
+     desc.fFlags = kRenderTarget_GrSurfaceFlag;
+     desc.fWidth = fCharacterization.width();
+     desc.fHeight = fCharacterization.height();
++    desc.fIsProtected = fCharacterization.isProtected();
+     desc.fConfig = config;
+     desc.fSampleCnt = fCharacterization.sampleCount();
+ 
+diff --git a/src/core/SkGpuBlurUtils.cpp b/src/core/SkGpuBlurUtils.cpp
+index a0c4210df5..f80e4b821b 100644
+--- a/src/core/SkGpuBlurUtils.cpp
++++ b/src/core/SkGpuBlurUtils.cpp
+@@ -99,7 +99,7 @@ static GrColorType get_blur_color_type(GrTextureProxy* proxy) {
+              kRGB_888_GrPixelConfig == config || kRGBA_4444_GrPixelConfig == config ||
+              kRGB_565_GrPixelConfig == config || kSRGBA_8888_GrPixelConfig == config ||
+              kRGBA_half_GrPixelConfig == config || kAlpha_8_GrPixelConfig == config ||
+-             kAlpha_8_as_Alpha_GrPixelConfig == config || kAlpha_8_as_Red_GrPixelConfig ||
++             kAlpha_8_as_Alpha_GrPixelConfig == config || kAlpha_8_as_Red_GrPixelConfig == config ||
+              kRGBA_1010102_GrPixelConfig == config || kRGBA_half_Clamped_GrPixelConfig == config);
+ 
+     return GrPixelConfigToColorType(config);
+diff --git a/src/core/SkOpts.cpp b/src/core/SkOpts.cpp
+index 24deb783e3..ff330324a5 100644
+--- a/src/core/SkOpts.cpp
++++ b/src/core/SkOpts.cpp
+@@ -45,6 +45,8 @@
+ #include "src/opts/SkUtils_opts.h"
+ #include "src/opts/SkXfermode_opts.h"
+ 
++#include "src/core/SkCubicSolver.h"
++
+ namespace SkOpts {
+     // Define default function pointer values here...
+     // If our global compile options are set high enough, these defaults might even be
+@@ -77,6 +79,8 @@ namespace SkOpts {
+     DEFINE_DEFAULT(rect_memset32);
+     DEFINE_DEFAULT(rect_memset64);
+ 
++    DEFINE_DEFAULT(cubic_solver);
++
+     DEFINE_DEFAULT(hash_fn);
+ 
+     DEFINE_DEFAULT(S32_alpha_D32_filter_DX);
+diff --git a/src/core/SkOpts.h b/src/core/SkOpts.h
+index 3a4d9504d2..309b55018e 100644
+--- a/src/core/SkOpts.h
++++ b/src/core/SkOpts.h
+@@ -52,6 +52,8 @@ namespace SkOpts {
+     extern void (*rect_memset32)(uint32_t[], uint32_t, int, size_t, int);
+     extern void (*rect_memset64)(uint64_t[], uint64_t, int, size_t, int);
+ 
++    extern float (*cubic_solver)(float, float, float, float);
++
+     // The fastest high quality 32-bit hash we can provide on this platform.
+     extern uint32_t (*hash_fn)(const void*, size_t, uint32_t seed);
+     static inline uint32_t hash(const void* data, size_t bytes, uint32_t seed=0) {
+diff --git a/src/core/SkSurfaceCharacterization.cpp b/src/core/SkSurfaceCharacterization.cpp
+index a97ffc57d6..1c884af86b 100644
+--- a/src/core/SkSurfaceCharacterization.cpp
++++ b/src/core/SkSurfaceCharacterization.cpp
+@@ -42,6 +42,7 @@ bool SkSurfaceCharacterization::operator==(const SkSurfaceCharacterization& othe
+            fIsMipMapped == other.fIsMipMapped &&
+            fUsesGLFBO0 == other.fUsesGLFBO0 &&
+            fVulkanSecondaryCBCompatible == other.fVulkanSecondaryCBCompatible &&
++           fIsProtected == other.fIsProtected &&
+            fSurfaceProps == other.fSurfaceProps;
+ }
+ 
+@@ -59,7 +60,7 @@ SkSurfaceCharacterization SkSurfaceCharacterization::createResized(int width, in
+     return SkSurfaceCharacterization(fContextInfo, fCacheMaxResourceBytes,
+                                      fImageInfo.makeWH(width, height), fBackendFormat, fOrigin,
+                                      fSampleCnt, fIsTextureable, fIsMipMapped, fUsesGLFBO0,
+-                                     fVulkanSecondaryCBCompatible, fSurfaceProps);
++                                     fVulkanSecondaryCBCompatible, fIsProtected, fSurfaceProps);
+ }
+ 
+ bool SkSurfaceCharacterization::isCompatible(const GrBackendTexture& backendTex) const {
+@@ -90,7 +91,10 @@ bool SkSurfaceCharacterization::isCompatible(const GrBackendTexture& backendTex)
+         return false;
+     }
+ 
+-    // TODO: need to check protected status here
++    if (this->isProtected() != GrProtected(backendTex.isProtected())) {
++        return false;
++    }
++
+     return true;
+ }
+ 
+diff --git a/src/core/SkVM.cpp b/src/core/SkVM.cpp
+index d8f5a004e2..af6affedfb 100644
+--- a/src/core/SkVM.cpp
++++ b/src/core/SkVM.cpp
+@@ -47,9 +47,9 @@ namespace skvm {
+     Program Builder::done() const {
+         // Track per-instruction code hoisting, lifetime, and register assignment.
+         struct Analysis {
+-            bool hoist = true;
+-            Val  life  = NA;
+-            Reg  reg   = 0;
++            bool hoist = true;  // Can this instruction be hoisted outside the implicit loop?
++            Val  death = 0;     // This instruction's value is needed until instruction 'death'.
++            Reg  reg   = 0;     // Register this instruction's output is assigned to.
+         };
+         std::vector<Analysis> analysis(fProgram.size());
+ 
+@@ -59,14 +59,14 @@ namespace skvm {
+ 
+             // All side-effect-only instructions (stores) are live.
+             if (inst.op <= Op::store32) {
+-                analysis[id].life = id;
++                analysis[id].death = id;
+             }
+-            // The arguments of a live instruction must live until that instruction.
+-            if (analysis[id].life != NA) {
+-                // Notice how we're walking backward, storing the latest instruction in life.
+-                if (inst.x != NA && analysis[inst.x].life == NA) { analysis[inst.x].life = id; }
+-                if (inst.y != NA && analysis[inst.y].life == NA) { analysis[inst.y].life = id; }
+-                if (inst.z != NA && analysis[inst.z].life == NA) { analysis[inst.z].life = id; }
++            // The arguments of a live instruction must live until at least that instruction.
++            if (analysis[id].death != 0) {
++                // Notice how we're walking backward, storing the latest instruction in death.
++                if (inst.x != NA && analysis[inst.x].death == 0) { analysis[inst.x].death = id; }
++                if (inst.y != NA && analysis[inst.y].death == 0) { analysis[inst.y].death = id; }
++                if (inst.z != NA && analysis[inst.z].death == 0) { analysis[inst.z].death = id; }
+             }
+         }
+ 
+@@ -86,10 +86,10 @@ namespace skvm {
+                 if (inst.z != NA) { analysis[id].hoist &= analysis[inst.z].hoist; }
+             }
+ 
+-            // Mark the lifetime of live hoisted instructions as the full program,
+-            // mostly to avoid recycling their registers, and also helps debugging sanity.
+-            if (analysis[id].hoist && analysis[id].life != NA) {
+-                analysis[id].life = (Val)fProgram.size();
++            // Extend the lifetime of live hoisted instructions to the full program,
++            // mostly to avoid recycling their registers (and also helps debugging).
++            if (analysis[id].hoist && analysis[id].death != 0) {
++                analysis[id].death = (Val)fProgram.size();
+             }
+         }
+ 
+@@ -98,7 +98,7 @@ namespace skvm {
+ 
+         // Our first pass of register assignment assigns hoisted values to eternal registers.
+         for (Val id = 0; id < (Val)fProgram.size(); id++) {
+-            if (analysis[id].life == NA || !analysis[id].hoist) {
++            if (analysis[id].death == 0 || !analysis[id].hoist) {
+                 continue;
+             }
+             // Hoisted values are needed forever, so they each get their own register.
+@@ -110,7 +110,7 @@ namespace skvm {
+         std::vector<Reg> avail;
+         for (Val id = 0; id < (Val)fProgram.size(); id++) {
+             const Instruction& inst = fProgram[id];
+-            if (analysis[id].life == NA || analysis[id].hoist) {
++            if (analysis[id].death == 0 || analysis[id].hoist) {
+                 continue;
+             }
+ 
+@@ -118,7 +118,7 @@ namespace skvm {
+             auto maybe_recycle_register = [&](Val input) {
+                 // If this is a real input and it's lifetime ends with this
+                 // instruction, we can recycle the register it's occupying.
+-                if (input != NA && analysis[input].life == id) {
++                if (input != NA && analysis[input].death == id) {
+                     avail.push_back(analysis[input].reg);
+                 }
+             };
+@@ -166,7 +166,7 @@ namespace skvm {
+ 
+         for (Val id = 0; id < (Val)fProgram.size(); id++) {
+             const Instruction& inst = fProgram[id];
+-            if (analysis[id].life == NA || !analysis[id].hoist) {
++            if (analysis[id].death == 0 || !analysis[id].hoist) {
+                 continue;
+             }
+ 
+@@ -175,7 +175,7 @@ namespace skvm {
+         }
+         for (Val id = 0; id < (Val)fProgram.size(); id++) {
+             const Instruction& inst = fProgram[id];
+-            if (analysis[id].life == NA || analysis[id].hoist) {
++            if (analysis[id].death == 0 || analysis[id].hoist) {
+                 continue;
+             }
+ 
+diff --git a/src/gpu/GrContext.cpp b/src/gpu/GrContext.cpp
+index da219a162d..a1e3eba191 100644
+--- a/src/gpu/GrContext.cpp
++++ b/src/gpu/GrContext.cpp
+@@ -394,11 +394,10 @@ GrBackendTexture GrContext::createBackendTexture(const SkSurfaceCharacterization
+         return GrBackendTexture();
+     }
+ 
+-    // TODO (PROT-CHAR): pass in protection status once added to characterization
+     GrBackendTexture result = this->createBackendTexture(c.width(), c.height(), format,
+                                                          GrMipMapped(c.isMipMapped()),
+                                                          GrRenderable::kYes,
+-                                                         GrProtected::kNo);
++                                                         c.isProtected());
+     SkASSERT(c.isCompatible(result));
+     return result;
+ }
+@@ -434,11 +433,10 @@ GrBackendTexture GrContext::createBackendTexture(const SkSurfaceCharacterization
+         return GrBackendTexture();
+     }
+ 
+-    // TODO (PROT-CHAR): pass in protection status once added to characterization
+     GrBackendTexture result = this->createBackendTexture(c.width(), c.height(), format, color,
+                                                          GrMipMapped(c.isMipMapped()),
+                                                          GrRenderable::kYes,
+-                                                         GrProtected::kNo);
++                                                         c.isProtected());
+     SkASSERT(c.isCompatible(result));
+     return result;
+ }
+diff --git a/src/gpu/GrContextThreadSafeProxy.cpp b/src/gpu/GrContextThreadSafeProxy.cpp
+index 9a1a37af4c..5b00895a1e 100644
+--- a/src/gpu/GrContextThreadSafeProxy.cpp
++++ b/src/gpu/GrContextThreadSafeProxy.cpp
+@@ -15,6 +15,10 @@
+ #include "src/gpu/GrSkSLFPFactoryCache.h"
+ #include "src/image/SkSurface_Gpu.h"
+ 
++#ifdef SK_VULKAN
++#include "src/gpu/vk/GrVkCaps.h"
++#endif
++
+ GrContextThreadSafeProxy::GrContextThreadSafeProxy(GrBackendApi backend,
+                                                    const GrContextOptions& options,
+                                                    uint32_t contextID)
+@@ -33,7 +37,8 @@ SkSurfaceCharacterization GrContextThreadSafeProxy::createCharacterization(
+                                      const SkImageInfo& ii, const GrBackendFormat& backendFormat,
+                                      int sampleCnt, GrSurfaceOrigin origin,
+                                      const SkSurfaceProps& surfaceProps,
+-                                     bool isMipMapped, bool willUseGLFBO0, bool isTextureable) {
++                                     bool isMipMapped, bool willUseGLFBO0, bool isTextureable,
++                                     GrProtected isProtected) {
+     if (!backendFormat.isValid()) {
+         return SkSurfaceCharacterization(); // return an invalid characterization
+     }
+@@ -73,6 +78,21 @@ SkSurfaceCharacterization GrContextThreadSafeProxy::createCharacterization(
+         return SkSurfaceCharacterization(); // return an invalid characterization
+     }
+ 
++    if (GrBackendApi::kVulkan == backendFormat.backend()) {
++        if (GrBackendApi::kVulkan != this->backend()) {
++            return SkSurfaceCharacterization(); // return an invalid characterization
++        }
++
++#ifdef SK_VULKAN
++        const GrVkCaps* vkCaps = (const GrVkCaps*) this->caps();
++
++        // The protection status of the characterization and the context need to match
++        if (isProtected != GrProtected(vkCaps->supportsProtectedMemory())) {
++            return SkSurfaceCharacterization(); // return an invalid characterization
++        }
++#endif
++    }
++
+     return SkSurfaceCharacterization(sk_ref_sp<GrContextThreadSafeProxy>(this),
+                                      cacheMaxResourceBytes, ii, backendFormat,
+                                      origin, sampleCnt,
+@@ -80,6 +100,7 @@ SkSurfaceCharacterization GrContextThreadSafeProxy::createCharacterization(
+                                      SkSurfaceCharacterization::MipMapped(isMipMapped),
+                                      SkSurfaceCharacterization::UsesGLFBO0(willUseGLFBO0),
+                                      SkSurfaceCharacterization::VulkanSecondaryCBCompatible(false),
++                                     isProtected,
+                                      surfaceProps);
+ }
+ 
+diff --git a/src/gpu/gl/GrGLCaps.cpp b/src/gpu/gl/GrGLCaps.cpp
+index ad94098d05..ad5741862d 100644
+--- a/src/gpu/gl/GrGLCaps.cpp
++++ b/src/gpu/gl/GrGLCaps.cpp
+@@ -113,6 +113,7 @@ void GrGLCaps::init(const GrContextOptions& contextOptions,
+         fWritePixelsRowBytesSupport = version >= GR_GL_VER(2, 0);
+         fReadPixelsRowBytesSupport = version >= GR_GL_VER(2, 0);
+     }
++
+     if (fDriverBugWorkarounds.pack_parameters_workaround_with_pack_buffer) {
+         // In some cases drivers handle copying the last row incorrectly
+         // when using GL_PACK_ROW_LENGTH.  Chromium handles this by iterating
+@@ -1373,53 +1374,6 @@ bool GrGLCaps::getExternalFormat(GrPixelConfig surfaceConfig, GrPixelConfig memo
+     return true;
+ }
+ 
+-const GrGLCaps::FormatInfo& GrGLCaps::getFormatInfo(GrGLenum glFormat) const {
+-    GrGLCaps* nonConstThis = const_cast<GrGLCaps*>(this);
+-    return nonConstThis->getFormatInfo(glFormat);
+-}
+-
+-GrGLCaps::FormatInfo& GrGLCaps::getFormatInfo(GrGLenum glFormat) {
+-    // These are all the valid sized formats that we support in Skia. They are roughly ordered from
+-    // most frequently used to least to improve look up times in arrays.
+-    static constexpr GrGLenum kGLFormats[] = {
+-        GR_GL_RGBA8,
+-        GR_GL_R8,
+-        GR_GL_ALPHA8,
+-        GR_GL_LUMINANCE8,
+-        GR_GL_BGRA8,
+-        GR_GL_RGB565,
+-        GR_GL_RGBA16F,
+-        GR_GL_R16F,
+-        GR_GL_RGB8,
+-        GR_GL_RG8,
+-        GR_GL_RGB10_A2,
+-        GR_GL_RGBA4,
+-        GR_GL_RGBA32F,
+-        GR_GL_RG32F,
+-        GR_GL_SRGB8_ALPHA8,
+-        GR_GL_COMPRESSED_RGB8_ETC2,
+-        GR_GL_COMPRESSED_ETC1_RGB8,
+-        GR_GL_R16,
+-        GR_GL_RG16,
+-        // Experimental (for Y416 and mutant P016/P010)
+-        GR_GL_RGBA16,
+-        GR_GL_RG16F,
+-    };
+-    static_assert(SK_ARRAY_COUNT(kGLFormats) == GrGLCaps::kNumGLFormats,
+-                  "Size of GLFormats array must match static value in header");
+-
+-    SkASSERT(GrGLFormatIsSupported(glFormat));
+-
+-    for (size_t i = 0; i < SK_ARRAY_COUNT(kGLFormats); ++i) {
+-        if (kGLFormats[i] == glFormat) {
+-            return fFormatTable[i];
+-        }
+-    }
+-    SK_ABORT("Invalid GL format");
+-    static FormatInfo kInvalidFormat;
+-    return kInvalidFormat;
+-}
+-
+ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+                                const GrGLContextInfo& ctxInfo, const GrGLInterface* gli,
+                                const FormatWorkarounds& formatWorkarounds) {
+@@ -1550,7 +1504,7 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+ 
+     // RGBA8
+     {
+-        FormatInfo& info = this->getFormatInfo(GR_GL_RGBA8);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kRGBA8);
+         info.fFlags = FormatInfo::kTextureable_Flag;
+         if (GR_IS_GR_GL(standard)) {
+             info.fFlags |= msaaRenderFlags;
+@@ -1586,7 +1540,7 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+ 
+     // R8
+     {
+-        FormatInfo& info = this->getFormatInfo(GR_GL_R8);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kR8);
+         if (textureRedSupport) {
+             info.fFlags |= FormatInfo::kTextureable_Flag | msaaRenderFlags;
+         }
+@@ -1617,7 +1571,7 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+         bool alpha8IsValidForGLES = GR_IS_GR_GL_ES(standard) && version < GR_GL_VER(3, 0);
+         bool alpha8IsValidForWebGL = GR_IS_GR_WEBGL(standard);
+ 
+-        FormatInfo& info = this->getFormatInfo(GR_GL_ALPHA8);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kALPHA8);
+         if (alpha8IsValidForGL || alpha8IsValidForGLES || alpha8IsValidForWebGL) {
+             info.fFlags = FormatInfo::kTextureable_Flag;
+         }
+@@ -1643,7 +1597,7 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+ 
+     // LUMINANCE8
+     {
+-        FormatInfo& info = this->getFormatInfo(GR_GL_LUMINANCE8);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kLUMINANCE8);
+         bool supportsLum = (GR_IS_GR_GL(standard) && version <= GR_GL_VER(3, 0)) ||
+                            (GR_IS_GR_GL_ES(standard) && version < GR_GL_VER(3, 0)) ||
+                            (GR_IS_GR_WEBGL(standard));
+@@ -1676,7 +1630,7 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+ 
+     // BGRA8
+     {
+-        FormatInfo& info = this->getFormatInfo(GR_GL_BGRA8);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kBGRA8);
+         // TexStorage requires using a sized internal format and BGRA8 is only supported if we have
+         // the GL_APPLE_texture_format_BGRA8888 extension or if we have GL_EXT_texture_storage and
+         // GL_EXT_texture_format_BGRA8888.
+@@ -1723,7 +1677,7 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+ 
+     // RGB565
+     {
+-        FormatInfo& info = this->getFormatInfo(GR_GL_RGB565);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kRGB565);
+         info.fFlags = FormatInfo::kTextureable_Flag;
+         if (GR_IS_GR_GL(standard)) {
+             if (version >= GR_GL_VER(4, 2) || ctxInfo.hasExtension("GL_ARB_ES2_compatibility")) {
+@@ -1754,7 +1708,7 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+ 
+     // RGBA16F
+     {
+-        FormatInfo& info = this->getFormatInfo(GR_GL_RGBA16F);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kRGBA16F);
+         if (hasFP16Textures) {
+             info.fFlags = FormatInfo::kTextureable_Flag;
+             // ES requires 3.2 or EXT_color_buffer_half_float.
+@@ -1784,7 +1738,7 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+ 
+     // R16F
+     {
+-        FormatInfo& info = this->getFormatInfo(GR_GL_R16F);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kR16F);
+         if (textureRedSupport && hasFP16Textures) {
+             info.fFlags = FormatInfo::kTextureable_Flag;
+             if (halfFPRenderTargetSupport == HalfFPRenderTargetSupport::kAll) {
+@@ -1807,7 +1761,7 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+ 
+     // RGB8
+     {
+-        FormatInfo& info = this->getFormatInfo(GR_GL_RGB8);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kRGB8);
+         info.fFlags = FormatInfo::kTextureable_Flag;
+         if (GR_IS_GR_GL(standard)) {
+             // Even in OpenGL 4.6 GL_RGB8 is required to be color renderable but not required to be
+@@ -1843,7 +1797,7 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+ 
+     // RG8
+     {
+-        FormatInfo& info = this->getFormatInfo(GR_GL_RG8);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kRG8);
+         if (textureRedSupport) {
+             info.fFlags |= FormatInfo::kTextureable_Flag | msaaRenderFlags;
+             if (texStorageSupported &&
+@@ -1863,7 +1817,7 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+ 
+     // RGB10_A2
+     {
+-        FormatInfo& info = this->getFormatInfo(GR_GL_RGB10_A2);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kRGB10_A2);
+         if (GR_IS_GR_GL(standard) ||
+            (GR_IS_GR_GL_ES(standard) && version >= GR_GL_VER(3, 0))) {
+             info.fFlags = FormatInfo::kTextureable_Flag | msaaRenderFlags;
+@@ -1886,7 +1840,7 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+ 
+     // RGBA4
+     {
+-        FormatInfo& info = this->getFormatInfo(GR_GL_RGBA4);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kRGBA4);
+         info.fFlags = FormatInfo::kTextureable_Flag;
+         if (GR_IS_GR_GL(standard)) {
+             if (version >= GR_GL_VER(4, 2)) {
+@@ -1910,13 +1864,13 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+ 
+     // RGBA32F
+     {
+-        //FormatInfo& info = this->getFormatInfo(GR_GL_RGBA32F);
++        // FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kRGBA32F);
+         // We don't allow texturing or rendering to this format
+     }
+ 
+     // SRGB8_ALPHA8
+     {
+-        FormatInfo& info = this->getFormatInfo(GR_GL_SRGB8_ALPHA8);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kSRGB8_ALPHA8);
+         if (fSRGBSupport) {
+             uint32_t srgbRenderFlags =
+                     formatWorkarounds.fDisableSRGBRenderWithMSAAForMacAMD ? nonMSAARenderFlags
+@@ -1940,7 +1894,7 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+ 
+     // COMPRESSED_RGB8_ETC2
+     {
+-        FormatInfo& info = this->getFormatInfo(GR_GL_COMPRESSED_RGB8_ETC2);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kCOMPRESSED_RGB8_ETC2);
+         if (GR_IS_GR_GL(standard)) {
+             if (version >= GR_GL_VER(4, 3) || ctxInfo.hasExtension("GL_ARB_ES3_compatibility")) {
+                 info.fFlags = FormatInfo::kTextureable_Flag;
+@@ -1957,7 +1911,7 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+ 
+     // COMPRESSED_ETC1_RGB8
+     {
+-        FormatInfo& info = this->getFormatInfo(GR_GL_COMPRESSED_ETC1_RGB8);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kCOMPRESSED_ETC1_RGB8);
+         if (GR_IS_GR_GL_ES(standard)) {
+             if (ctxInfo.hasExtension("GL_OES_compressed_ETC1_RGB8_texture")) {
+                 info.fFlags = FormatInfo::kTextureable_Flag;
+@@ -1969,7 +1923,7 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+ 
+     // GR_GL_R16
+     {
+-        FormatInfo& info = this->getFormatInfo(GR_GL_R16);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kR16);
+         if (r16AndRG1616Supported) {
+             info.fFlags = FormatInfo::kTextureable_Flag | msaaRenderFlags;
+         }
+@@ -1985,7 +1939,7 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+ 
+     // GR_GL_RG16
+     {
+-        FormatInfo& info = this->getFormatInfo(GR_GL_RG16);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kRG16);
+         if (r16AndRG1616Supported) {
+             info.fFlags = FormatInfo::kTextureable_Flag | msaaRenderFlags;
+         }
+@@ -2020,7 +1974,7 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+             }
+         } // No WebGL support
+ 
+-        FormatInfo& info = this->getFormatInfo(GR_GL_RGBA16);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kRGBA16);
+         if (rgba16161616Supported) {
+             info.fFlags = FormatInfo::kTextureable_Flag | msaaRenderFlags;
+         }
+@@ -2059,7 +2013,7 @@ void GrGLCaps::initFormatTable(const GrContextOptions& contextOptions,
+             }
+         }
+ 
+-        FormatInfo& info = this->getFormatInfo(GR_GL_RG16F);
++        FormatInfo& info = this->getFormatInfo(GrGLSizedInternalFormat::kRG16F);
+         if (rg16fTexturesSupported) {
+             info.fFlags |= FormatInfo::kTextureable_Flag;
+         }
+@@ -3581,30 +3535,12 @@ bool GrGLCaps::onIsWindowRectanglesSupportedForRT(const GrBackendRenderTarget& b
+     return fbInfo.fFBOID != 0;
+ }
+ 
+-static bool format_is_srgb(GrGLenum format) {
+-    SkASSERT(GrGLFormatIsSupported(format));
+-
+-    switch (format) {
+-        case GR_GL_SRGB8_ALPHA8:
+-            return true;
+-        default:
+-            return false;
+-    }
+-}
+-
+ bool GrGLCaps::isFormatSRGB(const GrBackendFormat& format) const {
+-    if (!format.getGLFormat()) {
+-        return false;
+-    }
+-
+-    return format_is_srgb(*format.getGLFormat());
++    return GrGLBackendFormatToSizedInternalFormat(format) == GrGLSizedInternalFormat::kSRGB8_ALPHA8;
+ }
+ 
+-bool GrGLCaps::isGLFormatTexturable(GrColorType ct, GrGLenum glFormat) const {
+-    if (!GrGLFormatIsSupported(glFormat)) {
+-        return false;
+-    }
+-    const FormatInfo& info = this->getFormatInfo(glFormat);
++bool GrGLCaps::isFormatTexturable(GrColorType ct, GrGLSizedInternalFormat format) const {
++    const FormatInfo& info = this->getFormatInfo(format);
+     // Currently we conflate texturable to mean the format itself is texturable in a draw and that
+     // we are able to upload data of the passed in colortype to it.
+     return SkToBool(info.fFlags & FormatInfo::kTextureable_Flag) &&
+@@ -3612,11 +3548,7 @@ bool GrGLCaps::isGLFormatTexturable(GrColorType ct, GrGLenum glFormat) const {
+ }
+ 
+ bool GrGLCaps::isFormatTexturable(GrColorType ct, const GrBackendFormat& format) const {
+-    const GrGLenum* glFormat = format.getGLFormat();
+-    if (!glFormat) {
+-        return false;
+-    }
+-    return this->isGLFormatTexturable(ct, *glFormat);
++    return this->isFormatTexturable(ct, GrGLBackendFormatToSizedInternalFormat(format));
+ }
+ 
+ int GrGLCaps::getRenderTargetSampleCount(int requestedCount, GrColorType grCT,
+@@ -3681,31 +3613,20 @@ int GrGLCaps::maxRenderTargetSampleCount(GrPixelConfig config) const {
+     return count;
+ }
+ 
+-bool GrGLCaps::canGLFormatBeFBOColorAttachment(GrGLenum glFormat) const {
+-    if (!GrGLFormatIsSupported(glFormat)) {
+-        return false;
+-    }
+-    return SkToBool(this->getFormatInfo(glFormat).fFlags & FormatInfo::kFBOColorAttachment_Flag);
++bool GrGLCaps::canFormatBeFBOColorAttachment(GrGLSizedInternalFormat format) const {
++    return SkToBool(this->getFormatInfo(format).fFlags & FormatInfo::kFBOColorAttachment_Flag);
+ }
+ 
+-bool GrGLCaps::isFormatCopyable(GrColorType, const GrBackendFormat& format) const {
+-    const GrGLenum* glFormat = format.getGLFormat();
+-    if (!glFormat || !GrGLFormatIsSupported(*glFormat)) {
+-        return false;
+-    }
++bool GrGLCaps::isFormatCopyable(GrColorType ct, const GrBackendFormat& format) const {
+     // In GL we have three ways to be able to copy. CopyTexImage, blit, and draw. CopyTexImage
+     // requires the src to be an FBO attachment, blit requires both src and dst to be FBO
+     // attachments, and draw requires the dst to be an FBO attachment. Thus to copy from and to
+     // the same config, we need that config to be bindable to an FBO.
+-    return this->canGLFormatBeFBOColorAttachment(*glFormat);
++    return this->canFormatBeFBOColorAttachment(GrGLBackendFormatToSizedInternalFormat(format));
+ }
+ 
+-bool GrGLCaps::glFormatSupportsTexStorage(GrGLenum glFormat) const {
+-    if (!GrGLFormatIsSupported(glFormat)) {
+-        return false;
+-    }
+-
+-    return SkToBool(this->getFormatInfo(glFormat).fFlags & FormatInfo::kCanUseTexStorage_Flag);
++bool GrGLCaps::formatSupportsTexStorage(GrGLSizedInternalFormat format) const {
++    return SkToBool(this->getFormatInfo(format).fFlags & FormatInfo::kCanUseTexStorage_Flag);
+ }
+ 
+ // A near clone of format_color_type_valid_pair
+diff --git a/src/gpu/gl/GrGLCaps.h b/src/gpu/gl/GrGLCaps.h
+index 91b01d1017..18fed86542 100644
+--- a/src/gpu/gl/GrGLCaps.h
++++ b/src/gpu/gl/GrGLCaps.h
+@@ -10,12 +10,14 @@
+ #define GrGLCaps_DEFINED
+ 
+ #include <functional>
++#include "include/private/GrGLTypesPriv.h"
+ #include "include/private/SkChecksum.h"
+ #include "include/private/SkTArray.h"
+ #include "include/private/SkTHash.h"
+ #include "src/gpu/GrCaps.h"
+ #include "src/gpu/GrSwizzle.h"
+ #include "src/gpu/gl/GrGLStencilAttachment.h"
++#include "src/gpu/gl/GrGLUtil.h"
+ 
+ class GrGLContextInfo;
+ class GrGLRenderTarget;
+@@ -113,7 +115,7 @@ public:
+     bool isConfigTexturable(GrPixelConfig config) const override {
+         GrGLenum glFormat = this->configSizedInternalFormat(config);
+         GrColorType ct = GrPixelConfigToColorType(config);
+-        return this->isGLFormatTexturable(ct, glFormat);
++        return this->isFormatTexturable(ct, GrGLSizedInternalFormatFromGLenum(glFormat));
+     }
+ 
+     int getRenderTargetSampleCount(int requestedCount,
+@@ -132,14 +134,14 @@ public:
+         return this->canConfigBeFBOColorAttachment(config);
+     }
+ 
+-    bool canGLFormatBeFBOColorAttachment(GrGLenum glFormat) const;
++    bool canFormatBeFBOColorAttachment(GrGLSizedInternalFormat) const;
+ 
+     bool canConfigBeFBOColorAttachment(GrPixelConfig config) const {
+         GrGLenum format = this->configSizedInternalFormat(config);
+         if (!format) {
+             return false;
+         }
+-        return this->canGLFormatBeFBOColorAttachment(format);
++        return this->canFormatBeFBOColorAttachment(GrGLSizedInternalFormatFromGLenum(format));
+     }
+ 
+     bool configSupportsTexStorage(GrPixelConfig config) const {
+@@ -147,7 +149,7 @@ public:
+         if (!format) {
+             return false;
+         }
+-        return this->glFormatSupportsTexStorage(format);
++        return this->formatSupportsTexStorage(GrGLSizedInternalFormatFromGLenum(format));
+     }
+ 
+     GrGLenum configSizedInternalFormat(GrPixelConfig config) const {
+@@ -167,11 +169,6 @@ public:
+     void getRenderbufferFormat(GrPixelConfig config, GrGLenum* internalFormat) const;
+     void getSizedInternalFormat(GrPixelConfig config, GrGLenum* internalFormat) const;
+ 
+-    /** The format to use read/write a texture as an image in a shader */
+-    GrGLenum getImageFormat(GrPixelConfig config) const {
+-        return fConfigTable[config].fFormats.fSizedInternalFormat;
+-    }
+-
+     /**
+     * Gets an array of legal stencil formats. These formats are not guaranteed
+     * to be supported by the driver but are legal GLenum names given the GL
+@@ -483,8 +480,8 @@ private:
+     GrPixelConfig onGetConfigFromBackendFormat(const GrBackendFormat&, GrColorType) const override;
+     bool onAreColorTypeAndFormatCompatible(GrColorType, const GrBackendFormat&) const override;
+ 
+-    bool isGLFormatTexturable(GrColorType, GrGLenum glFormat) const;
+-    bool glFormatSupportsTexStorage(GrGLenum glFormat) const;
++    bool isFormatTexturable(GrColorType, GrGLSizedInternalFormat) const;
++    bool formatSupportsTexStorage(GrGLSizedInternalFormat) const;
+ 
+     GrGLStandard fStandard;
+ 
+@@ -649,11 +646,14 @@ private:
+         SkSTArray<1, ColorTypeInfo> fColorTypeInfos;
+     };
+ 
+-    static const size_t kNumGLFormats = 21;
+-    FormatInfo fFormatTable[kNumGLFormats];
++    FormatInfo fFormatTable[kGrGLSizedInternalFormatCount];
+ 
+-    FormatInfo& getFormatInfo(GrGLenum glFormat);
+-    const FormatInfo& getFormatInfo(GrGLenum glFormat) const;
++    FormatInfo& getFormatInfo(GrGLSizedInternalFormat format) {
++        return fFormatTable[static_cast<int>(format)];
++    }
++    const FormatInfo& getFormatInfo(GrGLSizedInternalFormat format) const {
++        return fFormatTable[static_cast<int>(format)];
++    }
+ 
+     typedef GrCaps INHERITED;
+ };
+diff --git a/src/gpu/gl/GrGLGpu.cpp b/src/gpu/gl/GrGLGpu.cpp
+index 621f16fde9..cad7f79acf 100644
+--- a/src/gpu/gl/GrGLGpu.cpp
++++ b/src/gpu/gl/GrGLGpu.cpp
+@@ -1010,7 +1010,7 @@ static bool allocate_and_populate_texture(GrPixelConfig config,
+                                           int mipLevelCount,
+                                           int baseWidth,
+                                           int baseHeight,
+-                                          bool* changedUnpackRowLength) {
++                                          bool* changedUpackRowLength) {
+     CLEAR_ERROR_BEFORE_ALLOC(&interface);
+ 
+     if (caps.configSupportsTexStorage(config)) {
+@@ -1031,20 +1031,13 @@ static bool allocate_and_populate_texture(GrPixelConfig config,
+                 int twoToTheMipLevel = 1 << currentMipLevel;
+                 const int currentWidth = SkTMax(1, baseWidth / twoToTheMipLevel);
+                 const int currentHeight = SkTMax(1, baseHeight / twoToTheMipLevel);
++                const size_t trimRowBytes = currentWidth * bpp;
++                const size_t rowBytes = texels[currentMipLevel].fRowBytes;
+ 
+-                if (texels[currentMipLevel].fPixels) {
+-                    const size_t trimRowBytes = currentWidth * bpp;
+-                    const size_t rowBytes = texels[currentMipLevel].fRowBytes;
+-                    if (rowBytes != trimRowBytes) {
+-                        SkASSERT(caps.writePixelsRowBytesSupport());
+-                        GrGLint rowLength = static_cast<GrGLint>(rowBytes / bpp);
+-                        GR_GL_CALL(&interface, PixelStorei(GR_GL_UNPACK_ROW_LENGTH, rowLength));
+-                        *changedUnpackRowLength = true;
+-                    } else if (*changedUnpackRowLength) {
+-                        SkASSERT(caps.writePixelsRowBytesSupport());
+-                        GR_GL_CALL(&interface, PixelStorei(GR_GL_UNPACK_ROW_LENGTH, 0));
+-                        *changedUnpackRowLength = false;
+-                    }
++                if (caps.writePixelsRowBytesSupport() && rowBytes != trimRowBytes) {
++                    GrGLint rowLength = static_cast<GrGLint>(rowBytes / bpp);
++                    GR_GL_CALL(&interface, PixelStorei(GR_GL_UNPACK_ROW_LENGTH, rowLength));
++                    *changedUpackRowLength = true;
+                 }
+ 
+                 GR_GL_CALL(&interface,
+@@ -1080,20 +1073,13 @@ static bool allocate_and_populate_texture(GrPixelConfig config,
+                 int twoToTheMipLevel = 1 << currentMipLevel;
+                 const int currentWidth = SkTMax(1, baseWidth / twoToTheMipLevel);
+                 const int currentHeight = SkTMax(1, baseHeight / twoToTheMipLevel);
++                const size_t trimRowBytes = currentWidth * bpp;
++                const size_t rowBytes = texels[currentMipLevel].fRowBytes;
+ 
+-                if (texels[currentMipLevel].fPixels) {
+-                    const size_t trimRowBytes = currentWidth * bpp;
+-                    const size_t rowBytes = texels[currentMipLevel].fRowBytes;
+-                    if (rowBytes != trimRowBytes) {
+-                        SkASSERT(caps.writePixelsRowBytesSupport());
+-                        GrGLint rowLength = static_cast<GrGLint>(rowBytes / bpp);
+-                        GR_GL_CALL(&interface, PixelStorei(GR_GL_UNPACK_ROW_LENGTH, rowLength));
+-                        *changedUnpackRowLength = true;
+-                    } else if (*changedUnpackRowLength) {
+-                        SkASSERT(caps.writePixelsRowBytesSupport());
+-                        GR_GL_CALL(&interface, PixelStorei(GR_GL_UNPACK_ROW_LENGTH, 0));
+-                        *changedUnpackRowLength = false;
+-                    }
++                if (caps.writePixelsRowBytesSupport() && rowBytes != trimRowBytes) {
++                    GrGLint rowLength = static_cast<GrGLint>(rowBytes / bpp);
++                    GR_GL_CALL(&interface, PixelStorei(GR_GL_UNPACK_ROW_LENGTH, rowLength));
++                    *changedUpackRowLength = true;
+                 }
+ 
+                 const void* currentMipData = texels[currentMipLevel].fPixels;
+diff --git a/src/gpu/gl/GrGLUtil.cpp b/src/gpu/gl/GrGLUtil.cpp
+index 0efeac67cd..9bd95b15eb 100644
+--- a/src/gpu/gl/GrGLUtil.cpp
++++ b/src/gpu/gl/GrGLUtil.cpp
+@@ -660,33 +660,3 @@ size_t GrGLBytesPerFormat(GrGLenum glFormat) {
+     SK_ABORT("Invalid GL format");
+     return 0;
+ }
+-
+-bool GrGLFormatIsSupported(GrGLenum format) {
+-    switch (format) {
+-        case GR_GL_LUMINANCE8:
+-        case GR_GL_ALPHA8:
+-        case GR_GL_R8:
+-        case GR_GL_RGB565:
+-        case GR_GL_RGBA4:
+-        case GR_GL_RG8:
+-        case GR_GL_R16F:
+-        case GR_GL_R16:
+-        case GR_GL_RGB8:
+-        case GR_GL_RGBA8:
+-        case GR_GL_SRGB8_ALPHA8:
+-        case GR_GL_BGRA8:
+-        case GR_GL_RGB10_A2:
+-        case GR_GL_RG16:
+-        case GR_GL_RGBA16F:
+-        case GR_GL_RG32F:
+-        case GR_GL_RGBA32F:
+-        case GR_GL_COMPRESSED_RGB8_ETC2:
+-        case GR_GL_COMPRESSED_ETC1_RGB8:
+-        // Experimental (for Y416 and mutant P016/P010)
+-        case GR_GL_RG16F:
+-        case GR_GL_RGBA16:
+-            return true;
+-        default:
+-            return false;
+-    }
+-}
+diff --git a/src/gpu/gl/GrGLUtil.h b/src/gpu/gl/GrGLUtil.h
+index 967077653a..d1494a8e1a 100644
+--- a/src/gpu/gl/GrGLUtil.h
++++ b/src/gpu/gl/GrGLUtil.h
+@@ -274,6 +274,42 @@ void GrGLClearErr(const GrGLInterface* gl);
+ // call glGetError without doing a redundant error check or logging.
+ #define GR_GL_GET_ERROR(IFACE) (IFACE)->fFunctions.fGetError()
+ 
++static constexpr GrGLSizedInternalFormat GrGLSizedInternalFormatFromGLenum(GrGLenum glFormat) {
++    switch (glFormat) {
++        case GR_GL_RGBA8:                return GrGLSizedInternalFormat::kRGBA8;
++        case GR_GL_R8:                   return GrGLSizedInternalFormat::kR8;
++        case GR_GL_ALPHA8:               return GrGLSizedInternalFormat::kALPHA8;
++        case GR_GL_LUMINANCE8:           return GrGLSizedInternalFormat::kLUMINANCE8;
++        case GR_GL_BGRA8:                return GrGLSizedInternalFormat::kBGRA8;
++        case GR_GL_RGB565:               return GrGLSizedInternalFormat::kRGB565;
++        case GR_GL_RGBA16F:              return GrGLSizedInternalFormat::kRGBA16F;
++        case GR_GL_R16F:                 return GrGLSizedInternalFormat::kR16F;
++        case GR_GL_RGB8:                 return GrGLSizedInternalFormat::kRGB8;
++        case GR_GL_RG8:                  return GrGLSizedInternalFormat::kRG8;
++        case GR_GL_RGB10_A2:             return GrGLSizedInternalFormat::kRGB10_A2;
++        case GR_GL_RGBA4:                return GrGLSizedInternalFormat::kRGBA4;
++        case GR_GL_RGBA32F:              return GrGLSizedInternalFormat::kRGBA32F;
++        case GR_GL_RG32F:                return GrGLSizedInternalFormat::kRG32F;
++        case GR_GL_SRGB8_ALPHA8:         return GrGLSizedInternalFormat::kSRGB8_ALPHA8;
++        case GR_GL_COMPRESSED_RGB8_ETC2: return GrGLSizedInternalFormat::kCOMPRESSED_RGB8_ETC2;
++        case GR_GL_COMPRESSED_ETC1_RGB8: return GrGLSizedInternalFormat::kCOMPRESSED_ETC1_RGB8;
++        case GR_GL_R16:                  return GrGLSizedInternalFormat::kR16;
++        case GR_GL_RG16:                 return GrGLSizedInternalFormat::kRG16;
++        case GR_GL_RGBA16:               return GrGLSizedInternalFormat::kRGBA16;
++        case GR_GL_RG16F:                return GrGLSizedInternalFormat::kRG16F;
++
++        default:                         return GrGLSizedInternalFormat::kUnknown;
++    }
++}
++
++static inline GrGLSizedInternalFormat GrGLBackendFormatToSizedInternalFormat(
++        const GrBackendFormat& format) {
++    if (const GrGLenum* glFormat = format.getGLFormat()) {
++        return GrGLSizedInternalFormatFromGLenum(*glFormat);
++    }
++    return GrGLSizedInternalFormat::kUnknown;
++}
++
+ GrGLenum GrToGLStencilFunc(GrStencilTest test);
+ 
+ /**
+@@ -288,6 +324,4 @@ bool GrGLFormatToCompressionType(GrGLenum glFormat, SkImage::CompressionType*);
+ 
+ size_t GrGLBytesPerFormat(GrGLenum glFormat);
+ 
+-bool GrGLFormatIsSupported(GrGLenum format);
+-
+ #endif
+diff --git a/src/gpu/vk/GrVkSecondaryCBDrawContext.cpp b/src/gpu/vk/GrVkSecondaryCBDrawContext.cpp
+index f1eff5f63b..cea1478bb8 100644
+--- a/src/gpu/vk/GrVkSecondaryCBDrawContext.cpp
++++ b/src/gpu/vk/GrVkSecondaryCBDrawContext.cpp
+@@ -105,6 +105,7 @@ bool GrVkSecondaryCBDrawContext::characterize(SkSurfaceCharacterization* charact
+                           SkSurfaceCharacterization::MipMapped(false),
+                           SkSurfaceCharacterization::UsesGLFBO0(false),
+                           SkSurfaceCharacterization::VulkanSecondaryCBCompatible(true),
++                          GrProtected(rtc->asRenderTargetProxy()->isProtected()),
+                           this->props());
+ 
+     return true;
+@@ -145,6 +146,7 @@ bool GrVkSecondaryCBDrawContext::isCompatible(
+     }
+ 
+     GrBackendFormat rtcFormat = rtc->asRenderTargetProxy()->backendFormat();
++    GrProtected isProtected = GrProtected(rtc->asRenderTargetProxy()->isProtected());
+ 
+     return characterization.contextInfo() && characterization.contextInfo()->priv().matches(ctx) &&
+            characterization.cacheMaxResourceBytes() <= maxResourceBytes &&
+@@ -156,6 +158,7 @@ bool GrVkSecondaryCBDrawContext::isCompatible(
+            characterization.sampleCount() == rtc->numSamples() &&
+            SkColorSpace::Equals(characterization.colorSpace(),
+                                 rtc->colorSpaceInfo().colorSpace()) &&
++           characterization.isProtected() == isProtected &&
+            characterization.surfaceProps() == rtc->surfaceProps();
+ }
+ 
+diff --git a/src/image/SkSurface_Gpu.cpp b/src/image/SkSurface_Gpu.cpp
+index 2459294420..860e4872bf 100644
+--- a/src/image/SkSurface_Gpu.cpp
++++ b/src/image/SkSurface_Gpu.cpp
+@@ -216,6 +216,7 @@ bool SkSurface_Gpu::onCharacterize(SkSurfaceCharacterization* characterization)
+                           SkSurfaceCharacterization::MipMapped(mipmapped),
+                           SkSurfaceCharacterization::UsesGLFBO0(usesGLFBO0),
+                           SkSurfaceCharacterization::VulkanSecondaryCBCompatible(false),
++                          GrProtected(rtc->asRenderTargetProxy()->isProtected()),
+                           this->props());
+     return true;
+ }
+@@ -300,6 +301,8 @@ bool SkSurface_Gpu::onIsCompatible(const SkSurfaceCharacterization& characteriza
+         return false;
+     }
+ 
++    GrProtected isProtected = GrProtected(rtc->asSurfaceProxy()->isProtected());
++
+     return characterization.contextInfo() && characterization.contextInfo()->priv().matches(ctx) &&
+            characterization.cacheMaxResourceBytes() <= maxResourceBytes &&
+            characterization.origin() == rtc->origin() &&
+@@ -310,6 +313,7 @@ bool SkSurface_Gpu::onIsCompatible(const SkSurfaceCharacterization& characteriza
+            characterization.sampleCount() == rtc->numSamples() &&
+            SkColorSpace::Equals(characterization.colorSpace(),
+                                 rtc->colorSpaceInfo().colorSpace()) &&
++           characterization.isProtected() == isProtected &&
+            characterization.surfaceProps() == rtc->surfaceProps();
+ }
+ 
+@@ -368,6 +372,7 @@ sk_sp<SkSurface> SkSurface::MakeRenderTarget(GrRecordingContext* context,
+     desc.fFlags = kRenderTarget_GrSurfaceFlag;
+     desc.fWidth = c.width();
+     desc.fHeight = c.height();
++    desc.fIsProtected = c.isProtected();
+     desc.fConfig = config;
+     desc.fSampleCnt = c.sampleCount();
+ 
+diff --git a/src/opts/SkOpts_hsw.cpp b/src/opts/SkOpts_hsw.cpp
+index fae5c858cd..ade0af3f42 100644
+--- a/src/opts/SkOpts_hsw.cpp
++++ b/src/opts/SkOpts_hsw.cpp
+@@ -11,12 +11,15 @@
+ #include "src/opts/SkBlitRow_opts.h"
+ #include "src/opts/SkRasterPipeline_opts.h"
+ #include "src/opts/SkUtils_opts.h"
++#include "src/core/SkCubicSolver.h"
+ 
+ namespace SkOpts {
+     void Init_hsw() {
+         blit_row_color32     = hsw::blit_row_color32;
+         blit_row_s32a_opaque = hsw::blit_row_s32a_opaque;
+ 
++        cubic_solver = SK_OPTS_NS::cubic_solver;
++
+     #define M(st) stages_highp[SkRasterPipeline::st] = (StageFn)SK_OPTS_NS::st;
+         SK_RASTER_PIPELINE_STAGES(M)
+         just_return_highp = (StageFn)SK_OPTS_NS::just_return;
+diff --git a/tests/CodecTest.cpp b/tests/CodecTest.cpp
+index 9284bcc495..23db4a978f 100644
+--- a/tests/CodecTest.cpp
++++ b/tests/CodecTest.cpp
+@@ -1430,7 +1430,7 @@ resources/invalid_images/skbug6046.gif is:
+ 00000030: 0021 f904 0000 0000 002c ff00 0000 ffcc  .!.......,......
+ 00000040: 1b36 5266 deba 543d                      .6Rf..T=
+ 
+-It nominally contains 3 frames, but all of them are invalid. It came from a
++It nominally contains 3 frames, but only the first one is valid. It came from a
+ fuzzer doing random mutations and copies. The breakdown:
+ 
+ @000  6 bytes magic "GIF89a"
+@@ -1446,7 +1446,7 @@ fuzzer doing random mutations and copies. The breakdown:
+    - height    =     0
+    - flags     =  0x40, interlaced
+ @017  2 bytes Image Descriptor body (pixel data): 0x01 0x00
+-   - lit_width =     1, INVALID, OUTSIDE THE RANGE [2, 8]
++   - lit_width =     1
+    - 0x00 byte means "end of data" for this frame
+ @019  8 bytes Graphic Control Extension: 0x21 0xF9 ... 0x00
+    - valid, but irrelevant here.
+@@ -1468,7 +1468,7 @@ fuzzer doing random mutations and copies. The breakdown:
+    - height    = 13851
+    - flags     =  0x52, INVALID, 0x80 BIT ZERO IMPLIES 0x07 BITS SHOULD BE ZERO
+ @043  5 bytes Image Descriptor body (pixel data): 0x66 0xDE ... unexpected-EOF
+-   - lit_width =   102, INVALID, OUTSIDE THE RANGE [2, 8]
++   - lit_width =   102, INVALID, GREATER THAN 8
+    - 0xDE precedes a 222 byte block of data, INVALIDLY TRUNCATED
+ 
+ On Image Descriptor flags INVALIDITY,
+@@ -1476,16 +1476,14 @@ https://www.w3.org/Graphics/GIF/spec-gif89a.txt section 20.c says that "Size of
+ Local Color Table [the low 3 bits]... should be 0 if there is no Local Color
+ Table specified [the high bit]."
+ 
+-On LZW literal width (also known as Minimum Code Size) INVALIDITY outside of
+-the range [2, 8], https://www.w3.org/Graphics/GIF/spec-gif89a.txt Appendix F
+-says that "Normally this will be the same as the number of [palette index]
+-bits. Because of some algorithmic constraints however, black & white images
+-which have one color bit must be indicated as having a code size of 2."
+-
+-In practice, some GIF decoders, including the old third_party/gif code, don't
+-enforce this. It says: "currentFrame->setDataSize(this->getOneByte())" with the
+-only further check being against an upper bound of SK_MAX_DICTIONARY_ENTRY_BITS
+-(the constant 12).
++On LZW literal width (also known as Minimum Code Size) INVALIDITY,
++https://www.w3.org/Graphics/GIF/spec-gif89a.txt Appendix F says that "Normally
++this will be the same as the number of [palette index] bits. Because of some
++algorithmic constraints however, black & white images which have one color bit
++must be indicated as having a code size of 2." In practice, some GIF decoders,
++including both the old third_party/gif code and the Wuffs GIF decoder, don't
++enforce this "at least 2" constraint. Nonetheless, any width greater than 8 is
++invalid, as there are only 8 bits in a byte.
+ */
+ 
+ DEF_TEST(Codec_InvalidAnimated, r) {
+@@ -1514,35 +1512,6 @@ DEF_TEST(Codec_InvalidAnimated, r) {
+         opts.fPriorFrame = reqFrame == i - 1 ? reqFrame : SkCodec::kNoFrame;
+         auto result = codec->startIncrementalDecode(info, bm.getPixels(), bm.rowBytes(), &opts);
+ 
+-#ifdef SK_HAS_WUFFS_LIBRARY
+-        // We are transitioning from an old GIF implementation to a new (Wuffs)
+-        // GIF implementation.
+-        //
+-        // This test (without SK_HAS_WUFFS_LIBRARY) is overly specific to the
+-        // old implementation. As a fuzzer-discovered test, it's likely that
+-        // what's fundamentally being tested isn't that decoding an invalid GIF
+-        // leads to kSuccess, but that decoding an invalid GIF doesn't lead to
+-        // an ASAN violation.
+-        //
+-        // Each of the 3 frames of the source GIF image is fundamentally
+-        // invalid, as per the "breakdown" comment above. The old
+-        // implementation is happy to call startIncrementalDecode 3 times. The
+-        // new implementation is happy for the first two times, but on the 3rd,
+-        // SkCodec::startIncrementalDecode calls SkCodec::handleFrameIndex
+-        // which calls SkCodec::getPixels on the requiredFrame (the 0'th
+-        // frame), and the new implementation subsequently hits the
+-        // invalid-ness and returns kErrorInInput instead of kSuccess.
+-        //
+-        // Once the transition is complete, we can remove the #ifdef and delete
+-        // the rest of the test function.
+-        if (i == 2) {
+-            if (result != SkCodec::kErrorInInput) {
+-                ERRORF(r, "Unexpected result for decoding frame %i (out of %i) with error %i\n", i,
+-                       frameInfos.size(), result);
+-            }
+-            return;
+-        }
+-#endif
+         if (result != SkCodec::kSuccess) {
+             ERRORF(r, "Failed to start decoding frame %i (out of %i) with error %i\n", i,
+                    frameInfos.size(), result);
+diff --git a/tests/DeferredDisplayListTest.cpp b/tests/DeferredDisplayListTest.cpp
+index 2aebda579b..10d896db67 100644
+--- a/tests/DeferredDisplayListTest.cpp
++++ b/tests/DeferredDisplayListTest.cpp
+@@ -46,15 +46,20 @@
+ #include <memory>
+ #include <utility>
+ 
++#ifdef SK_VULKAN
++#include "src/gpu/vk/GrVkCaps.h"
++#endif
++
+ class SurfaceParameters {
+ public:
+-    static const int kNumParams   = 11;
+-    static const int kSampleCount = 5;
+-    static const int kMipMipCount = 8;
+-    static const int kFBO0Count   = 9;
+-
+-    SurfaceParameters(GrBackendApi backend)
+-            : fBackend(backend)
++    static const int kNumParams      = 12;
++    static const int kSampleCount    = 5;
++    static const int kMipMipCount    = 8;
++    static const int kFBO0Count      = 9;
++    static const int kProtectedCount = 11;
++
++    SurfaceParameters(GrContext* context)
++            : fBackend(context->backend())
+             , fWidth(64)
+             , fHeight(64)
+             , fOrigin(kTopLeft_GrSurfaceOrigin)
+@@ -64,7 +69,15 @@ public:
+             , fSurfaceProps(0x0, kUnknown_SkPixelGeometry)
+             , fShouldCreateMipMaps(true)
+             , fUsesGLFBO0(false)
+-            , fIsTextureable(true) {
++            , fIsTextureable(true)
++            , fIsProtected(GrProtected::kNo) {
++#ifdef SK_VULKAN
++        if (GrBackendApi::kVulkan == context->backend()) {
++            const GrVkCaps* vkCaps = (const GrVkCaps*) context->priv().caps();
++
++            fIsProtected = GrProtected(vkCaps->supportsProtectedMemory());
++        }
++#endif
+     }
+ 
+     int sampleCount() const { return fSampleCount; }
+@@ -121,6 +134,10 @@ public:
+             fShouldCreateMipMaps = false; // needs to changed in tandem w/ textureability
+             fIsTextureable = false;
+             break;
++        case 11:
++            fIsProtected = GrProtected::kYes == fIsProtected ? GrProtected::kNo
++                                                             : GrProtected::kYes;
++            break;
+         }
+     }
+ 
+@@ -143,7 +160,7 @@ public:
+         SkSurfaceCharacterization c = context->threadSafeProxy()->createCharacterization(
+                                                 maxResourceBytes, ii, backendFormat, fSampleCount,
+                                                 fOrigin, fSurfaceProps, fShouldCreateMipMaps,
+-                                                fUsesGLFBO0, fIsTextureable);
++                                                fUsesGLFBO0, fIsTextureable, fIsProtected);
+         return c;
+     }
+ 
+@@ -195,7 +212,7 @@ public:
+ 
+         *backend = context->createBackendTexture(fWidth, fHeight, fColorType,
+                                                  SkColors::kTransparent,
+-                                                 mipmapped, GrRenderable::kYes, GrProtected::kNo);
++                                                 mipmapped, GrRenderable::kYes, fIsProtected);
+         if (!backend->isValid()) {
+             return nullptr;
+         }
+@@ -243,6 +260,7 @@ private:
+     bool                fShouldCreateMipMaps;
+     bool                fUsesGLFBO0;
+     bool                fIsTextureable;
++    GrProtected         fIsProtected;
+ };
+ 
+ // Test out operator== && operator!=
+@@ -250,7 +268,7 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLOperatorEqTest, reporter, ctxInfo) {
+     GrContext* context = ctxInfo.grContext();
+ 
+     for (int i = 0; i < SurfaceParameters::kNumParams; ++i) {
+-        SurfaceParameters params1(context->backend());
++        SurfaceParameters params1(context);
+         params1.modify(i);
+ 
+         SkSurfaceCharacterization char1 = params1.createCharacterization(context);
+@@ -259,7 +277,7 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLOperatorEqTest, reporter, ctxInfo) {
+         }
+ 
+         for (int j = 0; j < SurfaceParameters::kNumParams; ++j) {
+-            SurfaceParameters params2(context->backend());
++            SurfaceParameters params2(context);
+             params2.modify(j);
+ 
+             SkSurfaceCharacterization char2 = params2.createCharacterization(context);
+@@ -277,7 +295,7 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLOperatorEqTest, reporter, ctxInfo) {
+     }
+ 
+     {
+-        SurfaceParameters params(context->backend());
++        SurfaceParameters params(context);
+ 
+         SkSurfaceCharacterization valid = params.createCharacterization(context);
+         SkASSERT(valid.isValid());
+@@ -293,8 +311,7 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLOperatorEqTest, reporter, ctxInfo) {
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+ // This tests SkSurfaceCharacterization/SkSurface compatibility
+-DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLSurfaceCharacterizationTest, reporter, ctxInfo) {
+-    GrContext* context = ctxInfo.grContext();
++void DDLSurfaceCharacterizationTestImpl(GrContext* context, skiatest::Reporter* reporter) {
+     GrGpu* gpu = context->priv().getGpu();
+     const GrCaps* caps = context->priv().caps();
+ 
+@@ -308,7 +325,7 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLSurfaceCharacterizationTest, reporter, ctx
+ 
+     // First, create a DDL using the stock SkSurface parameters
+     {
+-        SurfaceParameters params(context->backend());
++        SurfaceParameters params(context);
+ 
+         ddl = params.createDDL(context);
+         SkAssertResult(ddl);
+@@ -330,9 +347,24 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLSurfaceCharacterizationTest, reporter, ctx
+ 
+     // Then, alter each parameter in turn and check that the DDL & surface are incompatible
+     for (int i = 0; i < SurfaceParameters::kNumParams; ++i) {
+-        SurfaceParameters params(context->backend());
++        SurfaceParameters params(context);
+         params.modify(i);
+ 
++        if (SurfaceParameters::kProtectedCount == i) {
++            if (context->backend() != GrBackendApi::kVulkan) {
++                // Only the Vulkan backend respects the protected parameter
++                continue;
++            }
++#ifdef SK_VULKAN
++            const GrVkCaps* vkCaps = (const GrVkCaps*) context->priv().caps();
++
++            // And, even then, only when it is a protected context
++            if (!vkCaps->supportsProtectedMemory()) {
++                continue;
++            }
++#endif
++        }
++
+         GrBackendTexture backend;
+         sk_sp<SkSurface> s = params.make(context, &backend);
+         if (!s) {
+@@ -378,7 +410,7 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLSurfaceCharacterizationTest, reporter, ctx
+ 
+     // Next test the compatibility of resource cache parameters
+     {
+-        const SurfaceParameters params(context->backend());
++        const SurfaceParameters params(context);
+         GrBackendTexture backend;
+ 
+         sk_sp<SkSurface> s = params.make(context, &backend);
+@@ -416,7 +448,7 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLSurfaceCharacterizationTest, reporter, ctx
+     // Test that the textureability of the DDL characterization can block a DDL draw
+     {
+         GrBackendTexture backend;
+-        SurfaceParameters params(context->backend());
++        SurfaceParameters params(context);
+         params.setShouldCreateMipMaps(false);
+         params.setTextureable(false);
+ 
+@@ -442,7 +474,7 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLSurfaceCharacterizationTest, reporter, ctx
+ 
+     // Exercise the createResized method
+     {
+-        SurfaceParameters params(context->backend());
++        SurfaceParameters params(context);
+         GrBackendTexture backend;
+ 
+         sk_sp<SkSurface> s = params.make(context, &backend);
+@@ -472,6 +504,12 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLSurfaceCharacterizationTest, reporter, ctx
+     }
+ }
+ 
++DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLSurfaceCharacterizationTest, reporter, ctxInfo) {
++    GrContext* context = ctxInfo.grContext();
++
++    DDLSurfaceCharacterizationTestImpl(context, reporter);
++}
++
+ // Test that a DDL created w/o textureability can be replayed into both a textureable and
+ // non-textureable destination. Note that DDLSurfaceCharacterizationTest tests that a
+ // textureable DDL cannot be played into a non-textureable destination but can be replayed
+@@ -492,7 +530,7 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLNonTextureabilityTest, reporter, ctxInfo)
+         // First, create a DDL w/o textureability (and thus no mipmaps). TODO: once we have
+         // reusable DDLs, move this outside of the loop.
+         {
+-            SurfaceParameters params(context->backend());
++            SurfaceParameters params(context);
+             params.setShouldCreateMipMaps(false);
+             params.setTextureable(false);
+ 
+@@ -501,7 +539,7 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLNonTextureabilityTest, reporter, ctxInfo)
+         }
+ 
+         // Then verify it can draw into either flavor of destination
+-        SurfaceParameters params(context->backend());
++        SurfaceParameters params(context);
+         params.setShouldCreateMipMaps(textureability);
+         params.setTextureable(textureability);
+ 
+@@ -580,9 +618,7 @@ static void test_make_render_target(skiatest::Reporter* reporter,
+ // This tests the SkSurface::MakeRenderTarget variants that take an SkSurfaceCharacterization.
+ // In particular, the SkSurface, backendTexture and SkSurfaceCharacterization
+ // should always be compatible.
+-DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLMakeRenderTargetTest, reporter, ctxInfo) {
+-    GrContext* context = ctxInfo.grContext();
+-
++void DDLMakeRenderTargetTestImpl(GrContext* context, skiatest::Reporter* reporter) {
+     for (int i = 0; i < SurfaceParameters::kNumParams; ++i) {
+ 
+         if (SurfaceParameters::kFBO0Count == i) {
+@@ -590,7 +626,23 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLMakeRenderTargetTest, reporter, ctxInfo) {
+             continue;
+         }
+ 
+-        SurfaceParameters params(context->backend());
++        if (SurfaceParameters::kProtectedCount == i) {
++            if (context->backend() != GrBackendApi::kVulkan) {
++                // Only the Vulkan backend respects the protected parameter
++                continue;
++            }
++#ifdef SK_VULKAN
++            const GrVkCaps* vkCaps = (const GrVkCaps*) context->priv().caps();
++
++            // And, even then, only when it is a protected context
++            if (!vkCaps->supportsProtectedMemory()) {
++                continue;
++            }
++#endif
++        }
++
++
++        SurfaceParameters params(context);
+         params.modify(i);
+ 
+         if (!context->priv().caps()->mipMapSupport()) {
+@@ -601,6 +653,12 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLMakeRenderTargetTest, reporter, ctxInfo) {
+     }
+ }
+ 
++DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLMakeRenderTargetTest, reporter, ctxInfo) {
++    GrContext* context = ctxInfo.grContext();
++
++    DDLMakeRenderTargetTestImpl(context, reporter);
++}
++
+ ////////////////////////////////////////////////////////////////////////////////
+ static constexpr int kSize = 8;
+ 
+@@ -625,7 +683,7 @@ DEF_GPUTEST_FOR_RENDERING_CONTEXTS(DDLWrapBackendTest, reporter, ctxInfo) {
+         return;
+     }
+ 
+-    SurfaceParameters params(context->backend());
++    SurfaceParameters params(context);
+     GrBackendTexture backend;
+ 
+     sk_sp<SkSurface> s = params.make(context, &backend);
+@@ -949,7 +1007,7 @@ DEF_GPUTEST_FOR_GL_RENDERING_CONTEXTS(DDLCompatibilityTest, reporter, ctxInfo) {
+     for (int ct = 0; ct <= kLastEnum_SkColorType; ++ct) {
+         SkColorType colorType = static_cast<SkColorType>(ct);
+ 
+-        SurfaceParameters params(context->backend());
++        SurfaceParameters params(context);
+         params.setColorType(colorType);
+         params.setColorSpace(nullptr);
+ 
+diff --git a/tests/VkProtectedContextTest.cpp b/tests/VkProtectedContextTest.cpp
+index 6051c49126..564d1324ed 100644
+--- a/tests/VkProtectedContextTest.cpp
++++ b/tests/VkProtectedContextTest.cpp
+@@ -424,4 +424,31 @@ DEF_GPUTEST(VkProtectedContext_DrawProtectedImageOnProtectedSurface, reporter, o
+         surface2->getBackendTexture(SkSurface::kFlushRead_BackendHandleAccess));
+ }
+ 
++//////////////////////////////////////////////////////////////////////////////////////////////////
++// Test out DDLs using a protected Vulkan context
++
++void DDLMakeRenderTargetTestImpl(GrContext* context, skiatest::Reporter* reporter);
++
++DEF_GPUTEST(VkProtectedContext_DDLMakeRenderTargetTest, reporter, ctxInfo) {
++    auto protectedTestHelper = std::make_unique<VulkanTestHelper>(true);
++    if (!protectedTestHelper->init(reporter)) {
++        return;
++    }
++    REPORTER_ASSERT(reporter, protectedTestHelper->grContext() != nullptr);
++
++    DDLMakeRenderTargetTestImpl(protectedTestHelper->grContext(), reporter);
++}
++
++void DDLSurfaceCharacterizationTestImpl(GrContext* context, skiatest::Reporter* reporter);
++
++DEF_GPUTEST(VkProtectedContext_DDLSurfaceCharacterizationTest, reporter, ctxInfo) {
++    auto protectedTestHelper = std::make_unique<VulkanTestHelper>(true);
++    if (!protectedTestHelper->init(reporter)) {
++        return;
++    }
++    REPORTER_ASSERT(reporter, protectedTestHelper->grContext() != nullptr);
++
++    DDLSurfaceCharacterizationTestImpl(protectedTestHelper->grContext(), reporter);
++}
++
+ #endif  // SK_SUPPORT_GPU && defined(SK_VULKAN)
+diff --git a/third_party/dawn/BUILD.gn b/third_party/dawn/BUILD.gn
+new file mode 100644
+index 0000000000..b6dff90533
+--- /dev/null
++++ b/third_party/dawn/BUILD.gn
+@@ -0,0 +1,615 @@
++# Copyright 2018 The Dawn Authors
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++dawn_root = "../externals/dawn"
++import("$dawn_root/scripts/dawn_features.gni")
++
++###############################################################################
++# Template to wrap the Dawn code generator
++###############################################################################
++
++# Template to help with invocation of the Dawn code generator, looks like this:
++#
++#   dawn_generator("my_target_gen") {
++#     # Which generator target to output
++#     target = "my_target"
++#     # The list of expected outputs, generation fails if there's a mismatch
++#     outputs = [
++#       "MyTarget.cpp",
++#       "MyTarget.h",
++#     ]
++#   }
++#
++# Using the generated files is done like so:
++#
++#   shared_library("my_target") {
++#     deps = [ ":my_target_gen "]
++#     sources = get_target_outputs(":my_target_gen")
++#   }
++#
++template("dawn_generator") {
++  # The base arguments for the generator: from this dawn.json, generate this
++  # target using templates in this directory.
++  generator_args = [
++    rebase_path("$dawn_root/dawn.json", root_build_dir),
++    "--template-dir",
++    rebase_path("$dawn_root/generator/templates", root_build_dir),
++    "--targets",
++    invoker.target,
++  ]
++
++  # For build parallelism GN wants to know the exact inputs and outputs of
++  # action targets like we use for our code generator. We avoid asking the
++  # generator about its inputs by using the "depfile" feature of GN/Ninja.
++  #
++  # A ninja limitation is that the depfile is a subset of Makefile that can
++  # contain a single target, so we output a single "JSON-tarball" instead.
++  json_tarball = "${target_gen_dir}/${target_name}.json_tarball"
++  json_tarball_depfile = "${json_tarball}.d"
++
++  generator_args += [
++    "--output-json-tarball",
++    rebase_path(json_tarball, root_build_dir),
++    "--depfile",
++    rebase_path(json_tarball_depfile, root_build_dir),
++  ]
++
++  # After the JSON tarball is created we need an action target to extract it
++  # with a list of its outputs. The invoker provided a list of expected
++  # outputs. To make sure the list is in sync between the generator and the
++  # build files, we write it to a file and ask the generator to assert it is
++  # correct.
++  expected_outputs_file = "${target_gen_dir}/${target_name}.expected_outputs"
++  write_file(expected_outputs_file, invoker.outputs)
++
++  generator_args += [
++    "--expected-outputs-file",
++    rebase_path(expected_outputs_file, root_build_dir),
++  ]
++
++  # The code generator invocation that will write the JSON tarball, check the
++  # outputs are what's expected and write a depfile for Ninja.
++  action("${target_name}_json_tarball") {
++    script = "${dawn_root}/generator/main.py"
++    outputs = [
++      json_tarball,
++    ]
++    depfile = json_tarball_depfile
++    args = generator_args
++  }
++
++  # Extract the JSON tarball into the target_gen_dir
++  action("${target_name}") {
++    script = "${dawn_root}/generator/extract_json.py"
++    args = [
++      rebase_path(json_tarball, root_build_dir),
++      rebase_path(target_gen_dir, root_build_dir),
++    ]
++
++    deps = [
++      ":${target_name}_json_tarball",
++    ]
++    inputs = [
++      json_tarball,
++    ]
++
++    # The expected output list is relative to the target_gen_dir but action
++    # target outputs are from the root dir so we need to rebase them.
++    outputs = []
++    foreach(source, invoker.outputs) {
++      outputs += [ "${target_gen_dir}/${source}" ]
++    }
++  }
++}
++
++###############################################################################
++# Common dawn libraries and configs
++###############################################################################
++
++config("libdawn_public") {
++  include_dirs = [
++    target_gen_dir,
++    "$dawn_root/src/include",
++    "$dawn_root/src",
++  ]
++}
++
++config("dawn_internal") {
++  include_dirs = [ "$dawn_root/src" ]
++
++  defines = []
++  if (dawn_always_assert || is_debug) {
++    defines += [ "DAWN_ENABLE_ASSERTS" ]
++  }
++
++  if (dawn_enable_d3d12) {
++    defines += [ "DAWN_ENABLE_BACKEND_D3D12" ]
++  }
++  if (dawn_enable_metal) {
++    defines += [ "DAWN_ENABLE_BACKEND_METAL" ]
++  }
++  if (dawn_enable_null) {
++    defines += [ "DAWN_ENABLE_BACKEND_NULL" ]
++  }
++  if (dawn_enable_opengl) {
++    defines += [ "DAWN_ENABLE_BACKEND_OPENGL" ]
++  }
++  if (dawn_enable_vulkan) {
++    defines += [ "DAWN_ENABLE_BACKEND_VULKAN" ]
++  }
++
++  configs = [ ":libdawn_public" ]
++
++  # Only internal Dawn targets can use this config, this means only targets in
++  # this BUILD.gn file.
++  visibility = [ ":*" ]
++}
++
++static_library("dawn_common") {
++  sources = rebase_path([
++                          "src/common/Assert.cpp",
++                          "src/common/Assert.h",
++                          "src/common/BitSetIterator.h",
++                          "src/common/Compiler.h",
++                          "src/common/DynamicLib.cpp",
++                          "src/common/DynamicLib.h",
++                          "src/common/HashUtils.h",
++                          "src/common/Math.cpp",
++                          "src/common/Math.h",
++                          "src/common/Platform.h",
++                          "src/common/Result.h",
++                          "src/common/Serial.h",
++                          "src/common/SerialMap.h",
++                          "src/common/SerialQueue.h",
++                          "src/common/SerialStorage.h",
++                          "src/common/SwapChainUtils.h",
++                          "src/common/vulkan_platform.h",
++                          "src/common/windows_with_undefs.h",
++                        ],
++                        ".",
++                        "$dawn_root")
++
++  configs += [ ":dawn_internal" ]
++  deps = [
++    ":dawn_headers",
++  ]
++}
++
++###############################################################################
++# Dawn headers and libdawn.so
++###############################################################################
++
++dawn_generator("dawn_headers_gen") {
++  target = "dawn_headers"
++  outputs = [
++    "dawn/dawncpp.h",
++    "dawn/dawn.h",
++  ]
++}
++
++source_set("dawn_headers") {
++  public_configs = [ ":libdawn_public" ]
++  deps = [
++    ":dawn_headers_gen",
++  ]
++
++  sources = get_target_outputs(":dawn_headers_gen")
++  sources += [
++    "src/include/dawn/EnumClassBitmasks.h",
++    "src/include/dawn/dawn_export.h",
++    "src/include/dawn/dawn_wsi.h",
++  ]
++}
++
++dawn_generator("libdawn_gen") {
++  target = "libdawn"
++  outputs = [
++    "dawn/dawncpp.cpp",
++    "dawn/dawn.c",
++  ]
++}
++
++static_library("libdawn") {
++  public_deps = [
++    ":dawn_headers",
++  ]
++
++  defines = [ "DAWN_IMPLEMENTATION" ]
++  deps = [
++    ":libdawn_gen",
++  ]
++  sources = get_target_outputs(":libdawn_gen")
++}
++
++###############################################################################
++# libdawn_native.so
++###############################################################################
++
++config("libdawn_native_internal") {
++  configs = [ ":dawn_internal" ]
++  defines = [ "DAWN_NATIVE_IMPLEMENTATION" ]
++
++  # Suppress warnings that Metal isn't in the deployment target of Chrome
++  if (is_mac) {
++    cflags_objcc = [ "-Wno-unguarded-availability" ]
++  }
++}
++
++dawn_generator("libdawn_native_utils_gen") {
++  target = "dawn_native_utils"
++  outputs = [
++    "dawn_native/ProcTable.cpp",
++    "dawn_native/dawn_structs_autogen.h",
++    "dawn_native/dawn_structs_autogen.cpp",
++    "dawn_native/ValidationUtils_autogen.h",
++    "dawn_native/ValidationUtils_autogen.cpp",
++  ]
++}
++
++# Public libdawn_native headers so they can be publically visible for
++# dependencies of libdawn_native
++source_set("libdawn_native_headers") {
++  public_deps = [
++    ":dawn_headers",
++  ]
++  sources = rebase_path(
++          [
++            "src/include/dawn_native/DawnNative.h",
++            "src/include/dawn_native/dawn_native_export.h",
++
++            # Include all backend's public headers so that dependencies can include
++            # them even when the backends are disabled.
++            "src/include/dawn_native/D3D12Backend.h",
++            "src/include/dawn_native/MetalBackend.h",
++            "src/include/dawn_native/NullBackend.h",
++            "src/include/dawn_native/OpenGLBackend.h",
++            "src/include/dawn_native/VulkanBackend.h",
++          ],
++          ".",
++          "$dawn_root")
++}
++
++# The meat of the compilation for libdawn_native so that we can cheaply have
++# shared_library / static_library / component versions of it.
++source_set("libdawn_native_sources") {
++  deps = [
++    ":dawn_common",
++    ":libdawn_native_utils_gen",
++    "third_party:spirv_cross",
++    "third_party:spvtools_val",
++  ]
++
++  # Put the internal config public so that unittests can see internal headers
++  public_configs = [ ":libdawn_native_internal" ]
++
++  # Set the headers as a public dependency so they are visible to unittests
++  public_deps = [
++    ":libdawn_native_headers",
++  ]
++
++  libs = []
++
++  sources = rebase_path(get_target_outputs(":libdawn_native_utils_gen"),
++                        ".",
++                        "$dawn_root")
++  sources += rebase_path([
++                           "src/dawn_native/Adapter.cpp",
++                           "src/dawn_native/Adapter.h",
++                           "src/dawn_native/BackendConnection.cpp",
++                           "src/dawn_native/BackendConnection.h",
++                           "src/dawn_native/BindGroup.cpp",
++                           "src/dawn_native/BindGroup.h",
++                           "src/dawn_native/BindGroupLayout.cpp",
++                           "src/dawn_native/BindGroupLayout.h",
++                           "src/dawn_native/Buffer.cpp",
++                           "src/dawn_native/Buffer.h",
++                           "src/dawn_native/CommandAllocator.cpp",
++                           "src/dawn_native/CommandAllocator.h",
++                           "src/dawn_native/CommandBuffer.cpp",
++                           "src/dawn_native/CommandBuffer.h",
++                           "src/dawn_native/CommandBufferStateTracker.cpp",
++                           "src/dawn_native/CommandBufferStateTracker.h",
++                           "src/dawn_native/CommandEncoder.cpp",
++                           "src/dawn_native/CommandEncoder.h",
++                           "src/dawn_native/Commands.cpp",
++                           "src/dawn_native/Commands.h",
++                           "src/dawn_native/ComputePassEncoder.cpp",
++                           "src/dawn_native/ComputePassEncoder.h",
++                           "src/dawn_native/ComputePipeline.cpp",
++                           "src/dawn_native/ComputePipeline.h",
++                           "src/dawn_native/DawnNative.cpp",
++                           "src/dawn_native/Device.cpp",
++                           "src/dawn_native/Device.h",
++                           "src/dawn_native/DynamicUploader.cpp",
++                           "src/dawn_native/DynamicUploader.h",
++                           "src/dawn_native/Device.h",
++                           "src/dawn_native/Error.cpp",
++                           "src/dawn_native/Error.h",
++                           "src/dawn_native/ErrorData.cpp",
++                           "src/dawn_native/ErrorData.h",
++                           "src/dawn_native/Fence.cpp",
++                           "src/dawn_native/Fence.h",
++                           "src/dawn_native/FenceSignalTracker.cpp",
++                           "src/dawn_native/FenceSignalTracker.h",
++                           "src/dawn_native/Forward.h",
++                           "src/dawn_native/Instance.cpp",
++                           "src/dawn_native/Instance.h",
++                           "src/dawn_native/ObjectBase.h",
++                           "src/dawn_native/ObjectBase.cpp",
++                           "src/dawn_native/PassResourceUsage.h",
++                           "src/dawn_native/PerStage.cpp",
++                           "src/dawn_native/PerStage.h",
++                           "src/dawn_native/Pipeline.cpp",
++                           "src/dawn_native/Pipeline.h",
++                           "src/dawn_native/PipelineLayout.cpp",
++                           "src/dawn_native/PipelineLayout.h",
++                           "src/dawn_native/ProgrammablePassEncoder.cpp",
++                           "src/dawn_native/ProgrammablePassEncoder.h",
++                           "src/dawn_native/Queue.cpp",
++                           "src/dawn_native/Queue.h",
++                           "src/dawn_native/RefCounted.cpp",
++                           "src/dawn_native/RefCounted.h",
++                           "src/dawn_native/RenderPassEncoder.cpp",
++                           "src/dawn_native/RenderPassEncoder.h",
++                           "src/dawn_native/RenderPipeline.cpp",
++                           "src/dawn_native/RenderPipeline.h",
++                           "src/dawn_native/RingBuffer.cpp",
++                           "src/dawn_native/RingBuffer.h",
++                           "src/dawn_native/Sampler.cpp",
++                           "src/dawn_native/Sampler.h",
++                           "src/dawn_native/ShaderModule.cpp",
++                           "src/dawn_native/ShaderModule.h",
++                           "src/dawn_native/StagingBuffer.cpp",
++                           "src/dawn_native/StagingBuffer.h",
++                           "src/dawn_native/SwapChain.cpp",
++                           "src/dawn_native/SwapChain.h",
++                           "src/dawn_native/Texture.cpp",
++                           "src/dawn_native/Texture.h",
++                           "src/dawn_native/ToBackend.h",
++                           "src/dawn_native/dawn_platform.h",
++                         ],
++                         ".",
++                         "$dawn_root")
++
++  if (dawn_enable_d3d12) {
++    libs += [ "dxguid.lib" ]
++    sources +=
++        rebase_path([
++                      "src/dawn_native/d3d12/AdapterD3D12.cpp",
++                      "src/dawn_native/d3d12/AdapterD3D12.h",
++                      "src/dawn_native/d3d12/BackendD3D12.cpp",
++                      "src/dawn_native/d3d12/BackendD3D12.h",
++                      "src/dawn_native/d3d12/BindGroupD3D12.cpp",
++                      "src/dawn_native/d3d12/BindGroupD3D12.h",
++                      "src/dawn_native/d3d12/BindGroupLayoutD3D12.cpp",
++                      "src/dawn_native/d3d12/BindGroupLayoutD3D12.h",
++                      "src/dawn_native/d3d12/BufferD3D12.cpp",
++                      "src/dawn_native/d3d12/BufferD3D12.h",
++                      "src/dawn_native/d3d12/CommandAllocatorManager.cpp",
++                      "src/dawn_native/d3d12/CommandAllocatorManager.h",
++                      "src/dawn_native/d3d12/CommandBufferD3D12.cpp",
++                      "src/dawn_native/d3d12/CommandBufferD3D12.h",
++                      "src/dawn_native/d3d12/ComputePipelineD3D12.cpp",
++                      "src/dawn_native/d3d12/ComputePipelineD3D12.h",
++                      "src/dawn_native/d3d12/D3D12Backend.cpp",
++                      "src/dawn_native/d3d12/DescriptorHeapAllocator.cpp",
++                      "src/dawn_native/d3d12/DescriptorHeapAllocator.h",
++                      "src/dawn_native/d3d12/DeviceD3D12.cpp",
++                      "src/dawn_native/d3d12/DeviceD3D12.h",
++                      "src/dawn_native/d3d12/Forward.h",
++                      "src/dawn_native/d3d12/NativeSwapChainImplD3D12.cpp",
++                      "src/dawn_native/d3d12/NativeSwapChainImplD3D12.h",
++                      "src/dawn_native/d3d12/PipelineLayoutD3D12.cpp",
++                      "src/dawn_native/d3d12/PipelineLayoutD3D12.h",
++                      "src/dawn_native/d3d12/PlatformFunctions.cpp",
++                      "src/dawn_native/d3d12/PlatformFunctions.h",
++                      "src/dawn_native/d3d12/QueueD3D12.cpp",
++                      "src/dawn_native/d3d12/QueueD3D12.h",
++                      "src/dawn_native/d3d12/RenderPipelineD3D12.cpp",
++                      "src/dawn_native/d3d12/RenderPipelineD3D12.h",
++                      "src/dawn_native/d3d12/ResourceAllocator.cpp",
++                      "src/dawn_native/d3d12/ResourceAllocator.h",
++                      "src/dawn_native/d3d12/SamplerD3D12.cpp",
++                      "src/dawn_native/d3d12/SamplerD3D12.h",
++                      "src/dawn_native/d3d12/ShaderModuleD3D12.cpp",
++                      "src/dawn_native/d3d12/ShaderModuleD3D12.h",
++                      "src/dawn_native/d3d12/StagingBufferD3D12.cpp",
++                      "src/dawn_native/d3d12/StagingBufferD3D12.h",
++                      "src/dawn_native/d3d12/SwapChainD3D12.cpp",
++                      "src/dawn_native/d3d12/SwapChainD3D12.h",
++                      "src/dawn_native/d3d12/TextureCopySplitter.cpp",
++                      "src/dawn_native/d3d12/TextureCopySplitter.h",
++                      "src/dawn_native/d3d12/TextureD3D12.cpp",
++                      "src/dawn_native/d3d12/TextureD3D12.h",
++                      "src/dawn_native/d3d12/UtilsD3D12.cpp",
++                      "src/dawn_native/d3d12/UtilsD3D12.h",
++                      "src/dawn_native/d3d12/d3d12_platform.h",
++                    ],
++                    ".",
++                    "$dawn_root")
++  }
++
++  if (dawn_enable_metal) {
++    libs += [
++      "Metal.framework",
++      "Cocoa.framework",
++      "IOKit.framework",
++      "IOSurface.framework",
++    ]
++    sources += rebase_path([
++                             "src/dawn_native/metal/BackendMTL.h",
++                             "src/dawn_native/metal/BackendMTL.mm",
++                             "src/dawn_native/metal/BufferMTL.h",
++                             "src/dawn_native/metal/BufferMTL.mm",
++                             "src/dawn_native/metal/CommandBufferMTL.h",
++                             "src/dawn_native/metal/CommandBufferMTL.mm",
++                             "src/dawn_native/metal/ComputePipelineMTL.h",
++                             "src/dawn_native/metal/ComputePipelineMTL.mm",
++                             "src/dawn_native/metal/DeviceMTL.h",
++                             "src/dawn_native/metal/DeviceMTL.mm",
++                             "src/dawn_native/metal/Forward.h",
++                             "src/dawn_native/metal/MetalBackend.mm",
++                             "src/dawn_native/metal/PipelineLayoutMTL.h",
++                             "src/dawn_native/metal/PipelineLayoutMTL.mm",
++                             "src/dawn_native/metal/QueueMTL.h",
++                             "src/dawn_native/metal/QueueMTL.mm",
++                             "src/dawn_native/metal/RenderPipelineMTL.h",
++                             "src/dawn_native/metal/RenderPipelineMTL.mm",
++                             "src/dawn_native/metal/SamplerMTL.h",
++                             "src/dawn_native/metal/SamplerMTL.mm",
++                             "src/dawn_native/metal/ShaderModuleMTL.h",
++                             "src/dawn_native/metal/ShaderModuleMTL.mm",
++                             "src/dawn_native/metal/StagingBufferMTL.h",
++                             "src/dawn_native/metal/StagingBufferMTL.mm",
++                             "src/dawn_native/metal/SwapChainMTL.h",
++                             "src/dawn_native/metal/SwapChainMTL.mm",
++                             "src/dawn_native/metal/TextureMTL.h",
++                             "src/dawn_native/metal/TextureMTL.mm",
++                             "src/dawn_native/metal/UtilsMetal.h",
++                             "src/dawn_native/metal/UtilsMetal.mm",
++                           ],
++                           ".",
++                           "$dawn_root")
++  }
++
++  if (dawn_enable_null) {
++    sources += rebase_path([
++                             "src/dawn_native/null/DeviceNull.cpp",
++                             "src/dawn_native/null/DeviceNull.h",
++                             "src/dawn_native/null/NullBackend.cpp",
++                           ],
++                           ".",
++                           "$dawn_root")
++  }
++
++  if (dawn_enable_opengl) {
++    deps += [ "third_party:glad" ]
++    sources +=
++        rebase_path([
++                      "src/dawn_native/opengl/BackendGL.cpp",
++                      "src/dawn_native/opengl/BackendGL.h",
++                      "src/dawn_native/opengl/BufferGL.cpp",
++                      "src/dawn_native/opengl/BufferGL.h",
++                      "src/dawn_native/opengl/CommandBufferGL.cpp",
++                      "src/dawn_native/opengl/CommandBufferGL.h",
++                      "src/dawn_native/opengl/ComputePipelineGL.cpp",
++                      "src/dawn_native/opengl/ComputePipelineGL.h",
++                      "src/dawn_native/opengl/DeviceGL.cpp",
++                      "src/dawn_native/opengl/DeviceGL.h",
++                      "src/dawn_native/opengl/Forward.h",
++                      "src/dawn_native/opengl/OpenGLBackend.cpp",
++                      "src/dawn_native/opengl/PersistentPipelineStateGL.cpp",
++                      "src/dawn_native/opengl/PersistentPipelineStateGL.h",
++                      "src/dawn_native/opengl/PipelineGL.cpp",
++                      "src/dawn_native/opengl/PipelineGL.h",
++                      "src/dawn_native/opengl/PipelineLayoutGL.cpp",
++                      "src/dawn_native/opengl/PipelineLayoutGL.h",
++                      "src/dawn_native/opengl/QueueGL.cpp",
++                      "src/dawn_native/opengl/QueueGL.h",
++                      "src/dawn_native/opengl/RenderPipelineGL.cpp",
++                      "src/dawn_native/opengl/RenderPipelineGL.h",
++                      "src/dawn_native/opengl/SamplerGL.cpp",
++                      "src/dawn_native/opengl/SamplerGL.h",
++                      "src/dawn_native/opengl/ShaderModuleGL.cpp",
++                      "src/dawn_native/opengl/ShaderModuleGL.h",
++                      "src/dawn_native/opengl/SwapChainGL.cpp",
++                      "src/dawn_native/opengl/SwapChainGL.h",
++                      "src/dawn_native/opengl/TextureGL.cpp",
++                      "src/dawn_native/opengl/TextureGL.h",
++                      "src/dawn_native/opengl/UtilsGL.cpp",
++                      "src/dawn_native/opengl/UtilsGL.h",
++                    ],
++                    ".",
++                    "$dawn_root")
++  }
++
++  configs -= [ "//gn:warnings" ]
++  if (dawn_enable_vulkan) {
++    sources += rebase_path([
++                             "src/dawn_native/vulkan/AdapterVk.cpp",
++                             "src/dawn_native/vulkan/AdapterVk.h",
++                             "src/dawn_native/vulkan/BackendVk.cpp",
++                             "src/dawn_native/vulkan/BackendVk.h",
++                             "src/dawn_native/vulkan/BindGroupLayoutVk.cpp",
++                             "src/dawn_native/vulkan/BindGroupLayoutVk.h",
++                             "src/dawn_native/vulkan/BindGroupVk.cpp",
++                             "src/dawn_native/vulkan/BindGroupVk.h",
++                             "src/dawn_native/vulkan/BufferVk.cpp",
++                             "src/dawn_native/vulkan/BufferVk.h",
++                             "src/dawn_native/vulkan/CommandBufferVk.cpp",
++                             "src/dawn_native/vulkan/CommandBufferVk.h",
++                             "src/dawn_native/vulkan/ComputePipelineVk.cpp",
++                             "src/dawn_native/vulkan/ComputePipelineVk.h",
++                             "src/dawn_native/vulkan/DeviceVk.cpp",
++                             "src/dawn_native/vulkan/DeviceVk.h",
++                             "src/dawn_native/vulkan/FencedDeleter.cpp",
++                             "src/dawn_native/vulkan/FencedDeleter.h",
++                             "src/dawn_native/vulkan/Forward.h",
++                             "src/dawn_native/vulkan/MemoryAllocator.cpp",
++                             "src/dawn_native/vulkan/MemoryAllocator.h",
++                             "src/dawn_native/vulkan/NativeSwapChainImplVk.cpp",
++                             "src/dawn_native/vulkan/NativeSwapChainImplVk.h",
++                             "src/dawn_native/vulkan/PipelineLayoutVk.cpp",
++                             "src/dawn_native/vulkan/PipelineLayoutVk.h",
++                             "src/dawn_native/vulkan/QueueVk.cpp",
++                             "src/dawn_native/vulkan/QueueVk.h",
++                             "src/dawn_native/vulkan/RenderPassCache.cpp",
++                             "src/dawn_native/vulkan/RenderPassCache.h",
++                             "src/dawn_native/vulkan/RenderPipelineVk.cpp",
++                             "src/dawn_native/vulkan/RenderPipelineVk.h",
++                             "src/dawn_native/vulkan/SamplerVk.cpp",
++                             "src/dawn_native/vulkan/SamplerVk.h",
++                             "src/dawn_native/vulkan/ShaderModuleVk.cpp",
++                             "src/dawn_native/vulkan/ShaderModuleVk.h",
++                             "src/dawn_native/vulkan/StagingBufferVk.cpp",
++                             "src/dawn_native/vulkan/StagingBufferVk.h",
++                             "src/dawn_native/vulkan/SwapChainVk.cpp",
++                             "src/dawn_native/vulkan/SwapChainVk.h",
++                             "src/dawn_native/vulkan/TextureVk.cpp",
++                             "src/dawn_native/vulkan/TextureVk.h",
++                             "src/dawn_native/vulkan/UtilsVulkan.cpp",
++                             "src/dawn_native/vulkan/UtilsVulkan.h",
++                             "src/dawn_native/vulkan/VulkanBackend.cpp",
++                             "src/dawn_native/vulkan/VulkanError.cpp",
++                             "src/dawn_native/vulkan/VulkanError.h",
++                             "src/dawn_native/vulkan/VulkanFunctions.cpp",
++                             "src/dawn_native/vulkan/VulkanFunctions.h",
++                             "src/dawn_native/vulkan/VulkanInfo.cpp",
++                             "src/dawn_native/vulkan/VulkanInfo.h",
++                           ],
++                           ".",
++                           "$dawn_root")
++  }
++}
++
++# The shared library for libdawn_native for use by samples, tests, etc.
++shared_library("libdawn_native") {
++  deps = [
++    ":libdawn_native_sources",
++  ]
++
++  #Make headers publically visible
++  public_deps = [
++    ":libdawn_native_headers",
++  ]
++  public_configs = [ ":libdawn_public" ]
++
++  # Tell dependents where to find this shared library
++  if (is_mac) {
++    ldflags = [
++      "-install_name",
++      "@rpath/${target_name}.dylib",
++    ]
++  }
++}
+diff --git a/third_party/dawn/third_party/BUILD.gn b/third_party/dawn/third_party/BUILD.gn
+new file mode 100644
+index 0000000000..22152bbb6f
+--- /dev/null
++++ b/third_party/dawn/third_party/BUILD.gn
+@@ -0,0 +1,717 @@
++dawn_thirdparty_root = "../../externals/dawn/third_party"
++spirv_cross = "${dawn_thirdparty_root}/spirv-cross"
++
++config("spirv_cross_config") {
++  include_dirs = [ "$dawn_thirdparty_root" ]
++  defines = [ "SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS" ]
++}
++
++static_library("spirv_cross") {
++  public_configs = [ ":spirv_cross_config" ]
++  configs -= [ "//gn:warnings" ]
++
++  cflags = []
++  if (is_win) {
++    cflags += [
++      "/wd5850",
++      "/wd4245",
++      "/wd4702",
++      "/wd4706",
++      "/wd4715",
++    ]
++  }
++
++  sources = rebase_path([
++                          "GLSL.std.450.h",
++                          "spirv.hpp",
++                          "spirv_cfg.cpp",
++                          "spirv_cfg.hpp",
++                          "spirv_common.hpp",
++                          "spirv_cpp.cpp",
++                          "spirv_cpp.hpp",
++                          "spirv_cross.cpp",
++                          "spirv_cross.hpp",
++                          "spirv_cross_parsed_ir.cpp",
++                          "spirv_cross_parsed_ir.hpp",
++                          "spirv_glsl.cpp",
++                          "spirv_glsl.hpp",
++                          "spirv_hlsl.cpp",
++                          "spirv_hlsl.hpp",
++                          "spirv_msl.cpp",
++                          "spirv_msl.hpp",
++                          "spirv_parser.cpp",
++                          "spirv_parser.hpp",
++                        ],
++                        ".",
++                        "${spirv_cross}")
++}
++
++spirv_tools = "$dawn_thirdparty_root/SPIRV-Tools"
++spirv_tools_spirv_headers_dir = "$dawn_thirdparty_root/spirv-headers"
++
++build_with_chromium = false
++
++linux_use_bundled_binutils_override = false
++
++spirv_headers = spirv_tools_spirv_headers_dir
++
++template("spvtools_core_tables") {
++  assert(defined(invoker.version), "Need version in $target_name generation.")
++
++  action("spvtools_core_tables_" + target_name) {
++    script = "${spirv_tools}/utils/generate_grammar_tables.py"
++
++    version = invoker.version
++
++    core_json_file =
++        "${spirv_headers}/include/spirv/$version/spirv.core.grammar.json"
++    core_insts_file = "${target_gen_dir}/core.insts-$version.inc"
++    operand_kinds_file = "${target_gen_dir}/operand.kinds-$version.inc"
++    extinst_file = "${spirv_tools}/source/extinst.debuginfo.grammar.json"
++
++    sources = [
++      core_json_file,
++    ]
++    outputs = [
++      core_insts_file,
++      operand_kinds_file,
++    ]
++    args = [
++      "--spirv-core-grammar",
++      rebase_path(core_json_file, root_build_dir),
++      "--core-insts-output",
++      rebase_path(core_insts_file, root_build_dir),
++      "--extinst-debuginfo-grammar",
++      rebase_path(extinst_file, root_build_dir),
++      "--operand-kinds-output",
++      rebase_path(operand_kinds_file, root_build_dir),
++    ]
++  }
++}
++
++template("spvtools_core_enums") {
++  assert(defined(invoker.version), "Need version in $target_name generation.")
++
++  action("spvtools_core_enums_" + target_name) {
++    script = "${spirv_tools}/utils/generate_grammar_tables.py"
++
++    version = invoker.version
++
++    core_json_file =
++        "${spirv_headers}/include/spirv/$version/spirv.core.grammar.json"
++    debug_insts_file = "${spirv_tools}/source/extinst.debuginfo.grammar.json"
++    extension_enum_file = "${target_gen_dir}/extension_enum.inc"
++    extension_map_file = "${target_gen_dir}/enum_string_mapping.inc"
++
++    args = [
++      "--spirv-core-grammar",
++      rebase_path(core_json_file, root_build_dir),
++      "--extinst-debuginfo-grammar",
++      rebase_path(debug_insts_file, root_build_dir),
++      "--extension-enum-output",
++      rebase_path(extension_enum_file, root_build_dir),
++      "--enum-string-mapping-output",
++      rebase_path(extension_map_file, root_build_dir),
++    ]
++    inputs = [
++      core_json_file,
++    ]
++    outputs = [
++      extension_enum_file,
++      extension_map_file,
++    ]
++  }
++}
++
++template("spvtools_glsl_tables") {
++  assert(defined(invoker.version), "Need version in $target_name generation.")
++
++  action("spvtools_glsl_tables_" + target_name) {
++    script = "${spirv_tools}/utils/generate_grammar_tables.py"
++
++    version = invoker.version
++
++    core_json_file =
++        "${spirv_headers}/include/spirv/$version/spirv.core.grammar.json"
++    glsl_json_file = "${spirv_headers}/include/spirv/${version}/extinst.glsl.std.450.grammar.json"
++    glsl_insts_file = "${target_gen_dir}/glsl.std.450.insts.inc"
++    debug_insts_file = "${spirv_tools}/source/extinst.debuginfo.grammar.json"
++
++    args = [
++      "--spirv-core-grammar",
++      rebase_path(core_json_file, root_build_dir),
++      "--extinst-glsl-grammar",
++      rebase_path(glsl_json_file, root_build_dir),
++      "--glsl-insts-output",
++      rebase_path(glsl_insts_file, root_build_dir),
++      "--extinst-debuginfo-grammar",
++      rebase_path(debug_insts_file, root_build_dir),
++    ]
++    inputs = [
++      core_json_file,
++      glsl_json_file,
++    ]
++    outputs = [
++      glsl_insts_file,
++    ]
++  }
++}
++
++template("spvtools_opencl_tables") {
++  assert(defined(invoker.version), "Need version in $target_name generation.")
++
++  action("spvtools_opencl_tables_" + target_name) {
++    script = "${spirv_tools}/utils/generate_grammar_tables.py"
++
++    version = invoker.version
++
++    core_json_file =
++        "${spirv_headers}/include/spirv/$version/spirv.core.grammar.json"
++    opengl_json_file = "${spirv_headers}/include/spirv/${version}/extinst.opencl.std.100.grammar.json"
++    opencl_insts_file = "${target_gen_dir}/opencl.std.insts.inc"
++    debug_insts_file = "${spirv_tools}/source/extinst.debuginfo.grammar.json"
++
++    args = [
++      "--spirv-core-grammar",
++      rebase_path(core_json_file, root_build_dir),
++      "--extinst-opencl-grammar",
++      rebase_path(opengl_json_file, root_build_dir),
++      "--opencl-insts-output",
++      rebase_path(opencl_insts_file, root_build_dir),
++      "--extinst-debuginfo-grammar",
++      rebase_path(debug_insts_file, root_build_dir),
++    ]
++    inputs = [
++      core_json_file,
++      opengl_json_file,
++    ]
++    outputs = [
++      opencl_insts_file,
++    ]
++  }
++}
++
++template("spvtools_language_header") {
++  assert(defined(invoker.name), "Need name in $target_name generation.")
++
++  action("spvtools_language_header_" + target_name) {
++    script = "${spirv_tools}/utils/generate_language_headers.py"
++
++    name = invoker.name
++    extinst_output_base = "${target_gen_dir}/${name}"
++    debug_insts_file = "${spirv_tools}/source/extinst.debuginfo.grammar.json"
++
++    args = [
++      "--extinst-name",
++      "${name}",
++      "--extinst-grammar",
++      rebase_path(debug_insts_file, root_build_dir),
++      "--extinst-output-base",
++      rebase_path(extinst_output_base, root_build_dir),
++    ]
++    inputs = [
++      debug_insts_file,
++    ]
++    outputs = [
++      "${extinst_output_base}.h",
++    ]
++  }
++}
++
++template("spvtools_vendor_table") {
++  assert(defined(invoker.name), "Need name in $target_name generation.")
++
++  action("spvtools_vendor_tables_" + target_name) {
++    script = "${spirv_tools}/utils/generate_grammar_tables.py"
++
++    name = invoker.name
++    extinst_vendor_grammar =
++        "${spirv_tools}/source/extinst.${name}.grammar.json"
++    extinst_file = "${target_gen_dir}/${name}.insts.inc"
++
++    args = [
++      "--extinst-vendor-grammar",
++      rebase_path(extinst_vendor_grammar, root_build_dir),
++      "--vendor-insts-output",
++      rebase_path(extinst_file, root_build_dir),
++    ]
++    inputs = [
++      extinst_vendor_grammar,
++    ]
++    outputs = [
++      extinst_file,
++    ]
++  }
++}
++
++action("spvtools_generators_inc") {
++  script = "${spirv_tools}/utils/generate_registry_tables.py"
++
++  # TODO(dsinclair): Make work for chrome
++  xml_file = "${spirv_headers}/include/spirv/spir-v.xml"
++  inc_file = "${target_gen_dir}/generators.inc"
++
++  sources = [
++    xml_file,
++  ]
++  outputs = [
++    inc_file,
++  ]
++  args = [
++    "--xml",
++    rebase_path(xml_file, root_build_dir),
++    "--generator",
++    rebase_path(inc_file, root_build_dir),
++  ]
++}
++
++action("spvtools_build_version") {
++  script = "${spirv_tools}/utils/update_build_version.py"
++
++  src_dir = "${spirv_tools}"
++  inc_file = "${target_gen_dir}/build-version.inc"
++
++  outputs = [
++    inc_file,
++  ]
++  args = [
++    rebase_path(src_dir, root_build_dir),
++    rebase_path(inc_file, root_build_dir),
++  ]
++}
++
++spvtools_core_tables("unified1") {
++  version = "unified1"
++}
++spvtools_core_enums("unified1") {
++  version = "unified1"
++}
++spvtools_glsl_tables("glsl1-0") {
++  version = "1.0"
++}
++spvtools_opencl_tables("opencl1-0") {
++  version = "1.0"
++}
++spvtools_language_header("unified1") {
++  name = "DebugInfo"
++}
++
++spvtools_vendor_tables = [
++  "spv-amd-shader-explicit-vertex-parameter",
++  "spv-amd-shader-trinary-minmax",
++  "spv-amd-gcn-shader",
++  "spv-amd-shader-ballot",
++  "debuginfo",
++]
++
++foreach(table, spvtools_vendor_tables) {
++  spvtools_vendor_table(table) {
++    name = table
++  }
++}
++
++config("spvtools_public_config") {
++  include_dirs = [ "${spirv_tools}/include" ]
++}
++
++config("spvtools_internal_config") {
++  include_dirs = [
++    "${spirv_tools}",
++    "$target_gen_dir",
++    "${spirv_headers}/include",
++  ]
++
++  configs = [ ":spvtools_public_config" ]
++
++  if (is_clang) {
++    cflags = [
++      "-Wno-implicit-fallthrough",
++      "-Wno-extra-semi",
++      "-Wno-range-loop-analysis",
++      "-Wno-conditional-uninitialized",
++    ]
++  }
++}
++
++source_set("spvtools_headers") {
++  sources = [
++    "include/SPIRV-Tools/libspirv.h",
++    "include/SPIRV-Tools/libspirv.hpp",
++    "include/SPIRV-Tools/linker.hpp",
++    "include/SPIRV-Tools/optimizer.hpp",
++  ]
++
++  public_configs = [ ":spvtools_public_config" ]
++}
++
++static_library("spvtools") {
++  deps = [
++    ":spvtools_core_enums_unified1",
++    ":spvtools_core_tables_unified1",
++    ":spvtools_generators_inc",
++    ":spvtools_glsl_tables_glsl1-0",
++    ":spvtools_language_header_unified1",
++    ":spvtools_opencl_tables_opencl1-0",
++  ]
++  foreach(target_name, spvtools_vendor_tables) {
++    deps += [ ":spvtools_vendor_tables_$target_name" ]
++  }
++
++  sources = rebase_path([
++                          "source/assembly_grammar.cpp",
++                          "source/assembly_grammar.h",
++                          "source/binary.cpp",
++                          "source/binary.h",
++                          "source/diagnostic.cpp",
++                          "source/diagnostic.h",
++                          "source/disassemble.cpp",
++                          "source/enum_set.h",
++                          "source/enum_string_mapping.cpp",
++                          "source/ext_inst.cpp",
++                          "source/ext_inst.h",
++                          "source/extensions.cpp",
++                          "source/extensions.h",
++                          "source/instruction.h",
++                          "source/libspirv.cpp",
++                          "source/macro.h",
++                          "source/name_mapper.cpp",
++                          "source/name_mapper.h",
++                          "source/opcode.cpp",
++                          "source/opcode.h",
++                          "source/operand.cpp",
++                          "source/operand.h",
++                          "source/parsed_operand.cpp",
++                          "source/parsed_operand.h",
++                          "source/print.cpp",
++                          "source/print.h",
++                          "source/spirv_constant.h",
++                          "source/spirv_definition.h",
++                          "source/spirv_endian.cpp",
++                          "source/spirv_endian.h",
++                          "source/spirv_target_env.cpp",
++                          "source/spirv_target_env.h",
++                          "source/spirv_validator_options.cpp",
++                          "source/spirv_validator_options.h",
++                          "source/table.cpp",
++                          "source/table.h",
++                          "source/text.cpp",
++                          "source/text.h",
++                          "source/text_handler.cpp",
++                          "source/text_handler.h",
++                          "source/util/bit_vector.cpp",
++                          "source/util/bit_vector.h",
++                          "source/util/bitutils.h",
++                          "source/util/hex_float.h",
++                          "source/util/ilist.h",
++                          "source/util/ilist_node.h",
++                          "source/util/make_unique.h",
++                          "source/util/parse_number.cpp",
++                          "source/util/parse_number.h",
++                          "source/util/small_vector.h",
++                          "source/util/string_utils.cpp",
++                          "source/util/string_utils.h",
++                          "source/util/timer.cpp",
++                          "source/util/timer.h",
++                        ],
++                        ".",
++                        "$dawn_thirdparty_root/SPIRV-Tools")
++
++  public_deps = [
++    ":spvtools_headers",
++  ]
++
++  configs += [ ":spvtools_internal_config" ]
++}
++
++config("glad_config") {
++  include_dirs = [ "$dawn_thirdparty_root/glad/include" ]
++}
++
++static_library("glad") {
++  sources = rebase_path([
++                          "glad/include/KHR/khrplatform.h",
++                          "glad/include/glad/glad.h",
++                          "glad/src/glad.c",
++                        ],
++                        ".",
++                        "$dawn_thirdparty_root")
++
++  public_configs = [ ":glad_config" ]
++
++  cflags = []
++  if (is_win) {
++    cflags += [
++      "/wd4055",
++      "/wd4054",
++    ]  # type cast from void* to function pointer
++  } else {
++    cflags_c = [
++      "-Wno-unused-function",
++      "-Wno-strict-prototypes",
++    ]
++  }
++}
++
++static_library("spvtools_val") {
++  sources = rebase_path([
++                          "source/val/basic_block.cpp",
++                          "source/val/construct.cpp",
++                          "source/val/function.cpp",
++                          "source/val/instruction.cpp",
++                          "source/val/validate.cpp",
++                          "source/val/validate.h",
++                          "source/val/validate_adjacency.cpp",
++                          "source/val/validate_annotation.cpp",
++                          "source/val/validate_arithmetics.cpp",
++                          "source/val/validate_atomics.cpp",
++                          "source/val/validate_barriers.cpp",
++                          "source/val/validate_bitwise.cpp",
++                          "source/val/validate_builtins.cpp",
++                          "source/val/validate_capability.cpp",
++                          "source/val/validate_cfg.cpp",
++                          "source/val/validate_composites.cpp",
++                          "source/val/validate_constants.cpp",
++                          "source/val/validate_conversion.cpp",
++                          "source/val/validate_datarules.cpp",
++                          "source/val/validate_debug.cpp",
++                          "source/val/validate_decorations.cpp",
++                          "source/val/validate_derivatives.cpp",
++                          "source/val/validate_execution_limitations.cpp",
++                          "source/val/validate_extensions.cpp",
++                          "source/val/validate_function.cpp",
++                          "source/val/validate_id.cpp",
++                          "source/val/validate_image.cpp",
++                          "source/val/validate_instruction.cpp",
++                          "source/val/validate_interfaces.cpp",
++                          "source/val/validate_layout.cpp",
++                          "source/val/validate_literals.cpp",
++                          "source/val/validate_logicals.cpp",
++                          "source/val/validate_memory.cpp",
++                          "source/val/validate_memory_semantics.cpp",
++                          "source/val/validate_mode_setting.cpp",
++                          "source/val/validate_non_uniform.cpp",
++                          "source/val/validate_primitives.cpp",
++                          "source/val/validate_scopes.cpp",
++                          "source/val/validate_type.cpp",
++                          "source/val/validation_state.cpp",
++                        ],
++                        ".",
++                        "${spirv_tools}")
++
++  deps = [
++    ":spvtools",
++  ]
++  public_deps = [
++    ":spvtools_headers",
++  ]
++
++  configs += [ ":spvtools_internal_config" ]
++}
++
++static_library("spvtools_opt") {
++  sources =
++      rebase_path([
++                    "source/opt/aggressive_dead_code_elim_pass.cpp",
++                    "source/opt/aggressive_dead_code_elim_pass.h",
++                    "source/opt/basic_block.cpp",
++                    "source/opt/basic_block.h",
++                    "source/opt/block_merge_pass.cpp",
++                    "source/opt/block_merge_pass.h",
++                    "source/opt/build_module.cpp",
++                    "source/opt/build_module.h",
++                    "source/opt/ccp_pass.cpp",
++                    "source/opt/ccp_pass.h",
++                    "source/opt/cfg.cpp",
++                    "source/opt/cfg.h",
++                    "source/opt/cfg_cleanup_pass.cpp",
++                    "source/opt/cfg_cleanup_pass.h",
++                    "source/opt/combine_access_chains.cpp",
++                    "source/opt/combine_access_chains.h",
++                    "source/opt/common_uniform_elim_pass.cpp",
++                    "source/opt/common_uniform_elim_pass.h",
++                    "source/opt/compact_ids_pass.cpp",
++                    "source/opt/compact_ids_pass.h",
++                    "source/opt/composite.cpp",
++                    "source/opt/composite.h",
++                    "source/opt/const_folding_rules.cpp",
++                    "source/opt/const_folding_rules.h",
++                    "source/opt/constants.cpp",
++                    "source/opt/constants.h",
++                    "source/opt/copy_prop_arrays.cpp",
++                    "source/opt/copy_prop_arrays.h",
++                    "source/opt/dead_branch_elim_pass.cpp",
++                    "source/opt/dead_branch_elim_pass.h",
++                    "source/opt/dead_insert_elim_pass.cpp",
++                    "source/opt/dead_insert_elim_pass.h",
++                    "source/opt/dead_variable_elimination.cpp",
++                    "source/opt/dead_variable_elimination.h",
++                    "source/opt/decoration_manager.cpp",
++                    "source/opt/decoration_manager.h",
++                    "source/opt/def_use_manager.cpp",
++                    "source/opt/def_use_manager.h",
++                    "source/opt/dominator_analysis.cpp",
++                    "source/opt/dominator_analysis.h",
++                    "source/opt/dominator_tree.cpp",
++                    "source/opt/dominator_tree.h",
++                    "source/opt/eliminate_dead_constant_pass.cpp",
++                    "source/opt/eliminate_dead_constant_pass.h",
++                    "source/opt/eliminate_dead_functions_pass.cpp",
++                    "source/opt/eliminate_dead_functions_pass.h",
++                    "source/opt/feature_manager.cpp",
++                    "source/opt/feature_manager.h",
++                    "source/opt/flatten_decoration_pass.cpp",
++                    "source/opt/flatten_decoration_pass.h",
++                    "source/opt/fold.cpp",
++                    "source/opt/fold.h",
++                    "source/opt/fold_spec_constant_op_and_composite_pass.cpp",
++                    "source/opt/fold_spec_constant_op_and_composite_pass.h",
++                    "source/opt/folding_rules.cpp",
++                    "source/opt/folding_rules.h",
++                    "source/opt/freeze_spec_constant_value_pass.cpp",
++                    "source/opt/freeze_spec_constant_value_pass.h",
++                    "source/opt/function.cpp",
++                    "source/opt/function.h",
++                    "source/opt/if_conversion.cpp",
++                    "source/opt/if_conversion.h",
++                    "source/opt/inline_exhaustive_pass.cpp",
++                    "source/opt/inline_exhaustive_pass.h",
++                    "source/opt/inline_opaque_pass.cpp",
++                    "source/opt/inline_opaque_pass.h",
++                    "source/opt/inline_pass.cpp",
++                    "source/opt/inline_pass.h",
++                    "source/opt/instruction.cpp",
++                    "source/opt/instruction.h",
++                    "source/opt/instruction_list.cpp",
++                    "source/opt/instruction_list.h",
++                    "source/opt/ir_builder.h",
++                    "source/opt/ir_context.cpp",
++                    "source/opt/ir_context.h",
++                    "source/opt/ir_loader.cpp",
++                    "source/opt/ir_loader.h",
++                    "source/opt/iterator.h",
++                    "source/opt/licm_pass.cpp",
++                    "source/opt/licm_pass.h",
++                    "source/opt/local_access_chain_convert_pass.cpp",
++                    "source/opt/local_access_chain_convert_pass.h",
++                    "source/opt/local_redundancy_elimination.cpp",
++                    "source/opt/local_redundancy_elimination.h",
++                    "source/opt/local_single_block_elim_pass.cpp",
++                    "source/opt/local_single_block_elim_pass.h",
++                    "source/opt/local_single_store_elim_pass.cpp",
++                    "source/opt/local_single_store_elim_pass.h",
++                    "source/opt/local_ssa_elim_pass.cpp",
++                    "source/opt/local_ssa_elim_pass.h",
++                    "source/opt/log.h",
++                    "source/opt/loop_dependence.cpp",
++                    "source/opt/loop_dependence.h",
++                    "source/opt/loop_dependence_helpers.cpp",
++                    "source/opt/loop_descriptor.cpp",
++                    "source/opt/loop_descriptor.h",
++                    "source/opt/loop_fission.cpp",
++                    "source/opt/loop_fission.h",
++                    "source/opt/loop_fusion.cpp",
++                    "source/opt/loop_fusion.h",
++                    "source/opt/loop_fusion_pass.cpp",
++                    "source/opt/loop_fusion_pass.h",
++                    "source/opt/loop_peeling.cpp",
++                    "source/opt/loop_peeling.h",
++                    "source/opt/loop_unroller.cpp",
++                    "source/opt/loop_unroller.h",
++                    "source/opt/loop_unswitch_pass.cpp",
++                    "source/opt/loop_unswitch_pass.h",
++                    "source/opt/loop_utils.cpp",
++                    "source/opt/loop_utils.h",
++                    "source/opt/mem_pass.cpp",
++                    "source/opt/mem_pass.h",
++                    "source/opt/merge_return_pass.cpp",
++                    "source/opt/merge_return_pass.h",
++                    "source/opt/module.cpp",
++                    "source/opt/module.h",
++                    "source/opt/null_pass.h",
++                    "source/opt/optimizer.cpp",
++                    "source/opt/pass.cpp",
++                    "source/opt/pass.h",
++                    "source/opt/pass_manager.cpp",
++                    "source/opt/pass_manager.h",
++                    "source/opt/passes.h",
++                    "source/opt/private_to_local_pass.cpp",
++                    "source/opt/private_to_local_pass.h",
++                    "source/opt/propagator.cpp",
++                    "source/opt/propagator.h",
++                    "source/opt/reduce_load_size.cpp",
++                    "source/opt/reduce_load_size.h",
++                    "source/opt/redundancy_elimination.cpp",
++                    "source/opt/redundancy_elimination.h",
++                    "source/opt/reflect.h",
++                    "source/opt/register_pressure.cpp",
++                    "source/opt/register_pressure.h",
++                    "source/opt/remove_duplicates_pass.cpp",
++                    "source/opt/remove_duplicates_pass.h",
++                    "source/opt/replace_invalid_opc.cpp",
++                    "source/opt/replace_invalid_opc.h",
++                    "source/opt/scalar_analysis.cpp",
++                    "source/opt/scalar_analysis.h",
++                    "source/opt/scalar_analysis_nodes.h",
++                    "source/opt/scalar_analysis_simplification.cpp",
++                    "source/opt/scalar_replacement_pass.cpp",
++                    "source/opt/scalar_replacement_pass.h",
++                    "source/opt/set_spec_constant_default_value_pass.cpp",
++                    "source/opt/set_spec_constant_default_value_pass.h",
++                    "source/opt/simplification_pass.cpp",
++                    "source/opt/simplification_pass.h",
++                    "source/opt/ssa_rewrite_pass.cpp",
++                    "source/opt/ssa_rewrite_pass.h",
++                    "source/opt/strength_reduction_pass.cpp",
++                    "source/opt/strength_reduction_pass.h",
++                    "source/opt/strip_debug_info_pass.cpp",
++                    "source/opt/strip_debug_info_pass.h",
++                    "source/opt/strip_reflect_info_pass.cpp",
++                    "source/opt/strip_reflect_info_pass.h",
++                    "source/opt/tree_iterator.h",
++                    "source/opt/type_manager.cpp",
++                    "source/opt/type_manager.h",
++                    "source/opt/types.cpp",
++                    "source/opt/types.h",
++                    "source/opt/unify_const_pass.cpp",
++                    "source/opt/unify_const_pass.h",
++                    "source/opt/value_number_table.cpp",
++                    "source/opt/value_number_table.h",
++                    "source/opt/vector_dce.cpp",
++                    "source/opt/vector_dce.h",
++                    "source/opt/workaround1209.cpp",
++                    "source/opt/workaround1209.h",
++                  ],
++                  ".",
++                  "${spirv_tools}")
++
++  deps = [
++    ":spvtools",
++  ]
++  public_deps = [
++    ":spvtools_headers",
++  ]
++
++  configs += [ ":spvtools_internal_config" ]
++}
++
++group("SPIRV-Tools") {
++  deps = [
++    ":spvtools",
++    ":spvtools_opt",
++    ":spvtools_val",
++  ]
++}
++
++executable("spirv-as") {
++  sources = rebase_path([
++                          "source/software_version.cpp",
++                          "tools/as/as.cpp",
++                        ],
++                        ".",
++                        "${spirv_tools}")
++  deps = [
++    ":spvtools",
++    ":spvtools_build_version",
++  ]
++  configs += [ ":spvtools_internal_config" ]
++}
+-- 
+2.35.1
+

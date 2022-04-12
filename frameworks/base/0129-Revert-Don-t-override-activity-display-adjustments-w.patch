@@ -1,0 +1,184 @@
+From e5b7db3d90879608c7894cabd435ea6da684875f Mon Sep 17 00:00:00 2001
+From: bsears <bsears@google.com>
+Date: Sun, 22 Mar 2020 16:30:19 +0000
+Subject: [PATCH 129/297] Revert "Don't override activity display adjustments
+ with app config"
+
+Revert "Verify reported display sizes in multi-window"
+
+Revert submission 10636794-app_config_updates_adjustments-rvc-dev
+
+Reason for revert: See b/151903752#comment29.  This CL was identified (via bisection) as the CL that is breaking Android Auto.
+Reverted Changes:
+Ib3ee007bc:Don't override activity display adjustments with a...
+I5ba4dd354:Verify reported display sizes in multi-window
+
+Bug: 151903752
+
+Change-Id: I845ed4871637d6d8a5fac1a6a5236378829b837e
+(cherry picked from commit 558f025f4d01f65df5528bafbb02f9927d8bd750)
+---
+ core/java/android/app/ResourcesManager.java   | 47 +++++++++++++---
+ .../app/activity/ActivityThreadTest.java      | 55 -------------------
+ 2 files changed, 40 insertions(+), 62 deletions(-)
+
+diff --git a/core/java/android/app/ResourcesManager.java b/core/java/android/app/ResourcesManager.java
+index 495bb6b4371..5f756033390 100644
+--- a/core/java/android/app/ResourcesManager.java
++++ b/core/java/android/app/ResourcesManager.java
+@@ -250,6 +250,28 @@ public class ResourcesManager {
+         return dm;
+     }
+ 
++    private static void applyNonDefaultDisplayMetricsToConfiguration(
++            @NonNull DisplayMetrics dm, @NonNull Configuration config) {
++        config.touchscreen = Configuration.TOUCHSCREEN_NOTOUCH;
++        config.densityDpi = dm.densityDpi;
++        config.screenWidthDp = (int) (dm.widthPixels / dm.density);
++        config.screenHeightDp = (int) (dm.heightPixels / dm.density);
++        int sl = Configuration.resetScreenLayout(config.screenLayout);
++        if (dm.widthPixels > dm.heightPixels) {
++            config.orientation = Configuration.ORIENTATION_LANDSCAPE;
++            config.screenLayout = Configuration.reduceScreenLayout(sl,
++                    config.screenWidthDp, config.screenHeightDp);
++        } else {
++            config.orientation = Configuration.ORIENTATION_PORTRAIT;
++            config.screenLayout = Configuration.reduceScreenLayout(sl,
++                    config.screenHeightDp, config.screenWidthDp);
++        }
++        config.smallestScreenWidthDp = Math.min(config.screenWidthDp, config.screenHeightDp);
++        config.compatScreenWidthDp = config.screenWidthDp;
++        config.compatScreenHeightDp = config.screenHeightDp;
++        config.compatSmallestScreenWidthDp = config.smallestScreenWidthDp;
++    }
++
+     public boolean applyCompatConfigurationLocked(int displayDensity,
+             @NonNull Configuration compatConfiguration) {
+         if (mResCompatibilityInfo != null && !mResCompatibilityInfo.supportsScreen()) {
+@@ -496,11 +518,17 @@ public class ResourcesManager {
+ 
+     private Configuration generateConfig(@NonNull ResourcesKey key, @NonNull DisplayMetrics dm) {
+         Configuration config;
++        final boolean isDefaultDisplay = (key.mDisplayId == Display.DEFAULT_DISPLAY);
+         final boolean hasOverrideConfig = key.hasOverrideConfiguration();
+-        if (hasOverrideConfig) {
++        if (!isDefaultDisplay || hasOverrideConfig) {
+             config = new Configuration(getConfiguration());
+-            config.updateFrom(key.mOverrideConfiguration);
+-            if (DEBUG) Slog.v(TAG, "Applied overrideConfig=" + key.mOverrideConfiguration);
++            if (!isDefaultDisplay) {
++                applyNonDefaultDisplayMetricsToConfiguration(dm, config);
++            }
++            if (hasOverrideConfig) {
++                config.updateFrom(key.mOverrideConfiguration);
++                if (DEBUG) Slog.v(TAG, "Applied overrideConfig=" + key.mOverrideConfiguration);
++            }
+         } else {
+             config = getConfiguration();
+         }
+@@ -1081,6 +1109,8 @@ public class ResourcesManager {
+                     + resourcesImpl + " config to: " + config);
+         }
+         int displayId = key.mDisplayId;
++        final boolean hasOverrideConfiguration = key.hasOverrideConfiguration();
++        tmpConfig.setTo(config);
+ 
+         // Get new DisplayMetrics based on the DisplayAdjustments given to the ResourcesImpl. Update
+         // a copy if the CompatibilityInfo changed, because the ResourcesImpl object will handle the
+@@ -1090,12 +1120,15 @@ public class ResourcesManager {
+             daj = new DisplayAdjustments(daj);
+             daj.setCompatibilityInfo(compat);
+         }
+-        tmpConfig.setTo(config);
+-        if (key.hasOverrideConfiguration()) {
++        daj.setConfiguration(config);
++        DisplayMetrics dm = getDisplayMetrics(displayId, daj);
++        if (displayId != Display.DEFAULT_DISPLAY) {
++            applyNonDefaultDisplayMetricsToConfiguration(dm, tmpConfig);
++        }
++
++        if (hasOverrideConfiguration) {
+             tmpConfig.updateFrom(key.mOverrideConfiguration);
+         }
+-        daj.setConfiguration(tmpConfig);
+-        DisplayMetrics dm = getDisplayMetrics(displayId, daj);
+         resourcesImpl.updateConfiguration(tmpConfig, dm, compat);
+     }
+ 
+diff --git a/core/tests/coretests/src/android/app/activity/ActivityThreadTest.java b/core/tests/coretests/src/android/app/activity/ActivityThreadTest.java
+index 90d8bab8425..c328d720426 100644
+--- a/core/tests/coretests/src/android/app/activity/ActivityThreadTest.java
++++ b/core/tests/coretests/src/android/app/activity/ActivityThreadTest.java
+@@ -40,10 +40,7 @@ import android.app.servertransaction.ResumeActivityItem;
+ import android.app.servertransaction.StopActivityItem;
+ import android.content.Intent;
+ import android.content.res.Configuration;
+-import android.content.res.Resources;
+-import android.graphics.Rect;
+ import android.os.IBinder;
+-import android.util.DisplayMetrics;
+ import android.util.MergedConfiguration;
+ import android.view.Display;
+ import android.view.View;
+@@ -309,58 +306,6 @@ public class ActivityThreadTest {
+         assertEquals(400, activity.mConfig.smallestScreenWidthDp);
+     }
+ 
+-    @Test
+-    public void testHandleConfigurationChangedDoesntOverrideActivityConfig() {
+-        final TestActivity activity = mActivityTestRule.launchActivity(new Intent());
+-
+-        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+-            final Configuration oldActivityConfig =
+-                    new Configuration(activity.getResources().getConfiguration());
+-            final DisplayMetrics oldActivityMetrics = new DisplayMetrics();
+-            activity.getDisplay().getMetrics(oldActivityMetrics);
+-            final Resources oldAppResources = activity.getApplication().getResources();
+-            final Configuration oldAppConfig =
+-                    new Configuration(oldAppResources.getConfiguration());
+-            final DisplayMetrics oldApplicationMetrics = new DisplayMetrics();
+-            oldApplicationMetrics.setTo(oldAppResources.getDisplayMetrics());
+-            assertEquals("Process config must match the top activity config by default",
+-                    0, oldActivityConfig.diffPublicOnly(oldAppConfig));
+-            assertEquals("Process config must match the top activity config by default",
+-                    oldActivityMetrics, oldApplicationMetrics);
+-
+-            // Update the application configuration separately from activity config
+-            final Configuration newAppConfig = new Configuration(oldAppConfig);
+-            newAppConfig.densityDpi += 100;
+-            newAppConfig.screenHeightDp += 100;
+-            final Rect newBounds = new Rect(newAppConfig.windowConfiguration.getAppBounds());
+-            newBounds.bottom += 100;
+-            newAppConfig.windowConfiguration.setAppBounds(newBounds);
+-            newAppConfig.windowConfiguration.setBounds(newBounds);
+-            newAppConfig.seq++;
+-
+-            final ActivityThread activityThread = activity.getActivityThread();
+-            activityThread.handleConfigurationChanged(newAppConfig);
+-
+-            // Verify that application config update was applied, but didn't change activity config.
+-            assertEquals("Activity config must not change if the process config changes",
+-                    oldActivityConfig, activity.getResources().getConfiguration());
+-
+-            final DisplayMetrics newActivityMetrics = new DisplayMetrics();
+-            activity.getDisplay().getMetrics(newActivityMetrics);
+-            assertEquals("Activity display size must not change if the process config changes",
+-                    oldActivityMetrics, newActivityMetrics);
+-            final Resources newAppResources = activity.getApplication().getResources();
+-            assertEquals("Application config must be updated",
+-                    newAppConfig, newAppResources.getConfiguration());
+-            final DisplayMetrics newApplicationMetrics = new DisplayMetrics();
+-            newApplicationMetrics.setTo(newAppResources.getDisplayMetrics());
+-            assertNotEquals("Application display size must be updated after config update",
+-                    oldApplicationMetrics, newApplicationMetrics);
+-            assertNotEquals("Application display size must be updated after config update",
+-                    newActivityMetrics, newApplicationMetrics);
+-        });
+-    }
+-
+     @Test
+     public void testResumeAfterNewIntent() {
+         final Activity activity = mActivityTestRule.launchActivity(new Intent());
+-- 
+2.35.1
+

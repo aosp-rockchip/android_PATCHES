@@ -1,0 +1,30 @@
+From 8a074e4bc4c2d382138d5050c3e7163fb4b2bdf9 Mon Sep 17 00:00:00 2001
+From: lqh <kevin.lin@rock-chips.com>
+Date: Tue, 5 Nov 2019 11:37:23 +0800
+Subject: [PATCH 219/297] services: grant provider permission to allow install
+ apk
+
+add com.rockchips.mediacenter.fileprovider uri permission for mediacenter
+
+Change-Id: Icfdc0031bbc916899b0f4bbf38d1e97c33fa9e5f
+Signed-off-by: lqh <kevin.lin@rock-chips.com>
+(cherry picked from commit d1c1b071d7799b16ffa421a84a5600e4fe24c876)
+---
+ .../java/com/android/server/uri/UriGrantsManagerService.java     | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/services/core/java/com/android/server/uri/UriGrantsManagerService.java b/services/core/java/com/android/server/uri/UriGrantsManagerService.java
+index 2fccfdac758..e00fbf680bd 100644
+--- a/services/core/java/com/android/server/uri/UriGrantsManagerService.java
++++ b/services/core/java/com/android/server/uri/UriGrantsManagerService.java
+@@ -1086,6 +1086,7 @@ public class UriGrantsManagerService extends IUriGrantsManager.Stub {
+         if ((callingAppId == SYSTEM_UID) || (callingAppId == ROOT_UID)) {
+             if ("com.android.settings.files".equals(grantUri.uri.getAuthority())
+                     || "com.android.rk.fileprovider".equals(grantUri.uri.getAuthority())
++                    || "com.rockchips.mediacenter.fileprovider".equals(grantUri.uri.getAuthority())
+                     || "com.android.settings.module_licenses".equals(grantUri.uri.getAuthority())) {
+                 // Exempted authority for
+                 // 1. cropping user photos and sharing a generated license html
+-- 
+2.35.1
+

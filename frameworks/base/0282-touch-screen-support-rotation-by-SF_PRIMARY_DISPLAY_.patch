@@ -1,0 +1,40 @@
+From 40b34931bd5bda5afec2ca3f79fe930060f35cf5 Mon Sep 17 00:00:00 2001
+From: Zorro Liu <lyx@rock-chips.com>
+Date: Sat, 9 Jan 2021 12:20:42 +0800
+Subject: [PATCH 282/297] touch screen support rotation by
+ SF_PRIMARY_DISPLAY_ORIENTATION defined
+
+Signed-off-by: Zorro Liu <lyx@rock-chips.com>
+Change-Id: I064319fa2a94534fe0d4520da6af2b0450114dd8
+---
+ .../java/com/android/server/display/DisplayDevice.java     | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/services/core/java/com/android/server/display/DisplayDevice.java b/services/core/java/com/android/server/display/DisplayDevice.java
+index 3516981c92a..98f697bf748 100644
+--- a/services/core/java/com/android/server/display/DisplayDevice.java
++++ b/services/core/java/com/android/server/display/DisplayDevice.java
+@@ -25,7 +25,7 @@ import android.view.Surface;
+ import android.view.SurfaceControl;
+ 
+ import java.io.PrintWriter;
+-
++import android.os.SystemProperties;
+ /**
+  * Represents a physical display device such as the built-in display
+  * an external monitor, or a WiFi display.
+@@ -251,8 +251,9 @@ abstract class DisplayDevice {
+      * physical and logical rects based on the display's current projection.
+      */
+     public final void populateViewportLocked(DisplayViewport viewport) {
+-        viewport.orientation = mCurrentOrientation;
+-
++        //viewport.orientation = mCurrentOrientation;
++        int rotation=Integer.valueOf(SystemProperties.get("ro.surface_flinger.primary_display_orientation","ORIENTATION_0").split("_")[1])/90;
++	viewport.orientation = (mCurrentOrientation+rotation)%4;
+         if (mCurrentLayerStackRect != null) {
+             viewport.logicalFrame.set(mCurrentLayerStackRect);
+         } else {
+-- 
+2.35.1
+

@@ -1,0 +1,84 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/DeskClock (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/DeskClock (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 464c76c981708d498779a690e3f62683d2740f3f
+Merge: 66695b7c7 d46754fc2
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:55:09 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/DeskClock (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/DeskClock (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 464c76c981708d498779a690e3f62683d2740f3f
+Merge: 66695b7c7 d46754fc2
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:55:09 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/DeskClock (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/DeskClock (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 464c76c981708d498779a690e3f62683d2740f3f
+Merge: 66695b7c7 d46754fc2
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:55:09 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/DeskClock (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/DeskClock (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 464c76c981708d498779a690e3f62683d2740f3f
+Merge: 66695b7c7 d46754fc2
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:55:09 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/DeskClock (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/DeskClock (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 464c76c981708d498779a690e3f62683d2740f3f
+Merge: 66695b7c7 d46754fc2
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:55:09 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/DeskClock (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/DeskClock (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 464c76c981708d498779a690e3f62683d2740f3f
+Merge: 66695b7c7 d46754fc2
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:55:09 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28

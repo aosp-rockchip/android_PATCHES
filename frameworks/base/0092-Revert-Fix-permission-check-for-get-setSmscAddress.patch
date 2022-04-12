@@ -1,0 +1,88 @@
+From 0b7c682cab98e1e26cae82a0c9986223f229613b Mon Sep 17 00:00:00 2001
+From: Amit Mahajan <amitmahajan@google.com>
+Date: Tue, 3 Mar 2020 19:18:23 +0000
+Subject: [PATCH 092/297] Revert "Fix permission check for get/setSmscAddress."
+
+This reverts commit 05e97205523d6ca0f941b0707539f9be6e54ba54.
+
+Reason for revert: b/150666039
+Bug: 150666039
+Change-Id: I67a4ffe94e3caabd04a5b9305de3e476867bfbd1
+(cherry picked from commit dec964ceb6eba0de5fa999075ddafdcbc0a41392)
+---
+ .../internal/telephony/SmsApplication.java      | 17 +----------------
+ .../java/android/telephony/SmsManager.java      |  7 +++----
+ 2 files changed, 4 insertions(+), 20 deletions(-)
+
+diff --git a/telephony/common/com/android/internal/telephony/SmsApplication.java b/telephony/common/com/android/internal/telephony/SmsApplication.java
+index d54c054e2f8..bb6f154335a 100644
+--- a/telephony/common/com/android/internal/telephony/SmsApplication.java
++++ b/telephony/common/com/android/internal/telephony/SmsApplication.java
+@@ -1057,8 +1057,7 @@ public final class SmsApplication {
+     }
+ 
+     /**
+-     * Check if a package is default sms app (or equivalent, like bluetooth), and verify that
+-     * packageName belongs to the caller.
++     * Check if a package is default sms app (or equivalent, like bluetooth)
+      *
+      * @param context context from the calling app
+      * @param packageName the name of the package to be checked
+@@ -1067,22 +1066,8 @@ public final class SmsApplication {
+     @UnsupportedAppUsage
+     public static boolean isDefaultSmsApplication(Context context, String packageName) {
+         if (packageName == null) {
+-            Log.e(LOG_TAG, "isDefaultSmsApplication: packageName is null");
+             return false;
+         }
+-        try {
+-            if (Binder.getCallingUid()
+-                    == context.getPackageManager().getPackageUid(packageName, 0)) {
+-                Log.e(LOG_TAG, "isDefaultSmsApplication: " + packageName + " calling uid "
+-                        + context.getPackageManager().getPackageUid(packageName, 0)
+-                        + " does not match calling uid " + Binder.getCallingUid());
+-                return false;
+-            }
+-        } catch (NameNotFoundException ex) {
+-            Log.e(LOG_TAG, "isDefaultSmsApplication: packageName " + packageName + " not found");
+-            return false;
+-        }
+-
+         final String defaultSmsPackage = getDefaultSmsApplicationPackageName(context);
+         if ((defaultSmsPackage != null && defaultSmsPackage.equals(packageName))
+                 || BLUETOOTH_PACKAGE_NAME.equals(packageName)) {
+diff --git a/telephony/java/android/telephony/SmsManager.java b/telephony/java/android/telephony/SmsManager.java
+index 87d0c7f9edf..8479db64799 100644
+--- a/telephony/java/android/telephony/SmsManager.java
++++ b/telephony/java/android/telephony/SmsManager.java
+@@ -2898,7 +2898,7 @@ public final class SmsManager {
+                         getSubscriptionId(), null);
+             }
+         } catch (RemoteException ex) {
+-            throw new RuntimeException(ex);
++            // ignore it
+         }
+         return smsc;
+     }
+@@ -2920,8 +2920,7 @@ public final class SmsManager {
+      * </p>
+      *
+      * @param smsc the SMSC address string.
+-     * @return true for success, false otherwise. Failure can be due to caller not having the
+-     * appropriate permission, or modem returning an error.
++     * @return true for success, false otherwise.
+      */
+     @SuppressAutoDoc // for carrier privileges and default SMS application.
+     @RequiresPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
+@@ -2933,7 +2932,7 @@ public final class SmsManager {
+                         smsc, getSubscriptionId(), null);
+             }
+         } catch (RemoteException ex) {
+-            throw new RuntimeException(ex);
++            // ignore it
+         }
+         return false;
+     }
+-- 
+2.35.1
+

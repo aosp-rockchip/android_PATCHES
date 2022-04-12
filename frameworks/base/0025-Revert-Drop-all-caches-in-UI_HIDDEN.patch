@@ -1,0 +1,54 @@
+From e5e4a8f97f2c8affbd620c90ffe300f67dc8c414 Mon Sep 17 00:00:00 2001
+From: John Reck <jreck@google.com>
+Date: Tue, 8 Oct 2019 23:28:41 +0000
+Subject: [PATCH 025/297] Revert "Drop all caches in UI_HIDDEN"
+
+This reverts commit 8a207962ec84904a0fb8c7b5ce547ed2d1b59794.
+
+Bug: 142301356
+Test: none, speculative
+
+Reason for revert: Seems to break alarm?
+
+Change-Id: Ia1680d1a937b596297c2eab3e54476daf9589347
+(cherry picked from commit f846aeec9d87cb0cef58061d400efe3af7008903)
+---
+ libs/hwui/renderthread/CacheManager.cpp  | 2 +-
+ libs/hwui/renderthread/CanvasContext.cpp | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/libs/hwui/renderthread/CacheManager.cpp b/libs/hwui/renderthread/CacheManager.cpp
+index dc07f0d84d1..8eb81533fda 100644
+--- a/libs/hwui/renderthread/CacheManager.cpp
++++ b/libs/hwui/renderthread/CacheManager.cpp
+@@ -135,7 +135,7 @@ void CacheManager::trimStaleResources() {
+         return;
+     }
+     mGrContext->flush();
+-    mGrContext->performDeferredCleanup(std::chrono::seconds(30));
++    mGrContext->purgeResourcesNotUsedInMs(std::chrono::seconds(30));
+ }
+ 
+ sp<skiapipeline::VectorDrawableAtlas> CacheManager::acquireVectorDrawableAtlas() {
+diff --git a/libs/hwui/renderthread/CanvasContext.cpp b/libs/hwui/renderthread/CanvasContext.cpp
+index 93fd0c87a36..30cc007d454 100644
+--- a/libs/hwui/renderthread/CanvasContext.cpp
++++ b/libs/hwui/renderthread/CanvasContext.cpp
+@@ -646,11 +646,11 @@ void CanvasContext::trimMemory(RenderThread& thread, int level) {
+     ATRACE_CALL();
+     if (!thread.getGrContext()) return;
+     ATRACE_CALL();
+-    if (level >= TRIM_MEMORY_UI_HIDDEN) {
+-        thread.cacheManager().trimMemory(CacheManager::TrimMemoryMode::Complete);
+-    }
+     if (level >= TRIM_MEMORY_COMPLETE) {
++        thread.cacheManager().trimMemory(CacheManager::TrimMemoryMode::Complete);
+         thread.destroyRenderingContext();
++    } else if (level >= TRIM_MEMORY_UI_HIDDEN) {
++        thread.cacheManager().trimMemory(CacheManager::TrimMemoryMode::UiHidden);
+     }
+ }
+ 
+-- 
+2.35.1
+

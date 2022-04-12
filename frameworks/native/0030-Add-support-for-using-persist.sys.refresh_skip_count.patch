@@ -1,0 +1,199 @@
+From 18b73f36928d536754085d655cc2eabad26e0e1f Mon Sep 17 00:00:00 2001
+From: libin <bin.li@rock-chips.com>
+Date: Tue, 5 Jan 2021 11:40:51 +0800
+Subject: [PATCH 30/33] Add support for using "persist.sys.refresh_skip_count"
+ property to amend SurfaceFlinger refresh rate.
+
+Tips:
+    persist.sys.refresh_skip_count = 0, HW-Vsync = 60, SF refresh rate = 60.
+    persist.sys.refresh_skip_count = 1, HW-Vsync = 60, SF refresh rate = 30.
+    persist.sys.refresh_skip_count = 2, HW-Vsync = 60, SF refresh rate = 20.
+
+debug.sf.vsync_reactor must set "false".
+
+Signed-off-by: libin <bin.li@rock-chips.com>
+Change-Id: I5c17105b1fcb85c8ad25f527cf493ecd95dbf93b
+---
+ .../surfaceflinger/Scheduler/DispSync.cpp     | 23 +++++++++++++++++++
+ services/surfaceflinger/Scheduler/DispSync.h  | 12 ++++++++++
+ .../surfaceflinger/Scheduler/VSyncReactor.cpp |  4 ++++
+ .../surfaceflinger/Scheduler/VSyncReactor.h   |  3 +++
+ services/surfaceflinger/SurfaceFlinger.cpp    |  4 ++++
+ .../tests/unittests/mock/MockDispSync.h       |  3 ++-
+ 6 files changed, 48 insertions(+), 1 deletion(-)
+ mode change 100644 => 100755 services/surfaceflinger/Scheduler/DispSync.cpp
+ mode change 100644 => 100755 services/surfaceflinger/Scheduler/DispSync.h
+ mode change 100644 => 100755 services/surfaceflinger/Scheduler/VSyncReactor.cpp
+ mode change 100644 => 100755 services/surfaceflinger/Scheduler/VSyncReactor.h
+ mode change 100644 => 100755 services/surfaceflinger/tests/unittests/mock/MockDispSync.h
+
+diff --git a/services/surfaceflinger/Scheduler/DispSync.cpp b/services/surfaceflinger/Scheduler/DispSync.cpp
+old mode 100644
+new mode 100755
+index ff91bf7bc..595d050d8
+--- a/services/surfaceflinger/Scheduler/DispSync.cpp
++++ b/services/surfaceflinger/Scheduler/DispSync.cpp
+@@ -40,6 +40,8 @@
+ #include "EventLog/EventLog.h"
+ #include "SurfaceFlinger.h"
+ 
++#include <cutils/properties.h>
++
+ using android::base::StringAppendF;
+ using std::max;
+ using std::min;
+@@ -643,6 +645,24 @@ status_t DispSync::addEventListener(const char* name, nsecs_t phase, Callback* c
+     return mThread->addEventListener(name, phase, callback, lastCallbackTime);
+ }
+ 
++void DispSync::setRefreshSkipCount(int count) {
++    Mutex::Autolock lock(mMutex);
++    ALOGD("setRefreshSkipCount(%d)", count);
++    mRefreshSkipCount = count;
++    updateModelLocked();
++}
++
++void DispSync::updateRefreshSkipCountByProperty() {
++    Mutex::Autolock lock(mMutex);
++    char value[PROPERTY_VALUE_MAX];
++    property_get("persist.sys.refresh_skip_count", value, "0");
++    if(mRefreshSkipCount == atoi(value))
++        return;
++    mRefreshSkipCount = atoi(value);
++    ALOGD("setRefreshSkipCount(%d)", mRefreshSkipCount);
++    updateModelLocked();
++}
++
+ status_t DispSync::removeEventListener(Callback* callback, nsecs_t* outLastCallbackTime) {
+     Mutex::Autolock lock(mMutex);
+     return mThread->removeEventListener(callback, outLastCallbackTime);
+@@ -725,6 +745,9 @@ void DispSync::updateModelLocked() {
+             ALOGV("[%s] Adjusting mPhase -> %" PRId64, mName, ns2us(mPhase));
+         }
+ 
++        // Artificially inflate the period if requested.
++        mPeriod += mPeriod * mRefreshSkipCount;
++
+         mThread->updateModel(mPeriod, mPhase, mReferenceTime);
+         mModelUpdated = true;
+     }
+diff --git a/services/surfaceflinger/Scheduler/DispSync.h b/services/surfaceflinger/Scheduler/DispSync.h
+old mode 100644
+new mode 100755
+index 832f08e07..f3f261744
+--- a/services/surfaceflinger/Scheduler/DispSync.h
++++ b/services/surfaceflinger/Scheduler/DispSync.h
+@@ -56,6 +56,8 @@ public:
+     virtual nsecs_t getPeriod() = 0;
+     virtual status_t addEventListener(const char* name, nsecs_t phase, Callback* callback,
+                                       nsecs_t lastCallbackTime) = 0;
++    virtual void setRefreshSkipCount(int count) = 0;
++    virtual void updateRefreshSkipCountByProperty() = 0;
+     virtual status_t removeEventListener(Callback* callback, nsecs_t* outLastCallback) = 0;
+     virtual status_t changePhaseOffset(Callback* callback, nsecs_t phase) = 0;
+     virtual nsecs_t computeNextRefresh(int periodOffset, nsecs_t now) const = 0;
+@@ -150,6 +152,14 @@ public:
+     status_t addEventListener(const char* name, nsecs_t phase, Callback* callback,
+                               nsecs_t lastCallbackTime) override;
+ 
++    // setRefreshSkipCount specifies an additional number of refresh
++    // cycles to skip.  For example, on a 60Hz display, a skip count of 1
++    // will result in events happening at 30Hz.  Default is zero.  The idea
++    // is to sacrifice smoothness for battery life.
++    void setRefreshSkipCount(int count);
++    void updateRefreshSkipCountByProperty();
++
++
+     // removeEventListener removes an already-registered event callback.  Once
+     // this method returns that callback will no longer be called by the
+     // DispSync object.
+@@ -246,6 +256,8 @@ private:
+     std::shared_ptr<FenceTime> mPresentFences[NUM_PRESENT_SAMPLES]{FenceTime::NO_FENCE};
+     size_t mPresentSampleOffset;
+ 
++    int mRefreshSkipCount;
++
+     // mThread is the thread from which all the callbacks are called.
+     sp<DispSyncThread> mThread;
+ 
+diff --git a/services/surfaceflinger/Scheduler/VSyncReactor.cpp b/services/surfaceflinger/Scheduler/VSyncReactor.cpp
+old mode 100644
+new mode 100755
+index efa8bab8f..16e7e81e4
+--- a/services/surfaceflinger/Scheduler/VSyncReactor.cpp
++++ b/services/surfaceflinger/Scheduler/VSyncReactor.cpp
+@@ -271,6 +271,10 @@ void VSyncReactor::beginResync() {
+ 
+ void VSyncReactor::endResync() {}
+ 
++void VSyncReactor::setRefreshSkipCount(int count){ count = 0;};
++void VSyncReactor::updateRefreshSkipCountByProperty(){};
++
++
+ bool VSyncReactor::periodConfirmed(nsecs_t vsync_timestamp, std::optional<nsecs_t> HwcVsyncPeriod) {
+     if (!mPeriodConfirmationInProgress) {
+         return false;
+diff --git a/services/surfaceflinger/Scheduler/VSyncReactor.h b/services/surfaceflinger/Scheduler/VSyncReactor.h
+old mode 100644
+new mode 100755
+index 265d89c4b..e8c2bd97a
+--- a/services/surfaceflinger/Scheduler/VSyncReactor.h
++++ b/services/surfaceflinger/Scheduler/VSyncReactor.h
+@@ -57,6 +57,9 @@ public:
+ 
+     status_t addEventListener(const char* name, nsecs_t phase, DispSync::Callback* callback,
+                               nsecs_t lastCallbackTime) final;
++
++    void setRefreshSkipCount(int count) final;
++    void updateRefreshSkipCountByProperty() final;
+     status_t removeEventListener(DispSync::Callback* callback, nsecs_t* outLastCallback) final;
+     status_t changePhaseOffset(DispSync::Callback* callback, nsecs_t phase) final;
+ 
+diff --git a/services/surfaceflinger/SurfaceFlinger.cpp b/services/surfaceflinger/SurfaceFlinger.cpp
+index 3c4190e10..ac9aefece 100755
+--- a/services/surfaceflinger/SurfaceFlinger.cpp
++++ b/services/surfaceflinger/SurfaceFlinger.cpp
+@@ -2272,6 +2272,9 @@ void SurfaceFlinger::postComposition()
+         layer->releasePendingBuffer(dequeueReadyTime);
+     }
+ 
++    //RK support: to set DispSync mRefreshSkipCount by property.
++    mScheduler->getPrimaryDispSync().updateRefreshSkipCountByProperty();
++
+     const auto* display = ON_MAIN_THREAD(getDefaultDisplayDeviceLocked()).get();
+ 
+     getBE().mGlCompositionDoneTimeline.updateSignalTimes();
+@@ -2331,6 +2334,7 @@ void SurfaceFlinger::postComposition()
+         }
+     }
+ 
++
+     if (mAnimCompositionPending) {
+         mAnimCompositionPending = false;
+ 
+diff --git a/services/surfaceflinger/tests/unittests/mock/MockDispSync.h b/services/surfaceflinger/tests/unittests/mock/MockDispSync.h
+old mode 100644
+new mode 100755
+index b39487ccc..9ba182485
+--- a/services/surfaceflinger/tests/unittests/mock/MockDispSync.h
++++ b/services/surfaceflinger/tests/unittests/mock/MockDispSync.h
+@@ -36,7 +36,6 @@ public:
+     MOCK_METHOD1(setPeriod, void(nsecs_t));
+     MOCK_METHOD0(getPeriod, nsecs_t());
+     MOCK_METHOD0(getIntendedPeriod, nsecs_t());
+-    MOCK_METHOD1(setRefreshSkipCount, void(int));
+     MOCK_CONST_METHOD2(computeNextRefresh, nsecs_t(int, nsecs_t));
+     MOCK_METHOD1(setIgnorePresentFences, void(bool));
+     MOCK_METHOD1(expectedPresentTime, nsecs_t(nsecs_t));
+@@ -45,6 +44,8 @@ public:
+ 
+     status_t addEventListener(const char* name, nsecs_t phase, Callback* callback,
+                               nsecs_t lastCallbackTime) override;
++    MOCK_METHOD1(setRefreshSkipCount, void(int));
++    MOCK_METHOD0(updateRefreshSkipCountByProperty, void());
+     status_t removeEventListener(Callback* callback, nsecs_t* outLastCallback) override;
+     status_t changePhaseOffset(Callback* callback, nsecs_t phase) override;
+ 
+-- 
+2.35.1
+

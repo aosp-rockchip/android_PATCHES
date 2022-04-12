@@ -1,0 +1,207 @@
+From 2442be171b8877149620824c010906988d9d6c25 Mon Sep 17 00:00:00 2001
+From: Sahana Rao <sahanas@google.com>
+Date: Mon, 17 Feb 2020 10:11:56 +0000
+Subject: [PATCH 05/26] Save calling UID on FUSE pf_create.
+
+File is inserted into databse on FUSE RELEASE operation using scanFile.
+This insert does not add owner package name. And, caller of RELEASE may
+not be the owner of the file. To know the owner of the file, save the
+calling UID information on create() file. This UID can be used in
+scanFileForFuse() to update owner information in the database.
+
+Test: atest FuseDaemonHostTest
+Test: atest fuse_node_test
+Change-Id: Ibc7f43e3f2cb2c76331206cbfc2d82f09277e712
+(cherry picked from commit da6fd985a6a1f53a77b4eff0b94033fabf1555d2)
+---
+ jni/FuseDaemon.cpp                            |  9 ++++----
+ jni/MediaProviderWrapper.cpp                  | 23 +++++++++++--------
+ jni/MediaProviderWrapper.h                    |  3 ++-
+ jni/node-inl.h                                |  8 +++----
+ jni/node_test.cpp                             |  6 ++---
+ .../providers/media/MediaProvider.java        |  4 +++-
+ 6 files changed, 30 insertions(+), 23 deletions(-)
+
+diff --git a/jni/FuseDaemon.cpp b/jni/FuseDaemon.cpp
+index d8c2f46b..58d3f715 100644
+--- a/jni/FuseDaemon.cpp
++++ b/jni/FuseDaemon.cpp
+@@ -906,7 +906,7 @@ static void pf_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info* fi) {
+         TRACE_FUSE(fuse) << "Using cache for " << path;
+     }
+ 
+-    handle* h = new handle(path, fd, ri.release(), !fi->direct_io, fi->flags & O_CREAT);
++    handle* h = new handle(path, fd, ri.release(), /*owner_uid*/ -1, !fi->direct_io);
+     node->AddHandle(h);
+ 
+     fi->fh = ptr_to_id(h);
+@@ -1114,8 +1114,8 @@ static void pf_release(fuse_req_t req,
+ 
+     fuse->fadviser.Close(h->fd);
+     if (node) {
+-        if (h->is_new_file) {
+-            fuse->mp->ScanFile(h->path);
++        if (h->owner_uid != -1) {
++            fuse->mp->ScanFile(h->path, h->owner_uid);
+         }
+         node->DestroyHandle(h);
+     }
+@@ -1394,8 +1394,7 @@ static void pf_create(fuse_req_t req,
+     // This prevents crashing during reads but can be a security hole if a malicious app opens an fd
+     // to the file before all the EXIF content is written. We could special case reads before the
+     // first close after a file has just been created.
+-    handle* h = new handle(child_path, fd, new RedactionInfo(), /*cached*/ true,
+-                           /*is_new_file*/ true);
++    handle* h = new handle(child_path, fd, new RedactionInfo(), ctx->uid, /*cached*/ true);
+     fi->fh = ptr_to_id(h);
+     fi->keep_cache = 1;
+ 
+diff --git a/jni/MediaProviderWrapper.cpp b/jni/MediaProviderWrapper.cpp
+index 59588dbe..7246ae2c 100644
+--- a/jni/MediaProviderWrapper.cpp
++++ b/jni/MediaProviderWrapper.cpp
+@@ -117,9 +117,9 @@ int isOpenAllowedInternal(JNIEnv* env, jobject media_provider_object, jmethodID
+ }
+ 
+ void scanFileInternal(JNIEnv* env, jobject media_provider_object, jmethodID mid_scan_file,
+-                      const string& path) {
++                      const string& path, uid_t uid) {
+     ScopedLocalRef<jstring> j_path(env, env->NewStringUTF(path.c_str()));
+-    env->CallVoidMethod(media_provider_object, mid_scan_file, j_path.get());
++    env->CallVoidMethod(media_provider_object, mid_scan_file, j_path.get(), uid);
+     CheckForJniException(env);
+ }
+ 
+@@ -200,6 +200,7 @@ int renameInternal(JNIEnv* env, jobject media_provider_object, jmethodID mid_ren
+     ScopedLocalRef<jstring> j_new_path(env, env->NewStringUTF(new_path.c_str()));
+     int res = env->CallIntMethod(media_provider_object, mid_rename, j_old_path.get(),
+                                  j_new_path.get(), uid);
++
+     if (CheckForJniException(env)) {
+         return EFAULT;
+     }
+@@ -234,7 +235,7 @@ MediaProviderWrapper::MediaProviderWrapper(JNIEnv* env, jobject media_provider)
+     mid_delete_file_ = CacheMethod(env, "deleteFile", "(Ljava/lang/String;I)I", /*is_static*/ false);
+     mid_is_open_allowed_ = CacheMethod(env, "isOpenAllowed", "(Ljava/lang/String;IZ)I",
+                                        /*is_static*/ false);
+-    mid_scan_file_ = CacheMethod(env, "scanFile", "(Ljava/lang/String;)V",
++    mid_scan_file_ = CacheMethod(env, "scanFile", "(Ljava/lang/String;I)V",
+                                  /*is_static*/ false);
+     mid_is_mkdir_or_rmdir_allowed_ = CacheMethod(env, "isDirectoryCreationOrDeletionAllowed",
+                                                  "(Ljava/lang/String;IZ)I", /*is_static*/ false);
+@@ -314,7 +315,7 @@ int MediaProviderWrapper::DeleteFile(const string& path, uid_t uid) {
+     int res = EIO;  // Default value in case JNI thread was being terminated
+     if (shouldBypassMediaProvider(uid)) {
+         res = unlink(path.c_str());
+-        ScanFile(path);
++        ScanFile(path, uid);
+         return res;
+     }
+ 
+@@ -340,11 +341,15 @@ int MediaProviderWrapper::IsOpenAllowed(const string& path, uid_t uid, bool for_
+     return res;
+ }
+ 
+-void MediaProviderWrapper::ScanFile(const string& path) {
+-    // Don't send in path by reference, since the memory might be deleted before we get the chances
+-    // to perfrom the task.
+-    PostAndWaitForTask([this, path](JNIEnv* env) {
+-        scanFileInternal(env, media_provider_object_, mid_scan_file_, path);
++void MediaProviderWrapper::ScanFile(const string& path, uid_t uid) {
++    if (uid == 0) {
++        // uid = 0 is kernel or adb shell running as root and doesn't have a package associated with
++        // it. This uid should get global access hence use MediaProvider's uid.
++        uid = getuid();
++    }
++
++    PostAndWaitForTask([this, &path, uid](JNIEnv* env) {
++        scanFileInternal(env, media_provider_object_, mid_scan_file_, path, uid);
+     });
+ }
+ 
+diff --git a/jni/MediaProviderWrapper.h b/jni/MediaProviderWrapper.h
+index 64c27f6f..ae2b1898 100644
+--- a/jni/MediaProviderWrapper.h
++++ b/jni/MediaProviderWrapper.h
+@@ -113,8 +113,9 @@ class MediaProviderWrapper final {
+      * MediaProvider database.
+      *
+      * @param path the path of the file to be scanned
++     * @param uid UID of the app that owns the file on the given path
+      */
+-    void ScanFile(const std::string& path);
++    void ScanFile(const std::string& path, uid_t uid);
+ 
+     /**
+      * Determines if the given UID is allowed to create a directory with the given path.
+diff --git a/jni/node-inl.h b/jni/node-inl.h
+index e21ae544..921dfe26 100644
+--- a/jni/node-inl.h
++++ b/jni/node-inl.h
+@@ -34,17 +34,17 @@ namespace mediaprovider {
+ namespace fuse {
+ 
+ struct handle {
+-    explicit handle(const std::string& path, int fd, const RedactionInfo* ri, bool cached,
+-                    bool is_new_file)
+-        : path(path), fd(fd), ri(ri), cached(cached), is_new_file(is_new_file) {
++    explicit handle(const std::string& path, int fd, const RedactionInfo* ri, uid_t owner_uid,
++                    bool cached)
++        : path(path), fd(fd), ri(ri), owner_uid(owner_uid), cached(cached) {
+         CHECK(ri != nullptr);
+     }
+ 
+     const std::string path;
+     const int fd;
+     const std::unique_ptr<const RedactionInfo> ri;
++    const uid_t owner_uid;
+     const bool cached;
+-    const bool is_new_file;
+ 
+     ~handle() { close(fd); }
+ };
+diff --git a/jni/node_test.cpp b/jni/node_test.cpp
+index 3ead90bc..ca0405c9 100644
+--- a/jni/node_test.cpp
++++ b/jni/node_test.cpp
+@@ -209,8 +209,8 @@ TEST_F(NodeTest, LookupAbsolutePath) {
+ TEST_F(NodeTest, AddDestroyHandle) {
+     unique_node_ptr node = CreateNode(nullptr, "/path");
+ 
+-    handle* h = new handle("/path", -1, new mediaprovider::fuse::RedactionInfo, true /* cached */,
+-                           true /* is_new_file */);
++    handle* h = new handle("/path", -1, new mediaprovider::fuse::RedactionInfo, getuid(),
++                           true /* cached */);
+     node->AddHandle(h);
+     ASSERT_TRUE(node->HasCachedHandle());
+ 
+@@ -222,6 +222,6 @@ TEST_F(NodeTest, AddDestroyHandle) {
+     EXPECT_DEATH(node->DestroyHandle(h), "");
+     EXPECT_DEATH(node->DestroyHandle(nullptr), "");
+     std::unique_ptr<handle> h2(new handle("/path2", -1, new mediaprovider::fuse::RedactionInfo,
+-                                          true /* cached */, true /* is_new_file */));
++                                          getuid(), true /* cached */));
+     EXPECT_DEATH(node->DestroyHandle(h2.get()), "");
+ }
+diff --git a/src/com/android/providers/media/MediaProvider.java b/src/com/android/providers/media/MediaProvider.java
+index f37f881a..eabe3a43 100644
+--- a/src/com/android/providers/media/MediaProvider.java
++++ b/src/com/android/providers/media/MediaProvider.java
+@@ -868,11 +868,13 @@ public class MediaProvider extends ContentProvider {
+     /**
+      * Makes MediaScanner scan the given file.
+      * @param file path of the file to be scanned
++     * @param uid  UID of the app that owns the file on the given path. If the file is scanned
++     *            on create, this UID will be used for updating owner package.
+      *
+      * Called from JNI in jni/MediaProviderWrapper.cpp
+      */
+     @Keep
+-    public void scanFileForFuse(String file) {
++    public void scanFileForFuse(String file, int uid) {
+         scanFile(new File(file), REASON_DEMAND);
+     }
+ 
+-- 
+2.35.1
+

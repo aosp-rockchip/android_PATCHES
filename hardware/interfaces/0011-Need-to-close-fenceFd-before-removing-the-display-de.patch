@@ -1,0 +1,63 @@
+From 669c38fe28382d8ad96f00ffbfa1fcc86061272b Mon Sep 17 00:00:00 2001
+From: libin <bin.li@rock-chips.com>
+Date: Tue, 1 Dec 2020 14:26:21 +0800
+Subject: [PATCH 11/24] Need to close fenceFd before removing the display
+ device.
+
+Signed-off-by: libin <bin.li@rock-chips.com>
+Change-Id: I9bacb0daa2c913551988374b5a3469907feff437
+---
+ .../utils/hwc2on1adapter/HWC2On1Adapter.cpp   | 29 +++++++++++++++----
+ 1 file changed, 24 insertions(+), 5 deletions(-)
+
+diff --git a/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp b/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+index 757d38f6c..ce79396f3 100755
+--- a/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
++++ b/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+@@ -2635,10 +2635,6 @@ void HWC2On1Adapter::hwc1Hotplug(int hwc1DisplayId, int connected) {
+ 
+         displayId = mHwc1DisplayMap[hwc1DisplayId];
+         auto& display = mDisplays[displayId];
+-        display->destroyLayers();
+-        // Disconnect an existing display
+-        mHwc1DisplayMap.erase(HWC_DISPLAY_EXTERNAL);
+-        mDisplays.erase(displayId);
+         //Remove extern display context if plug out HDMI.
+         //Fix crash when plug out HDMI.
+         /*
+@@ -2651,8 +2647,31 @@ void HWC2On1Adapter::hwc1Hotplug(int hwc1DisplayId, int connected) {
+         */
+         if (mHwc1Contents[HWC_DISPLAY_EXTERNAL] != nullptr)
+         {
+-           mHwc1Contents.erase(mHwc1Contents.begin()+HWC_DISPLAY_EXTERNAL);
++            if(mHwc1Contents[HWC_DISPLAY_EXTERNAL]->retireFenceFd > 0){
++                close(mHwc1Contents[HWC_DISPLAY_EXTERNAL]->retireFenceFd);
++                mHwc1Contents[HWC_DISPLAY_EXTERNAL]->retireFenceFd = -1;
++            }
++            if(mHwc1Contents[HWC_DISPLAY_EXTERNAL]->outbufAcquireFenceFd > 0){
++                close(mHwc1Contents[HWC_DISPLAY_EXTERNAL]->outbufAcquireFenceFd);
++                mHwc1Contents[HWC_DISPLAY_EXTERNAL]->outbufAcquireFenceFd = -1;
++            }
++            for(size_t layerId=0 ; layerId < mHwc1Contents[HWC_DISPLAY_EXTERNAL]->numHwLayers ; layerId++)  {
++                hwc_layer_1_t& layer = mHwc1Contents[HWC_DISPLAY_EXTERNAL]->hwLayers[layerId];
++                if(layer.releaseFenceFd > 0){
++                    close(layer.releaseFenceFd);
++                    layer.releaseFenceFd = -1;
++                }
++                if(layer.acquireFenceFd > 0){
++                    close(layer.acquireFenceFd);
++                    layer.acquireFenceFd = -1;
++                }
++            }
++            mHwc1Contents.erase(mHwc1Contents.begin()+HWC_DISPLAY_EXTERNAL);
+         }
++        // Disconnect an existing display
++        mHwc1DisplayMap.erase(HWC_DISPLAY_EXTERNAL);
++        display->destroyLayers();
++        mDisplays.erase(displayId);
+     }
+ 
+     // If the HWC2-side callback hasn't been registered yet, buffer this until
+-- 
+2.35.1
+

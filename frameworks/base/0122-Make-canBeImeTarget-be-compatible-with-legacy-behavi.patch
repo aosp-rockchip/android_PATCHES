@@ -1,0 +1,196 @@
+From c97a1dd66efcd0d2459348f87c222f8ddf86b1e6 Mon Sep 17 00:00:00 2001
+From: Tiger Huang <tigerhuang@google.com>
+Date: Thu, 19 Mar 2020 22:28:43 +0800
+Subject: [PATCH 122/297] Make canBeImeTarget be compatible with legacy
+ behavior
+
+And let PerDisplay can adjust animation parameters while the insets
+source control is changed during animation.
+
+Fix: 151759336
+Test: atest WindowStateTests
+Change-Id: Ic2a308e6b7ec39b4b8645751e31addd26ddf3735
+(cherry picked from commit 00b9d6ed3c4982026522c4396653b8237e5447a8)
+---
+ .../systemui/wm/DisplayImeController.java     | 51 +++++++++++++------
+ .../server/wm/InsetsSourceProvider.java       |  6 ++-
+ .../com/android/server/wm/WindowState.java    |  8 +--
+ .../android/server/wm/WindowStateTests.java   |  2 -
+ 4 files changed, 45 insertions(+), 22 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/wm/DisplayImeController.java b/packages/SystemUI/src/com/android/systemui/wm/DisplayImeController.java
+index 54118390325..16feaadb92c 100644
+--- a/packages/SystemUI/src/com/android/systemui/wm/DisplayImeController.java
++++ b/packages/SystemUI/src/com/android/systemui/wm/DisplayImeController.java
+@@ -177,6 +177,23 @@ public class DisplayImeController implements DisplayController.OnDisplaysChanged
+         int mRotation = Surface.ROTATION_0;
+         boolean mImeShowing = false;
+ 
++        private float mX;
++        private float mHiddenY;
++        private float mShownY;
++        private float mStartY;
++        private float mEndY;
++
++        private final Runnable mUpdateAnimationParams = () -> {
++            final InsetsSource imeSource = mInsetsState.getSource(InsetsState.ITYPE_IME);
++            final boolean show = mAnimationDirection == DIRECTION_SHOW;
++            final float defaultY = mImeSourceControl.getSurfacePosition().y;
++            mX = mImeSourceControl.getSurfacePosition().x;
++            mHiddenY = defaultY + imeSource.getFrame().height();
++            mShownY = defaultY;
++            mStartY = show ? mHiddenY : mShownY;
++            mEndY = show ? mShownY : mHiddenY;
++        };
++
+         PerDisplay(int displayId, int initialRotation) {
+             mDisplayId = displayId;
+             mRotation = initialRotation;
+@@ -200,7 +217,10 @@ public class DisplayImeController implements DisplayController.OnDisplaysChanged
+                         continue;
+                     }
+                     if (activeControl.getType() == InsetsState.ITYPE_IME) {
+-                        mImeSourceControl = activeControl;
++                        if (mImeSourceControl != activeControl) {
++                            mImeSourceControl = activeControl;
++                            mHandler.post(mUpdateAnimationParams);
++                        }
+                     }
+                 }
+             }
+@@ -265,28 +285,28 @@ public class DisplayImeController implements DisplayController.OnDisplaysChanged
+                 }
+                 mAnimationDirection = show ? DIRECTION_SHOW : DIRECTION_HIDE;
+                 final float defaultY = mImeSourceControl.getSurfacePosition().y;
+-                final float x = mImeSourceControl.getSurfacePosition().x;
+-                final float hiddenY = defaultY + imeSource.getFrame().height();
+-                final float shownY = defaultY;
+-                final float startY = show ? hiddenY : shownY;
+-                final float endY = show ? shownY : hiddenY;
++                mX = mImeSourceControl.getSurfacePosition().x;
++                mHiddenY = defaultY + imeSource.getFrame().height();
++                mShownY = defaultY;
++                mStartY = show ? mHiddenY : mShownY;
++                mEndY = show ? mShownY : mHiddenY;
+                 if (mImeShowing && show) {
+                     // IME is already showing, so set seek to end
+-                    seekValue = shownY;
++                    seekValue = mShownY;
+                     seek = true;
+                 }
+                 mImeShowing = show;
+-                mAnimation = ValueAnimator.ofFloat(startY, endY);
++                mAnimation = ValueAnimator.ofFloat(mStartY, mEndY);
+                 mAnimation.setDuration(
+                         show ? ANIMATION_DURATION_SHOW_MS : ANIMATION_DURATION_HIDE_MS);
+                 if (seek) {
+-                    mAnimation.setCurrentFraction((seekValue - startY) / (endY - startY));
++                    mAnimation.setCurrentFraction((seekValue - mStartY) / (mEndY - mStartY));
+                 }
+ 
+                 mAnimation.addUpdateListener(animation -> {
+                     SurfaceControl.Transaction t = mTransactionPool.acquire();
+                     float value = (float) animation.getAnimatedValue();
+-                    t.setPosition(mImeSourceControl.getLeash(), x, value);
++                    t.setPosition(mImeSourceControl.getLeash(), mX, value);
+                     dispatchPositionChanged(mDisplayId, imeTop(imeSource, value), t);
+                     t.apply();
+                     mTransactionPool.release(t);
+@@ -297,14 +317,15 @@ public class DisplayImeController implements DisplayController.OnDisplaysChanged
+                     @Override
+                     public void onAnimationStart(Animator animation) {
+                         SurfaceControl.Transaction t = mTransactionPool.acquire();
+-                        t.setPosition(mImeSourceControl.getLeash(), x, startY);
++                        t.setPosition(mImeSourceControl.getLeash(), mX, mStartY);
+                         if (DEBUG) {
+                             Slog.d(TAG, "onAnimationStart d:" + mDisplayId + " top:"
+-                                    + imeTop(imeSource, hiddenY) + "->" + imeTop(imeSource, shownY)
++                                    + imeTop(imeSource, mHiddenY) + "->"
++                                    + imeTop(imeSource, mShownY)
+                                     + " showing:" + (mAnimationDirection == DIRECTION_SHOW));
+                         }
+-                        dispatchStartPositioning(mDisplayId, imeTop(imeSource, hiddenY),
+-                                imeTop(imeSource, shownY), mAnimationDirection == DIRECTION_SHOW,
++                        dispatchStartPositioning(mDisplayId, imeTop(imeSource, mHiddenY),
++                                imeTop(imeSource, mShownY), mAnimationDirection == DIRECTION_SHOW,
+                                 t);
+                         if (mAnimationDirection == DIRECTION_SHOW) {
+                             t.show(mImeSourceControl.getLeash());
+@@ -321,7 +342,7 @@ public class DisplayImeController implements DisplayController.OnDisplaysChanged
+                         if (DEBUG) Slog.d(TAG, "onAnimationEnd " + mCancelled);
+                         SurfaceControl.Transaction t = mTransactionPool.acquire();
+                         if (!mCancelled) {
+-                            t.setPosition(mImeSourceControl.getLeash(), x, endY);
++                            t.setPosition(mImeSourceControl.getLeash(), mX, mEndY);
+                         }
+                         dispatchEndPositioning(mDisplayId, mCancelled, t);
+                         if (mAnimationDirection == DIRECTION_HIDE && !mCancelled) {
+diff --git a/services/core/java/com/android/server/wm/InsetsSourceProvider.java b/services/core/java/com/android/server/wm/InsetsSourceProvider.java
+index ada6d471096..85361f10f33 100644
+--- a/services/core/java/com/android/server/wm/InsetsSourceProvider.java
++++ b/services/core/java/com/android/server/wm/InsetsSourceProvider.java
+@@ -215,7 +215,11 @@ class InsetsSourceProvider {
+             final Rect frame = mWin.getWindowFrames().mFrame;
+             if (mControl.setSurfacePosition(frame.left, frame.top) && mControlTarget != null) {
+                 // The leash has been stale, we need to create a new one for the client.
+-                updateControlForTarget(mControlTarget, true /* force */);
++                if (mControlTarget != mDisplayContent.mRemoteInsetsControlTarget) {
++                    // Hacky: recreating leash for RemoteInsetsControlTarget might cause IME
++                    // flicker, so we just report the new surface position to it.
++                    updateControlForTarget(mControlTarget, true /* force */);
++                }
+                 mStateController.notifyControlChanged(mControlTarget);
+             }
+         }
+diff --git a/services/core/java/com/android/server/wm/WindowState.java b/services/core/java/com/android/server/wm/WindowState.java
+index 36175705b84..520a15b8f9a 100644
+--- a/services/core/java/com/android/server/wm/WindowState.java
++++ b/services/core/java/com/android/server/wm/WindowState.java
+@@ -131,6 +131,7 @@ import static com.android.server.wm.WindowManagerDebugConfig.DEBUG_VISIBILITY;
+ import static com.android.server.wm.WindowManagerDebugConfig.DEBUG_WALLPAPER_LIGHT;
+ import static com.android.server.wm.WindowManagerDebugConfig.TAG_WITH_CLASS_NAME;
+ import static com.android.server.wm.WindowManagerDebugConfig.TAG_WM;
++import static com.android.server.wm.WindowManagerService.H.WINDOW_STATE_BLAST_SYNC_TIMEOUT;
+ import static com.android.server.wm.WindowManagerService.MAX_ANIMATION_DURATION;
+ import static com.android.server.wm.WindowManagerService.TYPE_LAYER_MULTIPLIER;
+ import static com.android.server.wm.WindowManagerService.TYPE_LAYER_OFFSET;
+@@ -138,7 +139,6 @@ import static com.android.server.wm.WindowManagerService.UPDATE_FOCUS_NORMAL;
+ import static com.android.server.wm.WindowManagerService.UPDATE_FOCUS_REMOVING_FOCUS;
+ import static com.android.server.wm.WindowManagerService.UPDATE_FOCUS_WILL_PLACE_SURFACES;
+ import static com.android.server.wm.WindowManagerService.WINDOWS_FREEZING_SCREENS_TIMEOUT;
+-import static com.android.server.wm.WindowManagerService.H.WINDOW_STATE_BLAST_SYNC_TIMEOUT;
+ import static com.android.server.wm.WindowStateAnimator.COMMIT_DRAW_PENDING;
+ import static com.android.server.wm.WindowStateAnimator.DRAW_PENDING;
+ import static com.android.server.wm.WindowStateAnimator.HAS_DRAWN;
+@@ -2270,9 +2270,9 @@ class WindowState extends WindowContainer<WindowState> implements WindowManagerP
+             return false;
+         }
+ 
+-        if (PixelFormat.formatHasAlpha(mAttrs.format) && mAttrs.alpha == 0) {
+-            // Support legacy use cases where completely transparent windows can still be ime target
+-            // with FLAG_NOT_FOCUSABLE and ALT_FOCUSABLE_IM set.
++        if (PixelFormat.formatHasAlpha(mAttrs.format)) {
++            // Support legacy use cases where transparent windows can still be ime target with
++            // FLAG_NOT_FOCUSABLE and ALT_FOCUSABLE_IM set.
+             // Certain apps listen for IME insets using transparent windows and ADJUST_NOTHING to
+             // manually synchronize app content to IME animation b/144619551.
+             // TODO(b/145812508): remove this once new focus management is complete b/141738570
+diff --git a/services/tests/wmtests/src/com/android/server/wm/WindowStateTests.java b/services/tests/wmtests/src/com/android/server/wm/WindowStateTests.java
+index 85e4a1668a3..e95ccab3896 100644
+--- a/services/tests/wmtests/src/com/android/server/wm/WindowStateTests.java
++++ b/services/tests/wmtests/src/com/android/server/wm/WindowStateTests.java
+@@ -251,11 +251,9 @@ public class WindowStateTests extends WindowTestsBase {
+ 
+         // b/145812508: special legacy use-case for transparent/translucent windows.
+         appWindow.mAttrs.format = PixelFormat.TRANSPARENT;
+-        appWindow.mAttrs.alpha = 0;
+         assertTrue(appWindow.canBeImeTarget());
+ 
+         appWindow.mAttrs.format = PixelFormat.OPAQUE;
+-        appWindow.mAttrs.alpha = 1;
+         appWindow.mAttrs.flags &= ~FLAG_ALT_FOCUSABLE_IM;
+         assertFalse(appWindow.canBeImeTarget());
+         appWindow.mAttrs.flags &= ~FLAG_NOT_FOCUSABLE;
+-- 
+2.35.1
+

@@ -1,0 +1,40 @@
+From 00d8cbb291b114f5a6da941862401d4d99ced3e4 Mon Sep 17 00:00:00 2001
+From: Andrei Onea <andreionea@google.com>
+Date: Wed, 30 Oct 2019 18:08:24 +0000
+Subject: [PATCH 039/297] Initialize AppCompatCallbacks in system server
+
+This ensures that any calls made (intentionally or not) in the system
+server using the Compatibility (in-app process) gating APIs will always
+return true, and log the gated feature.
+
+Bug: 143591326
+Test: m
+Change-Id: I96792cf852f4167fc39d5055704f8617efaae25e
+(cherry picked from commit f965d151cc4ddcc7c343b048e4493d011d379644)
+---
+ services/java/com/android/server/SystemServer.java | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/services/java/com/android/server/SystemServer.java b/services/java/com/android/server/SystemServer.java
+index 58830487a0f..c16f3e8d08d 100644
+--- a/services/java/com/android/server/SystemServer.java
++++ b/services/java/com/android/server/SystemServer.java
+@@ -27,6 +27,7 @@ import static com.android.server.utils.TimingsTraceAndSlog.SYSTEM_SERVER_TIMING_
+ import android.annotation.NonNull;
+ import android.annotation.StringRes;
+ import android.app.ActivityThread;
++import android.app.AppCompatCallbacks;
+ import android.app.INotificationManager;
+ import android.app.usage.UsageStatsManagerInternal;
+ import android.content.ComponentName;
+@@ -646,6 +647,7 @@ public final class SystemServer {
+         ServiceManager.addService(Context.PLATFORM_COMPAT_SERVICE, platformCompat);
+         ServiceManager.addService(Context.PLATFORM_COMPAT_NATIVE_SERVICE,
+                 new PlatformCompatNative(platformCompat));
++        AppCompatCallbacks.install(new long[0]);
+         t.traceEnd();
+ 
+         // Wait for installd to finish starting up so that it has a chance to
+-- 
+2.35.1
+

@@ -1,0 +1,268 @@
+From c5c3c1de408dc27b741b83338038a8884a7a4c39 Mon Sep 17 00:00:00 2001
+From: Wu Jingchen <oven.wu@rock-chips.com>
+Date: Fri, 23 Oct 2020 09:41:15 +0800
+Subject: [PATCH 210/297] Bootanimation:support shutdownanimation.
+
+Signed-off-by: Wu Jingchen <oven.wu@rock-chips.com>
+Change-Id: I2d1e44a3dfaad7091bc9b3d7a6a27c3e87f7fa83
+---
+ cmds/bootanimation/BootAnimation.cpp          | 16 ++--
+ cmds/bootanimation/BootAnimation.h            |  3 +-
+ cmds/bootanimation/bootanimation_main.cpp     | 11 ++-
+ .../android/server/power/ShutdownThread.java  | 84 +++++++++++++++++++
+ 4 files changed, 105 insertions(+), 9 deletions(-)
+ mode change 100644 => 100755 services/core/java/com/android/server/power/ShutdownThread.java
+
+diff --git a/cmds/bootanimation/BootAnimation.cpp b/cmds/bootanimation/BootAnimation.cpp
+index bb2de17b42f..91b14ee3a59 100644
+--- a/cmds/bootanimation/BootAnimation.cpp
++++ b/cmds/bootanimation/BootAnimation.cpp
+@@ -72,14 +72,14 @@
+ 
+ namespace android {
+ 
+-static const char OEM_BOOTANIMATION_FILE[] = "/oem/media/bootanimation.zip";
++static const char OEM_BOOTANIMATION_FILE[] = "/odm/media/bootanimation.zip";
+ static const char PRODUCT_BOOTANIMATION_DARK_FILE[] = "/product/media/bootanimation-dark.zip";
+ static const char PRODUCT_BOOTANIMATION_FILE[] = "/product/media/bootanimation.zip";
+ static const char SYSTEM_BOOTANIMATION_FILE[] = "/system/media/bootanimation.zip";
+ static const char APEX_BOOTANIMATION_FILE[] = "/apex/com.android.bootanimation/etc/bootanimation.zip";
+ static const char PRODUCT_ENCRYPTED_BOOTANIMATION_FILE[] = "/product/media/bootanimation-encrypted.zip";
+ static const char SYSTEM_ENCRYPTED_BOOTANIMATION_FILE[] = "/system/media/bootanimation-encrypted.zip";
+-static const char OEM_SHUTDOWNANIMATION_FILE[] = "/oem/media/shutdownanimation.zip";
++static const char OEM_SHUTDOWNANIMATION_FILE[] = "/odm/media/shutdownanimation.zip";
+ static const char PRODUCT_SHUTDOWNANIMATION_FILE[] = "/product/media/shutdownanimation.zip";
+ static const char SYSTEM_SHUTDOWNANIMATION_FILE[] = "/system/media/shutdownanimation.zip";
+ 
+@@ -110,10 +110,10 @@ static const char EXIT_PROP_NAME[] = "service.bootanim.exit";
+ static const char DISPLAYS_PROP_NAME[] = "persist.service.bootanim.displays";
+ static const int ANIM_ENTRY_NAME_MAX = ANIM_PATH_MAX + 1;
+ static constexpr size_t TEXT_POS_LEN_MAX = 16;
+-
++static const char LOOP_COMPLETED_PROP_NAME[] = "sys.anim_loop.completed";
+ // ---------------------------------------------------------------------------
+ 
+-BootAnimation::BootAnimation(sp<Callbacks> callbacks)
++BootAnimation::BootAnimation(sp<Callbacks> callbacks,bool shutdown)
+         : Thread(false), mClockEnabled(true), mTimeIsAccurate(false), mTimeFormat12Hour(false),
+         mTimeCheckThread(nullptr), mCallbacks(callbacks), mLooper(new Looper(false)) {
+     mSession = new SurfaceComposerClient();
+@@ -126,6 +126,7 @@ BootAnimation::BootAnimation(sp<Callbacks> callbacks)
+     }
+     ALOGD("%sAnimationStartTiming start time: %" PRId64 "ms", mShuttingDown ? "Shutdown" : "Boot",
+             elapsedRealtime());
++    mShutdown = shutdown;
+ }
+ 
+ BootAnimation::~BootAnimation() {
+@@ -553,7 +554,7 @@ void BootAnimation::findBootAnimationFile() {
+ 
+     if (android::base::GetBoolProperty("sys.init.userspace_reboot.in_progress", false)) {
+         findBootAnimationFileInternal(userspaceRebootFiles);
+-    } else if (mShuttingDown) {
++    } else if (mShutdown) {
+         findBootAnimationFileInternal(shutdownFiles);
+     } else {
+         findBootAnimationFileInternal(bootFiles);
+@@ -1204,7 +1205,10 @@ bool BootAnimation::playAnimation(const Animation& animation) {
+         }
+ 
+     }
+-
++    if(mShutdown){
++        property_set(LOOP_COMPLETED_PROP_NAME, "true");
++        while(1);
++    }
+     // Free textures created for looping parts now that the animation is done.
+     for (const Animation::Part& part : animation.parts) {
+         if (part.count != 1) {
+diff --git a/cmds/bootanimation/BootAnimation.h b/cmds/bootanimation/BootAnimation.h
+index 6ba7fd450fb..50aa3875e89 100644
+--- a/cmds/bootanimation/BootAnimation.h
++++ b/cmds/bootanimation/BootAnimation.h
+@@ -119,7 +119,7 @@ public:
+         virtual void shutdown() {}
+     };
+ 
+-    explicit BootAnimation(sp<Callbacks> callbacks);
++    explicit BootAnimation(sp<Callbacks> callbacks,bool shutdown);
+     virtual ~BootAnimation();
+ 
+     sp<SurfaceComposerClient> session() const;
+@@ -193,6 +193,7 @@ private:
+     sp<IBinder> mDisplayToken;
+     sp<SurfaceControl> mFlingerSurfaceControl;
+     sp<Surface> mFlingerSurface;
++    bool        mShutdown;
+     bool        mClockEnabled;
+     bool        mTimeIsAccurate;
+     bool        mTimeFormat12Hour;
+diff --git a/cmds/bootanimation/bootanimation_main.cpp b/cmds/bootanimation/bootanimation_main.cpp
+index 6c7b3e51ff8..c6cb5611536 100644
+--- a/cmds/bootanimation/bootanimation_main.cpp
++++ b/cmds/bootanimation/bootanimation_main.cpp
+@@ -33,7 +33,7 @@
+ 
+ using namespace android;
+ 
+-int main()
++int main(int argc, char** argv)
+ {
+     setpriority(PRIO_PROCESS, 0, ANDROID_PRIORITY_DISPLAY);
+ 
+@@ -45,7 +45,14 @@ int main()
+         ProcessState::self()->startThreadPool();
+ 
+         // create the boot animation object (may take up to 200ms for 2MB zip)
+-        sp<BootAnimation> boot = new BootAnimation(audioplay::createAnimationCallbacks());
++        sp<BootAnimation> boot;
++        if(argc > 1){
++            if(strcmp(argv[1], "shutdown") == 0){
++                boot = new BootAnimation(audioplay::createAnimationCallbacks(),true);
++            }
++        }else{
++            boot = new BootAnimation(audioplay::createAnimationCallbacks(),false);
++        }
+ 
+         waitForSurfaceFlinger();
+ 
+diff --git a/services/core/java/com/android/server/power/ShutdownThread.java b/services/core/java/com/android/server/power/ShutdownThread.java
+old mode 100644
+new mode 100755
+index bc722f18165..2f5ace6d6ec
+--- a/services/core/java/com/android/server/power/ShutdownThread.java
++++ b/services/core/java/com/android/server/power/ShutdownThread.java
+@@ -57,6 +57,7 @@ import java.io.File;
+ import java.io.FileOutputStream;
+ import java.io.IOException;
+ import java.nio.charset.StandardCharsets;
++import android.view.IWindowManager;
+ 
+ public final class ShutdownThread extends Thread {
+     // constants
+@@ -94,6 +95,10 @@ public final class ShutdownThread extends Thread {
+     public static final String REBOOT_SAFEMODE_PROPERTY = "persist.sys.safemode";
+     public static final String RO_SAFEMODE_PROPERTY = "ro.sys.safemode";
+ 
++    // Used for shutdownanimation
++    private static final String SYSTEM_SHUTDOWNANIMATION_FILE = "/odm/media/shutdownanimation.zip";
++    private static final String LOOP_COMPLETED_PROP_NAME = "sys.anim_loop.completed";
++    private static final String SHUTDOWNANIM_ORIEN_PROP_NAME = "vendor.shutdown_anim.orien";
+     // static instance of this thread
+     private static final ShutdownThread sInstance = new ShutdownThread();
+ 
+@@ -456,6 +461,11 @@ public final class ShutdownThread extends Thread {
+         }
+         shutdownTimingLog.traceEnd(); // DumpPreRebootInfo
+ 
++        //Force to the animation orientation.
++        if (checkAnimationFileExist()) {
++            freeze_orien_shutdownanim();
++        }
++
+         metricStarted(METRIC_SEND_BROADCAST);
+         shutdownTimingLog.traceBegin("SendShutdownBroadcast");
+         Log.i(TAG, "Sending shutdown broadcast...");
+@@ -464,6 +474,9 @@ public final class ShutdownThread extends Thread {
+         mActionDone = false;
+         Intent intent = new Intent(Intent.ACTION_SHUTDOWN);
+         intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND | Intent.FLAG_RECEIVER_REGISTERED_ONLY);
++        if (checkAnimationFileExist()) {
++            intent.putExtra("PLAY_SHUTDOWN_ANIMATION",1);
++        }
+         mContext.sendOrderedBroadcastAsUser(intent,
+                 UserHandle.ALL, null, br, mHandler, 0, null, null);
+ 
+@@ -491,6 +504,13 @@ public final class ShutdownThread extends Thread {
+         shutdownTimingLog.traceEnd(); // SendShutdownBroadcast
+         metricEnded(METRIC_SEND_BROADCAST);
+ 
++        /*
++         *Show shutdown animation if the resource file exists.
++         *thaw rotation here.
++         */
++        if (checkAnimationFileExist()) {
++            start_shutdownanim();
++        }
+         Log.i(TAG, "Shutting down activity manager...");
+         shutdownTimingLog.traceBegin("ShutdownActivityManager");
+         metricStarted(METRIC_AM);
+@@ -545,6 +565,12 @@ public final class ShutdownThread extends Thread {
+         shutdownTimingLog.traceEnd(); // SystemServerShutdown
+         metricEnded(METRIC_SYSTEM_SERVER);
+         saveMetrics(mReboot, mReason);
++        //Wait for shutdown animation loop done.
++        if (checkAnimationFileExist()) {
++            wait_shutdownanim_end();
++            thaw_orien_shutdownanim();
++        }
++        mPowerManager.goToSleep(SystemClock.uptimeMillis());
+         // Remaining work will be done by init, including vold shutdown
+         rebootOrShutdown(mContext, mReboot, mReason);
+     }
+@@ -771,4 +797,62 @@ public final class ShutdownThread extends Thread {
+             }
+         }
+     }
++
++   //Show shutdown animation
++    private static void start_shutdownanim() {
++        try {
++            SystemProperties.set(LOOP_COMPLETED_PROP_NAME, "false");
++            SystemProperties.set("service.bootanim.exit", "0");
++            SystemProperties.set("ctl.start", "shutdownanim");
++        } catch (Exception e){
++           Log.e(TAG,"shutdownanim command exe err!");
++        }
++    }
++
++    //freeze to default orientation
++    private static void freeze_orien_shutdownanim() {
++        int orien = SystemProperties.getInt(SHUTDOWNANIM_ORIEN_PROP_NAME, -1);
++        if(orien > -1 && orien < 5){
++            IWindowManager wm = IWindowManager.Stub.asInterface(ServiceManager
++                    .getService(Context.WINDOW_SERVICE));
++            try {
++                wm.freezeRotation(orien);
++            } catch (RemoteException e) {
++                Log.e(TAG, "boot animation can not lock device!");
++            }
++        }
++    }
++
++
++
++    //thaw rotation
++    private static void thaw_orien_shutdownanim() {
++        int orien = SystemProperties.getInt(SHUTDOWNANIM_ORIEN_PROP_NAME, -1);
++        if(orien > -1 && orien < 5){
++            IWindowManager wm = IWindowManager.Stub.asInterface(ServiceManager
++                    .getService(Context.WINDOW_SERVICE));
++            try {
++                wm.thawRotation();
++            } catch (RemoteException e) {
++                Log.w(TAG, "boot animation can not lock device!");
++            }
++        }
++    }
++
++    //Wait until the animation loop finished
++    private static void wait_shutdownanim_end() {
++        while(!SystemProperties.get(LOOP_COMPLETED_PROP_NAME, "false").equals("true")) {
++            try {
++                Thread.sleep(500);
++            } catch (Exception e) {
++            }
++        }
++    }
++
++    private static boolean checkAnimationFileExist() {
++       if (new File(SYSTEM_SHUTDOWNANIMATION_FILE).exists())
++            return true;
++        else
++            return false;
++    }
+ }
+-- 
+2.35.1
+

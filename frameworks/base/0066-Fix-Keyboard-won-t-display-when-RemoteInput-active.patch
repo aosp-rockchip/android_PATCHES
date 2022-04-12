@@ -1,0 +1,68 @@
+From e25bd379ec282373c7f5c0b3ccdd7bf0da729a8e Mon Sep 17 00:00:00 2001
+From: lumark <lumark@google.com>
+Date: Fri, 31 Jan 2020 21:21:30 +0800
+Subject: [PATCH 066/297] Fix Keyboard won't display when RemoteInput active
+
+Commit 970d9d2 instroduced IME focus controller which
+added a new method View#hasImeFocus to restrict the IME keyboard
+is focusble only when the focused window won't have either FLAG_NOT_FOCUSABLE
+or FLAG_ALT_FOCUSABLE_IM flags.
+
+Since NotificationShadeWindowController will unset both flags when
+RemoteInput active.
+
+But, in ImeFocusControler#onTraversal won't keep update View'ss mHasImeFocus
+state, it will affect IME focus handle correctness.
+
+Hense, it needs to fix View#hasImeFocus state update issue.
+
+Fix: 148489857
+Bug: 141738570
+Test: manual as following steps:
+ 0) make EditTextVariations
+ 1) adb install -r EditTextVariations.apk
+ 2). adb shell am start -n com.android.inputmethod.tools.edittextvariations/.EditTextVariations
+ 3). Tap the 3-dot menu on the EditTextVariations
+ 4). Tap `Direct Reply` on the menu
+ 5). Open notification drawers
+ 6) Try to direct-reply on the notification, expect soft-keyboard should come up after step 6)
+
+Change-Id: I8d4fff94ba9313b773bc27fcbd019cc88580d3e9
+(cherry picked from commit 655c367badbeb6c9d46e59fb117fe1d01928cf6d)
+---
+ core/java/android/view/ImeFocusController.java             | 2 ++
+ core/java/android/view/inputmethod/InputMethodManager.java | 5 +++++
+ 2 files changed, 7 insertions(+)
+
+diff --git a/core/java/android/view/ImeFocusController.java b/core/java/android/view/ImeFocusController.java
+index 8d58ee83cd6..008abbf42a2 100644
+--- a/core/java/android/view/ImeFocusController.java
++++ b/core/java/android/view/ImeFocusController.java
+@@ -76,6 +76,8 @@ public final class ImeFocusController {
+             return;
+         }
+         mHasImeFocus = hasImeFocus;
++        // Keep View#hasImeFocus up-to-dated when performing layout traversal.
++        mViewRootImpl.mAttachInfo.mHasImeFocus = mHasImeFocus;
+         if (mHasImeFocus) {
+             onPreWindowFocus(true /* hasWindowFocus */, windowAttribute);
+             onPostWindowFocus(mViewRootImpl.mView.findFocus(), true /* hasWindowFocus */,
+diff --git a/core/java/android/view/inputmethod/InputMethodManager.java b/core/java/android/view/inputmethod/InputMethodManager.java
+index 307abd2f5f6..f0c16aadf12 100644
+--- a/core/java/android/view/inputmethod/InputMethodManager.java
++++ b/core/java/android/view/inputmethod/InputMethodManager.java
+@@ -671,6 +671,11 @@ public final class InputMethodManager {
+                 mWindowFocusGainFuture = null;
+             }
+             synchronized (mH) {
++                if (mCurRootView != null) {
++                    // Reset the last served view and restart window focus state of the root view.
++                    mCurRootView.getImeFocusController().setServedView(null);
++                    mRestartOnNextWindowFocus = true;
++                }
+                 mCurRootView = rootView;
+             }
+         }
+-- 
+2.35.1
+

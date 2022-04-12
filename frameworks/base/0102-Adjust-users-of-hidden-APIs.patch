@@ -1,0 +1,98 @@
+From 52f7859a9eb5cf6f9455bcc74bd12aa980aba59d Mon Sep 17 00:00:00 2001
+From: Jeff Sharkey <jsharkey@android.com>
+Date: Fri, 6 Mar 2020 13:35:55 -0700
+Subject: [PATCH 102/297] Adjust users of hidden APIs.
+
+There's a new method overload that gives them both the "int flags"
+and "int userId".
+
+Bug: 150939131
+Test: atest CtsDatabaseTestCases
+Test: atest CtsContentTestCases:android.content.cts.ContentResolverTest
+Exempt-From-Owner-Approval: trivial refactoring
+Change-Id: I7dc3fa1e2c4dfb802fd7919e2c8a559b4e46064d
+(cherry picked from commit 29246e85473ab9f1ebc88d905d57316eead99ec4)
+---
+ .../src/com/android/keyguard/clock/ClockManager.java         | 5 +++--
+ .../server/notification/ValidateNotificationPeople.java      | 5 +++--
+ .../devicepolicy/DevicePolicyManagerServiceTestable.java     | 5 +++--
+ .../src/com/android/server/people/data/DataManagerTest.java  | 3 ++-
+ 4 files changed, 11 insertions(+), 7 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/keyguard/clock/ClockManager.java b/packages/SystemUI/src/com/android/keyguard/clock/ClockManager.java
+index 03674648d1e..cb43934dea8 100644
+--- a/packages/SystemUI/src/com/android/keyguard/clock/ClockManager.java
++++ b/packages/SystemUI/src/com/android/keyguard/clock/ClockManager.java
+@@ -74,8 +74,9 @@ public final class ClockManager {
+     private final ContentObserver mContentObserver =
+             new ContentObserver(mMainHandler) {
+                 @Override
+-                public void onChange(boolean selfChange, Uri uri, int userId) {
+-                    super.onChange(selfChange, uri, userId);
++                public void onChange(boolean selfChange, Iterable<Uri> uris,
++                        int flags, int userId) {
++                    super.onChange(selfChange, uris, userId);
+                     if (Objects.equals(userId,
+                             mCurrentUserObservable.getCurrentUser().getValue())) {
+                         reload();
+diff --git a/services/core/java/com/android/server/notification/ValidateNotificationPeople.java b/services/core/java/com/android/server/notification/ValidateNotificationPeople.java
+index 90fc59a893a..d36f202ecc0 100644
+--- a/services/core/java/com/android/server/notification/ValidateNotificationPeople.java
++++ b/services/core/java/com/android/server/notification/ValidateNotificationPeople.java
+@@ -106,8 +106,9 @@ public class ValidateNotificationPeople implements NotificationSignalExtractor {
+             mHandler = new Handler();
+             mObserver = new ContentObserver(mHandler) {
+                 @Override
+-                public void onChange(boolean selfChange, Uri uri, int userId) {
+-                    super.onChange(selfChange, uri, userId);
++                public void onChange(boolean selfChange, Iterable<Uri> uris,
++                        int flags, int userId) {
++                    super.onChange(selfChange, uris, flags, userId);
+                     if (DEBUG || mEvictionCount % 100 == 0) {
+                         if (VERBOSE) Slog.i(TAG, "mEvictionCount: " + mEvictionCount);
+                     }
+diff --git a/services/tests/servicestests/src/com/android/server/devicepolicy/DevicePolicyManagerServiceTestable.java b/services/tests/servicestests/src/com/android/server/devicepolicy/DevicePolicyManagerServiceTestable.java
+index 5ad81b2c450..2aeed248676 100644
+--- a/services/tests/servicestests/src/com/android/server/devicepolicy/DevicePolicyManagerServiceTestable.java
++++ b/services/tests/servicestests/src/com/android/server/devicepolicy/DevicePolicyManagerServiceTestable.java
+@@ -56,6 +56,7 @@ import com.android.server.net.NetworkPolicyManagerInternal;
+ 
+ import java.io.File;
+ import java.io.IOException;
++import java.util.Arrays;
+ import java.util.Map;
+ 
+ /**
+@@ -108,13 +109,13 @@ public class DevicePolicyManagerServiceTestable extends DevicePolicyManagerServi
+     public void notifyChangeToContentObserver(Uri uri, int userHandle) {
+         ContentObserver co = mMockInjector.mContentObservers.get(new Pair<>(uri, userHandle));
+         if (co != null) {
+-            co.onChange(false, uri, userHandle); // notify synchronously
++            co.onChange(false, Arrays.asList(uri), 0, userHandle); // notify synchronously
+         }
+ 
+         // Notify USER_ALL observer too.
+         co = mMockInjector.mContentObservers.get(new Pair<>(uri, UserHandle.USER_ALL));
+         if (co != null) {
+-            co.onChange(false, uri, userHandle); // notify synchronously
++            co.onChange(false, Arrays.asList(uri), 0, userHandle); // notify synchronously
+         }
+     }
+ 
+diff --git a/services/tests/servicestests/src/com/android/server/people/data/DataManagerTest.java b/services/tests/servicestests/src/com/android/server/people/data/DataManagerTest.java
+index 624b67ccda8..63dbb0f9d79 100644
+--- a/services/tests/servicestests/src/com/android/server/people/data/DataManagerTest.java
++++ b/services/tests/servicestests/src/com/android/server/people/data/DataManagerTest.java
+@@ -366,7 +366,8 @@ public final class DataManagerTest {
+ 
+         ContentObserver contentObserver = mDataManager.getContactsContentObserverForTesting(
+                 USER_ID_PRIMARY);
+-        contentObserver.onChange(false, ContactsContract.Contacts.CONTENT_URI, USER_ID_PRIMARY);
++        contentObserver.onChange(false, Arrays.asList(ContactsContract.Contacts.CONTENT_URI), 0,
++                USER_ID_PRIMARY);
+ 
+         List<ConversationInfo> conversations = getConversationsInPrimary();
+         assertEquals(1, conversations.size());
+-- 
+2.35.1
+

@@ -1,0 +1,49 @@
+From 73bb09a091563507c545e92142d8a1cd217bd2d8 Mon Sep 17 00:00:00 2001
+From: lqh <kevin.lin@rock-chips.com>
+Date: Mon, 25 Nov 2019 15:02:35 +0800
+Subject: [PATCH 217/297] box: Settings.Secure.TV_USER_SETUP_COMPLETE true.
+
+Since box does not have the wizard, it is set to true by default,
+to fix the problem with the TV product home button failing to
+return to theLauncher
+
+Change-Id: I4d8795ac5249b48c401710d2e1fa11efb390d8d3
+Signed-off-by: lqh <kevin.lin@rock-chips.com>
+---
+ packages/SettingsProvider/res/values/defaults.xml            | 3 +++
+ .../src/com/android/providers/settings/DatabaseHelper.java   | 5 +++++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/packages/SettingsProvider/res/values/defaults.xml b/packages/SettingsProvider/res/values/defaults.xml
+index 86f30424f7d..761d8bcbed0 100644
+--- a/packages/SettingsProvider/res/values/defaults.xml
++++ b/packages/SettingsProvider/res/values/defaults.xml
+@@ -145,6 +145,9 @@
+     <!-- Default for Settings.Secure.USER_SETUP_COMPLETE -->
+     <bool name="def_user_setup_complete">false</bool>
+ 
++    <!-- Default for Settings.Secure.TV_USER_SETUP_COMPLETE -->
++    <bool name="def_tv_user_setup_complete">true</bool>
++
+     <!-- Default for Settings.Global.LOW_BATTERY_SOUND_TIMEOUT.
+          0 means no timeout; battery sounds will always play
+          >0 is milliseconds of screen-off time after which battery sounds will not play -->
+diff --git a/packages/SettingsProvider/src/com/android/providers/settings/DatabaseHelper.java b/packages/SettingsProvider/src/com/android/providers/settings/DatabaseHelper.java
+index a63497e8b94..0a224ea6157 100644
+--- a/packages/SettingsProvider/src/com/android/providers/settings/DatabaseHelper.java
++++ b/packages/SettingsProvider/src/com/android/providers/settings/DatabaseHelper.java
+@@ -2358,6 +2358,11 @@ class DatabaseHelper extends SQLiteOpenHelper {
+                         R.bool.def_lockscreen_disabled);
+             }
+ 
++            if (SystemProperties.get("ro.target.product","").equals("box")) {
++                loadBooleanSetting(stmt, Settings.Secure.TV_USER_SETUP_COMPLETE,
++                    R.bool.def_tv_user_setup_complete);
++            }
++
+             loadBooleanSetting(stmt, Settings.Secure.SCREENSAVER_ENABLED,
+                     com.android.internal.R.bool.config_dreamsEnabledByDefault);
+             loadBooleanSetting(stmt, Settings.Secure.SCREENSAVER_ACTIVATE_ON_DOCK,
+-- 
+2.35.1
+

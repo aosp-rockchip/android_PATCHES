@@ -1,0 +1,26 @@
+From b57454b0b1035d3695e516618f306169feed20f8 Mon Sep 17 00:00:00 2001
+From: "shine.liu" <shine.liu@rock-chips.com>
+Date: Fri, 13 Nov 2020 16:55:29 +0800
+Subject: [PATCH 18/25] [MediaPlayerFactory]: use nuplayer for MID
+
+Signed-off-by: shine.liu <shine.liu@rock-chips.com>
+Change-Id: Id8a74e5eb9700f1c04d41d924906bd7672c75aea
+---
+ media/libmediaplayerservice/MediaPlayerFactory.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/media/libmediaplayerservice/MediaPlayerFactory.cpp b/media/libmediaplayerservice/MediaPlayerFactory.cpp
+index 08edf393b0..0ef477514c 100644
+--- a/media/libmediaplayerservice/MediaPlayerFactory.cpp
++++ b/media/libmediaplayerservice/MediaPlayerFactory.cpp
+@@ -148,6 +148,7 @@ player_type MediaPlayerFactory::getPlayerType(const sp<IMediaPlayer>& client,
+     getFileName(fd,&filePath);
+     if (strstr(filePath.string(), ".ogg")
+         || strstr(filePath.string(), ".mid")
++        || strstr(filePath.string(), ".MID")
+         || strstr(filePath.string(), ".mp3")
+         || strstr(filePath.string(), ".apk")
+         || strstr(filePath.string(), "notification_sound_cache")
+-- 
+2.35.1
+

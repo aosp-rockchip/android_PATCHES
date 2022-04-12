@@ -1,0 +1,28 @@
+From bbd3d606d2968c4b5116afedf34aa2294b28cb3a Mon Sep 17 00:00:00 2001
+From: ZhuangXiaoLiang <zhuangxl@rock-chips.com>
+Date: Fri, 7 Jul 2017 15:07:21 +0800
+Subject: [PATCH 05/36] Fix compile error.
+
+Change-Id: I0de385d2921ac94a297905d6521adf758a1321c0
+Signed-off-by: cw <cw@rock-chips.com>
+---
+ include/hardware/gralloc.h | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/include/hardware/gralloc.h b/include/hardware/gralloc.h
+index 0f01d87a..c42801ee 100755
+--- a/include/hardware/gralloc.h
++++ b/include/hardware/gralloc.h
+@@ -139,8 +139,7 @@ enum {
+ 
+ 
+     /* buffer may be used as a cursor */
+-    GRALLOC_USAGE_CURSOR                = 0x00008000,
+-	 GRALLOC_USAGE_ROT_MASK              = 0x0F000000,
++    GRALLOC_USAGE_ROT_MASK              = 0x0F000000,
+ 
+     /* implementation-specific private usage flags */
+     GRALLOC_USAGE_PRIVATE_0             = 0x10000000U,
+-- 
+2.35.1
+

@@ -1,0 +1,27 @@
+From d5efde9de060c536fa9cbc9fff8cc4cf0b7ce143 Mon Sep 17 00:00:00 2001
+From: Li Huang <putin.li@rock-chips.com>
+Date: Tue, 5 Nov 2019 15:13:43 +0800
+Subject: [PATCH 25/36] Add missing 'layer_count' parameter for VTS case
+
+Change-Id: Ia298c66dee0829750a177e009119643d9904df8d
+Signed-off-by: Li Huang <putin.li@rock-chips.com>
+---
+ include/hardware/gralloc.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/hardware/gralloc.h b/include/hardware/gralloc.h
+index 28a39efa..35ebd248 100755
+--- a/include/hardware/gralloc.h
++++ b/include/hardware/gralloc.h
+@@ -446,7 +446,7 @@ typedef struct gralloc_module_t {
+      */
+     int32_t (*validateBufferSize)(
+             struct gralloc_module_t const* device, buffer_handle_t handle,
+-            uint32_t w, uint32_t h, int32_t format, int usage,
++            uint32_t w, uint32_t h, int32_t format, int usage, int layer_count,
+             uint32_t stride);
+ 
+     /* reserved for future use */
+-- 
+2.35.1
+

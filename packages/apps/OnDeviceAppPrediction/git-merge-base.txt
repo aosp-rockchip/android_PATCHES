@@ -1,0 +1,84 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 07c9d7a2cb9e52e7c9e9f7793d70c9f4ca820d29
+Merge: f25a08b 8f42548
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:55:54 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 07c9d7a2cb9e52e7c9e9f7793d70c9f4ca820d29
+Merge: f25a08b 8f42548
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:55:54 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 07c9d7a2cb9e52e7c9e9f7793d70c9f4ca820d29
+Merge: f25a08b 8f42548
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:55:54 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 07c9d7a2cb9e52e7c9e9f7793d70c9f4ca820d29
+Merge: f25a08b 8f42548
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:55:54 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 07c9d7a2cb9e52e7c9e9f7793d70c9f4ca820d29
+Merge: f25a08b 8f42548
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:55:54 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 07c9d7a2cb9e52e7c9e9f7793d70c9f4ca820d29
+Merge: f25a08b 8f42548
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:55:54 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28

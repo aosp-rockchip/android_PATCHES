@@ -1,0 +1,104 @@
+From fba7b0e1b0b5cbc673f34070eb6fbfc7a8afd11f Mon Sep 17 00:00:00 2001
+From: Daniel Rosenberg <drosen@google.com>
+Date: Wed, 12 Aug 2020 18:31:43 -0700
+Subject: [PATCH 4/5] Set media folder +F for adopted storage as well
+
+We previously only set +F for /data/media, but adopted storage needs
+this as well. Instead we add support for adding attrs to PrepareDir.
+
+Bug: 163453310
+Test: sm set-virtual-disk true
+      follow UI setup and confirm +F on /mnt/expand/*/media
+Change-Id: I08f13b57a4de3538e88b38eb95b0ac115a5a5ce8
+Merged-In: I08f13b57a4de3538e88b38eb95b0ac115a5a5ce8
+---
+ Utils.cpp               | 30 +++++++++++++++++++++++++++++-
+ Utils.h                 |  3 ++-
+ model/PrivateVolume.cpp |  5 ++++-
+ 3 files changed, 35 insertions(+), 3 deletions(-)
+
+diff --git a/Utils.cpp b/Utils.cpp
+index a9b7440..17921e8 100644
+--- a/Utils.cpp
++++ b/Utils.cpp
+@@ -416,7 +416,32 @@ int PrepareAppDirFromRoot(const std::string& path, const std::string& root, int
+     return OK;
+ }
+ 
+-status_t PrepareDir(const std::string& path, mode_t mode, uid_t uid, gid_t gid) {
++int SetAttrs(const std::string& path, unsigned int attrs) {
++    unsigned long flags;
++    android::base::unique_fd fd(
++            TEMP_FAILURE_RETRY(open(path.c_str(), O_RDONLY | O_NONBLOCK | O_CLOEXEC)));
++
++    if (fd == -1) {
++        PLOG(ERROR) << "Failed to open " << path;
++        return -1;
++    }
++
++    if (ioctl(fd, FS_IOC_GETFLAGS, (void*)&flags)) {
++        PLOG(ERROR) << "Failed to get flags for " << path;
++        return -1;
++    }
++
++    if ((flags & attrs) == attrs) return 0;
++    flags |= attrs;
++    if (ioctl(fd, FS_IOC_SETFLAGS, (void*)&flags)) {
++        PLOG(ERROR) << "Failed to set flags for " << path << "(0x" << std::hex << attrs << ")";
++        return -1;
++    }
++    return 0;
++}
++
++status_t PrepareDir(const std::string& path, mode_t mode, uid_t uid, gid_t gid,
++                    unsigned int attrs) {
+     std::lock_guard<std::mutex> lock(kSecurityLock);
+     const char* cpath = path.c_str();
+ 
+@@ -434,6 +459,9 @@ status_t PrepareDir(const std::string& path, mode_t mode, uid_t uid, gid_t gid)
+         freecon(secontext);
+     }
+ 
++    if (res) return -errno;
++    if (attrs) res = SetAttrs(path, attrs);
++
+     if (res == 0) {
+         return OK;
+     } else {
+diff --git a/Utils.h b/Utils.h
+index 04cbac4..5351450 100644
+--- a/Utils.h
++++ b/Utils.h
+@@ -67,7 +67,8 @@ int PrepareAppDirFromRoot(const std::string& path, const std::string& root, int
+                           bool fixupExisting);
+ 
+ /* fs_prepare_dir wrapper that creates with SELinux context */
+-status_t PrepareDir(const std::string& path, mode_t mode, uid_t uid, gid_t gid);
++status_t PrepareDir(const std::string& path, mode_t mode, uid_t uid, gid_t gid,
++                    unsigned int attrs = 0);
+ 
+ /* Really unmounts the path, killing active processes along the way */
+ status_t ForceUnmount(const std::string& path);
+diff --git a/model/PrivateVolume.cpp b/model/PrivateVolume.cpp
+index 39a946c..1875b7b 100644
+--- a/model/PrivateVolume.cpp
++++ b/model/PrivateVolume.cpp
+@@ -166,11 +166,14 @@ status_t PrivateVolume::doMount() {
+ 
+     RestoreconRecursive(mPath);
+ 
++    int attrs = 0;
++    if (!IsSdcardfsUsed()) attrs = FS_CASEFOLD_FL;
++
+     // Verify that common directories are ready to roll
+     if (PrepareDir(mPath + "/app", 0771, AID_SYSTEM, AID_SYSTEM) ||
+         PrepareDir(mPath + "/user", 0711, AID_SYSTEM, AID_SYSTEM) ||
+         PrepareDir(mPath + "/user_de", 0711, AID_SYSTEM, AID_SYSTEM) ||
+-        PrepareDir(mPath + "/media", 0770, AID_MEDIA_RW, AID_MEDIA_RW) ||
++        PrepareDir(mPath + "/media", 0770, AID_MEDIA_RW, AID_MEDIA_RW, attrs) ||
+         PrepareDir(mPath + "/media/0", 0770, AID_MEDIA_RW, AID_MEDIA_RW) ||
+         PrepareDir(mPath + "/local", 0751, AID_ROOT, AID_ROOT) ||
+         PrepareDir(mPath + "/local/tmp", 0771, AID_SHELL, AID_SHELL)) {
+-- 
+2.35.1
+

@@ -1,0 +1,247 @@
+From 3fb888b10b973b6c8de465090c7a8f863e9acc99 Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Tue, 20 Oct 2020 10:10:54 +0800
+Subject: [PATCH 1/3] Ethernet: add interface for settings apk
+
+add interface: getIpAddress,getNetmask,getGateway,getDns from 10.0.
+this commit need combine with another commit in frameworks/base
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: I93f601edca140841d5489f186432fe592bf98ee6
+---
+ .../ethernet/EthernetNetworkFactory.java      | 97 +++++++++++++++++++
+ .../server/ethernet/EthernetServiceImpl.java  | 44 +++++++++
+ .../server/ethernet/EthernetTracker.java      | 16 +++
+ 3 files changed, 157 insertions(+)
+
+diff --git a/java/com/android/server/ethernet/EthernetNetworkFactory.java b/java/com/android/server/ethernet/EthernetNetworkFactory.java
+index 793b284..d98c66b 100644
+--- a/java/com/android/server/ethernet/EthernetNetworkFactory.java
++++ b/java/com/android/server/ethernet/EthernetNetworkFactory.java
+@@ -23,9 +23,11 @@ import android.annotation.NonNull;
+ import android.annotation.Nullable;
+ import android.content.Context;
+ import android.net.ConnectivityManager;
++import android.net.EthernetManager;
+ import android.net.IpConfiguration;
+ import android.net.IpConfiguration.IpAssignment;
+ import android.net.IpConfiguration.ProxySettings;
++import android.net.LinkAddress;
+ import android.net.LinkProperties;
+ import android.net.NetworkAgent;
+ import android.net.NetworkAgentConfig;
+@@ -33,6 +35,8 @@ import android.net.NetworkCapabilities;
+ import android.net.NetworkFactory;
+ import android.net.NetworkRequest;
+ import android.net.NetworkSpecifier;
++import android.net.NetworkUtils;
++import android.net.RouteInfo;
+ import android.net.StringNetworkSpecifier;
+ import android.net.ip.IIpClient;
+ import android.net.ip.IpClientCallbacks;
+@@ -50,6 +54,8 @@ import android.util.SparseArray;
+ import com.android.internal.util.IndentingPrintWriter;
+ 
+ import java.io.FileDescriptor;
++import java.net.Inet4Address;
++import java.net.InetAddress;
+ import java.util.concurrent.ConcurrentHashMap;
+ import java.util.Objects;
+ 
+@@ -70,6 +76,7 @@ public class EthernetNetworkFactory extends NetworkFactory {
+             new ConcurrentHashMap<>();
+     private final Handler mHandler;
+     private final Context mContext;
++    private EthernetManager mEthernetManager;
+ 
+     public static class ConfigurationException extends AndroidRuntimeException {
+         public ConfigurationException(String msg) {
+@@ -84,6 +91,7 @@ public class EthernetNetworkFactory extends NetworkFactory {
+         mContext = context;
+ 
+         setScoreFilter(NETWORK_SCORE);
++        mEthernetManager = (EthernetManager) context.getSystemService(Context.ETHERNET_SERVICE);
+     }
+ 
+     @Override
+@@ -200,6 +208,95 @@ public class EthernetNetworkFactory extends NetworkFactory {
+         return mTrackingInterfaces.containsKey(interfacName);
+     }
+ 
++    String getIpAddress(String iface) {
++        IpConfiguration config = mEthernetManager.getConfiguration(iface);
++        if (config.getIpAssignment() == IpAssignment.STATIC) {
++            return config.getStaticIpConfiguration().ipAddress.getAddress().getHostAddress();
++        } else {
++            NetworkInterfaceState netState = mTrackingInterfaces.get(iface);
++            if (null != netState) {
++                for (LinkAddress l : netState.mLinkProperties.getLinkAddresses()) {
++                    InetAddress source = l.getAddress();
++                    //Log.d(TAG, "getIpAddress: " + source.getHostAddress());
++                    if (source instanceof Inet4Address) {
++                        return source.getHostAddress();
++                    }
++                }
++            }
++        }
++        return "";
++    }
++
++    private String prefix2netmask(int prefix) {
++        // convert prefix to netmask
++        if (true) {
++            int mask = 0xFFFFFFFF << (32 - prefix);
++            //Log.d(TAG, "mask = " + mask + " prefix = " + prefix);
++            return ((mask>>>24) & 0xff) + "." + ((mask>>>16) & 0xff) + "." + ((mask>>>8) & 0xff) + "." + ((mask) & 0xff);
++        } else {
++            return NetworkUtils.intToInetAddress(NetworkUtils.prefixLengthToNetmaskInt(prefix)).getHostName();
++        }
++    }
++
++    String getNetmask(String iface) {
++        IpConfiguration config = mEthernetManager.getConfiguration(iface);
++        if (config.getIpAssignment() == IpAssignment.STATIC) {
++            return prefix2netmask(config.getStaticIpConfiguration().ipAddress.getPrefixLength());
++        } else {
++            NetworkInterfaceState netState = mTrackingInterfaces.get(iface);
++            if (null != netState) {
++                for (LinkAddress l : netState.mLinkProperties.getLinkAddresses()) {
++                    InetAddress source = l.getAddress();
++                    if (source instanceof Inet4Address) {
++                        return prefix2netmask(l.getPrefixLength());
++                    }
++                }
++            }
++        }
++        return "";
++    }
++
++    String getGateway(String iface) {
++        IpConfiguration config = mEthernetManager.getConfiguration(iface);
++        if (config.getIpAssignment() == IpAssignment.STATIC) {
++            return config.getStaticIpConfiguration().gateway.getHostAddress();
++        } else {
++            NetworkInterfaceState netState = mTrackingInterfaces.get(iface);
++            if (null != netState) {
++                for (RouteInfo route : netState.mLinkProperties.getRoutes()) {
++                    if (route.hasGateway()) {
++                        InetAddress gateway = route.getGateway();
++                        if (route.isIPv4Default()) {
++                            return gateway.getHostAddress();
++                        }
++                    }
++                }
++            }
++        }
++        return "";
++    }
++
++    /*
++     * return dns format: "8.8.8.8,4.4.4.4"
++     */
++    String getDns(String iface) {
++        String dns = "";
++        IpConfiguration config = mEthernetManager.getConfiguration(iface);
++        if (config.getIpAssignment() == IpAssignment.STATIC) {
++            for (InetAddress nameserver : config.getStaticIpConfiguration().dnsServers) {
++                dns += nameserver.getHostAddress() + ",";
++            }
++        } else {
++            NetworkInterfaceState netState = mTrackingInterfaces.get(iface);
++            if (null != netState) {
++                for (InetAddress nameserver : netState.mLinkProperties.getDnsServers()) {
++                    dns += nameserver.getHostAddress() + ",";
++                }
++            }
++        }
++        return dns;
++    }
++
+     void updateIpConfiguration(String iface, IpConfiguration ipConfiguration) {
+         NetworkInterfaceState network = mTrackingInterfaces.get(iface);
+         if (network != null) {
+diff --git a/java/com/android/server/ethernet/EthernetServiceImpl.java b/java/com/android/server/ethernet/EthernetServiceImpl.java
+index 3fc6aab..95d6c29 100644
+--- a/java/com/android/server/ethernet/EthernetServiceImpl.java
++++ b/java/com/android/server/ethernet/EthernetServiceImpl.java
+@@ -139,6 +139,50 @@ public class EthernetServiceImpl extends IEthernetManager.Stub {
+         return mTracker.isTrackingInterface(iface);
+     }
+ 
++    @Override
++    public String getIpAddress(String iface) {
++        enforceAccessPermission();
++
++        if (mTracker.isRestrictedInterface(iface)) {
++            enforceUseRestrictedNetworksPermission();
++        }
++
++        return mTracker.getIpAddress(iface);
++    }
++
++    @Override
++    public String getNetmask(String iface) {
++        enforceAccessPermission();
++
++        if (mTracker.isRestrictedInterface(iface)) {
++            enforceUseRestrictedNetworksPermission();
++        }
++
++        return mTracker.getNetmask(iface);
++    }
++
++    @Override
++    public String getGateway(String iface) {
++        enforceAccessPermission();
++
++        if (mTracker.isRestrictedInterface(iface)) {
++            enforceUseRestrictedNetworksPermission();
++        }
++
++        return mTracker.getGateway(iface);
++    }
++
++    @Override
++    public String getDns(String iface) {
++        enforceAccessPermission();
++
++        if (mTracker.isRestrictedInterface(iface)) {
++            enforceUseRestrictedNetworksPermission();
++        }
++
++        return mTracker.getDns(iface);
++    }
++
+     /**
+      * Adds a listener.
+      * @param listener A {@link IEthernetServiceListener} to add.
+diff --git a/java/com/android/server/ethernet/EthernetTracker.java b/java/com/android/server/ethernet/EthernetTracker.java
+index d7fd408..be0dcc9 100644
+--- a/java/com/android/server/ethernet/EthernetTracker.java
++++ b/java/com/android/server/ethernet/EthernetTracker.java
+@@ -173,6 +173,22 @@ final class EthernetTracker {
+         return mFactory.hasInterface(iface);
+     }
+ 
++    String getIpAddress(String iface) {
++        return mFactory.getIpAddress(iface);
++    }
++
++    String getNetmask(String iface) {
++        return mFactory.getNetmask(iface);
++    }
++
++    String getGateway(String iface) {
++        return mFactory.getGateway(iface);
++    }
++
++    String getDns(String iface) {
++        return mFactory.getDns(iface);
++    }
++
+     String[] getInterfaces(boolean includeRestricted) {
+         return mFactory.getAvailableInterfaces(includeRestricted);
+     }
+-- 
+2.35.1
+

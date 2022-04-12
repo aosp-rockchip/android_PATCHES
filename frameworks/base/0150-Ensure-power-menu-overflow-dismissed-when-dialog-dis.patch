@@ -1,0 +1,51 @@
+From 2a35ae262b86356248bfc49f8cee1bffae642f56 Mon Sep 17 00:00:00 2001
+From: Aran Ink <nesciosquid@google.com>
+Date: Mon, 20 Apr 2020 16:04:29 -0400
+Subject: [PATCH 150/297] Ensure power menu overflow dismissed when dialog
+ dismissed.
+
+Test: Manual -- pressing power button while power overflow menu is shown does not result in overflow menu still appearing on lock screen.
+
+Fixes: 154441764
+Change-Id: Icc7d158a7ff78b06d2234a5a11eb10b3c75a5ba7
+(cherry picked from commit 6560ab752dd54e5e8e6d5c756e52cd6984a522fa)
+---
+ .../systemui/globalactions/GlobalActionsDialog.java       | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/globalactions/GlobalActionsDialog.java b/packages/SystemUI/src/com/android/systemui/globalactions/GlobalActionsDialog.java
+index 2c1bd2186de..d6df1940849 100644
+--- a/packages/SystemUI/src/com/android/systemui/globalactions/GlobalActionsDialog.java
++++ b/packages/SystemUI/src/com/android/systemui/globalactions/GlobalActionsDialog.java
+@@ -2220,6 +2220,7 @@ public class GlobalActionsDialog implements DialogInterface.OnDismissListener,
+                     })
+                     .start();
+             dismissPanel();
++            dismissOverflow();
+             resetOrientation();
+         }
+ 
+@@ -2227,6 +2228,7 @@ public class GlobalActionsDialog implements DialogInterface.OnDismissListener,
+             mShowing = false;
+             if (mControlsUiController != null) mControlsUiController.hide();
+             dismissPanel();
++            dismissOverflow();
+             resetOrientation();
+             completeDismiss();
+         }
+@@ -2243,6 +2245,12 @@ public class GlobalActionsDialog implements DialogInterface.OnDismissListener,
+             }
+         }
+ 
++        private void dismissOverflow() {
++            if (mOverflowPopup != null) {
++                mOverflowPopup.dismiss();
++            }
++        }
++
+         private void setRotationSuggestionsEnabled(boolean enabled) {
+             try {
+                 final int userId = Binder.getCallingUserHandle().getIdentifier();
+-- 
+2.35.1
+

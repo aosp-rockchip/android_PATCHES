@@ -1,0 +1,37 @@
+From dea939944a1c5e65c301db8836ab1496132dc589 Mon Sep 17 00:00:00 2001
+From: Winson Chung <winsonc@google.com>
+Date: Thu, 29 Aug 2019 15:16:27 -0700
+Subject: [PATCH 011/297] Fix regression in updating gesture exclusion rects
+
+- Only update the rects when the view visibility changes if there were
+  previously set rects
+
+Bug: 140157754
+Test: atest SystemGestureExclusionRectsTest
+Change-Id: Ica58de4ff43da75cfcdac3f359fc915f65608e78
+(cherry picked from commit 3baffd871c1e1a0b9ab412f4e6a2ba11758c6076)
+---
+ core/java/android/view/View.java | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/core/java/android/view/View.java b/core/java/android/view/View.java
+index 6ce712061db..7c176673bf9 100644
+--- a/core/java/android/view/View.java
++++ b/core/java/android/view/View.java
+@@ -14403,7 +14403,12 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
+         }
+ 
+         notifyAppearedOrDisappearedForContentCaptureIfNeeded(isVisible);
+-        updateSystemGestureExclusionRects();
++
++        // Update the gesture exclusion rects only if they are set
++        final ListenerInfo info = getListenerInfo();
++        if (info != null && info.mSystemGestureExclusionRects != null) {
++            updateSystemGestureExclusionRects();
++        }
+     }
+ 
+     /**
+-- 
+2.35.1
+

@@ -1,0 +1,253 @@
+From b5183a10419ad948a80ffcea772ab67edc56339c Mon Sep 17 00:00:00 2001
+From: Anthony Stange <stange@google.com>
+Date: Mon, 20 Apr 2020 22:37:08 +0000
+Subject: [PATCH 07/33] Revert "Use resolution to round sensor event values"
+
+This reverts commit 0ff158f8f2e5749737c51444b9aeb153bd0b325d.
+
+Reason for revert: Causing b/154494468
+
+Change-Id: Ib119719a35c6487ceb086978f97b17857aad12ea
+(cherry picked from commit 7ff9e0f6025eeb5dbe08e9d3d584e6b7652bae1a)
+---
+ services/sensorservice/SensorDevice.cpp      | 31 +------
+ services/sensorservice/SensorDevice.h        |  4 +-
+ services/sensorservice/SensorDeviceUtils.cpp | 96 --------------------
+ services/sensorservice/SensorDeviceUtils.h   |  7 --
+ 4 files changed, 3 insertions(+), 135 deletions(-)
+
+diff --git a/services/sensorservice/SensorDevice.cpp b/services/sensorservice/SensorDevice.cpp
+index aa6f1b8f5..3b68e0e09 100644
+--- a/services/sensorservice/SensorDevice.cpp
++++ b/services/sensorservice/SensorDevice.cpp
+@@ -143,14 +143,6 @@ void SensorDevice::initializeSensorList() {
+                 for (size_t i=0 ; i < count; i++) {
+                     sensor_t sensor;
+                     convertToSensor(convertToOldSensorInfo(list[i]), &sensor);
+-
+-                    if (sensor.resolution == 0) {
+-                        // Don't crash here or the device will go into a crashloop.
+-                        ALOGE("%s must have a non-zero resolution", sensor.name);
+-                        // For simple algos, map their resolution to 1 if it's not specified
+-                        sensor.resolution = SensorDeviceUtils::defaultResolutionForType(sensor.type);
+-                    }
+-
+                     // Sanity check and clamp power if it is 0 (or close)
+                     if (sensor.power < minPowerMa) {
+                         ALOGI("Reported power %f not deemed sane, clamping to %f",
+@@ -516,7 +508,7 @@ ssize_t SensorDevice::pollHal(sensors_event_t* buffer, size_t count) {
+                     const auto &events,
+                     const auto &dynamicSensorsAdded) {
+                     if (result == Result::OK) {
+-                        convertToSensorEventsAndQuantize(convertToNewEvents(events),
++                        convertToSensorEvents(convertToNewEvents(events),
+                                 convertToNewSensorInfos(dynamicSensorsAdded), buffer);
+                         err = (ssize_t)events.size();
+                     } else {
+@@ -579,8 +571,6 @@ ssize_t SensorDevice::pollFmq(sensors_event_t* buffer, size_t maxNumEventsToRead
+ 
+             for (size_t i = 0; i < eventsToRead; i++) {
+                 convertToSensorEvent(mEventBuffer[i], &buffer[i]);
+-                android::SensorDeviceUtils::quantizeSensorEventValues(&buffer[i],
+-                        getResolutionForSensor(buffer[i].sensor));
+             }
+             eventsRead = eventsToRead;
+         } else {
+@@ -1087,7 +1077,7 @@ void SensorDevice::convertToSensorEvent(
+     }
+ }
+ 
+-void SensorDevice::convertToSensorEventsAndQuantize(
++void SensorDevice::convertToSensorEvents(
+         const hidl_vec<Event> &src,
+         const hidl_vec<SensorInfo> &dynamicSensorsAdded,
+         sensors_event_t *dst) {
+@@ -1098,24 +1088,7 @@ void SensorDevice::convertToSensorEventsAndQuantize(
+ 
+     for (size_t i = 0; i < src.size(); ++i) {
+         V2_1::implementation::convertToSensorEvent(src[i], &dst[i]);
+-        android::SensorDeviceUtils::quantizeSensorEventValues(&dst[i],
+-                getResolutionForSensor(dst[i].sensor));
+-    }
+-}
+-
+-float SensorDevice::getResolutionForSensor(int sensorHandle) {
+-    for (size_t i = 0; i < mSensorList.size(); i++) {
+-      if (sensorHandle == mSensorList[i].handle) {
+-        return mSensorList[i].resolution;
+-      }
+     }
+-
+-    auto it = mConnectedDynamicSensors.find(sensorHandle);
+-    if (it != mConnectedDynamicSensors.end()) {
+-      return it->second->resolution;
+-    }
+-
+-    return 0;
+ }
+ 
+ void SensorDevice::handleHidlDeath(const std::string & detail) {
+diff --git a/services/sensorservice/SensorDevice.h b/services/sensorservice/SensorDevice.h
+index 04e60315b..24d03c63c 100644
+--- a/services/sensorservice/SensorDevice.h
++++ b/services/sensorservice/SensorDevice.h
+@@ -233,13 +233,11 @@ private:
+ 
+     void convertToSensorEvent(const Event &src, sensors_event_t *dst);
+ 
+-    void convertToSensorEventsAndQuantize(
++    void convertToSensorEvents(
+             const hardware::hidl_vec<Event> &src,
+             const hardware::hidl_vec<SensorInfo> &dynamicSensorsAdded,
+             sensors_event_t *dst);
+ 
+-    float getResolutionForSensor(int sensorHandle);
+-
+     bool mIsDirectReportSupported;
+ 
+     typedef hardware::MessageQueue<uint32_t, hardware::kSynchronizedReadWrite> WakeLockQueue;
+diff --git a/services/sensorservice/SensorDeviceUtils.cpp b/services/sensorservice/SensorDeviceUtils.cpp
+index 6bf62e4f8..dbafffe30 100644
+--- a/services/sensorservice/SensorDeviceUtils.cpp
++++ b/services/sensorservice/SensorDeviceUtils.cpp
+@@ -17,112 +17,16 @@
+ #include "SensorDeviceUtils.h"
+ 
+ #include <android/hardware/sensors/1.0/ISensors.h>
+-#include <android/hardware/sensors/2.1/ISensors.h>
+ #include <utils/Log.h>
+ 
+ #include <chrono>
+-#include <cmath>
+ #include <thread>
+ 
+ using ::android::hardware::Void;
+-using SensorTypeV2_1 = android::hardware::sensors::V2_1::SensorType;
+ using namespace android::hardware::sensors::V1_0;
+ 
+ namespace android {
+ namespace SensorDeviceUtils {
+-namespace {
+-
+-inline void quantizeValue(float *value, double resolution) {
+-    // Increase the value of the sensor's nominal resolution to ensure that
+-    // sensor accuracy improvements, like runtime calibration, are not masked
+-    // during requantization.
+-    double incRes = 0.25 * resolution;
+-    *value = round(static_cast<double>(*value) / incRes) * incRes;
+-}
+-
+-}  // namespace
+-
+-void quantizeSensorEventValues(sensors_event_t *event, float resolution) {
+-    LOG_FATAL_IF(resolution == 0, "Resolution must be specified for all sensors!");
+-    if (resolution == 0) {
+-        return;
+-    }
+-
+-    size_t axes = 0;
+-    switch ((SensorTypeV2_1)event->type) {
+-        case SensorTypeV2_1::ACCELEROMETER:
+-        case SensorTypeV2_1::MAGNETIC_FIELD:
+-        case SensorTypeV2_1::ORIENTATION:
+-        case SensorTypeV2_1::GYROSCOPE:
+-        case SensorTypeV2_1::GRAVITY:
+-        case SensorTypeV2_1::LINEAR_ACCELERATION:
+-        case SensorTypeV2_1::MAGNETIC_FIELD_UNCALIBRATED:
+-        case SensorTypeV2_1::GYROSCOPE_UNCALIBRATED:
+-        case SensorTypeV2_1::ACCELEROMETER_UNCALIBRATED:
+-            axes = 3;
+-            break;
+-        case SensorTypeV2_1::GAME_ROTATION_VECTOR:
+-            axes = 4;
+-            break;
+-        case SensorTypeV2_1::ROTATION_VECTOR:
+-        case SensorTypeV2_1::GEOMAGNETIC_ROTATION_VECTOR:
+-            axes = 5;
+-            break;
+-        case SensorTypeV2_1::DEVICE_ORIENTATION:
+-        case SensorTypeV2_1::LIGHT:
+-        case SensorTypeV2_1::PRESSURE:
+-        case SensorTypeV2_1::TEMPERATURE:
+-        case SensorTypeV2_1::PROXIMITY:
+-        case SensorTypeV2_1::RELATIVE_HUMIDITY:
+-        case SensorTypeV2_1::AMBIENT_TEMPERATURE:
+-        case SensorTypeV2_1::SIGNIFICANT_MOTION:
+-        case SensorTypeV2_1::STEP_DETECTOR:
+-        case SensorTypeV2_1::TILT_DETECTOR:
+-        case SensorTypeV2_1::WAKE_GESTURE:
+-        case SensorTypeV2_1::GLANCE_GESTURE:
+-        case SensorTypeV2_1::PICK_UP_GESTURE:
+-        case SensorTypeV2_1::WRIST_TILT_GESTURE:
+-        case SensorTypeV2_1::STATIONARY_DETECT:
+-        case SensorTypeV2_1::MOTION_DETECT:
+-        case SensorTypeV2_1::HEART_BEAT:
+-        case SensorTypeV2_1::LOW_LATENCY_OFFBODY_DETECT:
+-        case SensorTypeV2_1::HINGE_ANGLE:
+-            axes = 1;
+-            break;
+-        case SensorTypeV2_1::POSE_6DOF:
+-            axes = 15;
+-            break;
+-        default:
+-            // No other sensors have data that needs to be rounded.
+-            break;
+-    }
+-
+-    // sensor_event_t is a union so we're able to perform the same quanitization action for most
+-    // sensors by only knowing the number of axes their output data has.
+-    for (size_t i = 0; i < axes; i++) {
+-        quantizeValue(&event->data[i], resolution);
+-    }
+-}
+-
+-float defaultResolutionForType(int type) {
+-    switch ((SensorTypeV2_1)type) {
+-        case SensorTypeV2_1::SIGNIFICANT_MOTION:
+-        case SensorTypeV2_1::STEP_DETECTOR:
+-        case SensorTypeV2_1::STEP_COUNTER:
+-        case SensorTypeV2_1::TILT_DETECTOR:
+-        case SensorTypeV2_1::WAKE_GESTURE:
+-        case SensorTypeV2_1::GLANCE_GESTURE:
+-        case SensorTypeV2_1::PICK_UP_GESTURE:
+-        case SensorTypeV2_1::WRIST_TILT_GESTURE:
+-        case SensorTypeV2_1::STATIONARY_DETECT:
+-        case SensorTypeV2_1::MOTION_DETECT:
+-            return 1.0f;
+-        default:
+-            // fall through and return 0 for all other types
+-            break;
+-    }
+-    return 0.0f;
+-}
+ 
+ HidlServiceRegistrationWaiter::HidlServiceRegistrationWaiter() {
+ }
+diff --git a/services/sensorservice/SensorDeviceUtils.h b/services/sensorservice/SensorDeviceUtils.h
+index b66542cd0..e2eb606b9 100644
+--- a/services/sensorservice/SensorDeviceUtils.h
++++ b/services/sensorservice/SensorDeviceUtils.h
+@@ -18,7 +18,6 @@
+ #define ANDROID_SENSOR_DEVICE_UTIL
+ 
+ #include <android/hidl/manager/1.0/IServiceNotification.h>
+-#include <hardware/sensors.h>
+ 
+ #include <condition_variable>
+ #include <thread>
+@@ -30,12 +29,6 @@ using ::android::hidl::manager::V1_0::IServiceNotification;
+ namespace android {
+ namespace SensorDeviceUtils {
+ 
+-// Ensures a sensor event doesn't provide values finer grained than its sensor resolution allows.
+-void quantizeSensorEventValues(sensors_event_t *event, float resolution);
+-
+-// Provides a default resolution for simple sensor types if one wasn't provided by the HAL.
+-float defaultResolutionForType(int type);
+-
+ class HidlServiceRegistrationWaiter : public IServiceNotification {
+ public:
+ 
+-- 
+2.35.1
+

@@ -1,0 +1,75 @@
+From 799e455b63c96fc40e59997cf2522eaf5f95fc19 Mon Sep 17 00:00:00 2001
+From: libin <bin.li@rock-chips.com>
+Date: Tue, 1 Dec 2020 14:25:09 +0800
+Subject: [PATCH 10/24] hwc2on1adapter: destroy layers of extern display when
+ plug out extern display.
+
+Signed-off-by: libin <bin.li@rock-chips.com>
+Change-Id: I58147514cbda9e52fa52c6dc031683431e8526c2
+---
+ .../utils/hwc2on1adapter/HWC2On1Adapter.cpp   | 25 ++++++++++++++++++-
+ .../include/hwc2on1adapter/HWC2On1Adapter.h   |  1 +
+ 2 files changed, 25 insertions(+), 1 deletion(-)
+ mode change 100644 => 100755 graphics/composer/2.1/utils/hwc2on1adapter/include/hwc2on1adapter/HWC2On1Adapter.h
+
+diff --git a/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp b/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+index 1a9ed2e48..757d38f6c 100755
+--- a/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
++++ b/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+@@ -2580,6 +2580,27 @@ void HWC2On1Adapter::hwc1Vsync(int hwc1DisplayId, int64_t timestamp) {
+     vsync(callbackInfo.data, displayId, timestamp);
+ }
+ 
++Error HWC2On1Adapter::Display::destroyLayers() {
++    std::unique_lock<std::recursive_mutex> lock(mStateMutex);
++
++    for (auto current = mLayers.begin(); current != mLayers.end(); ++current) {
++        for(auto current2 = mDevice.mLayers.begin(); current2 != mDevice.mLayers.end(); )
++        {
++          if(**current == *(current2->second))
++          {
++            current2=mDevice.mLayers.erase(current2);
++          }
++          else
++            ++current2;
++        }
++    }
++
++    mLayers.clear();
++    markGeometryChanged();
++
++    return Error::None;
++}
++
+ void HWC2On1Adapter::hwc1Hotplug(int hwc1DisplayId, int connected) {
+     ALOGV("Received hwc1Hotplug(%d, %d)", hwc1DisplayId, connected);
+ 
+@@ -2612,8 +2633,10 @@ void HWC2On1Adapter::hwc1Hotplug(int hwc1DisplayId, int connected) {
+             return;
+         }
+ 
+-        // Disconnect an existing display
+         displayId = mHwc1DisplayMap[hwc1DisplayId];
++        auto& display = mDisplays[displayId];
++        display->destroyLayers();
++        // Disconnect an existing display
+         mHwc1DisplayMap.erase(HWC_DISPLAY_EXTERNAL);
+         mDisplays.erase(displayId);
+         //Remove extern display context if plug out HDMI.
+diff --git a/graphics/composer/2.1/utils/hwc2on1adapter/include/hwc2on1adapter/HWC2On1Adapter.h b/graphics/composer/2.1/utils/hwc2on1adapter/include/hwc2on1adapter/HWC2On1Adapter.h
+old mode 100644
+new mode 100755
+index da771dc7a..3ae8f7f6c
+--- a/graphics/composer/2.1/utils/hwc2on1adapter/include/hwc2on1adapter/HWC2On1Adapter.h
++++ b/graphics/composer/2.1/utils/hwc2on1adapter/include/hwc2on1adapter/HWC2On1Adapter.h
+@@ -202,6 +202,7 @@ private:
+             HWC2::Error acceptChanges();
+             HWC2::Error createLayer(hwc2_layer_t* outLayerId);
+             HWC2::Error destroyLayer(hwc2_layer_t layerId);
++            HWC2::Error destroyLayers();
+             HWC2::Error getActiveConfig(hwc2_config_t* outConfigId);
+             HWC2::Error getAttribute(hwc2_config_t configId,
+                     HWC2::Attribute attribute, int32_t* outValue);
+-- 
+2.35.1
+

@@ -1,0 +1,78 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/bootable/recovery (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/bootable/recovery (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit afbd969c6bfd7681b9308093be661742c41c7af1
+Merge: 23e36822 cba4db04
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Wed Jan 27 14:29:44 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' of ssh://10.10.10.29:29418/android/platform/bootable/recovery into eink
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/bootable/recovery (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/bootable/recovery (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit afbd969c6bfd7681b9308093be661742c41c7af1
+Merge: 23e36822 cba4db04
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Wed Jan 27 14:29:44 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' of ssh://10.10.10.29:29418/android/platform/bootable/recovery into eink
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/bootable/recovery (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/bootable/recovery (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit afbd969c6bfd7681b9308093be661742c41c7af1
+Merge: 23e36822 cba4db04
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Wed Jan 27 14:29:44 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' of ssh://10.10.10.29:29418/android/platform/bootable/recovery into eink
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/bootable/recovery (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/bootable/recovery (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit afbd969c6bfd7681b9308093be661742c41c7af1
+Merge: 23e36822 cba4db04
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Wed Jan 27 14:29:44 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' of ssh://10.10.10.29:29418/android/platform/bootable/recovery into eink
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/bootable/recovery (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/bootable/recovery (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit afbd969c6bfd7681b9308093be661742c41c7af1
+Merge: 23e36822 cba4db04
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Wed Jan 27 14:29:44 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' of ssh://10.10.10.29:29418/android/platform/bootable/recovery into eink
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/bootable/recovery (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/bootable/recovery (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit afbd969c6bfd7681b9308093be661742c41c7af1
+Merge: 23e36822 cba4db04
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Wed Jan 27 14:29:44 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' of ssh://10.10.10.29:29418/android/platform/bootable/recovery into eink
+    
+    Android 11.0.0 release 28

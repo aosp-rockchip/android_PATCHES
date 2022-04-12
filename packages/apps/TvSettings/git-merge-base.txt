@@ -1,0 +1,84 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/TvSettings (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/TvSettings (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 63928e2d76f2dfed582f06f06a2a14acf9da7a6f
+Merge: 81f1de5d 3be84d14
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Mon Jan 25 15:28:39 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/TvSettings (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/TvSettings (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 63928e2d76f2dfed582f06f06a2a14acf9da7a6f
+Merge: 81f1de5d 3be84d14
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Mon Jan 25 15:28:39 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/TvSettings (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/TvSettings (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 63928e2d76f2dfed582f06f06a2a14acf9da7a6f
+Merge: 81f1de5d 3be84d14
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Mon Jan 25 15:28:39 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/TvSettings (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/TvSettings (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 63928e2d76f2dfed582f06f06a2a14acf9da7a6f
+Merge: 81f1de5d 3be84d14
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Mon Jan 25 15:28:39 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/TvSettings (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/TvSettings (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 63928e2d76f2dfed582f06f06a2a14acf9da7a6f
+Merge: 81f1de5d 3be84d14
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Mon Jan 25 15:28:39 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/TvSettings (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/TvSettings (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 63928e2d76f2dfed582f06f06a2a14acf9da7a6f
+Merge: 81f1de5d 3be84d14
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Mon Jan 25 15:28:39 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28

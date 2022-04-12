@@ -1,0 +1,45 @@
+From 4cea315effc6d31b9122b19d18a0d6a7b46a8930 Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Fri, 29 Jan 2021 10:16:04 +0800
+Subject: [PATCH 3/3] Do not block message while cts is running.
+
+Test: CtsNetTestCases
+android.net.cts.CaptivePortalApiTest#testApiCallbacks
+
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+Change-Id: If34606726d0f5df1a00714fe5b321bc89eb73de5
+---
+ .../server/ethernet/EthernetNetworkFactory.java        | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/java/com/android/server/ethernet/EthernetNetworkFactory.java b/java/com/android/server/ethernet/EthernetNetworkFactory.java
+index 581c22a..1b0eb38 100644
+--- a/java/com/android/server/ethernet/EthernetNetworkFactory.java
++++ b/java/com/android/server/ethernet/EthernetNetworkFactory.java
+@@ -46,6 +46,7 @@ import android.net.util.InterfaceParams;
+ import android.os.ConditionVariable;
+ import android.os.Handler;
+ import android.os.RemoteException;
++import android.os.SystemProperties;
+ import android.text.TextUtils;
+ import android.util.AndroidRuntimeException;
+ import android.util.Log;
+@@ -640,9 +641,12 @@ public class EthernetNetworkFactory extends NetworkFactory {
+         boolean updateLinkState(boolean up) {
+             if (mLinkUp == up) return false;
+ 
+-            if (up && getCarrierState(name) != 1) {
+-                Log.d(TAG, name + " fake link up");
+-                return false;
++            boolean cts_running = SystemProperties.getBoolean("cts_gts.status", false);
++            if (!cts_running) {
++                if (up && getCarrierState(name) != 1) {
++                    Log.d(TAG, name + " fake link up");
++                    return false;
++                }
+             }
+ 
+             mLinkUp = up;
+-- 
+2.35.1
+

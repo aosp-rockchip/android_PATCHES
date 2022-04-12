@@ -1,0 +1,121 @@
+From a2a8cbeba51fa4b227a3e87cbdb04943511d9068 Mon Sep 17 00:00:00 2001
+From: markchien <markchien@google.com>
+Date: Wed, 22 Jul 2020 21:16:32 +0800
+Subject: [PATCH 3/3] Quit statemachine when dhcp server is stopped
+
+This change fix the memory leak problem that dhcp server thread do not
+shut down when it is stopped.
+
+Bug: 161418295
+Test: atest DhcpServerTest --iterations 100
+      atest CtsTehteringTest
+      manual on/off tethering and observed dhcp server thread
+
+Change-Id: I58a880b110af99ba5fedc95490e6b2a3519e1c08
+Signed-off-by: Alex Zhao <zzc@rock-chips.com>
+---
+ src/android/net/dhcp/DhcpServer.java          |  8 +++++-
+ .../src/android/net/dhcp/DhcpServerTest.java  | 26 ++++++++++++++++---
+ 2 files changed, 30 insertions(+), 4 deletions(-)
+
+diff --git a/src/android/net/dhcp/DhcpServer.java b/src/android/net/dhcp/DhcpServer.java
+index 6c95b5a6..60c73236 100644
+--- a/src/android/net/dhcp/DhcpServer.java
++++ b/src/android/net/dhcp/DhcpServer.java
+@@ -99,6 +99,7 @@ public class DhcpServer extends StateMachine {
+     private static final int CMD_UPDATE_PARAMS = 3;
+     @VisibleForTesting
+     protected static final int CMD_RECEIVE_PACKET = 4;
++    private static final int CMD_TERMINATE_AFTER_STOP = 5;
+ 
+     @NonNull
+     private final Context mContext;
+@@ -362,10 +363,12 @@ public class DhcpServer extends StateMachine {
+      * Stop listening for packets.
+      *
+      * <p>As the server is stopped asynchronously, some packets may still be processed shortly after
+-     * calling this method.
++     * calling this method. The server will also be cleaned up and can't be started again, even if
++     * it was already stopped.
+      */
+     void stop(@Nullable INetworkStackStatusCallback cb) {
+         sendMessage(CMD_STOP_DHCP_SERVER, cb);
++        sendMessage(CMD_TERMINATE_AFTER_STOP);
+     }
+ 
+     private void maybeNotifyStatus(@Nullable INetworkStackStatusCallback cb, int statusCode) {
+@@ -407,6 +410,9 @@ public class DhcpServer extends StateMachine {
+                     mEventCallbacks = obj.second;
+                     transitionTo(mRunningState);
+                     return HANDLED;
++                case CMD_TERMINATE_AFTER_STOP:
++                    quit();
++                    return HANDLED;
+                 default:
+                     return NOT_HANDLED;
+             }
+diff --git a/tests/unit/src/android/net/dhcp/DhcpServerTest.java b/tests/unit/src/android/net/dhcp/DhcpServerTest.java
+index d313b946..0d3a3ee3 100644
+--- a/tests/unit/src/android/net/dhcp/DhcpServerTest.java
++++ b/tests/unit/src/android/net/dhcp/DhcpServerTest.java
+@@ -53,6 +53,7 @@ import android.net.dhcp.DhcpLeaseRepository.OutOfAddressesException;
+ import android.net.dhcp.DhcpServer.Clock;
+ import android.net.dhcp.DhcpServer.Dependencies;
+ import android.net.util.SharedLog;
++import android.os.ConditionVariable;
+ import android.testing.AndroidTestingRunner;
+ 
+ import androidx.test.filters.SmallTest;
+@@ -130,11 +131,30 @@ public class DhcpServerTest {
+     private ArgumentCaptor<Inet4Address> mResponseDstAddrCaptor;
+ 
+     @NonNull
+-    private DhcpServer mServer;
++    private MyDhcpServer mServer;
+ 
+     @Nullable
+     private String mPrevShareClassloaderProp;
+ 
++    private class MyDhcpServer extends DhcpServer {
++        private final ConditionVariable mCv = new ConditionVariable(false);
++
++        MyDhcpServer(Context context, String ifName, DhcpServingParams params, SharedLog log,
++                Dependencies deps) {
++            super(context, ifName, params, log, deps);
++        }
++
++        @Override
++        protected void onQuitting() {
++            super.onQuitting();
++            mCv.open();
++        }
++
++        public void waitForShutdown() {
++            assertTrue(mCv.block(TEST_TIMEOUT_MS));
++        }
++    }
++
+     private final INetworkStackStatusCallback mAssertSuccessCallback =
+             new INetworkStackStatusCallback.Stub() {
+         @Override
+@@ -183,7 +203,7 @@ public class DhcpServerTest {
+         when(mClock.elapsedRealtime()).thenReturn(TEST_CLOCK_TIME);
+         when(mPacketListener.start()).thenReturn(true);
+ 
+-        mServer = new DhcpServer(mContext, TEST_IFACE, makeServingParams(),
++        mServer = new MyDhcpServer(mContext, TEST_IFACE, makeServingParams(),
+                 new SharedLog(DhcpServerTest.class.getSimpleName()), mDeps);
+     }
+ 
+@@ -191,7 +211,7 @@ public class DhcpServerTest {
+     public void tearDown() throws Exception {
+         verify(mRepository, never()).addLeaseCallbacks(eq(null));
+         mServer.stop(mAssertSuccessCallback);
+-        HandlerUtilsKt.waitForIdle(mServer.getHandler(), TEST_TIMEOUT_MS);
++        mServer.waitForShutdown();
+         verify(mPacketListener, times(1)).stop();
+     }
+ 
+-- 
+2.35.1
+

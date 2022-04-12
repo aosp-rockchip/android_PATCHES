@@ -1,0 +1,52 @@
+From 7cc1d22426c28bb595dcda1be58d08f6906b8880 Mon Sep 17 00:00:00 2001
+From: zj <zj@rock-chips.com>
+Date: Tue, 5 Jan 2021 11:13:05 +0800
+Subject: [PATCH 276/297] Eink show shutdown logo from hwc
+
+Signed-off-by: zj <zj@rock-chips.com>
+Change-Id: I3ab945e88d48e68bcae2aefea106319aa03130e4
+---
+ .../com/android/server/power/ShutdownThread.java    | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/power/ShutdownThread.java b/services/core/java/com/android/server/power/ShutdownThread.java
+index 2f5ace6d6ec..05e584715f1 100755
+--- a/services/core/java/com/android/server/power/ShutdownThread.java
++++ b/services/core/java/com/android/server/power/ShutdownThread.java
+@@ -58,6 +58,8 @@ import java.io.FileOutputStream;
+ import java.io.IOException;
+ import java.nio.charset.StandardCharsets;
+ import android.view.IWindowManager;
++import android.os.IBinder;
++import android.view.SurfaceControl;
+ 
+ public final class ShutdownThread extends Thread {
+     // constants
+@@ -570,7 +572,8 @@ public final class ShutdownThread extends Thread {
+             wait_shutdownanim_end();
+             thaw_orien_shutdownanim();
+         }
+-        mPowerManager.goToSleep(SystemClock.uptimeMillis());
++//Eink:fix sleep image shows when poweroff
++        //mPowerManager.goToSleep(SystemClock.uptimeMillis());
+         // Remaining work will be done by init, including vold shutdown
+         rebootOrShutdown(mContext, mReboot, mReason);
+     }
+@@ -705,6 +708,14 @@ public final class ShutdownThread extends Thread {
+             } catch (InterruptedException unused) {
+             }
+         }
++        SystemProperties.set("sys.power.shutdown", "1");
++        IBinder token = SurfaceControl.getInternalDisplayToken();
++        SurfaceControl.setDisplayPowerMode(token,SurfaceControl.POWER_MODE_OFF);
++        try {
++            Thread.sleep(2000);
++        } catch (InterruptedException unused) {
++        }
++
+         // Shutdown power
+         Log.i(TAG, "Performing low-level shutdown...");
+         PowerManagerService.lowLevelShutdown(reason);
+-- 
+2.35.1
+

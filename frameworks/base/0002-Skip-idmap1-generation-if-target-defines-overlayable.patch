@@ -1,0 +1,87 @@
+From 7e28b54dc9f8e2cb6269ecfa172482adc375248b Mon Sep 17 00:00:00 2001
+From: Winson <chiuwinson@google.com>
+Date: Fri, 12 Apr 2019 16:19:26 -0700
+Subject: [PATCH 002/297] Skip idmap1 generation if target defines overlayable
+
+Since idmap1 can't enforce policy restrictions, we can't allow it
+to generate an idmap that might get used.
+
+Migrating to idmap2 is too difficult for now as it requires a lot
+of PackageManager infrastructure to validate policies, and none of
+that is available during manifest parsing, which is where idmap1
+is currently used.
+
+Bug: b/130260055
+
+Test: manual test BT issue from b/130260055
+Test: manual test app with test overlay toggling Activity enabled
+
+Change-Id: I5e7e321d27aab9be360a5e8be77d804ad3f66336
+(cherry picked from commit 6597302f570e37efbef5d86291d41073003ebe5b)
+---
+ libs/androidfw/ResourceTypes.cpp                 | 14 +++++++++++++-
+ libs/androidfw/include/androidfw/ResourceTypes.h |  2 +-
+ 2 files changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/libs/androidfw/ResourceTypes.cpp b/libs/androidfw/ResourceTypes.cpp
+index 11e4cb835d6..c3bfcfe4d9f 100644
+--- a/libs/androidfw/ResourceTypes.cpp
++++ b/libs/androidfw/ResourceTypes.cpp
+@@ -3460,6 +3460,7 @@ struct ResTable::Header
+     const uint8_t*                  dataEnd;
+     size_t                          index;
+     int32_t                         cookie;
++    bool                            definesOverlayable = false;
+ 
+     ResStringPool                   values;
+     uint32_t*                       resourceIDMap;
+@@ -6559,7 +6560,7 @@ status_t ResTable::getEntry(
+ }
+ 
+ status_t ResTable::parsePackage(const ResTable_package* const pkg,
+-                                const Header* const header, bool appAsLib, bool isSystemAsset)
++                                Header* const header, bool appAsLib, bool isSystemAsset)
+ {
+     const uint8_t* base = (const uint8_t*)pkg;
+     status_t err = validate_chunk(&pkg->header, sizeof(*pkg) - sizeof(pkg->typeIdOffset),
+@@ -6861,6 +6862,10 @@ status_t ResTable::parsePackage(const ResTable_package* const pkg,
+                 ALOGW("Found multiple library tables, ignoring...");
+             }
+         } else {
++            if (ctype == RES_TABLE_OVERLAYABLE_TYPE) {
++                header->definesOverlayable = true;
++            }
++
+             status_t err = validate_chunk(chunk, sizeof(ResChunk_header),
+                                           endPos, "ResTable_package:unknown");
+             if (err != NO_ERROR) {
+@@ -7138,6 +7143,13 @@ status_t ResTable::createIdmap(const ResTable& targetResTable,
+         return UNKNOWN_ERROR;
+     }
+ 
++    for (auto header : targetResTable.mHeaders) {
++        // Idmap is not aware of overlayable, exit since policy checks can't be done
++        if (header->definesOverlayable) {
++            return UNKNOWN_ERROR;
++        }
++    }
++
+     const ResTable_package* targetPackageStruct =
+         targetResTable.mPackageGroups[0]->packages[0]->package;
+     const size_t tmpNameSize = arraysize(targetPackageStruct->name);
+diff --git a/libs/androidfw/include/androidfw/ResourceTypes.h b/libs/androidfw/include/androidfw/ResourceTypes.h
+index 875b90b7ac6..086b688179d 100644
+--- a/libs/androidfw/include/androidfw/ResourceTypes.h
++++ b/libs/androidfw/include/androidfw/ResourceTypes.h
+@@ -2106,7 +2106,7 @@ private:
+             size_t nameLen, uint32_t* outTypeSpecFlags) const;
+ 
+     status_t parsePackage(
+-        const ResTable_package* const pkg, const Header* const header,
++        const ResTable_package* const pkg, Header* const header,
+         bool appAsLib, bool isSystemAsset);
+ 
+     void print_value(const Package* pkg, const Res_value& value) const;
+-- 
+2.35.1
+

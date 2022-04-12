@@ -1,0 +1,51 @@
+From c0b0b10d62c33109877b778d4e0f1cc777743913 Mon Sep 17 00:00:00 2001
+From: Jooyung Han <jooyung@google.com>
+Date: Wed, 16 Oct 2019 22:35:01 +0000
+Subject: [PATCH 01/21] Revert "Use com.android.vndk.current variant for vndk
+ list"
+
+This reverts commit 82f94d61cb544ff23b5c46811ab7af2aca0b66c0.
+
+Reason for revert: some targets are broken
+
+Bug: 142773030
+Change-Id: Ida59c52af3d2fd694855fcee60b5bb0d99c85f8d
+(cherry picked from commit 08f2376d70500adb5256c11e2a2143d9e5e53d8e)
+---
+ rootdir/Android.mk | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/rootdir/Android.mk b/rootdir/Android.mk
+index 52417305f..e1bb02fc6 100644
+--- a/rootdir/Android.mk
++++ b/rootdir/Android.mk
+@@ -326,7 +326,7 @@ LOCAL_MODULE_CLASS := ETC
+ LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)
+ LOCAL_MODULE_STEM := $(call append_vndk_version,$(LOCAL_MODULE))
+ include $(BUILD_SYSTEM)/base_rules.mk
+-$(LOCAL_BUILT_MODULE): PRIVATE_VNDK_SAMEPROCESS_LIBRARIES := $(call module-installed-files-or-guess,$(VNDK_SAMEPROCESS_LIBRARIES),.com.android.vndk.current)
++$(LOCAL_BUILT_MODULE): PRIVATE_VNDK_SAMEPROCESS_LIBRARIES := $(call module-installed-files-or-guess,$(VNDK_SAMEPROCESS_LIBRARIES),.vendor)
+ $(LOCAL_BUILT_MODULE):
+ 	@echo "Generate: $@"
+ 	@mkdir -p $(dir $@)
+@@ -342,7 +342,7 @@ LOCAL_MODULE_CLASS := ETC
+ LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)
+ LOCAL_MODULE_STEM := $(call append_vndk_version,$(LOCAL_MODULE))
+ include $(BUILD_SYSTEM)/base_rules.mk
+-$(LOCAL_BUILT_MODULE): PRIVATE_VNDK_CORE_LIBRARIES := $(call module-installed-files-or-guess,$(VNDK_CORE_LIBRARIES),.com.android.vndk.current)
++$(LOCAL_BUILT_MODULE): PRIVATE_VNDK_CORE_LIBRARIES := $(call module-installed-files-or-guess,$(VNDK_CORE_LIBRARIES),.vendor)
+ $(LOCAL_BUILT_MODULE):
+ 	@echo "Generate: $@"
+ 	@mkdir -p $(dir $@)
+@@ -358,7 +358,7 @@ LOCAL_MODULE_CLASS := ETC
+ LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)
+ LOCAL_MODULE_STEM := $(call append_vndk_version,$(LOCAL_MODULE))
+ include $(BUILD_SYSTEM)/base_rules.mk
+-$(LOCAL_BUILT_MODULE): PRIVATE_VNDK_PRIVATE_LIBRARIES := $(call module-installed-files-or-guess,$(VNDK_PRIVATE_LIBRARIES),.com.android.vndk.current)
++$(LOCAL_BUILT_MODULE): PRIVATE_VNDK_PRIVATE_LIBRARIES := $(call module-installed-files-or-guess,$(VNDK_PRIVATE_LIBRARIES),.vendor)
+ $(LOCAL_BUILT_MODULE):
+ 	@echo "Generate: $@"
+ 	@mkdir -p $(dir $@)
+-- 
+2.35.1
+

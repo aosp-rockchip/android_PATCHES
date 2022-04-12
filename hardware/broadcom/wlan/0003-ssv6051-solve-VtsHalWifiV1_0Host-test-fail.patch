@@ -1,0 +1,310 @@
+From fb1efd6d4cfc1a355ad4e1b2e417fd869b846415 Mon Sep 17 00:00:00 2001
+From: Weiguo Hu <hwg@rock-chips.com>
+Date: Mon, 3 Sep 2018 16:44:53 +0800
+Subject: [PATCH 03/10] ssv6051: solve VtsHalWifiV1_0Host test fail
+
+Change-Id: I24406f7c7d31f15611865d6bf81c85d1dbadb209
+---
+ bcmdhd/wifi_hal/common.cpp           |  2 +
+ bcmdhd/wifi_hal/common.h             |  1 +
+ bcmdhd/wifi_hal/gscan.cpp            |  9 ++--
+ bcmdhd/wifi_hal/link_layer_stats.cpp |  6 +--
+ bcmdhd/wifi_hal/wifi_hal.cpp         | 30 +++++++------
+ bcmdhd/wifi_hal/wifi_logger.cpp      | 66 ++++++++++++++--------------
+ 6 files changed, 61 insertions(+), 53 deletions(-)
+
+diff --git a/bcmdhd/wifi_hal/common.cpp b/bcmdhd/wifi_hal/common.cpp
+index 062862c..7f110ed 100644
+--- a/bcmdhd/wifi_hal/common.cpp
++++ b/bcmdhd/wifi_hal/common.cpp
+@@ -272,6 +272,8 @@ int check_wifi_chip_type()
+ 	}
+ 	if (0 == strncmp(wifi_type, "RTL", 3)) {
+ 		type = REALTEK_WIFI;
++	} else if (0 == strncmp(wifi_type, "SSV", 3)) {
++		type = SSV_WIFI;
+ 	} else {
+ 		type = BROADCOM_WIFI;
+ 	}
+diff --git a/bcmdhd/wifi_hal/common.h b/bcmdhd/wifi_hal/common.h
+index 7b8bc73..b97c6f3 100644
+--- a/bcmdhd/wifi_hal/common.h
++++ b/bcmdhd/wifi_hal/common.h
+@@ -240,6 +240,7 @@ typedef struct wifi_gscan_full_result {
+ enum {
+ 	REALTEK_WIFI = 1,
+ 	BROADCOM_WIFI,
++	SSV_WIFI,
+ };
+ 
+ wifi_error wifi_register_handler(wifi_handle handle, int cmd, nl_recvmsg_msg_cb_t func, void *arg);
+diff --git a/bcmdhd/wifi_hal/gscan.cpp b/bcmdhd/wifi_hal/gscan.cpp
+index aa229a2..3376b35 100644
+--- a/bcmdhd/wifi_hal/gscan.cpp
++++ b/bcmdhd/wifi_hal/gscan.cpp
+@@ -320,10 +320,11 @@ protected:
+ wifi_error wifi_get_valid_channels(wifi_interface_handle handle,
+         int band, int max_channels, wifi_channel *channels, int *num_channels)
+ {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
+-		*num_channels = 12;
+-		return WIFI_SUCCESS;
+-	}
++    if (check_wifi_chip_type() == REALTEK_WIFI) {
++        *num_channels = 12;
++        return WIFI_SUCCESS;
++    }
++
+     GetChannelListCommand command(handle, channels, num_channels,
+                                         max_channels, band);
+     return (wifi_error) command.requestResponse();
+diff --git a/bcmdhd/wifi_hal/link_layer_stats.cpp b/bcmdhd/wifi_hal/link_layer_stats.cpp
+index 1e4d54c..d84e46b 100644
+--- a/bcmdhd/wifi_hal/link_layer_stats.cpp
++++ b/bcmdhd/wifi_hal/link_layer_stats.cpp
+@@ -333,7 +333,7 @@ protected:
+ wifi_error wifi_get_link_stats(wifi_request_id id,
+         wifi_interface_handle iface, wifi_stats_result_handler handler)
+ {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
++	if (check_wifi_chip_type() != BROADCOM_WIFI) {
+ 		RTKGetLinkStatsCommand command(iface, handler);
+ 		return (wifi_error) command.requestResponse();
+ 	}
+@@ -344,7 +344,7 @@ wifi_error wifi_get_link_stats(wifi_request_id id,
+ wifi_error wifi_set_link_stats(
+         wifi_interface_handle iface, wifi_link_layer_params params)
+ {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
++	if (check_wifi_chip_type() != BROADCOM_WIFI) {
+ 		RTKSetLinkStatsCommand command(iface);
+ 		return (wifi_error) command.requestResponse();
+ 	}
+@@ -355,7 +355,7 @@ wifi_error wifi_set_link_stats(
+ wifi_error wifi_clear_link_stats(wifi_interface_handle iface,
+       u32 stats_clear_req_mask, u32 *stats_clear_rsp_mask, u8 stop_req, u8 *stop_rsp)
+ {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
++	if (check_wifi_chip_type() != BROADCOM_WIFI) {
+ 		RTKClearLinkStatsCommand command(iface);
+ 		return (wifi_error) command.requestResponse();
+ 	}
+diff --git a/bcmdhd/wifi_hal/wifi_hal.cpp b/bcmdhd/wifi_hal/wifi_hal.cpp
+index adecab1..5d24fc4 100644
+--- a/bcmdhd/wifi_hal/wifi_hal.cpp
++++ b/bcmdhd/wifi_hal/wifi_hal.cpp
+@@ -220,7 +220,7 @@ wifi_error wifi_initialize(wifi_handle *handle)
+ {
+     srand(getpid());
+ 
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
++	if (check_wifi_chip_type() != BROADCOM_WIFI) {
+ 		ALOGI("Initializing REALTEK_WIFI");
+ 	} else {
+ 		ALOGI("Initializing BROADCOM_WIFI");
+@@ -1275,9 +1275,10 @@ wifi_error wifi_get_concurrency_matrix(wifi_interface_handle handle, int set_siz
+ 
+ wifi_error wifi_set_scanning_mac_oui(wifi_interface_handle handle, oui scan_oui)
+ {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
+-		return WIFI_SUCCESS;
+-	}
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
++
+     SetPnoMacAddrOuiCommand command(handle, scan_oui);
+     return (wifi_error)command.start();
+ 
+@@ -1291,9 +1292,10 @@ wifi_error wifi_set_nodfs_flag(wifi_interface_handle handle, u32 nodfs)
+ 
+ wifi_error wifi_set_country_code(wifi_interface_handle handle, const char *country_code)
+ {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
+-		return WIFI_SUCCESS;
+-	}
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
++
+     SetCountryCodeCommand command(handle, country_code);
+     return (wifi_error) command.requestResponse();
+ }
+@@ -1341,9 +1343,10 @@ static wifi_error wifi_stop_rssi_monitoring(wifi_request_id id, wifi_interface_h
+ static wifi_error wifi_get_packet_filter_capabilities(wifi_interface_handle handle,
+         u32 *version, u32 *max_len)
+ {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
+-		return WIFI_SUCCESS;
+-	}
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
++
+     ALOGD("Getting APF capabilities, halHandle = %p\n", handle);
+     AndroidPktFilterCommand *cmd = new AndroidPktFilterCommand(handle, version, max_len);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+@@ -1368,9 +1371,10 @@ static wifi_error wifi_set_packet_filter(wifi_interface_handle handle,
+ 
+ static wifi_error wifi_configure_nd_offload(wifi_interface_handle handle, u8 enable)
+ {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
+-		return WIFI_SUCCESS;
+-	}
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
++
+     SetNdoffloadCommand command(handle, enable);
+     return (wifi_error) command.requestResponse();
+ }
+diff --git a/bcmdhd/wifi_hal/wifi_logger.cpp b/bcmdhd/wifi_hal/wifi_logger.cpp
+index e95899f..437634b 100644
+--- a/bcmdhd/wifi_hal/wifi_logger.cpp
++++ b/bcmdhd/wifi_hal/wifi_logger.cpp
+@@ -426,11 +426,11 @@ public:
+ wifi_error wifi_get_firmware_version(wifi_interface_handle iface, char *buffer,
+         int buffer_size)
+ {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
+-		std::string pFirmwareVer = "RTK_FIRMWARE";
+-		memcpy(buffer, pFirmwareVer.c_str(), pFirmwareVer.length()+1);
+-		return WIFI_SUCCESS;
+-	}
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        std::string pFirmwareVer = "RTK_FIRMWARE";
++        memcpy(buffer, pFirmwareVer.c_str(), pFirmwareVer.length()+1);
++        return WIFI_SUCCESS;
++    }
+     if (buffer && (buffer_size > 0)) {
+         DebugCommand *cmd = new DebugCommand(iface, buffer, &buffer_size, GET_FW_VER);
+         NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+@@ -446,11 +446,11 @@ wifi_error wifi_get_firmware_version(wifi_interface_handle iface, char *buffer,
+ /* API to collect a driver version string */
+ wifi_error wifi_get_driver_version(wifi_interface_handle iface, char *buffer, int buffer_size)
+ {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
+-		std::string pDriverVer = "RTK_DRIVER";
+-		memcpy(buffer, pDriverVer.c_str(), pDriverVer.length()+1);
+-		return WIFI_SUCCESS;
+-	}
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        std::string pDriverVer = "RTK_DRIVER";
++        memcpy(buffer, pDriverVer.c_str(), pDriverVer.length()+1);
++        return WIFI_SUCCESS;
++    }
+     if (buffer && (buffer_size > 0)) {
+         DebugCommand *cmd = new DebugCommand(iface, buffer, &buffer_size, GET_DRV_VER);
+         NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+@@ -466,9 +466,9 @@ wifi_error wifi_get_driver_version(wifi_interface_handle iface, char *buffer, in
+ /* API to collect driver records */
+ wifi_error wifi_get_ring_data(wifi_interface_handle iface, char *ring_name)
+ {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
+-		return WIFI_SUCCESS;
+-	}
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
+     DebugCommand *cmd = new DebugCommand(iface, ring_name, GET_RING_DATA);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+     wifi_error result = (wifi_error)cmd->start();
+@@ -480,7 +480,7 @@ wifi_error wifi_get_ring_data(wifi_interface_handle iface, char *ring_name)
+ wifi_error wifi_get_ring_buffers_status(wifi_interface_handle iface,
+         u32 *num_rings, wifi_ring_buffer_status *status)
+ {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
++	if (check_wifi_chip_type() != BROADCOM_WIFI) {
+ 		wifi_ring_buffer_status* pLocalstatus = NULL;
+ 		std::string from = "RTK_RING";
+ 		memcpy(status->name, from.c_str(), strlen(from.c_str())+1);
+@@ -505,7 +505,7 @@ wifi_error wifi_get_logger_supported_feature_set(wifi_interface_handle iface,
+         unsigned int *support)
+ {
+     if (support) {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
++	if (check_wifi_chip_type() != BROADCOM_WIFI) {
+ 		wifi_error result = WIFI_SUCCESS;
+ 		*support = WIFI_LOGGER_MEMORY_DUMP_SUPPORTED;
+ 		return result;
+@@ -525,9 +525,9 @@ wifi_error wifi_get_logger_supported_feature_set(wifi_interface_handle iface,
+ wifi_error wifi_start_logging(wifi_interface_handle iface, u32 verbose_level,
+         u32 flags, u32 max_interval_sec, u32 min_data_size, char *ring_name)
+ {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
+-		return WIFI_SUCCESS;
+-	}
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
+     if (ring_name) {
+         DebugCommand *cmd = new DebugCommand(iface, verbose_level, flags, max_interval_sec,
+                     min_data_size, ring_name, START_RING_LOG);
+@@ -960,9 +960,9 @@ public:
+ wifi_error wifi_get_firmware_memory_dump( wifi_interface_handle iface,
+         wifi_firmware_memory_dump_handler handler)
+ {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
+-		return WIFI_SUCCESS;
+-	}
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
+     MemoryDumpCommand *cmd = new MemoryDumpCommand(iface, handler);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+     wifi_error result = (wifi_error)cmd->start();
+@@ -1253,9 +1253,9 @@ protected:
+ 
+ wifi_error wifi_start_pkt_fate_monitoring(wifi_interface_handle handle)
+ {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
+-		return WIFI_SUCCESS;
+-	}
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
+     PacketFateCommand *cmd = new PacketFateCommand(handle);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+     wifi_error result = (wifi_error)cmd->start();
+@@ -1267,9 +1267,9 @@ wifi_error wifi_get_tx_pkt_fates(wifi_interface_handle handle,
+         wifi_tx_report *tx_report_bufs, size_t n_requested_fates,
+         size_t *n_provided_fates)
+ {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
+-		return WIFI_SUCCESS;
+-	}
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
+     PacketFateCommand *cmd = new PacketFateCommand(handle, tx_report_bufs,
+                 n_requested_fates, n_provided_fates);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+@@ -1282,9 +1282,9 @@ wifi_error wifi_get_rx_pkt_fates(wifi_interface_handle handle,
+         wifi_rx_report *rx_report_bufs, size_t n_requested_fates,
+         size_t *n_provided_fates)
+ {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
+-		return WIFI_SUCCESS;
+-	}
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
+     PacketFateCommand *cmd = new PacketFateCommand(handle, rx_report_bufs,
+                 n_requested_fates, n_provided_fates);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+@@ -1296,9 +1296,9 @@ wifi_error wifi_get_rx_pkt_fates(wifi_interface_handle handle,
+ wifi_error wifi_get_wake_reason_stats(wifi_interface_handle handle,
+         WLAN_DRIVER_WAKE_REASON_CNT *wifi_wake_reason_cnt)
+ {
+-	if (check_wifi_chip_type() == REALTEK_WIFI) {
+-		return WIFI_SUCCESS;
+-	}
++    if (check_wifi_chip_type() != BROADCOM_WIFI) {
++        return WIFI_SUCCESS;
++    }
+     GetWakeReasonCountCommand *cmd = new GetWakeReasonCountCommand(handle,
+                 wifi_wake_reason_cnt);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+-- 
+2.35.1
+

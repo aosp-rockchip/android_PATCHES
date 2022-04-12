@@ -1,0 +1,58 @@
+From a41e7e8cd829973be9fb924fb439e59e188edc1c Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Fri, 23 Oct 2020 20:46:09 +0800
+Subject: [PATCH 209/297] Battery: double check to avoid battery excess
+ discharge when batteryLevel zero
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: I091c796bfec221b0c351796f835028d17b789fc5
+---
+ .../com/android/server/BatteryService.java     | 18 ++++++++++++++++--
+ 1 file changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/services/core/java/com/android/server/BatteryService.java b/services/core/java/com/android/server/BatteryService.java
+index 8dd4fa6d8fd..de88211cbd6 100644
+--- a/services/core/java/com/android/server/BatteryService.java
++++ b/services/core/java/com/android/server/BatteryService.java
+@@ -363,7 +363,12 @@ public final class BatteryService extends SystemService {
+ 
+     private boolean shouldShutdownLocked() {
+         if (mHealthInfo2p1.batteryCapacityLevel != BatteryCapacityLevel.UNSUPPORTED) {
+-            return (mHealthInfo2p1.batteryCapacityLevel == BatteryCapacityLevel.CRITICAL);
++            if (mHealthInfo2p1.batteryCapacityLevel == BatteryCapacityLevel.CRITICAL) {
++                Slog.w(TAG, "batteryCapacityLevel is CRITICAL need Shutdown");
++                return true;
++            } else if (mHealthInfo2p1.batteryCapacityLevel != BatteryCapacityLevel.LOW) {
++                return false;
++            }
+         }
+         if (mHealthInfo.batteryLevel > 0) {
+             return false;
+@@ -378,7 +383,15 @@ public final class BatteryService extends SystemService {
+         // - If battery present and state == unknown, this is an unexpected error state.
+         // - If level <= 0 and state == full, this is also an unexpected state
+         // - All other states (NOT_CHARGING, DISCHARGING) means it is not charging.
+-        return mHealthInfo.batteryStatus != BatteryManager.BATTERY_STATUS_CHARGING;
++        boolean isNotCharging = mHealthInfo.batteryStatus != BatteryManager.BATTERY_STATUS_CHARGING;
++        if (isNotCharging) {
++            return true;
++        }
++        boolean isExcessDischarge = mHealthInfo.batteryCurrent < 0;
++        if (isExcessDischarge) {
++            Slog.w(TAG, "batteryCurrent=" + mHealthInfo.batteryCurrent + ", isExcessDischarge need Shutdown");
++        }
++        return isExcessDischarge;
+     }
+ 
+     private void shutdownIfNoPowerLocked() {
+@@ -1027,6 +1040,7 @@ public final class BatteryService extends SystemService {
+                 pw.println("  level: " + mHealthInfo.batteryLevel);
+                 pw.println("  scale: " + BATTERY_SCALE);
+                 pw.println("  voltage: " + mHealthInfo.batteryVoltage);
++                pw.println("  current: " + mHealthInfo.batteryCurrent);
+                 pw.println("  temperature: " + mHealthInfo.batteryTemperature);
+                 pw.println("  technology: " + mHealthInfo.batteryTechnology);
+             } else {
+-- 
+2.35.1
+

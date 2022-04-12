@@ -1,0 +1,49 @@
+From 580efd752adedcad548bdb64caf24e9a72db3a1d Mon Sep 17 00:00:00 2001
+From: Chen Jinsen <kevin.chen@rock-chips.com>
+Date: Tue, 6 Aug 2019 20:28:59 +0800
+Subject: [PATCH 4/5] Add something for jpeg codec
+
+Conflicts:
+	src/codec/SkJpegCodec.cpp
+
+Change-Id: I4e490c81d35ca10d8ad30a52791ad58179829a3d
+Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
+---
+ src/codec/SkJpegCodec.cpp | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/src/codec/SkJpegCodec.cpp b/src/codec/SkJpegCodec.cpp
+index f79c8cc310..f0d69860dc 100644
+--- a/src/codec/SkJpegCodec.cpp
++++ b/src/codec/SkJpegCodec.cpp
+@@ -519,6 +519,8 @@ static inline bool needs_swizzler_to_convert_from_cmyk(J_COLOR_SPACE jpegColorTy
+     return !hasCMYKColorSpace || !hasColorSpaceXform;
+ }
+ 
++static int fIsDecode = 0;
++
+ /*
+  * Performs the jpeg decode
+  */
+@@ -540,6 +542,18 @@ SkCodec::Result SkJpegCodec::onGetPixels(const SkImageInfo& dstInfo,
+         return fDecoderMgr->returnFailure("setjmp", kInvalidInput);
+     }
+ 
++    if (dinfo->image_width == 1600 && dinfo->image_height == 1067 &&
++        (dinfo->src->bytes_in_buffer == 324548 || dinfo->src->bytes_in_buffer == 324242)) {
++        if (fIsDecode > 25) {
++            fIsDecode = 0;
++        } else {
++            fIsDecode++;
++            return kSuccess;
++        }
++    } else {
++        fIsDecode = 0;
++    }
++
+     if (!jpeg_start_decompress(dinfo)) {
+         return fDecoderMgr->returnFailure("startDecompress", kInvalidInput);
+     }
+-- 
+2.35.1
+

@@ -1,0 +1,316 @@
+From f367c3538b2cf79cdf080aa5b9388eb91ad3d760 Mon Sep 17 00:00:00 2001
+From: Lajos Molnar <lajos@google.com>
+Date: Mon, 9 Mar 2020 21:22:44 +0000
+Subject: [PATCH 04/25] Revert "stagefright: MediaCodec::releaseAsync()"
+
+Revert submission 10446783-mediacodec-lazy-release
+
+Reason for revert: back-to-back video playback jitters
+Reverted Changes:
+I119945684:stagefright: MediaCodec::releaseAsync()
+Ieb4c0b2e1:media: lazy MediaCodec.release()
+
+Bug: 150662913
+Change-Id: I5dfbd4a09af5ab29b9a20d58e804ce43993f2088
+(cherry picked from commit 0dfdf931b6dc4ee66722d67745ef0dd0133964b3)
+---
+ .../media/IResourceManagerService.aidl        |  8 ---
+ media/libstagefright/MediaCodec.cpp           | 27 +---------
+ .../include/media/stagefright/MediaCodec.h    |  2 -
+ .../ResourceManagerService.cpp                | 43 +--------------
+ .../ResourceManagerService.h                  |  8 +--
+ .../test/ResourceManagerService_test.cpp      | 54 -------------------
+ 6 files changed, 3 insertions(+), 139 deletions(-)
+
+diff --git a/media/libmedia/aidl/android/media/IResourceManagerService.aidl b/media/libmedia/aidl/android/media/IResourceManagerService.aidl
+index 1b2d522700..3dd0859d8b 100644
+--- a/media/libmedia/aidl/android/media/IResourceManagerService.aidl
++++ b/media/libmedia/aidl/android/media/IResourceManagerService.aidl
+@@ -94,12 +94,4 @@ interface IResourceManagerService {
+      *        remove existing override on originalPid if newPid is -1.
+      */
+     void overridePid(int originalPid, int newPid);
+-
+-    /**
+-     * Mark a client for pending removal
+-     *
+-     * @param pid pid from which the client's resources will be removed.
+-     * @param clientId clientId within the pid that will be removed.
+-     */
+-    void markClientForPendingRemoval(int pid, long clientId);
+ }
+diff --git a/media/libstagefright/MediaCodec.cpp b/media/libstagefright/MediaCodec.cpp
+index 3e39c6d14f..b597583448 100644
+--- a/media/libstagefright/MediaCodec.cpp
++++ b/media/libstagefright/MediaCodec.cpp
+@@ -199,7 +199,6 @@ struct MediaCodec::ResourceManagerServiceProxy : public RefBase {
+     void addResource(const MediaResourceParcel &resource);
+     void removeResource(const MediaResourceParcel &resource);
+     void removeClient();
+-    void markClientForPendingRemoval();
+     bool reclaimResource(const std::vector<MediaResourceParcel> &resources);
+ 
+ private:
+@@ -281,14 +280,6 @@ void MediaCodec::ResourceManagerServiceProxy::removeClient() {
+     mService->removeClient(mPid, getId(mClient));
+ }
+ 
+-void MediaCodec::ResourceManagerServiceProxy::markClientForPendingRemoval() {
+-    Mutex::Autolock _l(mLock);
+-    if (mService == nullptr) {
+-        return;
+-    }
+-    mService->markClientForPendingRemoval(mPid, getId(mClient));
+-}
+-
+ bool MediaCodec::ResourceManagerServiceProxy::reclaimResource(
+         const std::vector<MediaResourceParcel> &resources) {
+     Mutex::Autolock _l(mLock);
+@@ -1441,13 +1432,7 @@ status_t MediaCodec::reclaim(bool force) {
+ 
+ status_t MediaCodec::release() {
+     sp<AMessage> msg = new AMessage(kWhatRelease, this);
+-    sp<AMessage> response;
+-    return PostAndAwaitResponse(msg, &response);
+-}
+ 
+-status_t MediaCodec::releaseAsync() {
+-    sp<AMessage> msg = new AMessage(kWhatRelease, this);
+-    msg->setInt32("async", 1);
+     sp<AMessage> response;
+     return PostAndAwaitResponse(msg, &response);
+ }
+@@ -2615,9 +2600,7 @@ void MediaCodec::onMessageReceived(const sp<AMessage> &msg) {
+ 
+                     mResourceManagerProxy->removeClient();
+ 
+-                    if (mReplyID != nullptr) {
+-                        (new AMessage)->postReply(mReplyID);
+-                    }
++                    (new AMessage)->postReply(mReplyID);
+                     break;
+                 }
+ 
+@@ -3016,14 +2999,6 @@ void MediaCodec::onMessageReceived(const sp<AMessage> &msg) {
+                 pushBlankBuffersToNativeWindow(mSurface.get());
+             }
+ 
+-            int32_t async = 0;
+-            if (msg->findInt32("async", &async) && async) {
+-                mResourceManagerProxy->markClientForPendingRemoval();
+-                handleSetSurface(NULL);
+-                (new AMessage)->postReply(mReplyID);
+-                mReplyID = 0;
+-            }
+-
+             break;
+         }
+ 
+diff --git a/media/libstagefright/include/media/stagefright/MediaCodec.h b/media/libstagefright/include/media/stagefright/MediaCodec.h
+index 0e983b2e5b..022c48e536 100644
+--- a/media/libstagefright/include/media/stagefright/MediaCodec.h
++++ b/media/libstagefright/include/media/stagefright/MediaCodec.h
+@@ -139,8 +139,6 @@ struct MediaCodec : public AHandler {
+     // object.
+     status_t release();
+ 
+-    status_t releaseAsync();
+-
+     status_t flush();
+ 
+     status_t queueInputBuffer(
+diff --git a/services/mediaresourcemanager/ResourceManagerService.cpp b/services/mediaresourcemanager/ResourceManagerService.cpp
+index ff45c87861..be5af00753 100644
+--- a/services/mediaresourcemanager/ResourceManagerService.cpp
++++ b/services/mediaresourcemanager/ResourceManagerService.cpp
+@@ -114,7 +114,6 @@ static ResourceInfo& getResourceInfoForEdit(
+         info.uid = uid;
+         info.clientId = clientId;
+         info.client = client;
+-        info.pendingRemoval = false;
+ 
+         index = infos.add(clientId, info);
+     }
+@@ -649,36 +648,6 @@ Status ResourceManagerService::overridePid(
+     return Status::ok();
+ }
+ 
+-Status ResourceManagerService::markClientForPendingRemoval(int32_t pid, int64_t clientId) {
+-    String8 log = String8::format(
+-            "markClientForPendingRemoval(pid %d, clientId %lld)",
+-            pid, (long long) clientId);
+-    mServiceLog->add(log);
+-
+-    Mutex::Autolock lock(mLock);
+-    if (!mProcessInfo->isValidPid(pid)) {
+-        ALOGE("Rejected markClientForPendingRemoval call with invalid pid.");
+-        return Status::fromServiceSpecificError(BAD_VALUE);
+-    }
+-    ssize_t index = mMap.indexOfKey(pid);
+-    if (index < 0) {
+-        ALOGV("markClientForPendingRemoval: didn't find pid %d for clientId %lld",
+-              pid, (long long)clientId);
+-        return Status::ok();
+-    }
+-    ResourceInfos &infos = mMap.editValueAt(index);
+-
+-    index = infos.indexOfKey(clientId);
+-    if (index < 0) {
+-        ALOGV("markClientForPendingRemoval: didn't find clientId %lld", (long long) clientId);
+-        return Status::ok();
+-    }
+-
+-    ResourceInfo &info = infos.editValueAt(index);
+-    info.pendingRemoval = true;
+-    return Status::ok();
+-}
+-
+ bool ResourceManagerService::getPriority_l(int pid, int* priority) {
+     int newPid = pid;
+ 
+@@ -724,12 +693,6 @@ bool ResourceManagerService::getLowestPriorityBiggestClient_l(
+     int lowestPriorityPid;
+     int lowestPriority;
+     int callingPriority;
+-
+-    // Before looking into other processes, check if we have clients marked for
+-    // pending removal in the same process.
+-    if (getBiggestClient_l(callingPid, type, client, true /* pendingRemovalOnly */)) {
+-        return true;
+-    }
+     if (!getPriority_l(callingPid, &callingPriority)) {
+         ALOGE("getLowestPriorityBiggestClient_l: can't get process priority for pid %d",
+                 callingPid);
+@@ -798,8 +761,7 @@ bool ResourceManagerService::isCallingPriorityHigher_l(int callingPid, int pid)
+ }
+ 
+ bool ResourceManagerService::getBiggestClient_l(
+-        int pid, MediaResource::Type type, std::shared_ptr<IResourceManagerClient> *client,
+-        bool pendingRemovalOnly) {
++        int pid, MediaResource::Type type, std::shared_ptr<IResourceManagerClient> *client) {
+     ssize_t index = mMap.indexOfKey(pid);
+     if (index < 0) {
+         ALOGE("getBiggestClient_l: can't find resource info for pid %d", pid);
+@@ -811,9 +773,6 @@ bool ResourceManagerService::getBiggestClient_l(
+     const ResourceInfos &infos = mMap.valueAt(index);
+     for (size_t i = 0; i < infos.size(); ++i) {
+         const ResourceList &resources = infos[i].resources;
+-        if (pendingRemovalOnly && !infos[i].pendingRemoval) {
+-            continue;
+-        }
+         for (auto it = resources.begin(); it != resources.end(); it++) {
+             const MediaResourceParcel &resource = it->second;
+             if (resource.type == type) {
+diff --git a/services/mediaresourcemanager/ResourceManagerService.h b/services/mediaresourcemanager/ResourceManagerService.h
+index ee982b722c..f500c62c7a 100644
+--- a/services/mediaresourcemanager/ResourceManagerService.h
++++ b/services/mediaresourcemanager/ResourceManagerService.h
+@@ -18,8 +18,6 @@
+ #ifndef ANDROID_MEDIA_RESOURCEMANAGERSERVICE_H
+ #define ANDROID_MEDIA_RESOURCEMANAGERSERVICE_H
+ 
+-#include <map>
+-
+ #include <aidl/android/media/BnResourceManagerService.h>
+ #include <arpa/inet.h>
+ #include <media/MediaResource.h>
+@@ -52,7 +50,6 @@ struct ResourceInfo {
+     std::shared_ptr<IResourceManagerClient> client;
+     sp<DeathNotifier> deathNotifier;
+     ResourceList resources;
+-    bool pendingRemoval{false};
+ };
+ 
+ // TODO: convert these to std::map
+@@ -125,8 +122,6 @@ public:
+             int originalPid,
+             int newPid) override;
+ 
+-    Status markClientForPendingRemoval(int32_t pid, int64_t clientId) override;
+-
+     Status removeResource(int pid, int64_t clientId, bool checkValid);
+ 
+ private:
+@@ -151,8 +146,7 @@ private:
+     // Gets the client who owns biggest piece of specified resource type from pid.
+     // Returns false if failed. The client will remain unchanged if failed.
+     bool getBiggestClient_l(int pid, MediaResource::Type type,
+-            std::shared_ptr<IResourceManagerClient> *client,
+-            bool pendingRemovalOnly = false);
++            std::shared_ptr<IResourceManagerClient> *client);
+ 
+     bool isCallingPriorityHigher_l(int callingPid, int pid);
+ 
+diff --git a/services/mediaresourcemanager/test/ResourceManagerService_test.cpp b/services/mediaresourcemanager/test/ResourceManagerService_test.cpp
+index 702935d25b..5d839fa062 100644
+--- a/services/mediaresourcemanager/test/ResourceManagerService_test.cpp
++++ b/services/mediaresourcemanager/test/ResourceManagerService_test.cpp
+@@ -472,56 +472,6 @@ protected:
+         }
+     }
+ 
+-    void testMarkClientForPendingRemoval() {
+-        bool result;
+-
+-        {
+-            addResource();
+-            mService->mSupportsSecureWithNonSecureCodec = true;
+-
+-            std::vector<MediaResourceParcel> resources;
+-            resources.push_back(MediaResource(MediaResource::Type::kNonSecureCodec, 1));
+-
+-            // Remove low priority clients
+-            mService->removeClient(kTestPid1, getId(mTestClient1));
+-
+-            // no lower priority client
+-            CHECK_STATUS_FALSE(mService->reclaimResource(kTestPid2, resources, &result));
+-            verifyClients(false /* c1 */, false /* c2 */, false /* c3 */);
+-
+-            mService->markClientForPendingRemoval(kTestPid2, getId(mTestClient2));
+-
+-            // client marked for pending removal from the same process got reclaimed
+-            CHECK_STATUS_TRUE(mService->reclaimResource(kTestPid2, resources, &result));
+-            verifyClients(false /* c1 */, true /* c2 */, false /* c3 */);
+-
+-            // clean up client 3 which still left
+-            mService->removeClient(kTestPid2, getId(mTestClient3));
+-        }
+-
+-        {
+-            addResource();
+-            mService->mSupportsSecureWithNonSecureCodec = true;
+-
+-            std::vector<MediaResourceParcel> resources;
+-            resources.push_back(MediaResource(MediaResource::Type::kNonSecureCodec, 1));
+-
+-            mService->markClientForPendingRemoval(kTestPid2, getId(mTestClient2));
+-
+-            // client marked for pending removal from the same process got reclaimed
+-            // first, even though there are lower priority process
+-            CHECK_STATUS_TRUE(mService->reclaimResource(kTestPid2, resources, &result));
+-            verifyClients(false /* c1 */, true /* c2 */, false /* c3 */);
+-
+-            // lower priority client got reclaimed
+-            CHECK_STATUS_TRUE(mService->reclaimResource(kTestPid2, resources, &result));
+-            verifyClients(true /* c1 */, false /* c2 */, false /* c3 */);
+-
+-            // clean up client 3 which still left
+-            mService->removeClient(kTestPid2, getId(mTestClient3));
+-        }
+-    }
+-
+     void testRemoveClient() {
+         addResource();
+ 
+@@ -950,8 +900,4 @@ TEST_F(ResourceManagerServiceTest, overridePid) {
+     testOverridePid();
+ }
+ 
+-TEST_F(ResourceManagerServiceTest, markClientForPendingRemoval) {
+-    testMarkClientForPendingRemoval();
+-}
+-
+ } // namespace android
+-- 
+2.35.1
+

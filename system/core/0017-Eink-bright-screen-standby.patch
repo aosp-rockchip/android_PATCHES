@@ -1,0 +1,276 @@
+From ebc75265fbc29b9a2c4f2a67a1a16306732ada15 Mon Sep 17 00:00:00 2001
+From: "zj@rock-chips.com" <zj@rock-chips.com>
+Date: Tue, 29 Dec 2020 14:14:25 +0800
+Subject: [PATCH 17/21] Eink bright screen standby
+
+Signed-off-by: zj <zj@rock-chips.com>
+Change-Id: I5fb67241edace5f5187f2680313b26e8eb46fc67
+Signed-off-by: Zorro Liu <lyx@rock-chips.com>
+---
+ libsuspend/autosuspend.c                 |  35 +++++
+ libsuspend/autosuspend_ops.h             |   2 +
+ libsuspend/autosuspend_wakeup_count.cpp  | 158 +++++++++++++++++++++++
+ libsuspend/include/suspend/autosuspend.h |   3 +-
+ 4 files changed, 197 insertions(+), 1 deletion(-)
+ mode change 100644 => 100755 libsuspend/autosuspend_ops.h
+
+diff --git a/libsuspend/autosuspend.c b/libsuspend/autosuspend.c
+index b87f59cd6..be86e06f5 100644
+--- a/libsuspend/autosuspend.c
++++ b/libsuspend/autosuspend.c
+@@ -113,3 +113,38 @@ void autosuspend_set_wakeup_callback(void (*func)(bool success)) {
+ 
+     autosuspend_ops->set_wakeup_callback(func);
+ }
++
++int autosuspend_idle(int screen_on)
++{
++    int ret;
++
++    ret = autosuspend_init();
++    if (ret) {
++        return ret;
++    }
++
++    ret = autosuspend_ops->idle(screen_on);
++    if (ret) {
++        return ret;
++    }
++
++    return 0;
++}
++
++int autosuspend_wake(void)
++{
++    int ret;
++
++    ret = autosuspend_init();
++    if (ret) {
++        return ret;
++    }
++
++    ret = autosuspend_ops->wake();
++    if (ret) {
++        return ret;
++    }
++
++    return 0;
++}
++
+diff --git a/libsuspend/autosuspend_ops.h b/libsuspend/autosuspend_ops.h
+old mode 100644
+new mode 100755
+index b0024c8bb..721b0eeb1
+--- a/libsuspend/autosuspend_ops.h
++++ b/libsuspend/autosuspend_ops.h
+@@ -20,6 +20,8 @@
+ struct autosuspend_ops {
+     int (*enable)(void);
+     int (*disable)(void);
++    int (*idle)(int screen_on);
++    int (*wake)(void);
+     int (*force_suspend)(int timeout_ms);
+     void (*set_wakeup_callback)(void (*func)(bool success));
+ };
+diff --git a/libsuspend/autosuspend_wakeup_count.cpp b/libsuspend/autosuspend_wakeup_count.cpp
+index 27c862957..eb819ea51 100644
+--- a/libsuspend/autosuspend_wakeup_count.cpp
++++ b/libsuspend/autosuspend_wakeup_count.cpp
+@@ -47,10 +47,16 @@ using android::base::WriteStringToFd;
+ static pthread_t suspend_thread;
+ static sem_t suspend_lockout;
+ static constexpr char sleep_state[] = "mem";
++static constexpr char idle_state[] = "idle";
+ static void (*wakeup_func)(bool success) = NULL;
+ static int sleep_time = BASE_SLEEP_TIME;
+ static constexpr char sys_power_state[] = "/sys/power/state";
+ static constexpr char sys_power_wakeup_count[] = "/sys/power/wakeup_count";
++static constexpr char ebc_state[] = "/sys/devices/platform/ebc-dev/ebc_state";
++static constexpr char usb_online_state[] = "/sys/class/power_supply/usb/online";
++static constexpr char ac_online_state[] = "/sys/class/power_supply/ac/online";
++static constexpr char bt_state[] = "/sys/class/rfkill/rfkill0/state";
++static constexpr char wifi_state[] = "/sys/class/net/wlan0/carrier";
+ static bool autosuspend_is_init = false;
+ 
+ static void update_sleep_time(bool success) {
+@@ -224,11 +230,163 @@ static void autosuspend_set_wakeup_callback(void (*func)(bool success)) {
+     wakeup_func = func;
+ }
+ 
++//idle start-------------------------------------------------------------------------------
++#if 0
++// 1:open 0:close
++static int get_wifi_state(void)
++{
++    char prop[255];
++    bool noidle;
++
++    property_get("sys.wifi.noidle", prop, "0");
++    noidle = (prop[0] == '1');
++
++    return (noidle == 1) ? 1 : 0;
++}
++#else
++// 1:open  0:close
++static int get_wifi_state(void)
++{
++    int ret = 0;
++    char state = 0;
++
++    int fd = open(wifi_state, O_RDONLY);
++    if (fd > 0) {
++        ret = read(fd, &state, 1);
++        if (ret < 0)
++            LOG(ERROR) << "Error reading from " << wifi_state << ":" << strerror(ret);
++        close(fd);
++    }
++
++    return (state == '1') ? 1 : 0;
++}
++#endif
++
++// 1:open  0:close
++static int get_bt_state(void)
++{
++    int ret = 0;
++    char state = 0;
++
++    int fd = open(bt_state, O_RDONLY);
++    if (fd > 0) {
++        ret = read(fd, &state, 1);
++        if (ret < 0)
++            LOG(ERROR) << "Error reading from " << bt_state << ":" << strerror(ret);
++        close(fd);
++    }
++
++    return (state == '1') ? 1 : 0;
++}
++
++// 1:idle 0:busy
++static int get_ebc_state(void)
++{
++    int ret = 0;
++    char state = '0';
++
++    int fd = open(ebc_state, O_RDONLY);
++    if (fd > 0) {
++        ret = read(fd, &state, 1);
++        if (ret < 0)
++            LOG(ERROR) << "Error reading from " << ebc_state << ":" << strerror(ret);
++        close(fd);
++    }
++
++    return (state == '1') ? 1 : 0;
++}
++
++// 1: power online  0: power offline
++static int get_charge_state(void)
++{
++    char buf = 0;
++    char buf1 = 0;
++    int ret;
++
++    int fd = open(usb_online_state, O_RDONLY);
++    if (fd > 0) {
++        ret = read(fd, &buf, 1);
++        if (ret < 0)
++            LOG(ERROR) << "Error reading from " << usb_online_state << ":" << strerror(ret);
++        close(fd);
++    }
++
++    int fd1 = open(ac_online_state, O_RDONLY);
++    if (fd1 > 0) {
++        ret = read(fd1, &buf1, 1);
++        if (ret < 0)
++            LOG(ERROR) << "Error reading from " << ac_online_state << ":" << strerror(ret);
++        close(fd1);
++    }
++
++    return (buf == '1' || buf1 == '1');
++}
++
++static int get_poweroff_state(void)
++{
++#if 1
++    return 0;
++#else
++    char prop[255];
++
++    // 0: normal poweroff 1: lower poweroff  -1: not in poweroff state
++    property_get("sys.shutdown.nopower", prop, "-1");
++    bool noidle = ((prop[0] == '1') || (prop[0] == '0'));
++
++    return (noidle == 1) ? 1 : 0;
++#endif
++}
++
++static int autosuspend_wakeup_count_idle(int screen_on)
++{
++    char buf[80];
++    int ret;
++    int ebc_state, charge_state, wifi_state, bt_state, poweroff_state;
++
++    ret = init_state_fd();
++    if (ret < 0) {
++        return ret;
++    }
++
++    ebc_state = get_ebc_state();
++    charge_state = get_charge_state();
++    wifi_state = get_wifi_state();
++    bt_state = get_bt_state();
++    poweroff_state = get_poweroff_state();
++
++    LOG(ERROR) << "autosuspend_idle: screen_on = " <<  screen_on << " wifi_state = "
++        << wifi_state << " bt_state = " << bt_state << " charge_state = " << charge_state
++        << " poweroff_state = " << poweroff_state << " ebc_state = " << ebc_state;
++
++    if ((wifi_state == 1) || (bt_state == 1) || (charge_state == 1) || (poweroff_state == 1) || (ebc_state == 1))
++        return 0;
++
++    if (screen_on) {
++        ret = WriteStringToFd(idle_state, state_fd);
++        if (ret)
++            LOG(ERROR) << "Error writing" << idle_state << "to" << sys_power_state << ":" << strerror(ret);
++    }
++    //else {
++     //   ret = WriteStringToFd(sleep_state, state_fd);
++     //   if (ret)
++     //       LOG(ERROR) << "Error writing" << sleep_state << "to" << sys_power_state << ":" << strerror(ret);
++    //}
++    return ret;
++}
++
++static int autosuspend_wakeup_count_wake(void)
++{
++    return 0;
++}
++//idle end-------------------------------------------------------------------------------------------------------------------
++
+ struct autosuspend_ops autosuspend_wakeup_count_ops = {
+     .enable = autosuspend_wakeup_count_enable,
+     .disable = autosuspend_wakeup_count_disable,
+     .force_suspend = force_suspend,
+     .set_wakeup_callback = autosuspend_set_wakeup_callback,
++    .idle = autosuspend_wakeup_count_idle,
++    .wake = autosuspend_wakeup_count_wake,
+ };
+ 
+ struct autosuspend_ops* autosuspend_wakeup_count_init(void) {
+diff --git a/libsuspend/include/suspend/autosuspend.h b/libsuspend/include/suspend/autosuspend.h
+index 21f4d61bf..1d442bff2 100644
+--- a/libsuspend/include/suspend/autosuspend.h
++++ b/libsuspend/include/suspend/autosuspend.h
+@@ -63,7 +63,8 @@ int autosuspend_force_suspend(int timeout_ms);
+  * aborted due to some reason.
+  */
+ void autosuspend_set_wakeup_callback(void (*func)(bool success));
+-
++int autosuspend_idle(int screen_on);
++int autosuspend_wake(void);
+ __END_DECLS
+ 
+ #endif
+-- 
+2.35.1
+

@@ -1,0 +1,32 @@
+From 2df6450a170b1ab16b25a21e6344cb41a32efc8e Mon Sep 17 00:00:00 2001
+From: Alex Zhao <zzc@rock-chips.com>
+Date: Tue, 5 Jan 2021 08:33:52 +0800
+Subject: [PATCH 13/13] Revert "Add support for wifi sleep power down"
+
+This reverts commit 6c47055a2848ba1f48396db33d2c4e691b61a7be.
+
+Signed-off-by: Alex Zhao <zzc@rock-chips.com>
+Change-Id: Ia2229747b86bcf7d06fea972b5d24a8480125a7a
+---
+ libwifi_hal/wifi_hal_common.cpp | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/libwifi_hal/wifi_hal_common.cpp b/libwifi_hal/wifi_hal_common.cpp
+index f2f339b09..964f6a24d 100755
+--- a/libwifi_hal/wifi_hal_common.cpp
++++ b/libwifi_hal/wifi_hal_common.cpp
+@@ -387,9 +387,8 @@ int wifi_load_driver() {
+ }
+ 
+ int wifi_unload_driver() {
+-#if 1
+-  bool config = property_get_bool("ro.wifi.sleep.power.down", false);
+-  if (!is_wifi_driver_loaded() || !config) {
++#if 0
++  if (!is_wifi_driver_loaded()) {
+     property_set(DRIVER_PROP_NAME, "unloaded");
+     return 0;
+   }
+-- 
+2.35.1
+

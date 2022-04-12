@@ -1,0 +1,35 @@
+From 2849b5c1c256d7a848aa6f9a633f5e5f7eaeab3a Mon Sep 17 00:00:00 2001
+From: Yanqiang Fan <yanqiang.fan@mediatek.com>
+Date: Mon, 3 Aug 2020 14:02:36 +0800
+Subject: [PATCH 20/25] Reserve item ids for samples + grid
+
+Reserve item ids for samples + grid, if the file size is small
+than tile size, the mNumTiles is 1. The numItemsToReserve will
+equal to mNumTiles, not reserve id for grid item. It will
+cause grid item been over written, can not find the file size.
+
+Change the numItemsToReserve calculate expression from mNumTiles > 1
+to mNumTiles > 0, to reserve id space for grid item.
+
+Bug: 162797911
+Change-Id: I18638f1e9026282044c7df73f8a2d78d58a13447
+---
+ media/libstagefright/MPEG4Writer.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/media/libstagefright/MPEG4Writer.cpp b/media/libstagefright/MPEG4Writer.cpp
+index 8f7d4bf0d0..d99596e3f1 100644
+--- a/media/libstagefright/MPEG4Writer.cpp
++++ b/media/libstagefright/MPEG4Writer.cpp
+@@ -2774,7 +2774,7 @@ status_t MPEG4Writer::Track::start(MetaData *params) {
+         // even if the file is well-formed and the primary picture is correct.
+ 
+         // Reserve item ids for samples + grid
+-        size_t numItemsToReserve = mNumTiles + (mNumTiles > 1);
++        size_t numItemsToReserve = mNumTiles + (mNumTiles > 0);
+         status_t err = mOwner->reserveItemId_l(numItemsToReserve, &mItemIdBase);
+         if (err != OK) {
+             return err;
+-- 
+2.35.1
+

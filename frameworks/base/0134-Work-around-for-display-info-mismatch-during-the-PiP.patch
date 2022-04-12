@@ -1,0 +1,115 @@
+From 56fe5328c37390cd0da2eb80e15fc8990e0110f2 Mon Sep 17 00:00:00 2001
+From: Hongwei Wang <hwwang@google.com>
+Date: Mon, 30 Mar 2020 16:16:16 -0700
+Subject: [PATCH 134/297] Work around for display info mismatch during the PiP
+ transition
+
+This is a work around for b/152720544, we noticed that when entering PiP
+from a landscape activity to home screen in portrait mode
+- OnDisplayChangingListener is not called
+- PinnedStackListener#onDisplayInfoChanged gets called after the
+transition is started
+
+This work around updates the destination bounds once this mismatch is
+detected and a more proper fix should be there for b/152809058
+
+Bug: 152720544
+Test: manually enter/exit PiP from Play Movies for X times
+Change-Id: I833027d4a4638a7a99f7abd2f50e493bdf5bad03
+(cherry picked from commit 951dc026f5f9d5704422115a904f3b8116094a9e)
+---
+ .../systemui/pip/PipAnimationController.java  |  7 ++++++
+ .../systemui/pip/PipBoundsHandler.java        |  4 ++++
+ .../systemui/pip/PipTaskOrganizer.java        | 23 +++++++++++++++++++
+ .../systemui/pip/phone/PipManager.java        |  1 +
+ 4 files changed, 35 insertions(+)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/pip/PipAnimationController.java b/packages/SystemUI/src/com/android/systemui/pip/PipAnimationController.java
+index 153359204d5..d219a9e65a3 100644
+--- a/packages/SystemUI/src/com/android/systemui/pip/PipAnimationController.java
++++ b/packages/SystemUI/src/com/android/systemui/pip/PipAnimationController.java
+@@ -110,6 +110,10 @@ public class PipAnimationController {
+         return mCurrentAnimator;
+     }
+ 
++    PipTransitionAnimator getCurrentAnimator() {
++        return mCurrentAnimator;
++    }
++
+     private PipTransitionAnimator setupPipTransitionAnimator(PipTransitionAnimator animator) {
+         animator.setSurfaceTransactionHelper(mSurfaceTransactionHelper);
+         animator.setInterpolator(mFastOutSlowInInterpolator);
+@@ -239,6 +243,9 @@ public class PipAnimationController {
+ 
+         void setDestinationBounds(Rect destinationBounds) {
+             mDestinationBounds.set(destinationBounds);
++            if (mAnimationType == ANIM_TYPE_ALPHA) {
++                onStartTransaction(mLeash, newSurfaceControlTransaction());
++            }
+         }
+ 
+         void setCurrentValue(T value) {
+diff --git a/packages/SystemUI/src/com/android/systemui/pip/PipBoundsHandler.java b/packages/SystemUI/src/com/android/systemui/pip/PipBoundsHandler.java
+index 4969fc81978..1868536dca9 100644
+--- a/packages/SystemUI/src/com/android/systemui/pip/PipBoundsHandler.java
++++ b/packages/SystemUI/src/com/android/systemui/pip/PipBoundsHandler.java
+@@ -199,6 +199,10 @@ public class PipBoundsHandler {
+         return mLastDestinationBounds;
+     }
+ 
++    public Rect getDisplayBounds() {
++        return new Rect(0, 0, mDisplayInfo.logicalWidth, mDisplayInfo.logicalHeight);
++    }
++
+     /**
+      * Responds to IPinnedStackListener on {@link DisplayInfo} change.
+      * It will normally follow up with a
+diff --git a/packages/SystemUI/src/com/android/systemui/pip/PipTaskOrganizer.java b/packages/SystemUI/src/com/android/systemui/pip/PipTaskOrganizer.java
+index da171b27d97..4b3847217e0 100644
+--- a/packages/SystemUI/src/com/android/systemui/pip/PipTaskOrganizer.java
++++ b/packages/SystemUI/src/com/android/systemui/pip/PipTaskOrganizer.java
+@@ -318,6 +318,29 @@ public class PipTaskOrganizer extends ITaskOrganizer.Stub {
+                 null /* updateBoundsCallback */);
+     }
+ 
++    /**
++     * TODO(b/152809058): consolidate the display info handling logic in SysUI
++     */
++    @SuppressWarnings("unchecked")
++    public void mayUpdateCurrentAnimationOnRotationChange() {
++        final PipAnimationController.PipTransitionAnimator animator =
++                mPipAnimationController.getCurrentAnimator();
++        if (animator != null && animator.isRunning()
++                && animator.getTransitionDirection() == TRANSITION_DIRECTION_TO_PIP) {
++            final Rect currentDestinationBounds = animator.getDestinationBounds();
++            if (mPipBoundsHandler.getDisplayBounds().contains(currentDestinationBounds)) {
++                return;
++            }
++            final Rect newDestinationBounds = mPipBoundsHandler.getDestinationBounds(
++                    getAspectRatioOrDefault(mTaskInfo.pictureInPictureParams),
++                    null /* bounds */, getMinimalSize(mTaskInfo.topActivityInfo));
++            if (animator.getAnimationType() == ANIM_TYPE_BOUNDS) {
++                animator.updateEndValue(newDestinationBounds);
++            }
++            animator.setDestinationBounds(newDestinationBounds);
++        }
++    }
++
+     /**
+      * @return {@code true} if the aspect ratio is changed since no other parameters within
+      * {@link PictureInPictureParams} would affect the bounds.
+diff --git a/packages/SystemUI/src/com/android/systemui/pip/phone/PipManager.java b/packages/SystemUI/src/com/android/systemui/pip/phone/PipManager.java
+index ea195327a41..8a25f4d441d 100644
+--- a/packages/SystemUI/src/com/android/systemui/pip/phone/PipManager.java
++++ b/packages/SystemUI/src/com/android/systemui/pip/phone/PipManager.java
+@@ -363,6 +363,7 @@ public class PipManager implements BasePipManager, PipTaskOrganizer.PipTransitio
+         mTouchHandler.onMovementBoundsChanged(mTmpInsetBounds, mTmpNormalBounds,
+                 animatingBounds, fromImeAdjustment, fromShelfAdjustment,
+                 mTmpDisplayInfo.rotation);
++        mPipTaskOrganizer.mayUpdateCurrentAnimationOnRotationChange();
+     }
+ 
+     public void dump(PrintWriter pw) {
+-- 
+2.35.1
+

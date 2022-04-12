@@ -1,0 +1,27 @@
+From b98bc8146f4e7fcfa2dc9e4b3221caa8d3ecb30b Mon Sep 17 00:00:00 2001
+From: Dayao Ji <jdy@rock-chips.com>
+Date: Fri, 9 Oct 2020 16:50:50 +0800
+Subject: [PATCH 06/11] Optimize rkloader upgrade
+
+Signed-off-by: Dayao Ji <jdy@rock-chips.com>
+Change-Id: I87a1c96a948e7ea12cad63058ca392e8e2839a07
+---
+ recovery.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/recovery.cpp b/recovery.cpp
+index 595c7700..b2f821e9 100644
+--- a/recovery.cpp
++++ b/recovery.cpp
+@@ -1286,7 +1286,7 @@ Device::BuiltinAction start_recovery(Device* device, const std::vector<std::stri
+         bAutoUpdateComplete = true;
+     }
+   } else if (rkloader_update_package != nullptr) {
+-    SetupBlockMapMount(update_package);
++    SetupBlockMapMount(rkloader_update_package);
+     printf("rkloader_update_package=%s\n", rkloader_update_package);
+     const char *reallyPath = check_media_package(rkloader_update_package, prksdboot, ui);
+     if(reallyPath == NULL){
+-- 
+2.35.1
+

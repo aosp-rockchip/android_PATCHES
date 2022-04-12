@@ -1,0 +1,122 @@
+From 09f02ab2af31d59bd204e216f1e2f903e7d162d2 Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Thu, 26 Mar 2020 11:21:33 +0800
+Subject: [PATCH 08/11] Add pass result support for Rockchip PCBA.
+
+Change-Id: I523c5b46b68197abdb9766d0aea4ae504550dead
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+---
+ recovery_ui/include/recovery_ui/screen_ui.h |  4 ++--
+ recovery_ui/include/recovery_ui/stub_ui.h   |  2 +-
+ recovery_ui/include/recovery_ui/ui.h        |  8 ++++++-
+ recovery_ui/screen_ui.cpp                   | 25 ++++++++++++++++++---
+ 4 files changed, 32 insertions(+), 7 deletions(-)
+
+diff --git a/recovery_ui/include/recovery_ui/screen_ui.h b/recovery_ui/include/recovery_ui/screen_ui.h
+index e4de0403..b857af44 100644
+--- a/recovery_ui/include/recovery_ui/screen_ui.h
++++ b/recovery_ui/include/recovery_ui/screen_ui.h
+@@ -236,7 +236,7 @@ class ScreenRecoveryUI : public RecoveryUI, public DrawInterface {
+                   size_t initial_selection, bool menu_only,
+                   const std::function<int(int, bool)>& key_handler) override;
+   void SetTitle(const std::vector<std::string>& lines) override;
+-  void SetTitleHighLight(const std::vector<bool>& lines) override;
++  void SetTitleResult(const std::vector<TestResultEnum>& lines) override;
+ 
+   void KeyLongPress(int) override;
+ 
+@@ -393,7 +393,7 @@ class ScreenRecoveryUI : public RecoveryUI, public DrawInterface {
+   bool show_text_ever;  // has show_text ever been true?
+ 
+   std::vector<std::string> title_lines_;
+-  std::vector<bool> highlight_lines_;
++  std::vector<TestResultEnum> result_lines_;
+   std::vector<Point> points_;
+ 
+   bool scrollable_menu_;
+diff --git a/recovery_ui/include/recovery_ui/stub_ui.h b/recovery_ui/include/recovery_ui/stub_ui.h
+index 3fd65541..0865c091 100644
+--- a/recovery_ui/include/recovery_ui/stub_ui.h
++++ b/recovery_ui/include/recovery_ui/stub_ui.h
+@@ -81,7 +81,7 @@ class StubRecoveryUI : public RecoveryUI {
+   }
+ 
+   void SetTitle(const std::vector<std::string>& /* lines */) override {}
+-  void SetTitleHighLight(const std::vector<bool>& /* lines */) override {}
++  void SetTitleResult(const std::vector<TestResultEnum>& /* lines */) override {}
+ };
+ 
+ #endif  // RECOVERY_STUB_UI_H
+diff --git a/recovery_ui/include/recovery_ui/ui.h b/recovery_ui/include/recovery_ui/ui.h
+index ef9e4795..eea11689 100644
+--- a/recovery_ui/include/recovery_ui/ui.h
++++ b/recovery_ui/include/recovery_ui/ui.h
+@@ -53,6 +53,12 @@ class RecoveryUI {
+     IGNORE,
+   };
+ 
++  enum TestResultEnum {
++    TESTING,
++    PASS,
++    FAILED
++  };
++
+   enum class KeyError : int {
+     TIMED_OUT = -1,
+     INTERRUPTED = -2,
+@@ -149,7 +155,7 @@ class RecoveryUI {
+   // --- menu display ---
+ 
+   virtual void SetTitle(const std::vector<std::string>& lines) = 0;
+-  virtual void SetTitleHighLight(const std::vector<bool>& lines) = 0;
++  virtual void SetTitleResult(const std::vector<TestResultEnum>& lines) = 0;
+ 
+   // Displays a menu with the given 'headers' and 'items'. The supplied 'key_handler' callback,
+   // which is typically bound to Device::HandleMenuKey(), should return the expected action for the
+diff --git a/recovery_ui/screen_ui.cpp b/recovery_ui/screen_ui.cpp
+index 0efe4e7d..73a07bc3 100644
+--- a/recovery_ui/screen_ui.cpp
++++ b/recovery_ui/screen_ui.cpp
+@@ -695,6 +695,10 @@ void ScreenRecoveryUI::SetTitleHighLight(const std::vector<bool>& lines) {
+   highlight_lines_ = lines;
+ }
+ 
++void ScreenRecoveryUI::SetTitleResult(const std::vector<TestResultEnum>& lines) {
++  result_lines_ = lines;
++}
++
+ // Redraws everything on the screen. Does not flip pages. Should only be called with updateMutex
+ // locked.
+ void ScreenRecoveryUI::draw_screen_locked() {
+@@ -744,10 +748,25 @@ void ScreenRecoveryUI::draw_menu_and_text_buffer_locked(
+     int x = margin_width_ + kMenuIndent;
+ 
+     for (size_t i = 0; i < title_lines_.size(); i++) {
+-      if (highlight_lines_[i]) {
+-        SetColor(UIElement::HEADER);
++      if (result_lines_.size() == title_lines_.size()) {
++        // Only change the color when PCBA is running.
++        switch (result_lines_[i]) {
++          case TestResultEnum::TESTING:
++            SetColor(UIElement::INFO);
++            break;
++          case TestResultEnum::PASS:
++            gr_color(0, 249, 0, 255);
++            break;
++          case TestResultEnum::FAILED:
++            SetColor(UIElement::HEADER);
++            break;
++          default:
++            SetColor(UIElement::INFO);
++            break;
++        }
+       } else {
+-        SetColor(UIElement::INFO);
++          // Regular RecoveryUI.
++          SetColor(UIElement::INFO);
+       }
+       y += DrawTextLine(x, y, title_lines_[i], i == 0);
+     }
+-- 
+2.35.1
+

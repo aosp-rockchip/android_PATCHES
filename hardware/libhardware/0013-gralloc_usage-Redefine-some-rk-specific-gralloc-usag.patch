@@ -1,0 +1,39 @@
+From d9328a10ad523ff1f3b6214c2f5b3440b2215516 Mon Sep 17 00:00:00 2001
+From: ZhuangXiaoLiang <zhuangxl@rock-chips.com>
+Date: Fri, 29 Dec 2017 11:07:49 +0800
+Subject: [PATCH 13/36] gralloc_usage: Redefine some rk-specific gralloc usage.
+
+0x08000000--0x0F000000 reserve for rk-graphic.
+
+Change-Id: Ia1fe697b22966803be776b22fa26d0b606ee067f
+Signed-off-by: ZhuangXiaoLiang <zhuangxl@rock-chips.com>
+---
+ include/hardware/gralloc.h | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/include/hardware/gralloc.h b/include/hardware/gralloc.h
+index 0396127b..793a49f0 100755
+--- a/include/hardware/gralloc.h
++++ b/include/hardware/gralloc.h
+@@ -141,14 +141,14 @@ enum {
+     /* buffer may be used as a cursor */
+     GRALLOC_USAGE_ROT_MASK              = 0x0F000000,
+ 
+-    GRALLOC_USAGE_TO_USE_SINGLE_BUFFER  = 0x08000000,
++    GRALLOC_USAGE_TO_USE_SINGLE_BUFFER  = 0x0B000000,
+ 
+     /* mali p010 format */
+-    GRALLOC_USAGE_TO_USE_ARM_P010       = 0x04000000,
++    GRALLOC_USAGE_TO_USE_ARM_P010       = 0x0A000000,
+     /* would like to use a fbdc(afbc) format. */
+-    GRALLOC_USAGE_TO_USE_FBDC_FMT       = 0x02000000,
++    GRALLOC_USAGE_TO_USE_FBDC_FMT       = 0x09000000,
+     /* use Physically Continuous memory */
+-    GRALLOC_USAGE_TO_USE_PHY_CONT	= 0x01000000,
++    GRALLOC_USAGE_TO_USE_PHY_CONT	= 0x08000000,
+ 
+     /* implementation-specific private usage flags */
+     GRALLOC_USAGE_PRIVATE_0             = 0x10000000U,
+-- 
+2.35.1
+

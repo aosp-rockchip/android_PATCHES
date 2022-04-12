@@ -1,0 +1,105 @@
+From 6f7aa8050caf00037252d35839b9ff5a38709010 Mon Sep 17 00:00:00 2001
+From: Adrian Roos <roosa@google.com>
+Date: Wed, 1 Apr 2020 15:01:08 +0200
+Subject: [PATCH 140/297] WindowInsetsAnimation: Synchronously dispatch window
+ insets animation callbacks
+
+Test: atest WindowInsetsAnimationControllerTests
+Bug: 152617481
+Change-Id: Ie002f2e605f841563d8c2669f949be3ddd666146
+(cherry picked from commit 6a4448f0f86c408d79c27f29011dc9d3fd6f3036)
+---
+ core/java/android/view/InsetsAnimationControlCallbacks.java   | 4 +++-
+ core/java/android/view/InsetsAnimationControlImpl.java        | 2 +-
+ .../java/android/view/InsetsAnimationThreadControlRunner.java | 2 +-
+ core/java/android/view/InsetsController.java                  | 4 ++--
+ .../src/android/view/InsetsAnimationControlImplTest.java      | 2 +-
+ services/core/java/com/android/server/wm/InsetsPolicy.java    | 2 +-
+ 6 files changed, 9 insertions(+), 7 deletions(-)
+
+diff --git a/core/java/android/view/InsetsAnimationControlCallbacks.java b/core/java/android/view/InsetsAnimationControlCallbacks.java
+index 4227f78564a..74c186948b2 100644
+--- a/core/java/android/view/InsetsAnimationControlCallbacks.java
++++ b/core/java/android/view/InsetsAnimationControlCallbacks.java
+@@ -40,8 +40,10 @@ public interface InsetsAnimationControlCallbacks {
+ 
+     /**
+      * Schedule the apply by posting the animation callback.
++     *
++     * @param runner The runner that requested applying insets
+      */
+-    void scheduleApplyChangeInsets();
++    void scheduleApplyChangeInsets(InsetsAnimationControlRunner runner);
+ 
+     /**
+      * Finish the final steps after the animation.
+diff --git a/core/java/android/view/InsetsAnimationControlImpl.java b/core/java/android/view/InsetsAnimationControlImpl.java
+index ef6a9b212e9..05abc603211 100644
+--- a/core/java/android/view/InsetsAnimationControlImpl.java
++++ b/core/java/android/view/InsetsAnimationControlImpl.java
+@@ -156,7 +156,7 @@ public class InsetsAnimationControlImpl implements WindowInsetsAnimationControll
+         mPendingFraction = sanitize(fraction);
+         mPendingInsets = sanitize(insets);
+         mPendingAlpha = sanitize(alpha);
+-        mController.scheduleApplyChangeInsets();
++        mController.scheduleApplyChangeInsets(this);
+     }
+ 
+     @VisibleForTesting
+diff --git a/core/java/android/view/InsetsAnimationThreadControlRunner.java b/core/java/android/view/InsetsAnimationThreadControlRunner.java
+index 3870f26e999..9dfdd0604e6 100644
+--- a/core/java/android/view/InsetsAnimationThreadControlRunner.java
++++ b/core/java/android/view/InsetsAnimationThreadControlRunner.java
+@@ -54,7 +54,7 @@ public class InsetsAnimationThreadControlRunner implements InsetsAnimationContro
+         }
+ 
+         @Override
+-        public void scheduleApplyChangeInsets() {
++        public void scheduleApplyChangeInsets(InsetsAnimationControlRunner runner) {
+             mControl.applyChangeInsets(mState);
+         }
+ 
+diff --git a/core/java/android/view/InsetsController.java b/core/java/android/view/InsetsController.java
+index 8eb9b5f6ef2..72ddaca27a7 100644
+--- a/core/java/android/view/InsetsController.java
++++ b/core/java/android/view/InsetsController.java
+@@ -1076,8 +1076,8 @@ public class InsetsController implements WindowInsetsController, InsetsAnimation
+ 
+     @VisibleForTesting
+     @Override
+-    public void scheduleApplyChangeInsets() {
+-        if (mStartingAnimation) {
++    public void scheduleApplyChangeInsets(InsetsAnimationControlRunner runner) {
++        if (mStartingAnimation || runner.getAnimationType() == ANIMATION_TYPE_USER) {
+             mAnimCallback.run();
+             mAnimCallbackScheduled = false;
+             return;
+diff --git a/core/tests/coretests/src/android/view/InsetsAnimationControlImplTest.java b/core/tests/coretests/src/android/view/InsetsAnimationControlImplTest.java
+index 9d251dac7c7..5f12bf04d93 100644
+--- a/core/tests/coretests/src/android/view/InsetsAnimationControlImplTest.java
++++ b/core/tests/coretests/src/android/view/InsetsAnimationControlImplTest.java
+@@ -229,7 +229,7 @@ public class InsetsAnimationControlImplTest {
+         doAnswer(invocation -> {
+             mController.applyChangeInsets(mInsetsState);
+             return null;
+-        }).when(mMockController).scheduleApplyChangeInsets();
++        }).when(mMockController).scheduleApplyChangeInsets(any());
+         mController.finish(true /* shown */);
+         assertEquals(Insets.of(0, 100, 100, 0), mController.getCurrentInsets());
+         verify(mMockController).notifyFinished(eq(mController), eq(true /* shown */));
+diff --git a/services/core/java/com/android/server/wm/InsetsPolicy.java b/services/core/java/com/android/server/wm/InsetsPolicy.java
+index 9e954f29438..007af249c58 100644
+--- a/services/core/java/com/android/server/wm/InsetsPolicy.java
++++ b/services/core/java/com/android/server/wm/InsetsPolicy.java
+@@ -398,7 +398,7 @@ class InsetsPolicy {
+ 
+             /** Called on SurfaceAnimationThread without global WM lock held. */
+             @Override
+-            public void scheduleApplyChangeInsets() {
++            public void scheduleApplyChangeInsets(InsetsAnimationControlRunner runner) {
+                 InsetsState state = getState();
+                 if (mAnimationControl.applyChangeInsets(state)) {
+                     mAnimationControl.finish(mAnimatingShown);
+-- 
+2.35.1
+

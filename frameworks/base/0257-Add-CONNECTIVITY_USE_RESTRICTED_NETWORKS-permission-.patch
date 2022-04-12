@@ -1,0 +1,42 @@
+From cb917073660d6974ac4f7d09aa0204f0a08c290f Mon Sep 17 00:00:00 2001
+From: paulhu <paulhu@google.com>
+Date: Fri, 18 Sep 2020 16:22:45 +0800
+Subject: [PATCH 257/297] Add CONNECTIVITY_USE_RESTRICTED_NETWORKS permission
+ to DownloadProvider
+
+- DownloadManager will use the requestor app's default network to
+open a connection. When the VPN app lists the DownloadProvider as
+a disallowed application, this will fail with EPERM.
+- This is because in R, the DownloadProvider lost its privileges
+due to the removal of the CONNECTIVITY_INTERNAL permission. It's
+removed without considering the corner case where the
+DownloadProvider is excluded from using the VPN. It's the only
+case where this makes a difference.
+- Adding CONNECTIVITY_USE_RESTRICTED_NETWORKS will give
+DownloadProvider the ability to use the VPN again in this case,
+fixing the issue.
+
+Bug: 165774987
+Test: Build, flash rom and boot to home. Manully test that
+      DownloadProvider can download file via VPN.
+Change-Id: If8fa785568ace1f15f53daec67c06e1207d5dc9c
+Merged-In: If8fa785568ace1f15f53daec67c06e1207d5dc9c
+---
+ data/etc/privapp-permissions-platform.xml | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/data/etc/privapp-permissions-platform.xml b/data/etc/privapp-permissions-platform.xml
+index c710bed2936..3e93591bace 100644
+--- a/data/etc/privapp-permissions-platform.xml
++++ b/data/etc/privapp-permissions-platform.xml
+@@ -219,6 +219,7 @@ applications that come with the platform
+         <permission name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+         <permission name="android.permission.UPDATE_APP_OPS_STATS"/>
+         <permission name="android.permission.UPDATE_DEVICE_STATS"/>
++        <permission name="android.permission.CONNECTIVITY_USE_RESTRICTED_NETWORKS"/>
+     </privapp-permissions>
+ 
+     <privapp-permissions package="com.android.providers.media.module">
+-- 
+2.35.1
+

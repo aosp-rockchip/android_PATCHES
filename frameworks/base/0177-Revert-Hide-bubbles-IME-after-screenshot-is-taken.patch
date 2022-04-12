@@ -1,0 +1,77 @@
+From 3117fbca27f7a1585492ce55b3a805ac97815878 Mon Sep 17 00:00:00 2001
+From: Matt Casey <mrcasey@google.com>
+Date: Thu, 11 Jun 2020 00:19:19 +0000
+Subject: [PATCH 177/297] Revert "Hide bubbles' IME after screenshot is taken."
+
+This reverts commit d56eaf68f6524a42594758feb20dc68f9920c33c.
+
+Reason for revert: Causing a sysui crash
+Bug: 157756391
+
+Change-Id: I9df1bf4a3e9e6cb2f03218ba3c56c7c5660483c7
+(cherry picked from commit 02805f050bc8d754a4e26d8eb24950b857b493c2)
+---
+ packages/SystemUI/AndroidManifest.xml         |  4 ----
+ .../systemui/screenshot/GlobalScreenshot.java | 19 -------------------
+ 2 files changed, 23 deletions(-)
+
+diff --git a/packages/SystemUI/AndroidManifest.xml b/packages/SystemUI/AndroidManifest.xml
+index ef3e799a55b..985269b2bb7 100644
+--- a/packages/SystemUI/AndroidManifest.xml
++++ b/packages/SystemUI/AndroidManifest.xml
+@@ -406,10 +406,6 @@
+         <receiver android:name=".screenshot.GlobalScreenshot$SmartActionsReceiver"
+                   android:exported="false"/>
+ 
+-        <!-- Callback for performing sysui cleanup after screenshot has been taken. -->
+-        <receiver android:name=".screenshot.GlobalScreenshot$ScreenshotTakenReceiver"
+-                  android:exported="false"/>
+-
+         <!-- started from UsbDeviceSettingsManager -->
+         <activity android:name=".usb.UsbConfirmActivity"
+             android:exported="true"
+diff --git a/packages/SystemUI/src/com/android/systemui/screenshot/GlobalScreenshot.java b/packages/SystemUI/src/com/android/systemui/screenshot/GlobalScreenshot.java
+index cc41a724477..57436bc9e67 100644
+--- a/packages/SystemUI/src/com/android/systemui/screenshot/GlobalScreenshot.java
++++ b/packages/SystemUI/src/com/android/systemui/screenshot/GlobalScreenshot.java
+@@ -89,7 +89,6 @@ import android.widget.Toast;
+ 
+ import com.android.internal.logging.UiEventLogger;
+ import com.android.systemui.R;
+-import com.android.systemui.bubbles.BubbleController;
+ import com.android.systemui.dagger.qualifiers.Main;
+ import com.android.systemui.shared.system.ActivityManagerWrapper;
+ import com.android.systemui.statusbar.phone.StatusBar;
+@@ -492,8 +491,6 @@ public class GlobalScreenshot implements ViewTreeObserver.OnComputeInternalInset
+             return;
+         }
+ 
+-        mContext.sendBroadcast(new Intent(mContext, ScreenshotTakenReceiver.class));
+-
+         // Optimizations
+         mScreenBitmap.setHasAlpha(false);
+         mScreenBitmap.prepareToDraw();
+@@ -1178,20 +1175,4 @@ public class GlobalScreenshot implements ViewTreeObserver.OnComputeInternalInset
+                     context, intent.getStringExtra(EXTRA_ID), actionType, true);
+         }
+     }
+-
+-    /**
+-     * Called when a screenshot has been taken and animation / screenshot UI is about to begin.
+-     */
+-    public static class ScreenshotTakenReceiver extends BroadcastReceiver {
+-        private final Lazy<BubbleController> mBubbleController;
+-
+-        public ScreenshotTakenReceiver(Lazy<BubbleController> bubbleController) {
+-            mBubbleController = bubbleController;
+-        }
+-
+-        @Override
+-        public void onReceive(Context context, Intent intent) {
+-            mBubbleController.get().hideImeFromExpandedBubble();
+-        }
+-    }
+ }
+-- 
+2.35.1
+

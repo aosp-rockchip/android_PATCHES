@@ -1,0 +1,58 @@
+From c28c530c4d01b82f3e804f12f3f99bdb9c1ed7a0 Mon Sep 17 00:00:00 2001
+From: Patrick Baumann <patb@google.com>
+Date: Wed, 1 Apr 2020 14:10:04 -0700
+Subject: [PATCH 136/297] Fixes NPE and adds @Nullable to PackageSetting.pkg
+
+This change addresses an NPE encountered when a package setting refers
+to an unavailable package and is thus null. It adds a @Nullable
+annotation to the field to hopefully catch more of this type of error
+going forward.
+
+Fixes: 153007501
+Test: atest AppEnumerationTests PackageManagerTest
+Change-Id: I0ffe1f488d69d45893c96c755e48e19de43fcdf2
+(cherry picked from commit 74860927b9cc2e847efe2097e244155f15796d6b)
+---
+ services/core/java/com/android/server/pm/AppsFilter.java    | 6 ++++--
+ .../core/java/com/android/server/pm/PackageSetting.java     | 1 +
+ 2 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/services/core/java/com/android/server/pm/AppsFilter.java b/services/core/java/com/android/server/pm/AppsFilter.java
+index 805d91852d8..09b782d768d 100644
+--- a/services/core/java/com/android/server/pm/AppsFilter.java
++++ b/services/core/java/com/android/server/pm/AppsFilter.java
+@@ -674,7 +674,8 @@ public class AppsFilter {
+             Trace.endSection();
+ 
+             if (callingPkgSetting != null) {
+-                if (!mFeatureConfig.packageIsEnabled(callingPkgSetting.pkg)) {
++                if (callingPkgSetting.pkg != null
++                        && !mFeatureConfig.packageIsEnabled(callingPkgSetting.pkg)) {
+                     if (DEBUG_LOGGING) {
+                         log(callingSetting, targetPkgSetting, "DISABLED");
+                     }
+@@ -682,7 +683,8 @@ public class AppsFilter {
+                 }
+             } else {
+                 for (int i = callingSharedPkgSettings.size() - 1; i >= 0; i--) {
+-                    if (!mFeatureConfig.packageIsEnabled(callingSharedPkgSettings.valueAt(i).pkg)) {
++                    final AndroidPackage pkg = callingSharedPkgSettings.valueAt(i).pkg;
++                    if (pkg != null && !mFeatureConfig.packageIsEnabled(pkg)) {
+                         if (DEBUG_LOGGING) {
+                             log(callingSetting, targetPkgSetting, "DISABLED");
+                         }
+diff --git a/services/core/java/com/android/server/pm/PackageSetting.java b/services/core/java/com/android/server/pm/PackageSetting.java
+index 9a8692d029e..600518e1703 100644
+--- a/services/core/java/com/android/server/pm/PackageSetting.java
++++ b/services/core/java/com/android/server/pm/PackageSetting.java
+@@ -43,6 +43,7 @@ import java.util.Set;
+ public class PackageSetting extends PackageSettingBase {
+     int appId;
+ 
++    @Nullable
+     public AndroidPackage pkg;
+     /**
+      * WARNING. The object reference is important. We perform integer equality and NOT
+-- 
+2.35.1
+

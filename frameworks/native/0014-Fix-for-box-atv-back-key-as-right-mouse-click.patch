@@ -1,0 +1,40 @@
+From ded5ed7d239fdb1030d0fe4956b616115c705f9b Mon Sep 17 00:00:00 2001
+From: Alex Wang <alex.wang@rock-chips.com>
+Date: Tue, 13 Oct 2020 14:38:11 +0800
+Subject: [PATCH 14/33] Fix for box & atv: back key as right mouse click
+
+Change-Id: I5f98b72cc5fa6971ae6f76d40eb5725899206414
+---
+ .../mapper/accumulator/CursorButtonAccumulator.cpp       | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/services/inputflinger/reader/mapper/accumulator/CursorButtonAccumulator.cpp b/services/inputflinger/reader/mapper/accumulator/CursorButtonAccumulator.cpp
+index 2d7d73b4a..96767dc5b 100644
+--- a/services/inputflinger/reader/mapper/accumulator/CursorButtonAccumulator.cpp
++++ b/services/inputflinger/reader/mapper/accumulator/CursorButtonAccumulator.cpp
+@@ -18,6 +18,7 @@
+ 
+ #include "EventHub.h"
+ #include "InputDevice.h"
++#include <cutils/properties.h>
+ 
+ namespace android {
+ 
+@@ -84,7 +85,13 @@ uint32_t CursorButtonAccumulator::getButtonState() const {
+         result |= AMOTION_EVENT_BUTTON_PRIMARY;
+     }
+     if (mBtnRight) {
+-        result |= AMOTION_EVENT_BUTTON_SECONDARY;
++        char targetProduct[PROPERTY_VALUE_MAX] = {0};
++        property_get("ro.target.product", targetProduct, "");
++        if (strcmp(targetProduct, "box") == 0 || strcmp(targetProduct, "atv") == 0) {
++            result |= AMOTION_EVENT_BUTTON_BACK;
++        } else {
++            result |= AMOTION_EVENT_BUTTON_SECONDARY;
++        }
+     }
+     if (mBtnMiddle) {
+         result |= AMOTION_EVENT_BUTTON_TERTIARY;
+-- 
+2.35.1
+

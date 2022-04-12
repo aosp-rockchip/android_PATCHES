@@ -1,0 +1,29 @@
+From 029eff00e4072960d16ce9a647601f5a7053c2de Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Mon, 25 Jan 2021 09:56:09 +0800
+Subject: [PATCH 20/21] public.libraries.android.txt: add some so for eink
+ reader app
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: I439ad2b2672c4111c3a9c7e99f06e65232690748
+---
+ rootdir/etc/public.libraries.android.txt | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/rootdir/etc/public.libraries.android.txt b/rootdir/etc/public.libraries.android.txt
+index 023a9c8d7..bbc535233 100644
+--- a/rootdir/etc/public.libraries.android.txt
++++ b/rootdir/etc/public.libraries.android.txt
+@@ -27,3 +27,9 @@ libvulkan.so
+ libwebviewchromium_plat_support.so
+ libz.so
+ librknnhal_bridge.so nopreload
++libandroid_runtime.so
++libcutils.so
++libc++.so
++libnativehelper.so
++libutils.so
++libbase.so
+-- 
+2.35.1
+

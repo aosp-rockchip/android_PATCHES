@@ -1,0 +1,144 @@
+From 05a976e02531b365198831344db76b55aa640fea Mon Sep 17 00:00:00 2001
+From: chenxiao <cx@rock-chips.com>
+Date: Wed, 9 Dec 2020 10:24:15 +0800
+Subject: [PATCH 2/4] fix external sd media save error.
+
+Signed-off-by: chenxiao <cx@rock-chips.com>
+Change-Id: I589e3f7d22d6b70f23b4dcfb26369ead2ccbd69a
+---
+ src/com/android/camera/MediaSaverImpl.java    |  9 ++++--
+ src/com/android/camera/Storage.java           | 32 +++++++++++++------
+ src/com/android/camera/VideoModule.java       |  4 +--
+ .../camera/data/FilmstripItemBase.java        |  2 +-
+ 4 files changed, 32 insertions(+), 15 deletions(-)
+
+diff --git a/src/com/android/camera/MediaSaverImpl.java b/src/com/android/camera/MediaSaverImpl.java
+index 934d5c92e..cfdd22ae6 100755
+--- a/src/com/android/camera/MediaSaverImpl.java
++++ b/src/com/android/camera/MediaSaverImpl.java
+@@ -226,14 +226,17 @@ public class MediaSaverImpl implements MediaSaver {
+                 // apps reading incomplete data.  We need to do it after we are
+                 // certain that the previous insert to MediaProvider is completed.
+                 String finalName = values.getAsString(Video.Media.DATA);
+-                if (path.startsWith("/storage") && !path.startsWith(Storage.FLASH_DIR))
++                finalName = finalName.substring(0, finalName.length() - 4);
++                if (path.startsWith("/storage") && !path.startsWith(Storage.FLASH_DIR) && !(new File(Storage.EXTENAL_SD).canWrite())) {
+                     path = path.replaceFirst("/storage/" , "/mnt/media_rw/");
+-                if (finalName.startsWith("/storage") && !finalName.startsWith(Storage.FLASH_DIR))
+-                    finalName = finalName.replaceFirst("/storage/" , "/mnt/media_rw/");
++                    if (finalName.startsWith("/storage") && !finalName.startsWith(Storage.FLASH_DIR))
++                        finalName = finalName.replaceFirst("/storage/" , "/mnt/media_rw/");
++                }
+                 File finalFile = new File(finalName);
+                 if (new File(path).renameTo(finalFile)) {
+                     path = finalName;
+                 }
++                values.put(Video.Media.DATA, finalName);
+                 resolver.update(uri, values, null, null);
+             } catch (Exception e) {
+                 // We failed to insert into the database. This can happen if
+diff --git a/src/com/android/camera/Storage.java b/src/com/android/camera/Storage.java
+index 7344eec3b..6023f2b11 100755
+--- a/src/com/android/camera/Storage.java
++++ b/src/com/android/camera/Storage.java
+@@ -311,11 +311,14 @@ public class Storage {
+      * @return The size of the file. -1 if failed.
+      */
+     public static long writeFile(String path, byte[] jpeg, ExifInterface exif) throws IOException {
+-        if (path.startsWith("/storage") && !path.startsWith(FLASH_DIR))
+-            path = path.replaceFirst("/storage/" , "/mnt/media_rw/");
+         if (!createDirectoryIfNeeded(path)) {
+             Log.e(TAG, "Failed to create parent directory for file: " + path);
+-            return -1;
++            if (path.startsWith("/storage") && !path.startsWith(FLASH_DIR))
++                path = path.replaceFirst("/storage/" , "/mnt/media_rw/");
++            if (!createDirectoryIfNeeded(path)) {
++                Log.e(TAG, "Failed to create parent directory for file: " + path);
++                return -1;
++            }
+         }
+         if (exif != null) {
+                 exif.writeExif(jpeg, path);
+@@ -512,13 +515,19 @@ public class Storage {
+             return UNAVAILABLE;
+         }
+         String directory = DIRECTORY;
+-        if (directory.startsWith("/storage") && !directory.startsWith(FLASH_DIR))
+-            directory = directory.replaceFirst("/storage/" , "/mnt/media_rw/");
+         File dir = new File(directory);
+         dir.mkdirs();
++        Log.d(TAG, directory + " can write:" + (new File(directory).canWrite()));
+         if (!dir.isDirectory() || !dir.canWrite()) {
+             Log.e(TAG, "DIRECTORY:" + dir.getPath() + " UNAVAILABLE");
+-            return UNAVAILABLE;
++            if (directory.startsWith("/storage") && !directory.startsWith(FLASH_DIR))
++                directory = directory.replaceFirst("/storage/" , "/mnt/media_rw/");
++            dir = new File(directory);
++            dir.mkdirs();
++            if (!dir.isDirectory() || !dir.canWrite()) {
++                Log.e(TAG, "DIRECTORY:" + dir.getPath() + " UNAVAILABLE");
++                return UNAVAILABLE;
++            }
+         }
+ 
+         try {
+@@ -534,13 +543,18 @@ public class Storage {
+         String directory = DEFAULT_DIRECTORY;
+         if (DEFAULT_DIRECTORY.equals(DIRECTORY))
+             directory = EXTERNAL_DIRECTORY;
+-        if (directory.startsWith("/storage") && !directory.startsWith(FLASH_DIR))
+-            directory = directory.replaceFirst("/storage/" , "/mnt/media_rw/");
+         File dir = new File(directory);
+         dir.mkdirs();
+         if (!dir.isDirectory() || !dir.canWrite()) {
+             Log.e(TAG, "getOtherAvailableSpace DIRECTORY:" + dir.getPath() + " UNAVAILABLE");
+-            return UNAVAILABLE;
++            if (directory.startsWith("/storage") && !directory.startsWith(FLASH_DIR))
++                directory = directory.replaceFirst("/storage/" , "/mnt/media_rw/");
++            dir = new File(directory);
++            dir.mkdirs();
++            if (!dir.isDirectory() || !dir.canWrite()) {
++                Log.e(TAG, "getOtherAvailableSpace DIRECTORY:" + dir.getPath() + " UNAVAILABLE");
++                return UNAVAILABLE;
++            }
+         }
+ 
+         try {
+diff --git a/src/com/android/camera/VideoModule.java b/src/com/android/camera/VideoModule.java
+index f4922fb37..0b4d5723a 100755
+--- a/src/com/android/camera/VideoModule.java
++++ b/src/com/android/camera/VideoModule.java
+@@ -1378,7 +1378,7 @@ public class VideoModule extends CameraModule
+             mMediaRecorder.setOutputFile(mVideoFileDescriptor.getFileDescriptor());
+         } else {
+             generateVideoFilename(mProfile.fileFormat);
+-            if (mVideoFilename.startsWith("/storage") && !mVideoFilename.startsWith(Storage.FLASH_DIR))
++            if (mVideoFilename.startsWith("/storage") && !mVideoFilename.startsWith(Storage.FLASH_DIR) && !(new File(Storage.EXTENAL_SD).canWrite()))
+                 mMediaRecorder.setOutputFile(mVideoFilename.replaceFirst("/storage/" , "/mnt/media_rw/"));
+             else
+                 mMediaRecorder.setOutputFile(mVideoFilename);
+@@ -1459,7 +1459,7 @@ public class VideoModule extends CameraModule
+         mCurrentVideoValues.put(Video.Media.DATE_TAKEN, dateTaken);
+         mCurrentVideoValues.put(MediaColumns.DATE_MODIFIED, dateTaken / 1000);
+         mCurrentVideoValues.put(Video.Media.MIME_TYPE, mime);
+-        mCurrentVideoValues.put(Video.Media.DATA, path);
++        mCurrentVideoValues.put(Video.Media.DATA, tmpPath);
+         mCurrentVideoValues.put(Video.Media.WIDTH, mProfile.videoFrameWidth);
+         mCurrentVideoValues.put(Video.Media.HEIGHT, mProfile.videoFrameHeight);
+         mCurrentVideoValues.put(Video.Media.RESOLUTION,
+diff --git a/src/com/android/camera/data/FilmstripItemBase.java b/src/com/android/camera/data/FilmstripItemBase.java
+index 42645c72b..fd6106eb5 100755
+--- a/src/com/android/camera/data/FilmstripItemBase.java
++++ b/src/com/android/camera/data/FilmstripItemBase.java
+@@ -71,7 +71,7 @@ public abstract class FilmstripItemBase<T extends FilmstripItemData> implements
+     @Override
+     public boolean delete() {
+         String path = mData.getFilePath();
+-        if (path.startsWith("/storage") && !path.startsWith(Storage.FLASH_DIR))
++        if (path.startsWith("/storage") && !path.startsWith(Storage.FLASH_DIR) && !(new File(Storage.EXTENAL_SD).canWrite()))
+             path = path.replaceFirst("/storage/" , "/mnt/media_rw/");
+         File fileToDelete = new File(path);
+         boolean deletionSucceeded = fileToDelete.delete();
+-- 
+2.35.1
+

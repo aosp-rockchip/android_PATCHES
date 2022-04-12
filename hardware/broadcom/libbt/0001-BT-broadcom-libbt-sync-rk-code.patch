@@ -1,0 +1,407 @@
+From 17fa08c696294c22c1b29855c82297b4a9923d2f Mon Sep 17 00:00:00 2001
+From: Longjian Lin <llj@rock-chips.com>
+Date: Wed, 9 Sep 2020 11:32:05 +0800
+Subject: [PATCH] BT:broadcom libbt sync rk code
+
+Change-Id: Idb969187a8d8aaa4d6b4994bce8846d739b66b5d
+---
+ include/bt_vendor_brcm.h |  10 +-
+ include/vnd_rksdk.txt    |  24 +++++
+ src/hardware.c           | 198 +++++++++++++++++++++++++++++++++------
+ src/userial_vendor.c     |   6 ++
+ vnd_buildcfg.mk          |  11 ++-
+ 5 files changed, 212 insertions(+), 37 deletions(-)
+ create mode 100644 include/vnd_rksdk.txt
+
+diff --git a/include/bt_vendor_brcm.h b/include/bt_vendor_brcm.h
+index 545e76e..4899a41 100644
+--- a/include/bt_vendor_brcm.h
++++ b/include/bt_vendor_brcm.h
+@@ -51,7 +51,7 @@
+ 
+ /* Run-time configuration file */
+ #ifndef VENDOR_LIB_CONF_FILE
+-#define VENDOR_LIB_CONF_FILE "/etc/bluetooth/bt_vendor.conf"
++#define VENDOR_LIB_CONF_FILE "/vendor/etc/bluetooth/bt_vendor.conf"
+ #endif
+ 
+ /* Device port name where Bluetooth controller attached */
+@@ -82,6 +82,14 @@
+ #define FW_PATCH_SETTLEMENT_DELAY_MS          0
+ #endif
+ 
++#ifndef USERIAL_VENDOR_SET_BAUD_DELAY_US
++#define USERIAL_VENDOR_SET_BAUD_DELAY_US	0
++#endif
++
++#ifndef FW_AUTO_DETECTION
++#define FW_AUTO_DETECTION	FALSE
++#endif
++
+ /* The Bluetooth Device Aaddress source switch:
+  *
+  * -FALSE- (default value)
+diff --git a/include/vnd_rksdk.txt b/include/vnd_rksdk.txt
+new file mode 100644
+index 0000000..811cf25
+--- /dev/null
++++ b/include/vnd_rksdk.txt
+@@ -0,0 +1,24 @@
++BLUETOOTH_UART_DEVICE_PORT = "/dev/ttyS0"
++FW_PATCHFILE_LOCATION = "/vendor/etc/firmware/"
++VENDOR_LIB_CONF_FILE = "/vendor/etc/bluetooth/bt_vendor.conf"
++UART_TARGET_BAUD_RATE = 1500000
++FW_PATCH_SETTLEMENT_DELAY_MS = 200
++USERIAL_VENDOR_SET_BAUD_DELAY_US = 200000
++LPM_IDLE_TIMEOUT_MULTIPLE = 5
++BTVND_DBG = FALSE
++BTHW_DBG = TRUE
++VNDUSERIAL_DBG = FALSE
++UPIO_DBG = FALSE
++USE_CONTROLLER_BDADDR = FALSE
++FW_AUTO_DETECTION = TRUE
++BT_WAKE_VIA_PROC = TRUE
++SCO_PCM_ROUTING = 0
++SCO_PCM_IF_CLOCK_RATE = 2
++SCO_PCM_IF_FRAME_TYPE = 0
++SCO_PCM_IF_SYNC_MODE = 0
++SCO_PCM_IF_CLOCK_MODE = 0
++PCM_DATA_FMT_SHIFT_MODE = 0
++PCM_DATA_FMT_FILL_BITS = 0
++PCM_DATA_FMT_FILL_METHOD = 0
++PCM_DATA_FMT_FILL_NUM = 0
++PCM_DATA_FMT_JUSTIFY_MODE = 0
+diff --git a/src/hardware.c b/src/hardware.c
+index 701cb86..b799692 100644
+--- a/src/hardware.c
++++ b/src/hardware.c
+@@ -160,6 +160,13 @@ typedef struct {
+     const uint32_t delay_time;
+ } fw_settlement_entry_t;
+ 
++#if(FW_AUTO_DETECTION == TRUE)
++/* AMPAK FW auto detection table */
++typedef struct {
++    char *chip_id;
++    char *updated_chip_id;
++} fw_auto_detection_entry_t;
++#endif
+ 
+ /******************************************************************************
+ **  Externs
+@@ -234,7 +241,7 @@ static uint8_t bt_sco_i2spcm_param[SCO_I2SPCM_PARAM_SIZE] =
+ static const fw_settlement_entry_t fw_settlement_table[] = {
+     {"BCM43241", 200},
+     {"BCM43341", 100},
+-    {(const char *) NULL, 100}  // Giving the generic fw settlement delay setting.
++    {(const char *) NULL, 200}  // Giving the generic fw settlement delay setting.
+ };
+ 
+ 
+@@ -257,6 +264,28 @@ static uint8_t sco_bus_interface = SCO_INTERFACE_PCM;
+ static uint8_t sco_bus_clock_rate = INVALID_SCO_CLOCK_RATE;
+ static uint8_t sco_bus_wbs_clock_rate = INVALID_SCO_CLOCK_RATE;
+ 
++#if(FW_AUTO_DETECTION == TRUE)
++#define FW_TABLE_VERSION "v1.1 20161117"
++static const fw_auto_detection_entry_t fw_auto_detection_table[] = {
++    {"4343A0","BCM43438A0"},    //AP6212
++    {"BCM43430A1","BCM43438A1"}, //AP6212A
++    {"BCM20702A","BCM20710A1"}, //AP6210B
++    {"BCM4335C0","BCM4339A0"}, //AP6335
++    {"BCM4330B1","BCM40183B2"}, //AP6330
++    {"BCM4324B3","BCM43241B4"}, //AP62X2
++    {"BCM4350C0","BCM4354A1"}, //AP6354
++    {"BCM4354A2","BCM4356A2"}, //AP6356
++    {"BCM4345C0","BCM4345C0"}, //AP6255
++    {"BCM4345C5","BCM4345C5"}, //AP6256
++//    {"BCM43341B0","BCM43341B0"}, //AP6234
++//    {"BCM2076B1","BCM2076B1"}, //AP6476
++    {"BCM43430B0","BCM4343B0"}, //AP6236
++    {"BCM4359C0","BCM4359C0"},	//AP6359
++    {"BCM4349B1","BCM4359B1"},	//AP6359
++    {NULL, NULL}
++};
++#endif
++
+ /******************************************************************************
+ **  Static functions
+ ******************************************************************************/
+@@ -365,6 +394,8 @@ uint8_t line_speed_to_userial_baud(uint32_t line_speed)
+         baud = USERIAL_BAUD_3M;
+     else if (line_speed == 2000000)
+         baud = USERIAL_BAUD_2M;
++    else if (line_speed == 1500000)
++        baud = USERIAL_BAUD_1_5M;
+     else if (line_speed == 1000000)
+         baud = USERIAL_BAUD_1M;
+     else if (line_speed == 921600)
+@@ -438,6 +469,9 @@ static uint8_t hw_config_findpatch(char *p_chip_id_str)
+     struct dirent *dp;
+     int filenamelen;
+     uint8_t retval = FALSE;
++#if(FW_AUTO_DETECTION == TRUE)
++    fw_auto_detection_entry_t *p_entry;
++#endif
+ 
+     BTHWDBG("Target name = [%s]", p_chip_id_str);
+ 
+@@ -459,6 +493,21 @@ static uint8_t hw_config_findpatch(char *p_chip_id_str)
+         return TRUE;
+     }
+ 
++#if(FW_AUTO_DETECTION == TRUE)
++    BTHWDBG("###AMPAK FW Auto detection patch version = [%s]###", FW_TABLE_VERSION);
++    p_entry = (fw_auto_detection_entry_t *)fw_auto_detection_table;
++    while (p_entry->chip_id != NULL)
++    {
++        if (strstr(p_chip_id_str, p_entry->chip_id)!=NULL)
++        {
++            strcpy(p_chip_id_str,p_entry->updated_chip_id);
++            break;
++        }
++        p_entry++;
++    }
++    BTHWDBG("Updated Target name = [%s]", p_chip_id_str);
++#endif
++
+     if ((dirp = opendir(fw_patchfile_path)) != NULL)
+     {
+         /* Fetch next filename in patchfile directory */
+@@ -607,6 +656,97 @@ static uint8_t hw_config_read_bdaddr(HC_BT_HDR *p_buf)
+ }
+ #endif // (USE_CONTROLLER_BDADDR == TRUE)
+ 
++typedef void (*tTIMER_HANDLE_CBACK)(union sigval sigval_value);
++
++static timer_t OsAllocateTimer(tTIMER_HANDLE_CBACK timer_callback)
++{
++    struct sigevent sigev;
++    timer_t timerid;
++
++    memset(&sigev, 0, sizeof(struct sigevent));
++    // Create the POSIX timer to generate signo
++    sigev.sigev_notify = SIGEV_THREAD;
++    //sigev.sigev_notify_thread_id = syscall(__NR_gettid);
++    sigev.sigev_notify_function = timer_callback;
++    sigev.sigev_value.sival_ptr = &timerid;
++
++    //Create the Timer using timer_create signal
++
++    if (timer_create(CLOCK_REALTIME, &sigev, &timerid) == 0)
++    {
++        return timerid;
++    }
++    else
++    {
++        ALOGE("timer_create error!");
++        return (timer_t)-1;
++    }
++}
++
++int OsFreeTimer(timer_t timerid)
++{
++    int ret = 0;
++    ret = timer_delete(timerid);
++    if(ret != 0)
++        ALOGE("timer_delete fail with errno(%d)", errno);
++
++    return ret;
++}
++
++
++static int OsStartTimer(timer_t timerid, int msec, int mode)
++{
++    struct itimerspec itval;
++
++    itval.it_value.tv_sec = msec / 1000;
++    itval.it_value.tv_nsec = (long)(msec % 1000) * (1000000L);
++
++    if (mode == 1)
++
++    {
++        itval.it_interval.tv_sec    = itval.it_value.tv_sec;
++        itval.it_interval.tv_nsec = itval.it_value.tv_nsec;
++    }
++    else
++    {
++        itval.it_interval.tv_sec = 0;
++        itval.it_interval.tv_nsec = 0;
++    }
++
++    //Set the Timer when to expire through timer_settime
++
++    if (timer_settime(timerid, 0, &itval, NULL) != 0)
++    {
++        ALOGE("time_settime error!");
++        return -1;
++    }
++
++    return 0;
++
++}
++
++static int OsStopTimer(timer_t timerid)
++{
++    return OsStartTimer(timerid, 0, 0);
++}
++
++
++static timer_t localtimer = 0;
++
++static void local_timer_handler(union sigval sigev_value)
++{
++    bt_vendor_cbacks->fwcfg_cb(BT_VND_OP_RESULT_SUCCESS);
++    OsFreeTimer(localtimer);
++}
++static void start_fwcfg_cbtimer()
++{
++    if(localtimer == 0)
++        localtimer = OsAllocateTimer(local_timer_handler);
++    OsStartTimer(localtimer, 40, 0);
++}
++
++void hw_sco_config(void);
++
+ /*******************************************************************************
+ **
+ ** Function         hw_config_cback
+@@ -739,39 +879,29 @@ void hw_config_cback(void *p_mem)
+                 hw_cfg_cb.state = HW_CFG_DL_FW_PATCH;
+                 /* fall through intentionally */
+             case HW_CFG_DL_FW_PATCH:
+-                if (hw_cfg_cb.fw_fd >= 0)
++                p_buf->len = read(hw_cfg_cb.fw_fd, p, HCI_CMD_PREAMBLE_SIZE);
++                if (p_buf->len > 0)
+                 {
+-                    int ret = read(hw_cfg_cb.fw_fd, p, HCI_CMD_PREAMBLE_SIZE);
+-                    if (ret > 0)
++                    if ((p_buf->len < HCI_CMD_PREAMBLE_SIZE) || \
++                        (opcode == HCI_VSC_LAUNCH_RAM))
+                     {
+-                        if ((ret < HCI_CMD_PREAMBLE_SIZE) || \
+-                            (opcode == HCI_VSC_LAUNCH_RAM))
+-                        {
+-                            ALOGW("firmware patch file might be altered!");
+-                        }
+-                        else
+-                        {
+-                            p_buf->len = ret;
+-                            ret = read(hw_cfg_cb.fw_fd, \
+-                                       p+HCI_CMD_PREAMBLE_SIZE,\
+-                                       *(p+HCD_REC_PAYLOAD_LEN_BYTE));
+-                            if (ret >= 0)
+-                            {
+-                                p_buf->len += ret;
+-                                STREAM_TO_UINT16(opcode,p);
+-                                is_proceeding = bt_vendor_cbacks->xmit_cb(opcode, \
+-                                                        p_buf, hw_config_cback);
+-                                break;
+-                            }
+-                        }
++                        ALOGW("firmware patch file might be altered!");
+                     }
+-                    if (ret < 0)
++                    else
+                     {
+-                        ALOGE("firmware patch file read failed (%s)", strerror(errno));
++                        p_buf->len += read(hw_cfg_cb.fw_fd, \
++                                           p+HCI_CMD_PREAMBLE_SIZE,\
++                                           *(p+HCD_REC_PAYLOAD_LEN_BYTE));
++                        STREAM_TO_UINT16(opcode,p);
++                        is_proceeding = bt_vendor_cbacks->xmit_cb(opcode, \
++                                                p_buf, hw_config_cback);
++                        break;
+                     }
+-                    close(hw_cfg_cb.fw_fd);
+-                    hw_cfg_cb.fw_fd = -1;
+                 }
++
++                close(hw_cfg_cb.fw_fd);
++                hw_cfg_cb.fw_fd = -1;
++
+                 /* Normally the firmware patch configuration file
+                  * sets the new starting baud rate at 115200.
+                  * So, we need update host's baud rate accordingly.
+@@ -850,7 +980,10 @@ void hw_config_cback(void *p_mem)
+             case HW_CFG_SET_BD_ADDR:
+                 ALOGI("vendor lib fwcfg completed");
+                 bt_vendor_cbacks->dealloc(p_buf);
+-                bt_vendor_cbacks->fwcfg_cb(BT_VND_OP_RESULT_SUCCESS);
++                //bt_vendor_cbacks->fwcfg_cb(BT_VND_OP_RESULT_SUCCESS);
++                hw_sco_config();
++                start_fwcfg_cbtimer();
++
+ 
+                 hw_cfg_cb.state = 0;
+ 
+@@ -884,7 +1017,9 @@ void hw_config_cback(void *p_mem)
+ 
+                 ALOGI("vendor lib fwcfg completed");
+                 bt_vendor_cbacks->dealloc(p_buf);
+-                bt_vendor_cbacks->fwcfg_cb(BT_VND_OP_RESULT_SUCCESS);
++                //bt_vendor_cbacks->fwcfg_cb(BT_VND_OP_RESULT_SUCCESS);
++                hw_sco_config();
++                start_fwcfg_cbtimer();
+ 
+                 hw_cfg_cb.state = 0;
+ 
+@@ -1312,7 +1447,8 @@ void hw_sco_config(void)
+ 
+     if (SCO_INTERFACE_I2S == sco_bus_interface) {
+         hw_sco_i2spcm_config(SCO_CODEC_CVSD);
+-    }
++    }else
++        hw_sco_i2spcm_config(SCO_CODEC_NONE);
+ 
+     if (bt_vendor_cbacks)
+     {
+diff --git a/src/userial_vendor.c b/src/userial_vendor.c
+index c727061..5c221a8 100644
+--- a/src/userial_vendor.c
++++ b/src/userial_vendor.c
+@@ -95,6 +95,8 @@ uint8_t userial_to_tcio_baud(uint8_t cfg_baud, uint32_t *baud)
+         *baud = B3000000;
+     else if (cfg_baud == USERIAL_BAUD_2M)
+         *baud = B2000000;
++    else if (cfg_baud == USERIAL_BAUD_1_5M)
++        *baud = B1500000;
+     else if (cfg_baud == USERIAL_BAUD_1M)
+         *baud = B1000000;
+     else if (cfg_baud == USERIAL_BAUD_921600)
+@@ -317,6 +319,10 @@ void userial_vendor_set_baud(uint8_t userial_baud)
+ {
+     uint32_t tcio_baud;
+ 
++    if(USERIAL_VENDOR_SET_BAUD_DELAY_US > 0) {
++	usleep(USERIAL_VENDOR_SET_BAUD_DELAY_US);
++    }
++
+     userial_to_tcio_baud(userial_baud, &tcio_baud);
+ 
+     cfsetospeed(&vnd_userial.termios, tcio_baud);
+diff --git a/vnd_buildcfg.mk b/vnd_buildcfg.mk
+index 810b2ad..264bf7c 100644
+--- a/vnd_buildcfg.mk
++++ b/vnd_buildcfg.mk
+@@ -1,11 +1,12 @@
+ generated_sources := $(local-generated-sources-dir)
+ 
+ # Allow external configuration file
+-ifneq (,$(BOARD_CUSTOM_BT_CONFIG))
+-SRC := $(BOARD_CUSTOM_BT_CONFIG)
+-else
+-SRC := $(call my-dir)/include/$(addprefix vnd_, $(addsuffix .txt,$(basename $(TARGET_DEVICE))))
+-endif
++#ifneq (,$(BOARD_CUSTOM_BT_CONFIG))
++#SRC := $(BOARD_CUSTOM_BT_CONFIG)
++#else
++#SRC := $(call my-dir)/include/$(addprefix vnd_, $(addsuffix .txt,$(basename $(TARGET_DEVICE))))
++#endif
++SRC := $(call my-dir)/include/vnd_rksdk.txt
+ ifeq (,$(wildcard $(SRC)))
+ # configuration file does not exist. Use default one
+ SRC := $(call my-dir)/include/vnd_generic.txt
+-- 
+2.35.1
+

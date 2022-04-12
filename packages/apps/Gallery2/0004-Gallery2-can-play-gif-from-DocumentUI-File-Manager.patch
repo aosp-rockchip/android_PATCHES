@@ -1,0 +1,105 @@
+From 4a0d1ea16c390d519953c3dd7f1c048bd90232dc Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Tue, 15 Dec 2020 17:00:06 +0800
+Subject: [PATCH 4/5] Gallery2: can play gif from DocumentUI File Manager
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: I0798e6452788d862ce13e86eaca01857610fc55a
+---
+ src/com/android/gallery3d/ui/TileImageView.java | 14 +++++++++++---
+ src/com/android/gif/GifTextrue.java             | 14 ++++++++++++++
+ 2 files changed, 25 insertions(+), 3 deletions(-)
+
+diff --git a/src/com/android/gallery3d/ui/TileImageView.java b/src/com/android/gallery3d/ui/TileImageView.java
+index 3ce02a401..362f63239 100644
+--- a/src/com/android/gallery3d/ui/TileImageView.java
++++ b/src/com/android/gallery3d/ui/TileImageView.java
+@@ -16,6 +16,7 @@
+ 
+ package com.android.gallery3d.ui;
+ 
++import android.content.ContentResolver;
+ import android.content.ContentUris;
+ import android.content.Context;
+ import android.database.Cursor;
+@@ -283,12 +284,18 @@ public class TileImageView extends GLView {
+                     if (c != null) {
+                         c.moveToFirst();
+                         filePath = c.getString(0);
+-                        if(filePath == null){
++                        if (null != filePath) {
++                            GifTextrueFactory.startOnly(new GifTextrue(this, null,
++                                    filePath));
++                        } else if (null != mUri
++                                && ContentResolver.SCHEME_CONTENT.equals(mUri.getScheme())) {
++                            Log.w(TAG, "gif uri=" + mUri);
++                            GifTextrueFactory.startOnly(new GifTextrue(this, null,
++                                    mContext.getApplicationContext(), mUri));
++                        } else {
+                             isGifPic = false;
+                             return;
+                         }
+-                        GifTextrueFactory.startOnly(new GifTextrue(this, null,
+-                                filePath));
+                         c.close();
+                         c = null;
+                     }else{
+@@ -707,6 +714,7 @@ public class TileImageView extends GLView {
+                 }
+             }else{
+                 if(filePath == null){
++                    Log.w(TAG, "filePath is Null during render, set isGifPic false");
+                     isGifPic = false;
+                     return;
+                 }
+diff --git a/src/com/android/gif/GifTextrue.java b/src/com/android/gif/GifTextrue.java
+index a2b9a4f32..614ec9c42 100644
+--- a/src/com/android/gif/GifTextrue.java
++++ b/src/com/android/gif/GifTextrue.java
+@@ -16,8 +16,10 @@ import java.io.FileNotFoundException;
+ import java.io.IOException;
+ import java.io.InputStream;
+ 
++import android.content.Context;
+ import android.graphics.Bitmap;
+ import android.graphics.Canvas;
++import android.net.Uri;
+ import android.os.Handler;
+ import android.os.HandlerThread;
+ import android.os.Looper;
+@@ -61,6 +63,9 @@ public class GifTextrue{
+     public InputStream getInputStream() {
+ //      Log.v("GifTextrue", "=====================mFilePath:"+mFilePath);
+         try {
++            if (null != mUri && null != mContext) {
++                return mContext.getContentResolver().openInputStream(mUri);
++            }
+             return new FileInputStream(new File(mFilePath));
+         } catch (FileNotFoundException e) {
+             e.printStackTrace();
+@@ -145,6 +150,8 @@ public class GifTextrue{
+     private static final String TAG = "GifTextrue";
+     private GifHandler mHandler;
+     private String mFilePath;
++    private Uri mUri;
++    private Context mContext;
+ 
+     /** the animation will start when decoder is ready */
+ 
+@@ -179,6 +186,13 @@ public class GifTextrue{
+ 
+     }
+ 
++    public GifTextrue(TileImageView t,Bitmap bitmap,Context context,Uri uri) {
++        mTileImageView = t;
++        mBitmap = bitmap;
++        mContext = context;
++        mUri = uri;
++    }
++
+     public static String THREAD_NAME = "GifThead";
+ 
+     public void startAnimate() {
+-- 
+2.35.1
+

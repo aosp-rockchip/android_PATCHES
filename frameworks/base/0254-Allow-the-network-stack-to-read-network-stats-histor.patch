@@ -1,0 +1,45 @@
+From 0b76eca0ea4d9d3c960ede4f8a4ab3f414f08810 Mon Sep 17 00:00:00 2001
+From: Chalard Jean <jchalard@google.com>
+Date: Wed, 7 Oct 2020 18:29:20 +0900
+Subject: [PATCH 254/297] Allow the network stack to read network stats history
+
+Identical to ag/12843161
+
+Bug: 168984229
+Test: testNetworkStatsProvider
+Change-Id: I7ad72c3b2b95f26ceec1371e7e0fdb92fa88920c
+Merged-In: Ibb6342b0f263c874bb1f7ab4031a639778bad37e
+---
+ .../java/com/android/server/net/NetworkStatsAccess.java   | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/services/core/java/com/android/server/net/NetworkStatsAccess.java b/services/core/java/com/android/server/net/NetworkStatsAccess.java
+index 7c1c1c7ce40..72559b4825e 100644
+--- a/services/core/java/com/android/server/net/NetworkStatsAccess.java
++++ b/services/core/java/com/android/server/net/NetworkStatsAccess.java
+@@ -28,6 +28,7 @@ import android.app.admin.DeviceAdminInfo;
+ import android.app.admin.DevicePolicyManagerInternal;
+ import android.content.Context;
+ import android.content.pm.PackageManager;
++import android.os.Process;
+ import android.os.UserHandle;
+ import android.telephony.TelephonyManager;
+ 
+@@ -113,10 +114,11 @@ public final class NetworkStatsAccess {
+                         TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
+         boolean isDeviceOwner = dpmi != null && dpmi.isActiveAdminWithPolicy(callingUid,
+                 DeviceAdminInfo.USES_POLICY_DEVICE_OWNER);
++        final int appId = UserHandle.getAppId(callingUid);
+         if (hasCarrierPrivileges || isDeviceOwner
+-                || UserHandle.getAppId(callingUid) == android.os.Process.SYSTEM_UID) {
+-            // Carrier-privileged apps and device owners, and the system can access data usage for
+-            // all apps on the device.
++                || appId == Process.SYSTEM_UID || appId == Process.NETWORK_STACK_UID) {
++            // Carrier-privileged apps and device owners, and the system (including the
++            // network stack) can access data usage for all apps on the device.
+             return NetworkStatsAccess.Level.DEVICE;
+         }
+ 
+-- 
+2.35.1
+

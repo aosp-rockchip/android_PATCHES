@@ -1,0 +1,215 @@
+From 049b9c3f1b5a930b5c19f33c328deabdc822af6b Mon Sep 17 00:00:00 2001
+From: Dayao Ji <jdy@rock-chips.com>
+Date: Tue, 1 Sep 2020 14:40:09 +0800
+Subject: [PATCH 03/11] Add rk mount support
+
+Signed-off-by: Dayao Ji <jdy@rock-chips.com>
+Change-Id: Ie13b049ea008230543c9bdb14e41fb6e1fdcce9f
+---
+ recovery_utils/Android.bp  |   1 +
+ recovery_utils/logging.cpp |   2 +-
+ recovery_utils/roots.cpp   | 127 ++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 127 insertions(+), 3 deletions(-)
+
+diff --git a/recovery_utils/Android.bp b/recovery_utils/Android.bp
+index bf79a2e8..cce7c01b 100644
+--- a/recovery_utils/Android.bp
++++ b/recovery_utils/Android.bp
+@@ -31,6 +31,7 @@ cc_defaults {
+ 
+     static_libs: [
+         "libotautil",
++        "librkutility",
+ 
+         // External dependencies.
+         "libfstab",
+diff --git a/recovery_utils/logging.cpp b/recovery_utils/logging.cpp
+index 52f12a8d..e85c1055 100644
+--- a/recovery_utils/logging.cpp
++++ b/recovery_utils/logging.cpp
+@@ -270,7 +270,7 @@ std::vector<saved_log_file> ReadLogFilesToMemory() {
+ 
+   std::vector<saved_log_file> log_files;
+   while ((de = readdir(d.get())) != nullptr) {
+-    if (strncmp(de->d_name, "last_", 5) == 0 || strcmp(de->d_name, "log") == 0) {
++    if (strncmp(de->d_name, "last_", 5) == 0 || strcmp(de->d_name, "log") == 0 || strncmp(de->d_name, "Recovery_", 9) == 0) {
+       std::string path = android::base::StringPrintf("%s/%s", CACHE_LOG_DIR, de->d_name);
+ 
+       struct stat sb;
+diff --git a/recovery_utils/roots.cpp b/recovery_utils/roots.cpp
+index 99f3c5dc..ea6c567b 100644
+--- a/recovery_utils/roots.cpp
++++ b/recovery_utils/roots.cpp
+@@ -20,6 +20,7 @@
+ #include <stdint.h>
+ #include <stdlib.h>
+ #include <string.h>
++#include <sys/mount.h>
+ #include <sys/stat.h>
+ #include <sys/types.h>
+ #include <sys/wait.h>
+@@ -39,6 +40,8 @@
+ #include <fs_mgr/roots.h>
+ 
+ #include "otautil/sysutil.h"
++#include "rkutility/rktools.h"
++#include "rkutility/sdboot.h"
+ 
+ using android::fs_mgr::Fstab;
+ using android::fs_mgr::FstabEntry;
+@@ -81,8 +84,105 @@ int ensure_path_mounted_at(const std::string& path, const std::string& mount_poi
+ }
+ 
+ int ensure_path_mounted(const std::string& path) {
++  Volume* v = nullptr;
++  const char* mount_point = nullptr;
++  printf("ensure_path_mounted path=%s \n", path.c_str());
+   // Mount at the default mount point.
+-  return android::fs_mgr::EnsurePathMounted(&fstab, path) ? 0 : -1;
++  if(strncmp(path.c_str(),(char*)EX_SDCARD_ROOT, strlen((char*)EX_SDCARD_ROOT)) != 0)
++  {
++    return android::fs_mgr::EnsurePathMounted(&fstab, path) ? 0 : -1;
++  }
++  else{
++    printf("ensure_path_mounted sdcard, path=%s \n", path.c_str());
++	v = volume_for_mount_point(path);
++	if (!v) {
++      printf("ensure_path_mounted No fstab entry for path=%s \n", path.c_str());
++      return -1;
++    }
++
++    printf("ensure_path_mounted fs_mgr mount failed, path=%s, volume_for_mount_point can get Volumne  \n", path.c_str());
++    if (strcmp((v->fs_type).c_str(), (const char*)"ramdisk") == 0) {
++      // The ramdisk is always mounted.
++      return 0;
++    }
++
++    if (!rktools_scan_mounted_volumes()) {
++      LOG(ERROR) << "Failed to scan mounted volumes";
++      return -1;
++    }
++
++    if (!mount_point) {
++      mount_point = (v->mount_point).c_str();
++    }
++
++    const MountedVolume* mv = rktools_find_mounted_volume_by_mount_point(mount_point);
++    if (mv != nullptr) {
++      // Volume is already mounted.
++      return 0;
++    }
++
++    mkdir(mount_point, 0755);  // in case it doesn't already exist
++
++    if(strcmp((v->fs_type).c_str(), (char*)"vfat") == 0){
++      const char *blk_device = nullptr;
++      blk_device = (v->blk_device).c_str();
++      if(strcmp((char*)"/mnt/external_sd", (v->mount_point).c_str()) == 0){
++        blk_device = getenv(SD_POINT_NAME);
++        if(blk_device == NULL){
++          setFlashPoint();
++          blk_device = getenv(SD_POINT_NAME);
++        }
++      }
++      if(NULL == blk_device){
++        blk_device = (v->blk_device).c_str();
++      }
++      int result = mount((v->blk_device).c_str(), (v->mount_point).c_str(), (v->fs_type).c_str(),
++                         MS_NOATIME | MS_NODEV | MS_NODIRATIME, (char*)"shortname=mixed,utf8");
++      if (result == 0) return 0;
++      printf("v->blk_device is %s\n",(v->blk_device).c_str());
++      printf("v->blk_device is %s to vfat.\n",(v->blk_device).c_str());
++      LOG(ERROR) << "trying mount fs"<< blk_device << " to vfat.";
++      if (blk_device !=nullptr){
++          result = mount(blk_device, (v->mount_point).c_str(), (v->fs_type).c_str(),
++                         MS_NOATIME | MS_NODEV | MS_NODIRATIME, (char*)"shortname=mixed,utf8");
++          if (result == 0) return 0;
++      }
++      printf("blk_device is %s\n",blk_device);
++      LOG(ERROR) << "trying mount "<< v->blk_device << " to ntfs.";
++      printf("v->blk_device is %s to ntfs.\n",(v->blk_device).c_str());
++      result = mount((v->blk_device).c_str(), (v->mount_point).c_str(), (char*)"ntfs",
++                     MS_NOATIME | MS_NODEV | MS_NODIRATIME, (char*)"");
++      if (result == 0) return 0;
++      if (blk_device !=nullptr){
++          result = mount(blk_device, (v->mount_point).c_str(), (char*)"ntfs",
++                         MS_NOATIME | MS_NODEV | MS_NODIRATIME, (char*)"");
++          if (result == 0) return 0;
++      }
++
++      const char *sec_dev = (v->fs_options).c_str();
++      if(strcmp((char*)"/mnt/external_sd", (v->mount_point).c_str()) == 0){
++          sec_dev = getenv(SD_POINT_NAME_2);
++      }
++      if(sec_dev != NULL) {
++        printf("v->blk_device is %s to fs_type=%s.\n",sec_dev, (v->fs_type).c_str());
++        result = mount(sec_dev, (v->mount_point).c_str(), (v->fs_type).c_str(),
++                       MS_NOATIME | MS_NODEV | MS_NODIRATIME, (char*)"shortname=mixed,utf8");
++        if (result == 0) return 0;
++
++        LOG(ERROR) << "tring mount " << sec_dev << " ntfs.";
++        printf("v->blk_device is %s to ntfs.\n",sec_dev);
++        result = mount(sec_dev, (v->mount_point).c_str(), (char*)"ntfs",
++                       MS_NOATIME | MS_NODEV | MS_NODIRATIME, "");
++        if (result == 0) return 0;
++      }
++      LOG(ERROR) << "failed to mount " << v->mount_point << " error: " << strerror(errno);
++      printf("failed to mount mount_point=%s, error:%s \n",(v->mount_point).c_str(), strerror(errno));
++      return -1;
++    }
++  }
++
++  printf("Reach end of ensure_path_mounted, mount failed!\n");
++  return -1;
+ }
+ 
+ int ensure_path_unmounted(const std::string& path) {
+@@ -148,7 +248,7 @@ int format_volume(const std::string& volume, const std::string& directory) {
+     LOG(ERROR) << "format_volume: Failed to unmount \"" << v->mount_point << "\"";
+     return -1;
+   }
+-  if (v->fs_type != "ext4" && v->fs_type != "f2fs") {
++  if (v->mount_point != "/frp" && v->fs_type != "ext4" && v->fs_type != "f2fs") {
+     LOG(ERROR) << "format_volume: fs_type \"" << v->fs_type << "\" unsupported";
+     return -1;
+   }
+@@ -242,6 +342,25 @@ int format_volume(const std::string& volume, const std::string& directory) {
+     return 0;
+   }
+ 
++  if (v->mount_point == "/frp") {
++    LOG(INFO) << "format_volume for: fs_type: " << v->fs_type <<  "blk_device: " << v->blk_device << "mount_point: " <<  v->mount_point;
++    int fd = open((v->blk_device).c_str(), O_WRONLY);
++    if (fd < 0){
++        LOG(ERROR) << "format_volume: failed to open :  " <<  v->blk_device;
++        return -1;
++    }
++    uint64_t len = get_block_device_size(fd);
++    LOG(INFO) << "format_volume:len: " << len;
++    if(wipe_block_device(fd,len) == 0 ) {
++        LOG(INFO) << "format_volume: success to format : " << v->blk_device;
++        return 0;
++    }
++    else{
++        LOG(ERROR) << "format_volume: fail to format : " <<  v->blk_device;
++        return -1;
++    }
++  }
++
+   // Has to be f2fs because we checked earlier.
+   static constexpr int kSectorSize = 4096;
+   std::vector<std::string> make_f2fs_cmd = {
+@@ -301,6 +420,10 @@ int setup_install_mounts() {
+         return -1;
+       }
+     } else {
++      if((strncmp(entry.mount_point.c_str(),(char*)EX_SDCARD_ROOT, strlen((char*)EX_SDCARD_ROOT)) == 0) || (strncmp(entry.mount_point.c_str(),(char*)USB_ROOT, strlen((char*)USB_ROOT)) == 0))
++      {
++        continue;
++      }
+       if (ensure_path_unmounted(entry.mount_point) != 0) {
+         LOG(ERROR) << "Failed to unmount " << entry.mount_point;
+         return -1;
+-- 
+2.35.1
+

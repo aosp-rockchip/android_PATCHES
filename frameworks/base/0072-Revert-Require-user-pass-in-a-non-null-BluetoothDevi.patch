@@ -1,0 +1,252 @@
+From e7c0d667fc57afd12160ddff581943160467e06d Mon Sep 17 00:00:00 2001
+From: Daniel Chapin <chapin@google.com>
+Date: Wed, 12 Feb 2020 17:16:10 +0000
+Subject: [PATCH 072/297] Revert "Require user pass in a non-null
+ BluetoothDevice to all B..."
+
+Revert "Pass in active device to all BluetoothA2dp APIs in packa..."
+
+Revert "Pass in active device to all BluetoothA2dp APIs in packa..."
+
+Revert submission 10253996-bt-a2dp-no-null
+
+Reason for revert: b/149361880
+Reverted Changes:
+If43934374: Pass in active device to all BluetoothA2dp APIs in...
+I22dd1ca36: Make sure calls to BluetoothA2dp APIs pass non-nul...
+If6475af6f: Require user pass in a non-null BluetoothDevice to...
+I9d0e2c89c: Pass in active device to all BluetoothA2dp APIs in...
+I1faa6174d: Need to now pass in active device instead of null ...
+I69a941a7e: Pass in active device to all BluetoothA2dp APIs in...
+
+Change-Id: I297bda68da5023fd832201c485554d6bff05fa78
+(cherry picked from commit 45fefe0f65b3ef28fe63372900fa9ea65d9326c0)
+---
+ api/system-current.txt                        | 14 ++++----
+ .../java/android/bluetooth/BluetoothA2dp.java | 34 +++++--------------
+ .../settingslib/bluetooth/A2dpProfile.java    |  4 +--
+ .../bluetooth/A2dpProfileTest.java            | 20 +++++------
+ 4 files changed, 27 insertions(+), 45 deletions(-)
+
+diff --git a/api/system-current.txt b/api/system-current.txt
+index 92307ba80e7..5cac2758ce6 100755
+--- a/api/system-current.txt
++++ b/api/system-current.txt
+@@ -1452,16 +1452,16 @@ package android.app.usage {
+ package android.bluetooth {
+ 
+   public final class BluetoothA2dp implements android.bluetooth.BluetoothProfile {
+-    method @RequiresPermission(android.Manifest.permission.BLUETOOTH_PRIVILEGED) public void disableOptionalCodecs(@NonNull android.bluetooth.BluetoothDevice);
+-    method @RequiresPermission(android.Manifest.permission.BLUETOOTH_PRIVILEGED) public void enableOptionalCodecs(@NonNull android.bluetooth.BluetoothDevice);
++    method @RequiresPermission(android.Manifest.permission.BLUETOOTH_PRIVILEGED) public void disableOptionalCodecs(@Nullable android.bluetooth.BluetoothDevice);
++    method @RequiresPermission(android.Manifest.permission.BLUETOOTH_PRIVILEGED) public void enableOptionalCodecs(@Nullable android.bluetooth.BluetoothDevice);
+     method @Nullable @RequiresPermission(android.Manifest.permission.BLUETOOTH) public android.bluetooth.BluetoothDevice getActiveDevice();
+-    method @Nullable @RequiresPermission(android.Manifest.permission.BLUETOOTH) public android.bluetooth.BluetoothCodecStatus getCodecStatus(@NonNull android.bluetooth.BluetoothDevice);
++    method @Nullable @RequiresPermission(android.Manifest.permission.BLUETOOTH) public android.bluetooth.BluetoothCodecStatus getCodecStatus(@Nullable android.bluetooth.BluetoothDevice);
+     method @RequiresPermission(android.Manifest.permission.BLUETOOTH) public int getConnectionPolicy(@NonNull android.bluetooth.BluetoothDevice);
+-    method @RequiresPermission(android.Manifest.permission.BLUETOOTH_ADMIN) public int isOptionalCodecsEnabled(@NonNull android.bluetooth.BluetoothDevice);
+-    method @RequiresPermission(android.Manifest.permission.BLUETOOTH_ADMIN) public int isOptionalCodecsSupported(@NonNull android.bluetooth.BluetoothDevice);
+-    method @RequiresPermission(android.Manifest.permission.BLUETOOTH_PRIVILEGED) public void setCodecConfigPreference(@NonNull android.bluetooth.BluetoothDevice, @NonNull android.bluetooth.BluetoothCodecConfig);
++    method @RequiresPermission(android.Manifest.permission.BLUETOOTH_ADMIN) public int getOptionalCodecsEnabled(@Nullable android.bluetooth.BluetoothDevice);
++    method @RequiresPermission(android.Manifest.permission.BLUETOOTH_PRIVILEGED) public void setCodecConfigPreference(@Nullable android.bluetooth.BluetoothDevice, @Nullable android.bluetooth.BluetoothCodecConfig);
+     method @RequiresPermission(android.Manifest.permission.BLUETOOTH_ADMIN) public boolean setConnectionPolicy(@NonNull android.bluetooth.BluetoothDevice, int);
+-    method @RequiresPermission(android.Manifest.permission.BLUETOOTH_PRIVILEGED) public void setOptionalCodecsEnabled(@NonNull android.bluetooth.BluetoothDevice, int);
++    method @RequiresPermission(android.Manifest.permission.BLUETOOTH_PRIVILEGED) public void setOptionalCodecsEnabled(@Nullable android.bluetooth.BluetoothDevice, int);
++    method @RequiresPermission(android.Manifest.permission.BLUETOOTH_ADMIN) public int supportsOptionalCodecs(@Nullable android.bluetooth.BluetoothDevice);
+     field public static final int OPTIONAL_CODECS_NOT_SUPPORTED = 0; // 0x0
+     field public static final int OPTIONAL_CODECS_PREF_DISABLED = 0; // 0x0
+     field public static final int OPTIONAL_CODECS_PREF_ENABLED = 1; // 0x1
+diff --git a/core/java/android/bluetooth/BluetoothA2dp.java b/core/java/android/bluetooth/BluetoothA2dp.java
+index b672a0857cc..d8c653c6d0d 100644
+--- a/core/java/android/bluetooth/BluetoothA2dp.java
++++ b/core/java/android/bluetooth/BluetoothA2dp.java
+@@ -643,9 +643,8 @@ public final class BluetoothA2dp implements BluetoothProfile {
+     @SystemApi
+     @Nullable
+     @RequiresPermission(Manifest.permission.BLUETOOTH)
+-    public BluetoothCodecStatus getCodecStatus(@NonNull BluetoothDevice device) {
++    public BluetoothCodecStatus getCodecStatus(@Nullable BluetoothDevice device) {
+         if (DBG) Log.d(TAG, "getCodecStatus(" + device + ")");
+-        verifyDeviceNotNull(device, "getCodecStatus");
+         try {
+             final IBluetoothA2dp service = getService();
+             if (service != null && isEnabled()) {
+@@ -671,14 +670,9 @@ public final class BluetoothA2dp implements BluetoothProfile {
+      */
+     @SystemApi
+     @RequiresPermission(Manifest.permission.BLUETOOTH_PRIVILEGED)
+-    public void setCodecConfigPreference(@NonNull BluetoothDevice device,
+-                                         @NonNull BluetoothCodecConfig codecConfig) {
++    public void setCodecConfigPreference(@Nullable BluetoothDevice device,
++                                         @Nullable BluetoothCodecConfig codecConfig) {
+         if (DBG) Log.d(TAG, "setCodecConfigPreference(" + device + ")");
+-        verifyDeviceNotNull(device, "setCodecConfigPreference");
+-        if (codecConfig == null) {
+-            Log.e(TAG, "setCodecConfigPreference: Codec config can't be null");
+-            throw new IllegalArgumentException("codecConfig cannot be null");
+-        }
+         try {
+             final IBluetoothA2dp service = getService();
+             if (service != null && isEnabled()) {
+@@ -701,9 +695,8 @@ public final class BluetoothA2dp implements BluetoothProfile {
+      */
+     @SystemApi
+     @RequiresPermission(Manifest.permission.BLUETOOTH_PRIVILEGED)
+-    public void enableOptionalCodecs(@NonNull BluetoothDevice device) {
++    public void enableOptionalCodecs(@Nullable BluetoothDevice device) {
+         if (DBG) Log.d(TAG, "enableOptionalCodecs(" + device + ")");
+-        verifyDeviceNotNull(device, "enableOptionalCodecs");
+         enableDisableOptionalCodecs(device, true);
+     }
+ 
+@@ -716,9 +709,8 @@ public final class BluetoothA2dp implements BluetoothProfile {
+      */
+     @SystemApi
+     @RequiresPermission(Manifest.permission.BLUETOOTH_PRIVILEGED)
+-    public void disableOptionalCodecs(@NonNull BluetoothDevice device) {
++    public void disableOptionalCodecs(@Nullable BluetoothDevice device) {
+         if (DBG) Log.d(TAG, "disableOptionalCodecs(" + device + ")");
+-        verifyDeviceNotNull(device, "disableOptionalCodecs");
+         enableDisableOptionalCodecs(device, false);
+     }
+ 
+@@ -758,8 +750,7 @@ public final class BluetoothA2dp implements BluetoothProfile {
+     @SystemApi
+     @RequiresPermission(Manifest.permission.BLUETOOTH_ADMIN)
+     @OptionalCodecsSupportStatus
+-    public int isOptionalCodecsSupported(@NonNull BluetoothDevice device) {
+-        verifyDeviceNotNull(device, "isOptionalCodecsSupported");
++    public int supportsOptionalCodecs(@Nullable BluetoothDevice device) {
+         try {
+             final IBluetoothA2dp service = getService();
+             if (service != null && isEnabled() && isValidDevice(device)) {
+@@ -784,8 +775,7 @@ public final class BluetoothA2dp implements BluetoothProfile {
+     @SystemApi
+     @RequiresPermission(Manifest.permission.BLUETOOTH_ADMIN)
+     @OptionalCodecsPreferenceStatus
+-    public int isOptionalCodecsEnabled(@NonNull BluetoothDevice device) {
+-        verifyDeviceNotNull(device, "isOptionalCodecsEnabled");
++    public int getOptionalCodecsEnabled(@Nullable BluetoothDevice device) {
+         try {
+             final IBluetoothA2dp service = getService();
+             if (service != null && isEnabled() && isValidDevice(device)) {
+@@ -810,9 +800,8 @@ public final class BluetoothA2dp implements BluetoothProfile {
+      */
+     @SystemApi
+     @RequiresPermission(Manifest.permission.BLUETOOTH_PRIVILEGED)
+-    public void setOptionalCodecsEnabled(@NonNull BluetoothDevice device,
++    public void setOptionalCodecsEnabled(@Nullable BluetoothDevice device,
+             @OptionalCodecsPreferenceStatus int value) {
+-        verifyDeviceNotNull(device, "setOptionalCodecsEnabled");
+         try {
+             if (value != BluetoothA2dp.OPTIONAL_CODECS_PREF_UNKNOWN
+                     && value != BluetoothA2dp.OPTIONAL_CODECS_PREF_DISABLED
+@@ -865,13 +854,6 @@ public final class BluetoothA2dp implements BluetoothProfile {
+         return false;
+     }
+ 
+-    private void verifyDeviceNotNull(BluetoothDevice device, String methodName) {
+-        if (device == null) {
+-            Log.e(TAG, methodName + ": device param is null");
+-            throw new IllegalArgumentException("Device cannot be null");
+-        }
+-    }
+-
+     private boolean isValidDevice(BluetoothDevice device) {
+         if (device == null) return false;
+ 
+diff --git a/packages/SettingsLib/src/com/android/settingslib/bluetooth/A2dpProfile.java b/packages/SettingsLib/src/com/android/settingslib/bluetooth/A2dpProfile.java
+index d03a747b743..1ebe91736ba 100644
+--- a/packages/SettingsLib/src/com/android/settingslib/bluetooth/A2dpProfile.java
++++ b/packages/SettingsLib/src/com/android/settingslib/bluetooth/A2dpProfile.java
+@@ -216,12 +216,12 @@ public class A2dpProfile implements LocalBluetoothProfile {
+     }
+ 
+     public boolean supportsHighQualityAudio(BluetoothDevice device) {
+-        int support = mService.isOptionalCodecsSupported(device);
++        int support = mService.supportsOptionalCodecs(device);
+         return support == BluetoothA2dp.OPTIONAL_CODECS_SUPPORTED;
+     }
+ 
+     public boolean isHighQualityAudioEnabled(BluetoothDevice device) {
+-        int enabled = mService.isOptionalCodecsEnabled(device);
++        int enabled = mService.getOptionalCodecsEnabled(device);
+         if (enabled != BluetoothA2dp.OPTIONAL_CODECS_PREF_UNKNOWN) {
+             return enabled == BluetoothA2dp.OPTIONAL_CODECS_PREF_ENABLED;
+         } else if (getConnectionStatus(device) != BluetoothProfile.STATE_CONNECTED &&
+diff --git a/packages/SettingsLib/tests/robotests/src/com/android/settingslib/bluetooth/A2dpProfileTest.java b/packages/SettingsLib/tests/robotests/src/com/android/settingslib/bluetooth/A2dpProfileTest.java
+index cb9092eba44..c555cbec4ba 100644
+--- a/packages/SettingsLib/tests/robotests/src/com/android/settingslib/bluetooth/A2dpProfileTest.java
++++ b/packages/SettingsLib/tests/robotests/src/com/android/settingslib/bluetooth/A2dpProfileTest.java
+@@ -73,26 +73,26 @@ public class A2dpProfileTest {
+ 
+     @Test
+     public void supportsHighQualityAudio() {
+-        when(mBluetoothA2dp.isOptionalCodecsSupported(any())).thenReturn(
++        when(mBluetoothA2dp.supportsOptionalCodecs(any())).thenReturn(
+                 BluetoothA2dp.OPTIONAL_CODECS_SUPPORTED);
+         assertThat(mProfile.supportsHighQualityAudio(mDevice)).isTrue();
+ 
+-        when(mBluetoothA2dp.isOptionalCodecsSupported(any())).thenReturn(
++        when(mBluetoothA2dp.supportsOptionalCodecs(any())).thenReturn(
+                 BluetoothA2dp.OPTIONAL_CODECS_NOT_SUPPORTED);
+         assertThat(mProfile.supportsHighQualityAudio(mDevice)).isFalse();
+ 
+-        when(mBluetoothA2dp.isOptionalCodecsSupported(any())).thenReturn(
++        when(mBluetoothA2dp.supportsOptionalCodecs(any())).thenReturn(
+                 BluetoothA2dp.OPTIONAL_CODECS_SUPPORT_UNKNOWN);
+         assertThat(mProfile.supportsHighQualityAudio(mDevice)).isFalse();
+     }
+ 
+     @Test
+     public void isHighQualityAudioEnabled() {
+-        when(mBluetoothA2dp.isOptionalCodecsEnabled(any())).thenReturn(
++        when(mBluetoothA2dp.getOptionalCodecsEnabled(any())).thenReturn(
+                 BluetoothA2dp.OPTIONAL_CODECS_PREF_ENABLED);
+         assertThat(mProfile.isHighQualityAudioEnabled(mDevice)).isTrue();
+ 
+-        when(mBluetoothA2dp.isOptionalCodecsEnabled(any())).thenReturn(
++        when(mBluetoothA2dp.getOptionalCodecsEnabled(any())).thenReturn(
+                 BluetoothA2dp.OPTIONAL_CODECS_PREF_DISABLED);
+         assertThat(mProfile.isHighQualityAudioEnabled(mDevice)).isFalse();
+ 
+@@ -100,16 +100,16 @@ public class A2dpProfileTest {
+         // then isHighQualityAudioEnabled() should return true or false based on whether optional
+         // codecs are supported. If the device is connected then we should ask it directly, but if
+         // the device isn't connected then rely on the stored pref about such support.
+-        when(mBluetoothA2dp.isOptionalCodecsEnabled(any())).thenReturn(
++        when(mBluetoothA2dp.getOptionalCodecsEnabled(any())).thenReturn(
+                 BluetoothA2dp.OPTIONAL_CODECS_PREF_UNKNOWN);
+         when(mBluetoothA2dp.getConnectionState(any())).thenReturn(
+                 BluetoothProfile.STATE_DISCONNECTED);
+ 
+-        when(mBluetoothA2dp.isOptionalCodecsSupported(any())).thenReturn(
++        when(mBluetoothA2dp.supportsOptionalCodecs(any())).thenReturn(
+                 BluetoothA2dp.OPTIONAL_CODECS_NOT_SUPPORTED);
+         assertThat(mProfile.isHighQualityAudioEnabled(mDevice)).isFalse();
+ 
+-        when(mBluetoothA2dp.isOptionalCodecsSupported(any())).thenReturn(
++        when(mBluetoothA2dp.supportsOptionalCodecs(any())).thenReturn(
+                 BluetoothA2dp.OPTIONAL_CODECS_SUPPORTED);
+         assertThat(mProfile.isHighQualityAudioEnabled(mDevice)).isTrue();
+ 
+@@ -151,14 +151,14 @@ public class A2dpProfileTest {
+ 
+         // Most tests want to simulate optional codecs being supported by the device, so do that
+         // by default here.
+-        when(mBluetoothA2dp.isOptionalCodecsSupported(any())).thenReturn(
++        when(mBluetoothA2dp.supportsOptionalCodecs(any())).thenReturn(
+                 BluetoothA2dp.OPTIONAL_CODECS_SUPPORTED);
+     }
+ 
+     @Test
+     public void getLableCodecsNotSupported() {
+         setupLabelTest();
+-        when(mBluetoothA2dp.isOptionalCodecsSupported(any())).thenReturn(
++        when(mBluetoothA2dp.supportsOptionalCodecs(any())).thenReturn(
+                 BluetoothA2dp.OPTIONAL_CODECS_NOT_SUPPORTED);
+         assertThat(mProfile.getHighQualityAudioOptionLabel(mDevice)).isEqualTo(UNKNOWN_CODEC_LABEL);
+     }
+-- 
+2.35.1
+

@@ -1,0 +1,56 @@
+From d45a686f5abb35bdc9963922906bf269894647ab Mon Sep 17 00:00:00 2001
+From: huangjc <huangjc@rock-chips.com>
+Date: Fri, 7 Sep 2018 10:26:20 +0800
+Subject: [PATCH 19/36] hw_output:change property hwc to vendor.hwc
+
+Change-Id: I47b882197b6e4788172bf34db63aa435da20969f
+---
+ modules/hw_output/hw_output.cpp                   | 2 +-
+ modules/hw_output/rkdisplay/.drmresources.cpp.swp | 0
+ modules/hw_output/rkdisplay/drmresources.cpp      | 6 +++---
+ 3 files changed, 4 insertions(+), 4 deletions(-)
+ delete mode 100644 modules/hw_output/rkdisplay/.drmresources.cpp.swp
+
+diff --git a/modules/hw_output/hw_output.cpp b/modules/hw_output/hw_output.cpp
+index c4b241e9..072b5e50 100644
+--- a/modules/hw_output/hw_output.cpp
++++ b/modules/hw_output/hw_output.cpp
+@@ -284,7 +284,7 @@ static void updateConnectors(hw_output_private_t *priv){
+         }
+         ALOGD("crtc: %d %d foundHdmi %d 2222", crtcId1, crtcId2, foundHdmi);
+         char property[PROPERTY_VALUE_MAX];
+-        property_get("sys.hwc.device.primary", property, "null");
++        property_get("vendor.hwc.device.primary", property, "null");
+         if (crtcId1 == crtcId2 && foundHdmi && strstr(property, "HDMI-A") == NULL) {
+             for (auto &conn : priv->drm_->connectors()) {
+                 if (builtInHdmi(conn->get_type()) && conn->state() == DRM_MODE_CONNECTED) {
+diff --git a/modules/hw_output/rkdisplay/.drmresources.cpp.swp b/modules/hw_output/rkdisplay/.drmresources.cpp.swp
+deleted file mode 100644
+index e69de29b..00000000
+diff --git a/modules/hw_output/rkdisplay/drmresources.cpp b/modules/hw_output/rkdisplay/drmresources.cpp
+index ad1500fc..1e66d1df 100644
+--- a/modules/hw_output/rkdisplay/drmresources.cpp
++++ b/modules/hw_output/rkdisplay/drmresources.cpp
+@@ -53,8 +53,8 @@ void DrmResources::ConfigurePossibleDisplays()
+   int default_display_possible = 0;
+   std::string conn_name;
+ 
+-  primary_length = property_get("sys.hwc.device.primary", primary_name, NULL);
+-  extend_length = property_get("sys.hwc.device.extend", extend_name, NULL);
++  primary_length = property_get("vendor.hwc.device.primary", primary_name, NULL);
++  extend_length = property_get("vendor.hwc.device.extend", extend_name, NULL);
+ 
+   if (!primary_length)
+     default_display_possible |= HWC_DISPLAY_PRIMARY_BIT;
+@@ -95,7 +95,7 @@ void DrmResources::ConfigurePossibleDisplays()
+ }
+ int DrmResources::Init() {
+   char path[PROPERTY_VALUE_MAX];
+-  property_get("hwc.drm.device", path, "/dev/dri/card0");
++  property_get("vendor.hwc.drm.device", path, "/dev/dri/card0");
+ 
+   /* TODO: Use drmOpenControl here instead */
+   fd_.Set(open(path, O_RDWR));
+-- 
+2.35.1
+

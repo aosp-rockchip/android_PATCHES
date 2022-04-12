@@ -1,0 +1,38 @@
+From 1182f6bea0a06fff371a1b69ce453496a0a2939b Mon Sep 17 00:00:00 2001
+From: Dayao Ji <jdy@rock-chips.com>
+Date: Tue, 1 Sep 2020 14:35:58 +0800
+Subject: [PATCH 01/11] Add .gitignore
+
+Signed-off-by: Dayao Ji <jdy@rock-chips.com>
+Change-Id: I145c356eee89999625b627729432ab8fd6a68208
+---
+ .gitignore | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+ create mode 100755 .gitignore
+
+diff --git a/.gitignore b/.gitignore
+new file mode 100755
+index 00000000..f2b82a49
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,17 @@
++#
++# NOTE! Don't add files that are generated in specific
++# subdirectories here. Add them in the ".gitignore" file
++# in that subdirectory instead.
++#
++# NOTE! Please use 'git ls-files -i --exclude-standard'
++# command after changing this file, to see if there are
++# any tracked files which get ignored after the change.
++#
++# Normal rules (sorted alphabetically)
++#
++# Rockchip directory (for rockchip modules)
++#
++/mtdutils/
++/rkupdate/
++/rkutility/
++/pcba_core/
+-- 
+2.35.1
+

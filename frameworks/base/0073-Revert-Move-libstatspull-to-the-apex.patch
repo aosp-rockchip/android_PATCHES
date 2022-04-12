@@ -1,0 +1,55 @@
+From d47fc70e417bfdd5d9b1ebc6cf57fa901f3a972c Mon Sep 17 00:00:00 2001
+From: Wonsik Kim <wonsik@google.com>
+Date: Fri, 14 Feb 2020 11:13:22 -0800
+Subject: [PATCH 073/297] Revert "Move libstatspull to the apex"
+
+This reverts commit 36f0eeaf103f269ce3568eaa2ec793ef54bb1902.
+
+Reason for revert: major functional regression
+Bug: 149538115
+Change-Id: I7cc3c1a62e9d2d0bac7fc77848eeacbf8dc7dbe2
+(cherry picked from commit dba4dfa1277c66ec23c2ce5ab895a2b744dc2478)
+---
+ apex/statsd/Android.bp      | 2 --
+ apex/statsd/aidl/Android.bp | 6 +-----
+ 2 files changed, 1 insertion(+), 7 deletions(-)
+
+diff --git a/apex/statsd/Android.bp b/apex/statsd/Android.bp
+index c0f84a0ba07..1f9f18cd051 100644
+--- a/apex/statsd/Android.bp
++++ b/apex/statsd/Android.bp
+@@ -20,7 +20,6 @@ apex {
+ 
+ apex_defaults {
+     native_shared_libs: [
+-        "libstatspull",
+         "libstats_jni",
+     ],
+     // binaries: ["vold"],
+@@ -29,7 +28,6 @@ apex_defaults {
+         "service-statsd",
+     ],
+     // prebuilts: ["my_prebuilt"],
+-    compile_multilib: "both",
+     name: "com.android.os.statsd-defaults",
+     key: "com.android.os.statsd.key",
+     certificate: ":com.android.os.statsd.certificate",
+diff --git a/apex/statsd/aidl/Android.bp b/apex/statsd/aidl/Android.bp
+index 4ccdd7e734d..7c93bc73e45 100644
+--- a/apex/statsd/aidl/Android.bp
++++ b/apex/statsd/aidl/Android.bp
+@@ -38,10 +38,6 @@ aidl_interface {
+         },
+         ndk: {
+             enabled: true,
+-            apex_available: [
+-                "com.android.os.statsd",
+-            ],
+         }
+-
+-    },
++    }
+ }
+-- 
+2.35.1
+

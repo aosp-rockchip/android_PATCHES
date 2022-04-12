@@ -1,0 +1,27 @@
+From 95eae731427b802e61311d506374bd6d47f9e21e Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Mon, 11 Jan 2021 11:08:35 +0800
+Subject: [PATCH 3/4] AndroidManifest: update sdk version to 29
+
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+Change-Id: I740d6772c2437b720ffc8bb2f6407c1c1f241752
+---
+ AndroidManifest.xml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index b9d915d4a..35acd9b9a 100755
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -7,7 +7,7 @@
+ 
+     <uses-sdk
+         android:minSdkVersion="19"
+-        android:targetSdkVersion="28" />
++        android:targetSdkVersion="29" />
+ 
+     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+-- 
+2.35.1
+

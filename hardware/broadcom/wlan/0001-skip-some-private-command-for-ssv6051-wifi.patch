@@ -1,0 +1,66 @@
+From 8570b3054d0bcfc9a1000923453d04880310ebf5 Mon Sep 17 00:00:00 2001
+From: huweiguo <hwg@rock-chips.com>
+Date: Wed, 25 Jul 2018 15:27:12 +0800
+Subject: [PATCH 01/10] skip some private command for ssv6051 wifi
+
+Change-Id: Idbb0b3e55c19e59a29dfce142a1588e4e4471383
+---
+ bcmdhd/Android.mk                                | 2 +-
+ bcmdhd/wpa_supplicant_8_lib/Android.mk           | 2 +-
+ bcmdhd/wpa_supplicant_8_lib/driver_cmd_nl80211.c | 8 +++++++-
+ 3 files changed, 9 insertions(+), 3 deletions(-)
+ mode change 100644 => 100755 bcmdhd/wpa_supplicant_8_lib/driver_cmd_nl80211.c
+
+diff --git a/bcmdhd/Android.mk b/bcmdhd/Android.mk
+index 5b43128..b3b0bb4 100644
+--- a/bcmdhd/Android.mk
++++ b/bcmdhd/Android.mk
+@@ -1,3 +1,3 @@
+-ifeq ($(BOARD_WLAN_DEVICE),bcmdhd)
++ifneq ($(BOARD_WLAN_DEVICE),)
+     include $(call all-subdir-makefiles)
+ endif
+diff --git a/bcmdhd/wpa_supplicant_8_lib/Android.mk b/bcmdhd/wpa_supplicant_8_lib/Android.mk
+index 518f0ca..d39945c 100644
+--- a/bcmdhd/wpa_supplicant_8_lib/Android.mk
++++ b/bcmdhd/wpa_supplicant_8_lib/Android.mk
+@@ -66,7 +66,7 @@ L_CFLAGS += -Wall -Werror -Wno-unused-parameter -Wno-macro-redefined
+ 
+ include $(CLEAR_VARS)
+ LOCAL_MODULE := lib_driver_cmd_bcmdhd
+-LOCAL_SHARED_LIBRARIES := libc libcutils
++LOCAL_SHARED_LIBRARIES := libc libcutils librkwifi-ctrl
+ LOCAL_CFLAGS := $(L_CFLAGS)
+ LOCAL_SRC_FILES := $(WPA_SRC_FILE)
+ LOCAL_C_INCLUDES := $(WPA_SUPPL_DIR_INCLUDE)
+diff --git a/bcmdhd/wpa_supplicant_8_lib/driver_cmd_nl80211.c b/bcmdhd/wpa_supplicant_8_lib/driver_cmd_nl80211.c
+old mode 100644
+new mode 100755
+index f9dbb95..20eda20
+--- a/bcmdhd/wpa_supplicant_8_lib/driver_cmd_nl80211.c
++++ b/bcmdhd/wpa_supplicant_8_lib/driver_cmd_nl80211.c
+@@ -24,6 +24,9 @@
+ #include "android_drv.h"
+ #endif
+ 
++static char wifi_chip_type[64] = {0};
++extern int check_wifi_chip_type_string(char *type);
++
+ typedef struct android_wifi_priv_cmd {
+ #ifdef BCMDHD_64_BIT_IPC
+ 	u64 bufaddr;
+@@ -120,7 +123,10 @@ int wpa_driver_nl80211_driver_cmd(void *priv, char *cmd, char *buf,
+ 		priv_cmd.total_len = buf_len;
+ 		ifr.ifr_data = &priv_cmd;
+ 
+-		if ((ret = ioctl(drv->global->ioctl_sock, SIOCDEVPRIVATE + 1, &ifr)) < 0) {
++		if(wifi_chip_type[0] == 0)
++			check_wifi_chip_type_string(wifi_chip_type);
++		if ((strcmp(wifi_chip_type,"SSV6051") != 0) &&
++			(ret = ioctl(drv->global->ioctl_sock, SIOCDEVPRIVATE + 1, &ifr)) < 0) {
+ 			wpa_printf(MSG_ERROR, "%s: failed to issue private command: %s", __func__, cmd);
+ 			wpa_driver_send_hang_msg(drv);
+ 		} else {
+-- 
+2.35.1
+

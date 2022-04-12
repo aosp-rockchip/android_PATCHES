@@ -1,0 +1,96 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/wifi (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/wifi (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 031396445ab6f038b566cf88c7f9f17a8aec4d0e
+Merge: 2df6450a1 69a2a3046
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:41:10 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+    
+    Change-Id: Ib1350514027bddbb9fe708db63ad8951fcd61033
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/wifi (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/wifi (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 031396445ab6f038b566cf88c7f9f17a8aec4d0e
+Merge: 2df6450a1 69a2a3046
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:41:10 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+    
+    Change-Id: Ib1350514027bddbb9fe708db63ad8951fcd61033
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/wifi (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/wifi (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 031396445ab6f038b566cf88c7f9f17a8aec4d0e
+Merge: 2df6450a1 69a2a3046
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:41:10 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+    
+    Change-Id: Ib1350514027bddbb9fe708db63ad8951fcd61033
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/wifi (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/wifi (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 031396445ab6f038b566cf88c7f9f17a8aec4d0e
+Merge: 2df6450a1 69a2a3046
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:41:10 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+    
+    Change-Id: Ib1350514027bddbb9fe708db63ad8951fcd61033
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/wifi (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/wifi (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 031396445ab6f038b566cf88c7f9f17a8aec4d0e
+Merge: 2df6450a1 69a2a3046
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:41:10 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+    
+    Change-Id: Ib1350514027bddbb9fe708db63ad8951fcd61033
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/wifi (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/wifi (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 031396445ab6f038b566cf88c7f9f17a8aec4d0e
+Merge: 2df6450a1 69a2a3046
+Author: Wu Jingchen <oven.wu@rock-chips.com>
+Date:   Tue Jan 19 11:41:10 2021 +0800
+
+    Merge tag 'android-11.0.0_r28' into HEAD
+    
+    Android 11.0.0 release 28
+    
+    Change-Id: Ib1350514027bddbb9fe708db63ad8951fcd61033

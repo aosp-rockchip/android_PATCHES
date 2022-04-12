@@ -1,0 +1,207 @@
+From bb52cffff59be60b2338cc8bac409ad3301d05a7 Mon Sep 17 00:00:00 2001
+From: zj <zj@rock-chips.com>
+Date: Fri, 8 Jan 2021 10:00:22 +0800
+Subject: [PATCH 281/297] update Eink mode list
+
+Signed-off-by: zj <zj@rock-chips.com>
+Change-Id: I485269f49a613f3880e7fb7599ece093f52b610e
+---
+ api/current.txt                       | 25 ++++++++------------
+ core/java/android/os/EinkManager.java | 34 ++++++++++++++-------------
+ non-updatable-api/current.txt         | 25 ++++++++------------
+ 3 files changed, 38 insertions(+), 46 deletions(-)
+ mode change 100644 => 100755 api/current.txt
+ mode change 100644 => 100755 core/java/android/os/EinkManager.java
+ mode change 100644 => 100755 non-updatable-api/current.txt
+
+diff --git a/api/current.txt b/api/current.txt
+old mode 100644
+new mode 100755
+index 92ffe1dbb0b..2cd8755fa44
+--- a/api/current.txt
++++ b/api/current.txt
+@@ -36132,44 +36132,39 @@ package android.os {
+   }
+ 
+   public class EinkManager {
++    method public static boolean getEinkEnabled();
+     method @Nullable public String getMode();
+     method public int init();
+     method public int kill();
+     method public int quitStandby();
+     method public void sendOneFullFrame();
++    method public static void setEinkEnabled();
+     method public void setMode(@Nullable String);
+     method public int standby();
+-    field public static final boolean EINK = false;
+   }
+ 
+   public class EinkManager.EinkMode {
+     field public static final String EPD_A2 = "12";
+-    field public static final String EPD_A2_DIRECT = "21";
+-    field public static final String EPD_A2_DITHER = "13";
+     field public static final String EPD_AUTO = "0";
+-    field public static final String EPD_AUTO_DIRECT = "23";
+-    field public static final String EPD_DU = "14";
+-    field public static final String EPD_DU_DIRECT = "22";
+-    field public static final String EPD_FULL_DIRECT = "19";
+-    field public static final String EPD_FULL_EINK = "26";
++    field public static final String EPD_DU = "13";
++    field public static final String EPD_FULL_EINK = "19";
+     field public static final String EPD_FULL_GC16 = "2";
+     field public static final String EPD_FULL_GCC16 = "6";
+     field public static final String EPD_FULL_GL16 = "3";
+     field public static final String EPD_FULL_GLD16 = "5";
+     field public static final String EPD_FULL_GLR16 = "4";
++    field public static final String EPD_NULL = "-1";
+     field public static final String EPD_OVERLAY = "1";
+-    field public static final String EPD_OVERLAY_DIRECT = "24";
+-    field public static final String EPD_PART_DIRECT = "20";
+-    field public static final String EPD_PART_EINK = "25";
++    field public static final String EPD_PART_EINK = "18";
+     field public static final String EPD_PART_GC16 = "7";
+     field public static final String EPD_PART_GCC16 = "11";
+     field public static final String EPD_PART_GL16 = "8";
+     field public static final String EPD_PART_GLD16 = "10";
+     field public static final String EPD_PART_GLR16 = "9";
+-    field public static final String EPD_POWER_OFF = "18";
+-    field public static final String EPD_RESET = "15";
+-    field public static final String EPD_RESUME = "17";
+-    field public static final String EPD_SUSPEND = "16";
++    field public static final String EPD_POWER_OFF = "17";
++    field public static final String EPD_RESET = "14";
++    field public static final String EPD_RESUME = "16";
++    field public static final String EPD_SUSPEND = "15";
+   }
+ 
+   public class Environment {
+diff --git a/core/java/android/os/EinkManager.java b/core/java/android/os/EinkManager.java
+old mode 100644
+new mode 100755
+index 0bbfb0d7f3b..d41bdbf589c
+--- a/core/java/android/os/EinkManager.java
++++ b/core/java/android/os/EinkManager.java
+@@ -44,13 +44,14 @@ public  class EinkManager {
+ 
+     private static final String TAG = "EinkManager";
+     private static final boolean DEBUG = true;
+-    public static final boolean EINK = false;
++    private static boolean EINK = true;
+     private static int num =1;
+ public class EinkMode {
+ 
+     private EinkMode(){
+     }
+-
++    
++    public static final String EPD_NULL ="-1";
+     public static final String EPD_AUTO ="0";
+     public static final String EPD_OVERLAY ="1";
+     public static final String EPD_FULL_GC16 ="2";
+@@ -64,20 +65,13 @@ public class EinkMode {
+     public static final String EPD_PART_GLD16 ="10";
+     public static final String EPD_PART_GCC16 ="11";
+     public static final String EPD_A2 ="12";
+-    public static final String EPD_A2_DITHER ="13";
+-    public static final String EPD_DU ="14";
+-    public static final String EPD_RESET ="15";
+-    public static final String EPD_SUSPEND ="16";
+-    public static final String EPD_RESUME ="17";
+-    public static final String EPD_POWER_OFF ="18";
+-    public static final String EPD_FULL_DIRECT ="19";
+-    public static final String EPD_PART_DIRECT ="20";
+-    public static final String EPD_A2_DIRECT ="21";
+-    public static final String EPD_DU_DIRECT ="22";
+-    public static final String EPD_AUTO_DIRECT ="23";
+-    public static final String EPD_OVERLAY_DIRECT ="24";
+-    public static final String EPD_PART_EINK ="25";
+-    public static final String EPD_FULL_EINK ="26";
++    public static final String EPD_DU ="13";
++    public static final String EPD_RESET ="14";
++    public static final String EPD_SUSPEND ="15";
++    public static final String EPD_RESUME ="16";
++    public static final String EPD_POWER_OFF ="17";
++    public static final String EPD_PART_EINK ="18";
++    public static final String EPD_FULL_EINK ="19";
+ }
+ 
+ 
+@@ -110,6 +104,14 @@ public class EinkMode {
+         mHandler = handler;
+     }
+ 
++    public static void setEinkEnabled(){
++            EINK = true;
++        }
++
++    public static boolean getEinkEnabled(){
++            return EINK;
++        }
++
+     public void sendOneFullFrame(){
+         try {
+             LOG("sendOneFullFrame");
+diff --git a/non-updatable-api/current.txt b/non-updatable-api/current.txt
+old mode 100644
+new mode 100755
+index 15f34a1fea7..d25e5650423
+--- a/non-updatable-api/current.txt
++++ b/non-updatable-api/current.txt
+@@ -34699,44 +34699,39 @@ package android.os {
+   }
+ 
+   public class EinkManager {
++    method public static boolean getEinkEnabled();
+     method @Nullable public String getMode();
+     method public int init();
+     method public int kill();
+     method public int quitStandby();
+     method public void sendOneFullFrame();
++    method public static void setEinkEnabled();
+     method public void setMode(@Nullable String);
+     method public int standby();
+-    field public static final boolean EINK = false;
+   }
+ 
+   public class EinkManager.EinkMode {
+     field public static final String EPD_A2 = "12";
+-    field public static final String EPD_A2_DIRECT = "21";
+-    field public static final String EPD_A2_DITHER = "13";
+     field public static final String EPD_AUTO = "0";
+-    field public static final String EPD_AUTO_DIRECT = "23";
+-    field public static final String EPD_DU = "14";
+-    field public static final String EPD_DU_DIRECT = "22";
+-    field public static final String EPD_FULL_DIRECT = "19";
+-    field public static final String EPD_FULL_EINK = "26";
++    field public static final String EPD_DU = "13";
++    field public static final String EPD_FULL_EINK = "19";
+     field public static final String EPD_FULL_GC16 = "2";
+     field public static final String EPD_FULL_GCC16 = "6";
+     field public static final String EPD_FULL_GL16 = "3";
+     field public static final String EPD_FULL_GLD16 = "5";
+     field public static final String EPD_FULL_GLR16 = "4";
++    field public static final String EPD_NULL = "-1";
+     field public static final String EPD_OVERLAY = "1";
+-    field public static final String EPD_OVERLAY_DIRECT = "24";
+-    field public static final String EPD_PART_DIRECT = "20";
+-    field public static final String EPD_PART_EINK = "25";
++    field public static final String EPD_PART_EINK = "18";
+     field public static final String EPD_PART_GC16 = "7";
+     field public static final String EPD_PART_GCC16 = "11";
+     field public static final String EPD_PART_GL16 = "8";
+     field public static final String EPD_PART_GLD16 = "10";
+     field public static final String EPD_PART_GLR16 = "9";
+-    field public static final String EPD_POWER_OFF = "18";
+-    field public static final String EPD_RESET = "15";
+-    field public static final String EPD_RESUME = "17";
+-    field public static final String EPD_SUSPEND = "16";
++    field public static final String EPD_POWER_OFF = "17";
++    field public static final String EPD_RESET = "14";
++    field public static final String EPD_RESUME = "16";
++    field public static final String EPD_SUSPEND = "15";
+   }
+ 
+   public class Environment {
+-- 
+2.35.1
+

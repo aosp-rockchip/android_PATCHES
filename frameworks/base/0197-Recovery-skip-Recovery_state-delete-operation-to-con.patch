@@ -1,0 +1,35 @@
+From 980ed5286ab104895c9c1c20bb87d42dfb26da8e Mon Sep 17 00:00:00 2001
+From: "wanghang@rock-chips.com" <wanghang@rock-chips.com>
+Date: Fri, 11 Oct 2019 10:09:55 +0800
+Subject: [PATCH 197/297] Recovery : skip Recovery_state delete operation to
+ continue stresstest
+
+this commit is from 9.0:
+    Author: Hao Xiaowei <hxw@rock-chips.com>
+    Date: Tue, 6 Mar 2018 08:41:49 +0800
+    Subject: [PATCH] Recovery : skip Recovery_state delete operation to continue stresstest
+
+Change-Id: Ibd2846bd9fc087fb02e9919c77ca0809ed0ec67e
+Signed-off-by: wh <wanghang@rock-chips.com>
+---
+ core/java/android/os/RecoverySystem.java | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/core/java/android/os/RecoverySystem.java b/core/java/android/os/RecoverySystem.java
+index 8cdcd49cb2c..b0212162cf7 100644
+--- a/core/java/android/os/RecoverySystem.java
++++ b/core/java/android/os/RecoverySystem.java
+@@ -1208,8 +1208,10 @@ public class RecoverySystem {
+         for (int i = 0; names != null && i < names.length; i++) {
+             // Do not remove the last_install file since the recovery-persist takes care of it.
+             if (names[i].startsWith(LAST_PREFIX) || names[i].equals(LAST_INSTALL_PATH)) continue;
++            if (names[i].equals(RECOVERY_TEST_STATE)) continue;
+             if (reservePackage && names[i].equals(BLOCK_MAP_FILE.getName())) continue;
+             if (reservePackage && names[i].equals(UNCRYPT_PACKAGE_FILE.getName())) continue;
++            Log.i(TAG,"names[i]:" + names[i]);
+ 
+             recursiveDelete(new File(RECOVERY_DIR, names[i]));
+         }
+-- 
+2.35.1
+

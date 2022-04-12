@@ -1,0 +1,41 @@
+From 0c13e1eb38dc8aa6f2ce67110ba9a1368d5bb3d1 Mon Sep 17 00:00:00 2001
+From: George Burgess IV <gbiv@google.com>
+Date: Fri, 21 Feb 2020 14:36:31 -0800
+Subject: [PATCH 06/21] incremental_server: fix a use of uninitalized memory
+
+Without this, the caller is likely to assume that their buffer is
+fully usable, which clang's analyzer doesn't believe is the case.
+
+Another option is to set `*size` to nonzero.
+
+Caught by the static analyzer:
+system/core/adb/client/incremental_server.cpp:111:31: warning: 1st
+function call argument is an uninitialized value
+[clang-analyzer-core.CallAndMessage]
+
+Bug: http://b/150032044
+Test: TreeHugger
+Change-Id: Ib844aa4ab3ebb297ca8f6f4289bbe3212275275b
+Merged-In: Ib844aa4ab3ebb297ca8f6f4289bbe3212275275b
+(cherry picked from commit 19b500bd505dce85d90f5be6f318399aed9cc990)
+(cherry picked from commit 15c7a3f8f82b5a5730734215cce118f5e2c3025d)
+---
+ adb/client/incremental_server.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/adb/client/incremental_server.cpp b/adb/client/incremental_server.cpp
+index 726533d2a..585e50c44 100644
+--- a/adb/client/incremental_server.cpp
++++ b/adb/client/incremental_server.cpp
+@@ -258,7 +258,7 @@ bool IncrementalServer::SkipToRequest(void* buffer, size_t* size, bool blocking)
+ 
+         if (r == -1) {
+             fprintf(stderr, "Failed to read from fd %d: %d. Exit\n", adb_fd_.get(), errno);
+-            return true;
++            return false;
+         }
+ 
+         // socket is closed
+-- 
+2.35.1
+

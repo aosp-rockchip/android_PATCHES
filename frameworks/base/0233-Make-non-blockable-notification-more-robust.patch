@@ -1,0 +1,198 @@
+From 17b40d2868463336f129181caa376cc1a6ef167b Mon Sep 17 00:00:00 2001
+From: Julia Reynolds <juliacr@google.com>
+Date: Fri, 10 Jul 2020 15:07:37 -0400
+Subject: [PATCH 233/297] Make non-blockable notification more robust
+
+By keeping track of them in preferenceshelper, so
+they can be applied to apps/channel settings created on the
+first boot post a factory reset
+
+Test: atest
+Bug: 140893722
+Change-Id: Ied7d66bd4ca59f831fc77eff3ef6030a1ad8d6f7
+(cherry picked from commit 204b391fc250262ee95f2ecb8ef3c2d3fcb18291)
+(cherry picked from commit 046114dc687358eecfcb8a4a83013e459906d2cc)
+---
+ .../notification/PreferencesHelper.java       | 27 ++++++
+ .../notification/PreferencesHelperTest.java   | 90 +++++++++++++++++++
+ 2 files changed, 117 insertions(+)
+
+diff --git a/services/core/java/com/android/server/notification/PreferencesHelper.java b/services/core/java/com/android/server/notification/PreferencesHelper.java
+index bc78d66037f..c3cb42f95cc 100644
+--- a/services/core/java/com/android/server/notification/PreferencesHelper.java
++++ b/services/core/java/com/android/server/notification/PreferencesHelper.java
+@@ -75,6 +75,7 @@ import java.io.PrintWriter;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.Collection;
++import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Objects;
+@@ -173,6 +174,8 @@ public class PreferencesHelper implements RankingConfig {
+ 
+     private boolean mAllowInvalidShortcuts = false;
+ 
++    private Map<String, List<String>> mOemLockedApps = new HashMap();
++
+     public PreferencesHelper(Context context, PackageManager pm, RankingHandler rankingHandler,
+             ZenModeHelper zenHelper, NotificationChannelLogger notificationChannelLogger,
+             AppOpsManager appOpsManager,
+@@ -314,6 +317,12 @@ public class PreferencesHelper implements RankingConfig {
+                                         }
+                                         channel.setImportanceLockedByCriticalDeviceFunction(
+                                                 r.defaultAppLockedImportance);
++                                        channel.setImportanceLockedByOEM(r.oemLockedImportance);
++                                        if (!channel.isImportanceLockedByOEM()) {
++                                            if (r.oemLockedChannels.contains(channel.getId())) {
++                                                channel.setImportanceLockedByOEM(true);
++                                            }
++                                        }
+                                         boolean isInvalidShortcutChannel =
+                                                 channel.getConversationId() != null &&
+                                                         channel.getConversationId().contains(
+@@ -396,6 +405,14 @@ public class PreferencesHelper implements RankingConfig {
+             r.visibility = visibility;
+             r.showBadge = showBadge;
+             r.bubblePreference = bubblePreference;
++            if (mOemLockedApps.containsKey(r.pkg)) {
++                List<String> channels = mOemLockedApps.get(r.pkg);
++                if (channels == null || channels.isEmpty()) {
++                    r.oemLockedImportance = true;
++                } else {
++                    r.oemLockedChannels = channels;
++                }
++            }
+ 
+             try {
+                 createDefaultChannelIfNeededLocked(r);
+@@ -1149,8 +1166,10 @@ public class PreferencesHelper implements RankingConfig {
+                     String channelId = appSplit.length == 2 ? appSplit[1] : null;
+ 
+                     synchronized (mPackagePreferences) {
++                        boolean foundApp = false;
+                         for (PackagePreferences r : mPackagePreferences.values()) {
+                             if (r.pkg.equals(appName)) {
++                                foundApp = true;
+                                 if (channelId == null) {
+                                     // lock all channels for the app
+                                     r.oemLockedImportance = true;
+@@ -1168,6 +1187,14 @@ public class PreferencesHelper implements RankingConfig {
+                                 }
+                             }
+                         }
++                        if (!foundApp) {
++                            List<String> channels =
++                                    mOemLockedApps.getOrDefault(appName, new ArrayList<>());
++                            if (channelId != null) {
++                                channels.add(channelId);
++                            }
++                            mOemLockedApps.put(appName, channels);
++                        }
+                     }
+                 }
+             }
+diff --git a/services/tests/uiservicestests/src/com/android/server/notification/PreferencesHelperTest.java b/services/tests/uiservicestests/src/com/android/server/notification/PreferencesHelperTest.java
+index 2e49929ec03..0d680a2c35b 100644
+--- a/services/tests/uiservicestests/src/com/android/server/notification/PreferencesHelperTest.java
++++ b/services/tests/uiservicestests/src/com/android/server/notification/PreferencesHelperTest.java
+@@ -2632,6 +2632,96 @@ public class PreferencesHelperTest extends UiServiceTestCase {
+                 .isImportanceLockedByOEM());
+     }
+ 
++    @Test
++    public void testLockChannelsForOEM_onlyGivenPkg_appDoesNotExistYet() {
++        mHelper.lockChannelsForOEM(new String[] {PKG_O});
++
++        NotificationChannel a = new NotificationChannel("a", "a", IMPORTANCE_HIGH);
++        NotificationChannel b = new NotificationChannel("b", "b", IMPORTANCE_LOW);
++        mHelper.createNotificationChannel(PKG_O, 3, a, true, false);
++        mHelper.createNotificationChannel(PKG_N_MR1, 30, b, false, false);
++
++        assertTrue(mHelper.getNotificationChannel(PKG_O, 3, a.getId(), false)
++                .isImportanceLockedByOEM());
++        assertFalse(mHelper.getNotificationChannel(PKG_N_MR1, 30, b.getId(), false)
++                .isImportanceLockedByOEM());
++    }
++
++    @Test
++    public void testLockChannelsForOEM_channelSpecific_appDoesNotExistYet() {
++        mHelper.lockChannelsForOEM(new String[] {PKG_O + ":b", PKG_O + ":c"});
++
++        NotificationChannel a = new NotificationChannel("a", "a", IMPORTANCE_HIGH);
++        NotificationChannel b = new NotificationChannel("b", "b", IMPORTANCE_LOW);
++        NotificationChannel c = new NotificationChannel("c", "c", IMPORTANCE_DEFAULT);
++        // different uids, same package
++        mHelper.createNotificationChannel(PKG_O, 3, a, true, false);
++        mHelper.createNotificationChannel(PKG_O, 3, b, false, false);
++        mHelper.createNotificationChannel(PKG_O, 30, c, true, true);
++
++        assertFalse(mHelper.getNotificationChannel(PKG_O, 3, a.getId(), false)
++                .isImportanceLockedByOEM());
++        assertTrue(mHelper.getNotificationChannel(PKG_O, 3, b.getId(), false)
++                .isImportanceLockedByOEM());
++        assertTrue(mHelper.getNotificationChannel(PKG_O, 30, c.getId(), false)
++                .isImportanceLockedByOEM());
++    }
++
++    @Test
++    public void testLockChannelsForOEM_onlyGivenPkg_appDoesNotExistYet_restoreData()
++            throws Exception {
++        mHelper.lockChannelsForOEM(new String[] {PKG_O});
++
++        final String xml = "<ranking version=\"1\">\n"
++                + "<package name=\"" + PKG_O + "\" uid=\"" + UID_O + "\" >\n"
++                + "<channel id=\"a\" name=\"a\" importance=\"3\"/>"
++                + "<channel id=\"b\" name=\"b\" importance=\"3\"/>"
++                + "</package>"
++                + "<package name=\"" + PKG_N_MR1 + "\" uid=\"" + UID_N_MR1 + "\" >\n"
++                + "<channel id=\"a\" name=\"a\" importance=\"3\"/>"
++                + "<channel id=\"b\" name=\"b\" importance=\"3\"/>"
++                + "</package>"
++                + "</ranking>";
++        XmlPullParser parser = Xml.newPullParser();
++        parser.setInput(new BufferedInputStream(new ByteArrayInputStream(xml.getBytes())),
++                null);
++        parser.nextTag();
++        mHelper.readXml(parser, false, UserHandle.USER_ALL);
++
++        assertTrue(mHelper.getNotificationChannel(PKG_O, UID_O, "a", false)
++                .isImportanceLockedByOEM());
++        assertFalse(mHelper.getNotificationChannel(PKG_N_MR1, UID_N_MR1, "b", false)
++                .isImportanceLockedByOEM());
++    }
++
++    @Test
++    public void testLockChannelsForOEM_channelSpecific_appDoesNotExistYet_restoreData()
++            throws Exception {
++        mHelper.lockChannelsForOEM(new String[] {PKG_O + ":b", PKG_O + ":c"});
++
++        final String xml = "<ranking version=\"1\">\n"
++                + "<package name=\"" + PKG_O + "\" uid=\"" + 3 + "\" >\n"
++                + "<channel id=\"a\" name=\"a\" importance=\"3\"/>"
++                + "<channel id=\"b\" name=\"b\" importance=\"3\"/>"
++                + "</package>"
++                + "<package name=\"" + PKG_O + "\" uid=\"" + 30 + "\" >\n"
++                + "<channel id=\"c\" name=\"c\" importance=\"3\"/>"
++                + "</package>"
++                + "</ranking>";
++        XmlPullParser parser = Xml.newPullParser();
++        parser.setInput(new BufferedInputStream(new ByteArrayInputStream(xml.getBytes())),
++                null);
++        parser.nextTag();
++        mHelper.readXml(parser, false, UserHandle.USER_ALL);
++
++        assertFalse(mHelper.getNotificationChannel(PKG_O, 3, "a", false)
++                .isImportanceLockedByOEM());
++        assertTrue(mHelper.getNotificationChannel(PKG_O, 3, "b", false)
++                .isImportanceLockedByOEM());
++        assertTrue(mHelper.getNotificationChannel(PKG_O, 30, "c", false)
++                .isImportanceLockedByOEM());
++    }
++
+     @Test
+     public void testLockChannelsForOEM_channelSpecific_clearData() {
+         NotificationChannel a = new NotificationChannel("a", "a", IMPORTANCE_HIGH);
+-- 
+2.35.1
+

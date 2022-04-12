@@ -1,0 +1,72 @@
+From 3f9164214aa4453200056f1c68430fcee0f302f9 Mon Sep 17 00:00:00 2001
+From: Chong Zhang <chz@google.com>
+Date: Tue, 10 Mar 2020 16:15:45 -0700
+Subject: [PATCH 05/25] allow mremap to use MEMRMREMAP_MAYMOVE flag
+
+bug: 151163101
+test: see bug, shouldn't see crash in mediacodec minijail
+
+Change-Id: If25dc5a56fe2f549d7867aa5a459b949be7e6947
+(cherry picked from commit 78668ac7c707fbec5edea3e8e4c96a4d65784794)
+---
+ services/mediacodec/seccomp_policy/mediacodec-arm.policy     | 2 +-
+ services/mediacodec/seccomp_policy/mediacodec-arm64.policy   | 2 +-
+ services/mediacodec/seccomp_policy/mediaswcodec-arm.policy   | 2 +-
+ services/mediacodec/seccomp_policy/mediaswcodec-arm64.policy | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/services/mediacodec/seccomp_policy/mediacodec-arm.policy b/services/mediacodec/seccomp_policy/mediacodec-arm.policy
+index 835f8bbec6..b4a9ff6249 100644
+--- a/services/mediacodec/seccomp_policy/mediacodec-arm.policy
++++ b/services/mediacodec/seccomp_policy/mediacodec-arm.policy
+@@ -23,7 +23,7 @@ ftruncate64: 1
+ # on ARM is statically loaded at 0xffff 0000. See
+ # http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0211h/Babfeega.html
+ # for more details.
+-mremap: arg3 == 3
++mremap: arg3 == 3 || arg3 == MREMAP_MAYMOVE
+ munmap: 1
+ mprotect: 1
+ madvise: 1
+diff --git a/services/mediacodec/seccomp_policy/mediacodec-arm64.policy b/services/mediacodec/seccomp_policy/mediacodec-arm64.policy
+index 835f8bbec6..b4a9ff6249 100644
+--- a/services/mediacodec/seccomp_policy/mediacodec-arm64.policy
++++ b/services/mediacodec/seccomp_policy/mediacodec-arm64.policy
+@@ -23,7 +23,7 @@ ftruncate64: 1
+ # on ARM is statically loaded at 0xffff 0000. See
+ # http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0211h/Babfeega.html
+ # for more details.
+-mremap: arg3 == 3
++mremap: arg3 == 3 || arg3 == MREMAP_MAYMOVE
+ munmap: 1
+ mprotect: 1
+ madvise: 1
+diff --git a/services/mediacodec/seccomp_policy/mediaswcodec-arm.policy b/services/mediacodec/seccomp_policy/mediaswcodec-arm.policy
+index 512e675b8a..9058f1023c 100644
+--- a/services/mediacodec/seccomp_policy/mediaswcodec-arm.policy
++++ b/services/mediacodec/seccomp_policy/mediaswcodec-arm.policy
+@@ -31,7 +31,7 @@ ftruncate64: 1
+ # on ARM is statically loaded at 0xffff 0000. See
+ # http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0211h/Babfeega.html
+ # for more details.
+-mremap: arg3 == 3
++mremap: arg3 == 3 || arg3 == MREMAP_MAYMOVE
+ munmap: 1
+ prctl: 1
+ getuid32: 1
+diff --git a/services/mediacodec/seccomp_policy/mediaswcodec-arm64.policy b/services/mediacodec/seccomp_policy/mediaswcodec-arm64.policy
+index d9603ef02c..4c51a9c47b 100644
+--- a/services/mediacodec/seccomp_policy/mediaswcodec-arm64.policy
++++ b/services/mediacodec/seccomp_policy/mediaswcodec-arm64.policy
+@@ -35,7 +35,7 @@ ftruncate: 1
+ # on ARM is statically loaded at 0xffff 0000. See
+ # http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0211h/Babfeega.html
+ # for more details.
+-mremap: arg3 == 3
++mremap: arg3 == 3 || arg3 == MREMAP_MAYMOVE
+ munmap: 1
+ prctl: 1
+ writev: 1
+-- 
+2.35.1
+

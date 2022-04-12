@@ -1,0 +1,50 @@
+From 009bee3aeb1f1a995d6ad877805795bdf2da72da Mon Sep 17 00:00:00 2001
+From: Ned Burns <pixel@google.com>
+Date: Thu, 20 Feb 2020 20:16:29 -0500
+Subject: [PATCH 077/297] Fix crash during SysUI dumpsys
+
+Sneaky-sneaky operator precedence. Null check was not actually
+preventing us from executing the right side of the &&.
+
+Test: manual
+Change-Id: I86686c5b06ef9fd5441255792a1574d9ecd94166
+(cherry picked from commit 017b1bba894a28d0c4048e1ab93ed3008739b1ca)
+---
+ .../android/keyguard/KeyguardUpdateMonitor.java    | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java b/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
+index 52ea3009fd2..f57571d8d4b 100644
+--- a/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
++++ b/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
+@@ -2734,9 +2734,10 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
+             final int strongAuthFlags = mStrongAuthTracker.getStrongAuthForUser(userId);
+             BiometricAuthenticated fingerprint = mUserFingerprintAuthenticated.get(userId);
+             pw.println("  Fingerprint state (user=" + userId + ")");
+-            pw.println("    allowed=" + fingerprint != null
+-                    && isUnlockingWithBiometricAllowed(fingerprint.mIsStrongBiometric));
+-            pw.println("    auth'd=" + fingerprint != null && fingerprint.mAuthenticated);
++            pw.println("    allowed="
++                    + (fingerprint != null
++                            && isUnlockingWithBiometricAllowed(fingerprint.mIsStrongBiometric)));
++            pw.println("    auth'd=" + (fingerprint != null && fingerprint.mAuthenticated));
+             pw.println("    authSinceBoot="
+                     + getStrongAuthTracker().hasUserAuthenticatedSinceBoot());
+             pw.println("    disabled(DPM)=" + isFingerprintDisabled(userId));
+@@ -2751,9 +2752,10 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
+             final int strongAuthFlags = mStrongAuthTracker.getStrongAuthForUser(userId);
+             BiometricAuthenticated face = mUserFaceAuthenticated.get(userId);
+             pw.println("  Face authentication state (user=" + userId + ")");
+-            pw.println("    allowed=" + face != null
+-                    && isUnlockingWithBiometricAllowed(face.mIsStrongBiometric));
+-            pw.println("    auth'd=" + face != null && face.mAuthenticated);
++            pw.println("    allowed="
++                    + (face != null && isUnlockingWithBiometricAllowed(face.mIsStrongBiometric)));
++            pw.println("    auth'd="
++                    + (face != null && face.mAuthenticated));
+             pw.println("    authSinceBoot="
+                     + getStrongAuthTracker().hasUserAuthenticatedSinceBoot());
+             pw.println("    disabled(DPM)=" + isFaceDisabled(userId));
+-- 
+2.35.1
+

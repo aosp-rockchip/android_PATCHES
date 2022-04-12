@@ -1,0 +1,73 @@
+From a2bdc2c955986ae0d4b5ae55e2b3789403c3903b Mon Sep 17 00:00:00 2001
+From: Fabian Kozynski <kozynski@google.com>
+Date: Mon, 16 Mar 2020 13:31:06 -0400
+Subject: [PATCH 117/297] Assign a BluetoothAdapter on creation of LMM
+
+When constructing a LocalMediaManager by passing a LocalBluetoothManager
+and a InfoMediaManager, assign the bluetooth adapter to the default.
+
+Fixes: 151580099
+Fixes: 151622615
+Test: atest LocalMediaManagerTest
+Test: manual
+Change-Id: I29ac58bc3635901c713e91ab921d59bfbe58fba7
+(cherry picked from commit e731634e1fc7644f3e8bfd1c0e9451f12602815c)
+---
+ .../settingslib/media/LocalMediaManager.java      | 15 +++++++++++++++
+ .../settingslib/media/LocalMediaManagerTest.java  |  1 -
+ 2 files changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/packages/SettingsLib/src/com/android/settingslib/media/LocalMediaManager.java b/packages/SettingsLib/src/com/android/settingslib/media/LocalMediaManager.java
+index 4a0d16c8d2d..d6dcb2cc53d 100644
+--- a/packages/SettingsLib/src/com/android/settingslib/media/LocalMediaManager.java
++++ b/packages/SettingsLib/src/com/android/settingslib/media/LocalMediaManager.java
+@@ -93,6 +93,15 @@ public class LocalMediaManager implements BluetoothCallback {
+         mCallbacks.remove(callback);
+     }
+ 
++    /**
++     * Creates a LocalMediaManager with references to given managers.
++     *
++     * It will obtain a {@link LocalBluetoothManager} by calling
++     * {@link LocalBluetoothManager#getInstance} and create an {@link InfoMediaManager} passing
++     * that bluetooth manager.
++     *
++     * It will use {@link BluetoothAdapter#getDefaultAdapter()] for setting the bluetooth adapter.
++     */
+     public LocalMediaManager(Context context, String packageName, Notification notification) {
+         mContext = context;
+         mPackageName = packageName;
+@@ -108,12 +117,18 @@ public class LocalMediaManager implements BluetoothCallback {
+                 new InfoMediaManager(context, packageName, notification, mLocalBluetoothManager);
+     }
+ 
++    /**
++     * Creates a LocalMediaManager with references to given managers.
++     *
++     * It will use {@link BluetoothAdapter#getDefaultAdapter()] for setting the bluetooth adapter.
++     */
+     public LocalMediaManager(Context context, LocalBluetoothManager localBluetoothManager,
+             InfoMediaManager infoMediaManager, String packageName) {
+         mContext = context;
+         mLocalBluetoothManager = localBluetoothManager;
+         mInfoMediaManager = infoMediaManager;
+         mPackageName = packageName;
++        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+     }
+ 
+     /**
+diff --git a/packages/SettingsLib/tests/robotests/src/com/android/settingslib/media/LocalMediaManagerTest.java b/packages/SettingsLib/tests/robotests/src/com/android/settingslib/media/LocalMediaManagerTest.java
+index 18d8f14eb88..eea61cb62e7 100644
+--- a/packages/SettingsLib/tests/robotests/src/com/android/settingslib/media/LocalMediaManagerTest.java
++++ b/packages/SettingsLib/tests/robotests/src/com/android/settingslib/media/LocalMediaManagerTest.java
+@@ -91,7 +91,6 @@ public class LocalMediaManagerTest {
+ 
+         mLocalMediaManager = new LocalMediaManager(mContext, mLocalBluetoothManager,
+                 mInfoMediaManager, "com.test.packagename");
+-        mLocalMediaManager.mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+     }
+ 
+     @Test
+-- 
+2.35.1
+

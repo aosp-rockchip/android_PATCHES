@@ -1,0 +1,45 @@
+From dc21a3c479dc91db24e9854114dfe283cbd58231 Mon Sep 17 00:00:00 2001
+From: Lais Andrade <lsandrade@google.com>
+Date: Thu, 23 Jul 2020 18:05:09 +0000
+Subject: [PATCH 193/297] Propagate AudioAttributes flags to
+ VibrationAttributes
+
+Set supported flags from AudioAttributes into VibrationAttributes on the
+builder constructor.
+
+Fix: b/161761418
+Test: manual
+Change-Id: I4a8e1db278843b2f9f19aba43b0b8f264cb696bd
+(cherry picked from commit c2777148df6f9f9880917bd3a5284f63c6d7e58f)
+---
+ core/java/android/os/VibrationAttributes.java | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/core/java/android/os/VibrationAttributes.java b/core/java/android/os/VibrationAttributes.java
+index 27782fa74da..171aef400b0 100644
+--- a/core/java/android/os/VibrationAttributes.java
++++ b/core/java/android/os/VibrationAttributes.java
+@@ -304,6 +304,7 @@ public final class VibrationAttributes implements Parcelable {
+                 @Nullable VibrationEffect effect) {
+             mAudioAttributes = audio;
+             setUsage(audio);
++            setFlags(audio);
+             applyHapticFeedbackHeuristics(effect);
+         }
+ 
+@@ -360,6 +361,12 @@ public final class VibrationAttributes implements Parcelable {
+             }
+         }
+ 
++        private void setFlags(@NonNull AudioAttributes audio) {
++            if ((audio.getAllFlags() & AudioAttributes.FLAG_BYPASS_INTERRUPTION_POLICY) != 0) {
++                mFlags |= FLAG_BYPASS_INTERRUPTION_POLICY;
++            }
++        }
++
+         /**
+          * Combines all of the attributes that have been set and returns a new
+          * {@link VibrationAttributes} object.
+-- 
+2.35.1
+

@@ -1,0 +1,91 @@
+From 40c6188d69258214b1598485ee39acfef7374bba Mon Sep 17 00:00:00 2001
+From: Kevin Han <kevhan@google.com>
+Date: Wed, 15 Apr 2020 14:53:17 -0700
+Subject: [PATCH 149/297] Fix NPE when ranking update causes reinflation
+
+Pass in the NEM inflation callback to RowBinderImpl's
+onNotificationRankingUpdated since changes in state in ranking can
+trigger inflation (smart replies and conversations)
+
+Also go ahead and support null callbacks in inflateContentViews.
+
+Bug: 154028814
+Test: build
+Change-Id: I265e2a9e6b707bd908ce8c1ae5957cfe76973a5f
+(cherry picked from commit 1390930fe5084cce01e9bc45d7d7674da90fa81a)
+---
+ .../notification/NotificationEntryManager.java        |  3 ++-
+ .../collection/inflation/NotificationRowBinder.java   |  3 ++-
+ .../inflation/NotificationRowBinderImpl.java          | 11 +++++++----
+ 3 files changed, 11 insertions(+), 6 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/NotificationEntryManager.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/NotificationEntryManager.java
+index d37e16b1762..75493f89993 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/NotificationEntryManager.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/NotificationEntryManager.java
+@@ -699,7 +699,8 @@ public class NotificationEntryManager implements
+                             entry,
+                             oldImportances.get(entry.getKey()),
+                             oldAdjustments.get(entry.getKey()),
+-                            NotificationUiAdjustment.extractFromNotificationEntry(entry));
++                            NotificationUiAdjustment.extractFromNotificationEntry(entry),
++                            mInflationCallback);
+         }
+ 
+         updateNotifications("updateNotificationRanking");
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotificationRowBinder.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotificationRowBinder.java
+index f4c4924b4b9..710b137d279 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotificationRowBinder.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotificationRowBinder.java
+@@ -51,5 +51,6 @@ public interface NotificationRowBinder {
+             NotificationEntry entry,
+             @Nullable Integer oldImportance,
+             NotificationUiAdjustment oldAdjustment,
+-            NotificationUiAdjustment newAdjustment);
++            NotificationUiAdjustment newAdjustment,
++            NotificationRowContentBinder.InflationCallback callback);
+ }
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotificationRowBinderImpl.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotificationRowBinderImpl.java
+index 73f12f86e52..e6a4cff0d89 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotificationRowBinderImpl.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/inflation/NotificationRowBinderImpl.java
+@@ -180,13 +180,14 @@ public class NotificationRowBinderImpl implements NotificationRowBinder {
+             NotificationEntry entry,
+             @Nullable Integer oldImportance,
+             NotificationUiAdjustment oldAdjustment,
+-            NotificationUiAdjustment newAdjustment) {
++            NotificationUiAdjustment newAdjustment,
++            NotificationRowContentBinder.InflationCallback callback) {
+         if (NotificationUiAdjustment.needReinflate(oldAdjustment, newAdjustment)) {
+             if (entry.rowExists()) {
+                 ExpandableNotificationRow row = entry.getRow();
+                 row.reset();
+                 updateRow(entry, row);
+-                inflateContentViews(entry, row, null /* callback */);
++                inflateContentViews(entry, row, callback);
+             } else {
+                 // Once the RowInflaterTask is done, it will pick up the updated entry, so
+                 // no-op here.
+@@ -221,7 +222,7 @@ public class NotificationRowBinderImpl implements NotificationRowBinder {
+     private void inflateContentViews(
+             NotificationEntry entry,
+             ExpandableNotificationRow row,
+-            NotificationRowContentBinder.InflationCallback inflationCallback) {
++            @Nullable NotificationRowContentBinder.InflationCallback inflationCallback) {
+         final boolean useIncreasedCollapsedHeight =
+                 mMessagingUtil.isImportantMessaging(entry.getSbn(), entry.getImportance());
+         final boolean isLowPriority = entry.isAmbient();
+@@ -238,7 +239,9 @@ public class NotificationRowBinderImpl implements NotificationRowBinder {
+         mRowContentBindStage.requestRebind(entry, en -> {
+             row.setUsesIncreasedCollapsedHeight(useIncreasedCollapsedHeight);
+             row.setIsLowPriority(isLowPriority);
+-            inflationCallback.onAsyncInflationFinished(en);
++            if (inflationCallback != null) {
++                inflationCallback.onAsyncInflationFinished(en);
++            }
+         });
+     }
+ 
+-- 
+2.35.1
+

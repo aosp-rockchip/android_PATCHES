@@ -1,0 +1,33 @@
+From a1d90c490b75762b37bda9db43ec2b16094d66fc Mon Sep 17 00:00:00 2001
+From: chenxiao <cx@rock-chips.com>
+Date: Fri, 9 Oct 2020 18:27:22 +0800
+Subject: [PATCH 205/297] Camera: Merge from Android Q.
+
+Signed-off-by: chenxiao <cx@rock-chips.com>
+Change-Id: Ib4b3191a8bdeda139a75ec111113658ba9c47af5
+---
+ core/java/android/hardware/Camera.java | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/core/java/android/hardware/Camera.java b/core/java/android/hardware/Camera.java
+index 25279b31b5d..12f1dc296b4 100644
+--- a/core/java/android/hardware/Camera.java
++++ b/core/java/android/hardware/Camera.java
+@@ -633,6 +633,14 @@ public class Camera {
+         releaseAppOps();
+     }
+ 
++   /**
++    *@hide
++    */
++    public final boolean isReleased() {
++        if (mNativeContext == 0) return true;
++        return false;
++    }
++
+     /**
+      * Unlocks the camera to allow another process to access it.
+      * Normally, the camera is locked to the process with an active Camera
+-- 
+2.35.1
+

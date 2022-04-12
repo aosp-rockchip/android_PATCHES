@@ -1,0 +1,93 @@
+From e34e99db64a891aa1cda74966a49cc771926ec6b Mon Sep 17 00:00:00 2001
+From: John Reck <jreck@google.com>
+Date: Wed, 19 Jun 2019 11:39:20 -0700
+Subject: [PATCH 005/297] Revert SurfaceView back to Q's version
+
+Revert API behavior changes to SurfaceView, snapping
+back to Q's version.
+
+Bug: 133378280
+Test: none
+Change-Id: I3a47f9bfdfab2d16707f952a9af672551736e681
+(cherry picked from commit 5866a0c6aba39dda1a775abaf92ecacee715c89a)
+---
+ core/java/android/view/SurfaceView.java | 42 -------------------------
+ 1 file changed, 42 deletions(-)
+
+diff --git a/core/java/android/view/SurfaceView.java b/core/java/android/view/SurfaceView.java
+index 4891b43c829..17e83ca364b 100644
+--- a/core/java/android/view/SurfaceView.java
++++ b/core/java/android/view/SurfaceView.java
+@@ -27,7 +27,6 @@ import android.content.res.Configuration;
+ import android.graphics.BlendMode;
+ import android.graphics.Canvas;
+ import android.graphics.Color;
+-import android.graphics.HardwareRenderer;
+ import android.graphics.Paint;
+ import android.graphics.PixelFormat;
+ import android.graphics.PorterDuff;
+@@ -203,29 +202,6 @@ public class SurfaceView extends View
+ 
+     private SurfaceControl.Transaction mRtTransaction = new SurfaceControl.Transaction();
+ 
+-    /**
+-     * A callback which reflects an alpha value of this view onto the underlying surfaces.
+-     *
+-     * <p class="note"><strong>Note:</strong> This doesn't have to be defined as a member variable,
+-     * but can be defined as an inline lambda when calling ViewRootImpl#registerRtFrameCallback().
+-     * However when we do so, the callback is triggered only for a few times and stops working for
+-     * some reason. It's suspected that there is a problem around garbage collection, and until
+-     * the cause is fixed, we will keep this callback in a member variable.</p>
+-    */
+-    private HardwareRenderer.FrameDrawingCallback mSetSurfaceAlphaCallback = frame -> {
+-        final ViewRootImpl viewRoot = getViewRootImpl();
+-        if (viewRoot == null || viewRoot.mSurface == null || !viewRoot.mSurface.isValid()) {
+-            // In this case, the alpha value is reflected on the screen in #updateSurface() later.
+-            return;
+-        }
+-
+-        final SurfaceControl.Transaction t = new SurfaceControl.Transaction();
+-        t.setAlpha(mSurfaceControl, getAlpha());
+-        t.deferTransactionUntilSurface(mSurfaceControl, viewRoot.mSurface, frame);
+-        t.setEarlyWakeup();
+-        t.apply();
+-    };
+-
+     public SurfaceView(Context context) {
+         this(context, null);
+     }
+@@ -324,17 +300,6 @@ public class SurfaceView extends View
+         updateSurface();
+     }
+ 
+-    @Override
+-    public void setAlpha(float alpha) {
+-        super.setAlpha(alpha);
+-        final ViewRootImpl viewRoot = getViewRootImpl();
+-        if (viewRoot == null) {
+-            return;
+-        }
+-        viewRoot.registerRtFrameCallback(mSetSurfaceAlphaCallback);
+-        invalidate();
+-    }
+-
+     private void performDrawFinished() {
+         if (mPendingReportDraws > 0) {
+             mDrawFinished = true;
+@@ -709,13 +674,6 @@ public class SurfaceView extends View
+                         }
+                         updateBackgroundVisibilityInTransaction(viewRoot.getSurfaceControl());
+ 
+-                        // Alpha value change is handled in setAlpha() directly using a local
+-                        // transaction. However it can happen that setAlpha() is called while
+-                        // local transactions cannot be applied, so the value is stored in a View
+-                        // but not yet reflected on the Surface.
+-                        mSurfaceControl.setAlpha(getAlpha());
+-                        mBackgroundControl.setAlpha(getAlpha());
+-
+                         // While creating the surface, we will set it's initial
+                         // geometry. Outside of that though, we should generally
+                         // leave it to the RenderThread.
+-- 
+2.35.1
+

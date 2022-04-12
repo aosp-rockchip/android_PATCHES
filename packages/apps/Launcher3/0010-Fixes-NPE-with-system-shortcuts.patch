@@ -1,0 +1,83 @@
+From a5252556401a7c8abfc7f66af45cc16bff232c5d Mon Sep 17 00:00:00 2001
+From: thiruram <thiruram@google.com>
+Date: Mon, 29 Jun 2020 10:47:14 -0700
+Subject: [PATCH 10/13] Fixes NPE with system shortcuts.
+
+Bug: 160109140
+Change-Id: I35c00fc1792fcf11fc61e1876f9184bd5fb309ce
+(cherry picked from commit 53925ff9c6558e330aed20a2e406d68474a41247)
+---
+ .../PredictionUiStateManager.java             | 27 +++++++++++--------
+ .../HotseatPredictionController.java          |  8 ++++--
+ 2 files changed, 22 insertions(+), 13 deletions(-)
+
+diff --git a/quickstep/recents_ui_overrides/src/com/android/launcher3/appprediction/PredictionUiStateManager.java b/quickstep/recents_ui_overrides/src/com/android/launcher3/appprediction/PredictionUiStateManager.java
+index 5e54cd292..a0f6b044b 100644
+--- a/quickstep/recents_ui_overrides/src/com/android/launcher3/appprediction/PredictionUiStateManager.java
++++ b/quickstep/recents_ui_overrides/src/com/android/launcher3/appprediction/PredictionUiStateManager.java
+@@ -52,7 +52,6 @@ import com.android.launcher3.util.MainThreadInitializedObject;
+ import java.util.ArrayList;
+ import java.util.Collections;
+ import java.util.List;
+-import java.util.Optional;
+ import java.util.OptionalInt;
+ import java.util.stream.IntStream;
+ 
+@@ -315,16 +314,22 @@ public class PredictionUiStateManager implements StateListener<LauncherState>,
+      * {@link LauncherSettings.Favorites#ITEM_TYPE_DEEP_SHORTCUT}
+      */
+     public OptionalInt getAllAppsRank(@Nullable ItemInfo itemInfo) {
+-        Optional<ComponentKey> componentKey = Optional.ofNullable(itemInfo)
+-                .filter(item -> item.itemType == ITEM_TYPE_APPLICATION
+-                        || item.itemType == ITEM_TYPE_SHORTCUT
+-                        || item.itemType == ITEM_TYPE_DEEP_SHORTCUT)
+-                .map(ItemInfo::getTargetComponent)
+-                .map(componentName -> new ComponentKey(componentName, itemInfo.user));
+-
+-        return componentKey.map(key -> IntStream.range(0, getCurrentState().apps.size())
+-                .filter(index -> key.equals(getCurrentState().apps.get(index).getComponentKey()))
+-                .findFirst()).orElseGet(OptionalInt::empty);
++        if (itemInfo == null || itemInfo.getTargetComponent() == null || itemInfo.user == null) {
++            return OptionalInt.empty();
++        }
++
++        if (itemInfo.itemType == ITEM_TYPE_APPLICATION
++                || itemInfo.itemType == ITEM_TYPE_SHORTCUT
++                || itemInfo.itemType == ITEM_TYPE_DEEP_SHORTCUT) {
++            ComponentKey key = new ComponentKey(itemInfo.getTargetComponent(),
++                    itemInfo.user);
++            final List<ComponentKeyMapper> apps = getCurrentState().apps;
++            return IntStream.range(0, apps.size())
++                    .filter(index -> key.equals(apps.get(index).getComponentKey()))
++                    .findFirst();
++        }
++
++        return OptionalInt.empty();
+     }
+ 
+     /**
+diff --git a/quickstep/recents_ui_overrides/src/com/android/launcher3/hybridhotseat/HotseatPredictionController.java b/quickstep/recents_ui_overrides/src/com/android/launcher3/hybridhotseat/HotseatPredictionController.java
+index 1dbb9e2d6..987cd0fcf 100644
+--- a/quickstep/recents_ui_overrides/src/com/android/launcher3/hybridhotseat/HotseatPredictionController.java
++++ b/quickstep/recents_ui_overrides/src/com/android/launcher3/hybridhotseat/HotseatPredictionController.java
+@@ -655,11 +655,15 @@ public class HotseatPredictionController implements DragController.DragListener,
+                             + ",launchLocation:" + itemInfo.container);
+         }
+ 
+-        final ComponentKey k = new ComponentKey(itemInfo.getTargetComponent(), itemInfo.user);
++        if (itemInfo.getTargetComponent() == null || itemInfo.user == null) {
++            return;
++        }
++
++        final ComponentKey key = new ComponentKey(itemInfo.getTargetComponent(), itemInfo.user);
+ 
+         final List<ComponentKeyMapper> predictedApps = new ArrayList<>(mComponentKeyMappers);
+         OptionalInt rank = IntStream.range(0, predictedApps.size())
+-                .filter((i) -> k.equals(predictedApps.get(i).getComponentKey()))
++                .filter(index -> key.equals(predictedApps.get(index).getComponentKey()))
+                 .findFirst();
+         if (!rank.isPresent()) {
+             return;
+-- 
+2.35.1
+

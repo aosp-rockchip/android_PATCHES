@@ -1,0 +1,42 @@
+From a2119946a494dd0f47b4e0cccf531951591c5c02 Mon Sep 17 00:00:00 2001
+From: ZhuangXiaoLiang <zhuangxl@rock-chips.com>
+Date: Tue, 25 Jul 2017 17:55:14 +0800
+Subject: [PATCH 08/36] gralloc.h: Add flag to get Physically Continuous
+ memory.
+
+Change-Id: I6749b74cc826a993e2eec5d4a47856cedbd407a4
+Signed-off-by: ZhuangXiaoLiang <zhuangxl@rock-chips.com>
+---
+ include/hardware/gralloc.h | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/include/hardware/gralloc.h b/include/hardware/gralloc.h
+index b6844bd0..0edfb68a 100755
+--- a/include/hardware/gralloc.h
++++ b/include/hardware/gralloc.h
+@@ -142,8 +142,13 @@ enum {
+     GRALLOC_USAGE_ROT_MASK              = 0x0F000000,
+ 
+     GRALLOC_USAGE_TO_USE_SINGLE_BUFFER  = 0x08000000,
++
++    /* mali p010 format */
++    GRALLOC_USAGE_TO_USE_ARM_P010       = 0x04000000,
+     /* would like to use a fbdc(afbc) format. */
+-    GRALLOC_USAGE_TO_USE_FBDC_FMT       = 0x04000000,
++    GRALLOC_USAGE_TO_USE_FBDC_FMT       = 0x02000000,
++    /* use Physically Continuous memory */
++    GRALLOC_USAGE_TO_USE_PHY_CONT	= 0x01000000,
+ 
+     /* implementation-specific private usage flags */
+     GRALLOC_USAGE_PRIVATE_0             = 0x10000000U,
+@@ -160,6 +165,7 @@ enum {
+  */
+ enum {
+   /****************Implement****************/
++  GRALLOC_MODULE_PERFORM_GET_HADNLE_PHY_ADDR       = 0x08100001,
+   GRALLOC_MODULE_PERFORM_GET_HADNLE_PRIME_FD       = 0x08100002,
+   GRALLOC_MODULE_PERFORM_GET_HADNLE_ATTRIBUTES     = 0x08100004,
+   GRALLOC_MODULE_PERFORM_GET_INTERNAL_FORMAT       = 0x08100006,
+-- 
+2.35.1
+

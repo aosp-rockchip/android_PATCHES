@@ -1,0 +1,28 @@
+From 307e0d98a5c314f5599a7a3858cdecf86387a018 Mon Sep 17 00:00:00 2001
+From: "wanghang@rock-chips.com" <wanghang@rock-chips.com>
+Date: Wed, 2 Sep 2020 08:58:54 +0800
+Subject: [PATCH 198/297] Recovery : add dismiss code for last commit
+
+the commit is: skip Recovery_state delete operation to continue stresstest
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: I1033d06f433b461cd3dca579d775278cf5ac7afd
+---
+ core/java/android/os/RecoverySystem.java | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/core/java/android/os/RecoverySystem.java b/core/java/android/os/RecoverySystem.java
+index b0212162cf7..e835b8319a2 100644
+--- a/core/java/android/os/RecoverySystem.java
++++ b/core/java/android/os/RecoverySystem.java
+@@ -109,6 +109,7 @@ public class RecoverySystem {
+     private static final File LOG_FILE = new File(RECOVERY_DIR, "log");
+     private static final String LAST_INSTALL_PATH = "last_install";
+     private static final String LAST_PREFIX = "last_";
++    private static final String RECOVERY_TEST_STATE  = "Recovery_state";
+     private static final String ACTION_EUICC_FACTORY_RESET =
+             "com.android.internal.action.EUICC_FACTORY_RESET";
+     private static final String ACTION_EUICC_REMOVE_INVISIBLE_SUBSCRIPTIONS =
+-- 
+2.35.1
+

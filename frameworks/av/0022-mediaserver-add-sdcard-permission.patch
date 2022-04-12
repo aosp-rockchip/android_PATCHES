@@ -1,0 +1,26 @@
+From 6c800fe226a39de9553d738c7db951cfeb64e11a Mon Sep 17 00:00:00 2001
+From: Chen Jinsen <kevin.chen@rock-chips.com>
+Date: Fri, 25 Dec 2020 10:24:45 +0800
+Subject: [PATCH 22/25] [mediaserver]: add sdcard permission
+
+Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
+Change-Id: I3e57754964e3b7e3107ea6a982e9945d059906b6
+---
+ media/mediaserver/mediaserver.rc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/media/mediaserver/mediaserver.rc b/media/mediaserver/mediaserver.rc
+index 05373c9c3f..fbdf43a908 100644
+--- a/media/mediaserver/mediaserver.rc
++++ b/media/mediaserver/mediaserver.rc
+@@ -4,6 +4,6 @@ on property:init.svc.media=*
+ service media /system/bin/mediaserver
+     class main
+     user media
+-    group audio camera inet net_bt net_bt_admin net_bw_acct drmrpc mediadrm
++    group audio camera inet net_bt net_bt_admin net_bw_acct drmrpc mediadrm media_rw sdcard_rw
+     ioprio rt 4
+     task_profiles ProcessCapacityHigh HighPerformance
+-- 
+2.35.1
+

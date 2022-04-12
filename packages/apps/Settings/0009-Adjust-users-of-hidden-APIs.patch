@@ -1,0 +1,44 @@
+From d987a645be2af0fc34feb882570abc9348e3b66d Mon Sep 17 00:00:00 2001
+From: Jeff Sharkey <jsharkey@android.com>
+Date: Fri, 6 Mar 2020 13:36:31 -0700
+Subject: [PATCH 09/25] Adjust users of hidden APIs.
+
+There's a new method overload that gives them both the "int flags"
+and "int userId".
+
+Bug: 150939131
+Test: atest CtsDatabaseTestCases
+Test: atest CtsContentTestCases:android.content.cts.ContentResolverTest
+Exempt-From-Owner-Approval: trivial refactoring
+Change-Id: I54341fb998fd9a0a25945c4505ba80b4b1f7e4af
+(cherry picked from commit 433d0577530686fc8ac034414754836d196bb620)
+---
+ .../zen/ZenModeButtonPreferenceControllerTest.java           | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/tests/robotests/src/com/android/settings/notification/zen/ZenModeButtonPreferenceControllerTest.java b/tests/robotests/src/com/android/settings/notification/zen/ZenModeButtonPreferenceControllerTest.java
+index 1200402607..b4082dad38 100644
+--- a/tests/robotests/src/com/android/settings/notification/zen/ZenModeButtonPreferenceControllerTest.java
++++ b/tests/robotests/src/com/android/settings/notification/zen/ZenModeButtonPreferenceControllerTest.java
+@@ -51,6 +51,8 @@ import org.robolectric.RuntimeEnvironment;
+ import org.robolectric.shadows.ShadowApplication;
+ import org.robolectric.util.ReflectionHelpers;
+ 
++import java.util.Arrays;
++
+ @RunWith(RobolectricTestRunner.class)
+ public class ZenModeButtonPreferenceControllerTest {
+ 
+@@ -143,7 +145,8 @@ public class ZenModeButtonPreferenceControllerTest {
+         Settings.Global.putInt(mContentResolver, ZEN_MODE, ZEN_MODE_IMPORTANT_INTERRUPTIONS);
+         final int GUEST_USER_ID = 10;
+         mController.mSettingObserver.onChange(false,
+-                Settings.Global.getUriFor(Settings.Global.ZEN_MODE), GUEST_USER_ID);
++                Arrays.asList(Settings.Global.getUriFor(Settings.Global.ZEN_MODE)),
++                0, GUEST_USER_ID);
+ 
+         verify(mZenButtonOn).setVisibility(View.GONE);
+         verify(mZenButtonOff).setVisibility(View.VISIBLE);
+-- 
+2.35.1
+

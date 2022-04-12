@@ -1,0 +1,183 @@
+From 5b6b737e7448f4bf432e99793931f65a9bdd345d Mon Sep 17 00:00:00 2001
+From: Longjian Lin <llj@rock-chips.com>
+Date: Mon, 11 Jan 2021 09:55:54 +0000
+Subject: [PATCH 288/297] Add bt sleep policy
+
+Signed-off-by: Longjian Lin <llj@rock-chips.com>
+Change-Id: I42e1d8879d724a1656f9ff8ad382a017a1ed0093
+---
+ .../connectivity/WifiSleepController.java     | 101 ++++++++++++++----
+ 1 file changed, 80 insertions(+), 21 deletions(-)
+
+diff --git a/services/core/java/com/android/server/connectivity/WifiSleepController.java b/services/core/java/com/android/server/connectivity/WifiSleepController.java
+index d2f539537e9..2b74b8b2c1d 100644
+--- a/services/core/java/com/android/server/connectivity/WifiSleepController.java
++++ b/services/core/java/com/android/server/connectivity/WifiSleepController.java
+@@ -18,6 +18,7 @@ package com.android.server.connectivity;
+ 
+ import android.app.AlarmManager;
+ import android.app.PendingIntent;
++import android.bluetooth.BluetoothAdapter;
+ import android.content.BroadcastReceiver;
+ import android.content.Context;
+ import android.content.ContentResolver;
+@@ -40,13 +41,17 @@ public class WifiSleepController {
+ 
+     private static final String PERSISTENT_PROPERTY_WIFI_SLEEP_DELAY = "persist.wifi.sleep.delay.ms";
+     private static final String PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG = "persist.wifi.sleep.flag";
+-
+     private static final int DEFAULT_WIFI_SLEEP_DELAY_MS = 15 * 60 * 1000;
++    private static final String PERSISTENT_PROPERTY_BT_SLEEP_FLAG = "persist.bt.sleep.flag";
++
+ 
+     static final int WIFI_DISABLED = 0;
+     static final int WIFI_ENABLED = 1;
+     static final int WIFI_ENABLED_AIRPLANE_OVERRIDE = 2;
+-
++    static final int BT_DISABLED = 0;
++    static final int BT_ENABLED = 1;
++    static final int BT_ENABLED_AIRPLANE_OVERRIDE = 2;
++  
+     private Context mContext;
+     private AlarmManager mAlarmManager;
+     private WifiManager mWifiManager;
+@@ -57,6 +62,9 @@ public class WifiSleepController {
+     private boolean mCharging = false;
+     private boolean mIsScreenON = true;
+ 
++    private boolean mBtPowerDownSetting = SystemProperties.getBoolean("persist.bt.power.down", false);
++    private boolean mBtIsOpened = false;
++    private boolean mWifiIsOpened = false;
+ 
+     public WifiSleepController(Context context) {
+         mContext = context;
+@@ -83,31 +91,45 @@ public class WifiSleepController {
+             } else if (action.equals(Intent.ACTION_SCREEN_ON)) {
+                 mIsScreenON = true;
+                 exitSleepState();
+-		SystemProperties.set(PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG, "false");
+             } else if (action.equals(Intent.ACTION_SCREEN_OFF)) {
+                 mIsScreenON = false;
+-		log("isScanAlwaysAvailable = " + mWifiManager.isScanAlwaysAvailable());
+-		boolean mWifiSleepConfig = SystemProperties.getBoolean("ro.wifi.sleep.power.down", false);
+-		if(mWifiSleepConfig && mWifiManager.isScanAlwaysAvailable()) {
+-			mWifiManager.setScanAlwaysAvailable(false);
+-		}
++                log("isScanAlwaysAvailable = " + mWifiManager.isScanAlwaysAvailable());
++                boolean mWifiSleepConfig = SystemProperties.getBoolean("ro.wifi.sleep.power.down", false);
++                if(mWifiSleepConfig && mWifiManager.isScanAlwaysAvailable()) {
++                    mWifiManager.setScanAlwaysAvailable(false);
++                }
++                mBtIsOpened = getBtIsEnabled();
++                mWifiIsOpened = getWifiIsEnabled();
+                 if (shouldStartWifiSleep()) {
+-		    SystemProperties.set(PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG, "true");
++                    SystemProperties.set(PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG, "true");
+                     setWifiSleepAlarm();
+-		}
++                    if(mBtIsOpened)
++                        SystemProperties.set(PERSISTENT_PROPERTY_BT_SLEEP_FLAG, "true");
++                }else if(shouldStartBtSleep()){//check if only bt
++                    SystemProperties.set(PERSISTENT_PROPERTY_BT_SLEEP_FLAG, "true");
++                    setWifiSleepAlarm();
++                }
+             } else if (action.contains(ACTION_WIFI_SLEEP_TIMEOUT_ALARM)) {
+                 //Sometimes we receive this action after SCREEN_ON.
+                 //Turn off wifi should only happen when SCREEN_OFF.
+                 if(!mIsScreenON) {
+-                    setWifiEnabled(false);
++                    if(mWifiIsOpened)
++                        setWifiEnabled(false);
++                    if(mBtIsOpened && mBtPowerDownSetting)
++                        setBtEnabled(false);
+                 }
+             } else if (action.equals(Intent.ACTION_BOOT_COMPLETED)) {
+-		boolean mWifiSleepFlag = SystemProperties.getBoolean(PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG, false);
+-		log("mWifiSleepFlag is " + mWifiSleepFlag);
+-		if(mWifiSleepFlag && !getWifiIsEnabled()) {
+-			setWifiEnabled(true);
+-		}
+-	    }
++                boolean mWifiSleepFlag = SystemProperties.getBoolean(PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG, false);
++                log("mWifiSleepFlag is " + mWifiSleepFlag);
++                if(mWifiSleepFlag && !getWifiIsEnabled()) {
++                    setWifiEnabled(true);
++                }
++                boolean mBtSleepFlag = SystemProperties.getBoolean(PERSISTENT_PROPERTY_BT_SLEEP_FLAG, false);
++                log("mBtSleepFlag is " + mBtSleepFlag);
++                if(mBtSleepFlag && !getBtIsEnabled()) {
++                    setBtEnabled(true);
++                }
++            }
+         }
+     }
+ 
+@@ -131,9 +153,8 @@ public class WifiSleepController {
+ 			Settings.Global.WIFI_SLEEP_POLICY_NEVER);
+     }
+     private boolean shouldStartWifiSleep() {
+-	boolean isWifiOpen = getWifiIsEnabled();
+-	log("shouldStartWifiSleep: isWifiOpen = " + isWifiOpen);
+-	if(isWifiOpen) {
++	log("shouldStartWifiSleep: isWifiOpen = " + mWifiIsOpened);
++	if(mWifiIsOpened) {
+ 		if(wifiSleepPolicyMode() == Settings.Global.WIFI_SLEEP_POLICY_DEFAULT) {
+ 			return true;
+ 		} else if(wifiSleepPolicyMode() == Settings.Global.WIFI_SLEEP_POLICY_NEVER_WHILE_PLUGGED) {
+@@ -181,7 +202,14 @@ public class WifiSleepController {
+     private void exitSleepState() {
+         log("exitSleepState()");
+         if (mWifiSleepIntent != null) {
+-            setWifiEnabled(true);
++            if(mWifiIsOpened && !getWifiIsEnabled()){
++                setWifiEnabled(true);
++                SystemProperties.set(PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG, "false");
++            }
++            if(mBtIsOpened && !getBtIsEnabled()){
++                setBtEnabled(true);
++                SystemProperties.set(PERSISTENT_PROPERTY_BT_SLEEP_FLAG, "false");
++            }
+             removeWifiSleepAlarm();
+         }
+     }
+@@ -194,6 +222,37 @@ public class WifiSleepController {
+         }
+     }
+ 
++
++    private boolean shouldStartBtSleep() {
++        log("shouldStartBtSleep: isBtOpen = " + mBtIsOpened);
++        if(mBtIsOpened && mBtPowerDownSetting) {
++            if(wifiSleepPolicyMode() == Settings.Global.WIFI_SLEEP_POLICY_DEFAULT) {
++                return true;
++            } else if(wifiSleepPolicyMode() == Settings.Global.WIFI_SLEEP_POLICY_NEVER_WHILE_PLUGGED) {
++                if(!mCharging){
++                    return true;
++                }
++            }
++        }
++        return false;
++    }
++
++    private boolean getBtIsEnabled() {
++        final ContentResolver cr = mContext.getContentResolver();
++        return Settings.Global.getInt(cr, Settings.Global.BLUETOOTH_ON, 0) == BT_ENABLED
++	       || Settings.Global.getInt(cr, Settings.Global.BLUETOOTH_ON, 0) == BT_ENABLED_AIRPLANE_OVERRIDE;
++    }
++
++    private void setBtEnabled(boolean enable){
++		log("setBtEnabled " + enable);
++        BluetoothAdapter mAdapter= BluetoothAdapter.getDefaultAdapter();
++        if(enable)
++            mAdapter.enable();
++        else
++            mAdapter.disable();
++    }
++
++
+     private static void log(String s) {
+         Log.d(LOG_TAG, s);
+     }
+-- 
+2.35.1
+

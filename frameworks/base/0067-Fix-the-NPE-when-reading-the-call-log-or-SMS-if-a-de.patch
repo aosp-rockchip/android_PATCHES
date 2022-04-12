@@ -1,0 +1,68 @@
+From 5371be44a21e6525f9674ff4f2c6e9ae55485508 Mon Sep 17 00:00:00 2001
+From: Danning Chen <danningc@google.com>
+Date: Wed, 5 Feb 2020 11:52:46 -0800
+Subject: [PATCH 067/297] Fix the NPE when reading the call log or SMS if a
+ device has multiple user profiles
+
+Change-Id: Iec6485653367f2f005c2b7e17f23ab611e39e13b
+Bug: 148918224
+Test: atest com.android.server.people.data.DataManagerTest
+(cherry picked from commit b3f852127efb8fb5e8db92179c7c64b08dfa9948)
+---
+ .../java/com/android/server/people/data/DataManager.java      | 3 ++-
+ .../src/com/android/server/people/data/DataManagerTest.java   | 4 ++++
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/services/people/java/com/android/server/people/data/DataManager.java b/services/people/java/com/android/server/people/data/DataManager.java
+index 79503f79731..fb13b36bd08 100644
+--- a/services/people/java/com/android/server/people/data/DataManager.java
++++ b/services/people/java/com/android/server/people/data/DataManager.java
+@@ -299,7 +299,8 @@ public class DataManager {
+ 
+     private void forAllUnlockedUsers(Consumer<UserData> consumer) {
+         for (int i = 0; i < mUserDataArray.size(); i++) {
+-            UserData userData = mUserDataArray.get(i);
++            int userId = mUserDataArray.keyAt(i);
++            UserData userData = mUserDataArray.get(userId);
+             if (userData.isUnlocked()) {
+                 consumer.accept(userData);
+             }
+diff --git a/services/tests/servicestests/src/com/android/server/people/data/DataManagerTest.java b/services/tests/servicestests/src/com/android/server/people/data/DataManagerTest.java
+index 62ea425a54a..db0afae4fc1 100644
+--- a/services/tests/servicestests/src/com/android/server/people/data/DataManagerTest.java
++++ b/services/tests/servicestests/src/com/android/server/people/data/DataManagerTest.java
+@@ -263,6 +263,7 @@ public final class DataManagerTest {
+     @Test
+     public void testContactsChanged() {
+         mDataManager.onUserUnlocked(USER_ID_PRIMARY);
++        mDataManager.onUserUnlocked(USER_ID_SECONDARY);
+ 
+         ShortcutInfo shortcut = buildShortcutInfo(TEST_PKG_NAME, USER_ID_PRIMARY, TEST_SHORTCUT_ID,
+                 buildPerson());
+@@ -289,6 +290,7 @@ public final class DataManagerTest {
+     @Test
+     public void testNotificationListener() {
+         mDataManager.onUserUnlocked(USER_ID_PRIMARY);
++        mDataManager.onUserUnlocked(USER_ID_SECONDARY);
+ 
+         ShortcutInfo shortcut = buildShortcutInfo(TEST_PKG_NAME, USER_ID_PRIMARY, TEST_SHORTCUT_ID,
+                 buildPerson());
+@@ -341,6 +343,7 @@ public final class DataManagerTest {
+     @Test
+     public void testCallLogContentObserver() {
+         mDataManager.onUserUnlocked(USER_ID_PRIMARY);
++        mDataManager.onUserUnlocked(USER_ID_SECONDARY);
+ 
+         ShortcutInfo shortcut = buildShortcutInfo(TEST_PKG_NAME, USER_ID_PRIMARY, TEST_SHORTCUT_ID,
+                 buildPerson());
+@@ -368,6 +371,7 @@ public final class DataManagerTest {
+     @Test
+     public void testMmsSmsContentObserver() {
+         mDataManager.onUserUnlocked(USER_ID_PRIMARY);
++        mDataManager.onUserUnlocked(USER_ID_SECONDARY);
+ 
+         ShortcutInfo shortcut = buildShortcutInfo(TEST_PKG_NAME, USER_ID_PRIMARY, TEST_SHORTCUT_ID,
+                 buildPerson());
+-- 
+2.35.1
+

@@ -1,0 +1,43 @@
+From 146b8781c7f3a20792f5e10a94e5edbc0e6c91a8 Mon Sep 17 00:00:00 2001
+From: Daniel Chapin <chapin@google.com>
+Date: Tue, 18 Feb 2020 19:07:02 +0000
+Subject: [PATCH 075/297] Revert "Limit metricslogger call into statsdw for
+ events"
+
+Revert "Add com.android.os.statsd to linkerconfig"
+
+Revert submission 10302138-tej_jni
+
+Reason for revert: b/149720256
+Reverted Changes:
+I1fe277bce: Limit metricslogger call into statsdw for events
+Id516e79e1: Add com.android.os.statsd to linkerconfig
+I22c2816c8: Remove libstats_jni from the platform
+
+Change-Id: Ife857662618f5f5a40b00af79f688713c82a3a9c
+(cherry picked from commit 63c5613269516c9f33335eec946d45d9a4876801)
+---
+ core/java/com/android/internal/logging/MetricsLogger.java | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
+
+diff --git a/core/java/com/android/internal/logging/MetricsLogger.java b/core/java/com/android/internal/logging/MetricsLogger.java
+index 75eb4aa052b..140c410e8de 100644
+--- a/core/java/com/android/internal/logging/MetricsLogger.java
++++ b/core/java/com/android/internal/logging/MetricsLogger.java
+@@ -55,11 +55,8 @@ public class MetricsLogger {
+     protected void saveLog(LogMaker log) {
+         // TODO(b/116684537): Flag guard logging to event log and statsd socket.
+         EventLogTags.writeSysuiMultiAction(log.serialize());
+-        if (log.getCategory() != MetricsEvent.RESERVED_FOR_LOGBUILDER_COUNTER
+-                && log.getCategory() != MetricsEvent.RESERVED_FOR_LOGBUILDER_HISTOGRAM) {
+-            FrameworkStatsLog.write(FrameworkStatsLog.KEY_VALUE_PAIRS_ATOM,
+-                    /* UID is retrieved from statsd side */ 0, log.getEntries());
+-        }
++        FrameworkStatsLog.write(FrameworkStatsLog.KEY_VALUE_PAIRS_ATOM,
++                /* UID is retrieved from statsd side */ 0, log.getEntries());
+     }
+ 
+     public static final int VIEW_UNKNOWN = MetricsEvent.VIEW_UNKNOWN;
+-- 
+2.35.1
+

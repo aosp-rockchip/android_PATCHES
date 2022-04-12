@@ -1,0 +1,67 @@
+From cd90d767657c7504ac6cfcfed3e4b8ae06088268 Mon Sep 17 00:00:00 2001
+From: Hongwei Wang <hwwang@google.com>
+Date: Mon, 16 Mar 2020 11:59:28 -0700
+Subject: [PATCH 118/297] Use the bounds received in taskAppeared
+
+The bounds sent with taskVanished not seem to be up-to-dated
+
+Bug: 151050577
+Test: Manual enter/exit PiP for play movies in gesture nav
+Change-Id: If875920ee33bb11d164f3e7778319d4ac921ad91
+(cherry picked from commit fbc25fe9fa62c01a62050f805e58a388edf057d6)
+---
+ .../src/com/android/systemui/pip/PipTaskOrganizer.java   | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/pip/PipTaskOrganizer.java b/packages/SystemUI/src/com/android/systemui/pip/PipTaskOrganizer.java
+index 4076c1bbb36..dc1b5d70089 100644
+--- a/packages/SystemUI/src/com/android/systemui/pip/PipTaskOrganizer.java
++++ b/packages/SystemUI/src/com/android/systemui/pip/PipTaskOrganizer.java
+@@ -33,6 +33,7 @@ import android.content.Context;
+ import android.content.pm.ActivityInfo;
+ import android.graphics.Rect;
+ import android.os.Handler;
++import android.os.IBinder;
+ import android.os.Looper;
+ import android.os.RemoteException;
+ import android.util.Log;
+@@ -47,7 +48,9 @@ import com.android.systemui.R;
+ import com.android.systemui.pip.phone.PipUpdateThread;
+ 
+ import java.util.ArrayList;
++import java.util.HashMap;
+ import java.util.List;
++import java.util.Map;
+ import java.util.Objects;
+ import java.util.function.Consumer;
+ 
+@@ -79,6 +82,7 @@ public class PipTaskOrganizer extends ITaskOrganizer.Stub {
+     private final Rect mLastReportedBounds = new Rect();
+     private final int mEnterExitAnimationDuration;
+     private final PipSurfaceTransactionHelper mSurfaceTransactionHelper;
++    private final Map<IBinder, Rect> mBoundsToRestore = new HashMap<>();
+ 
+     // These callbacks are called on the update thread
+     private final PipAnimationController.PipAnimationCallback mPipAnimationCallback =
+@@ -222,6 +226,7 @@ public class PipTaskOrganizer extends ITaskOrganizer.Stub {
+             throw new RuntimeException("Unable to get leash", e);
+         }
+         final Rect currentBounds = mTaskInfo.configuration.windowConfiguration.getBounds();
++        mBoundsToRestore.put(mToken.asBinder(), currentBounds);
+         if (mOneShotAnimationType == ANIM_TYPE_BOUNDS) {
+             scheduleAnimateResizePip(currentBounds, destinationBounds,
+                     TRANSITION_DIRECTION_TO_PIP, mEnterExitAnimationDuration, null);
+@@ -246,8 +251,8 @@ public class PipTaskOrganizer extends ITaskOrganizer.Stub {
+             Log.wtf(TAG, "Unrecognized token: " + token);
+             return;
+         }
+-        scheduleAnimateResizePip(mLastReportedBounds,
+-                info.configuration.windowConfiguration.getBounds(),
++        final Rect boundsToRestore = mBoundsToRestore.remove(token.asBinder());
++        scheduleAnimateResizePip(mLastReportedBounds, boundsToRestore,
+                 TRANSITION_DIRECTION_TO_FULLSCREEN, mEnterExitAnimationDuration, null);
+         mInPip = false;
+     }
+-- 
+2.35.1
+

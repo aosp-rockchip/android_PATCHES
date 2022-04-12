@@ -1,0 +1,63 @@
+From 2362e55694aa87b7cdb72703dc16a3860e26f151 Mon Sep 17 00:00:00 2001
+From: Kevin Chyn <kchyn@google.com>
+Date: Fri, 25 Oct 2019 11:39:10 -0700
+Subject: [PATCH 031/297] Temporarily do not remove biometric view when
+ animating to credential
+
+When animating to device credential, the biometric view animates its
+translation and opacity, then removes itself from the layout. Upon
+removal, we currently remove all things from the handler. This includes
+(racily) the callback to display device credential UI.
+
+Thus, temporarily do not remove the view. Will fix this properly in a
+follow-up CL.
+
+Test: manual test with BiometricPromptDemo 10+ times
+Test: atest com.android.systemui.biometrics
+Bug: 143174046
+Change-Id: Ibdf7c17514062a08ff3919fad2c798f9127e4234
+(cherry picked from commit bf2bf1bc09fef50cb84ab9c7c5c4096a8e2491d4)
+---
+ .../com/android/systemui/biometrics/AuthBiometricView.java   | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/biometrics/AuthBiometricView.java b/packages/SystemUI/src/com/android/systemui/biometrics/AuthBiometricView.java
+index d20cd72f071..d38b31ac9fc 100644
+--- a/packages/SystemUI/src/com/android/systemui/biometrics/AuthBiometricView.java
++++ b/packages/SystemUI/src/com/android/systemui/biometrics/AuthBiometricView.java
+@@ -23,7 +23,6 @@ import android.animation.ValueAnimator;
+ import android.annotation.IntDef;
+ import android.annotation.NonNull;
+ import android.annotation.Nullable;
+-import android.app.admin.DevicePolicyManager;
+ import android.content.Context;
+ import android.hardware.biometrics.BiometricPrompt;
+ import android.os.Bundle;
+@@ -33,7 +32,6 @@ import android.text.TextUtils;
+ import android.util.AttributeSet;
+ import android.util.Log;
+ import android.view.View;
+-import android.view.ViewGroup;
+ import android.view.accessibility.AccessibilityManager;
+ import android.widget.Button;
+ import android.widget.ImageView;
+@@ -41,7 +39,6 @@ import android.widget.LinearLayout;
+ import android.widget.TextView;
+ 
+ import com.android.internal.annotations.VisibleForTesting;
+-import com.android.internal.widget.LockPatternUtils;
+ import com.android.systemui.R;
+ 
+ import java.lang.annotation.Retention;
+@@ -404,7 +401,7 @@ public abstract class AuthBiometricView extends LinearLayout {
+                 public void onAnimationEnd(Animator animation) {
+                     super.onAnimationEnd(animation);
+                     if (biometricView.getParent() != null) {
+-                        ((ViewGroup) biometricView.getParent()).removeView(biometricView);
++                        // ((ViewGroup) biometricView.getParent()).removeView(biometricView);
+                     }
+                     mSize = newSize;
+                 }
+-- 
+2.35.1
+

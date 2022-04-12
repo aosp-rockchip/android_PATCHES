@@ -1,0 +1,104 @@
+From 5ab985aabbd8553fca1b3126449a981cf44f5364 Mon Sep 17 00:00:00 2001
+From: Alex Wang <alex.wang@rock-chips.com>
+Date: Tue, 20 Oct 2020 16:09:21 +0800
+Subject: [PATCH 215/297] Box:skip FallbackHome to fix 2-3s black screen before
+ launcher.
+
+Change-Id: If815c9598db86e2173d6764c4dc5948b8cff6e6d
+---
+ .../com/android/server/wm/ActivityRecord.java | 41 +++++++++++++++++++
+ .../server/wm/WindowManagerService.java       |  3 ++
+ 2 files changed, 44 insertions(+)
+ mode change 100644 => 100755 services/core/java/com/android/server/wm/ActivityRecord.java
+
+diff --git a/services/core/java/com/android/server/wm/ActivityRecord.java b/services/core/java/com/android/server/wm/ActivityRecord.java
+old mode 100644
+new mode 100755
+index 3e9377ed066..d785321f3df
+--- a/services/core/java/com/android/server/wm/ActivityRecord.java
++++ b/services/core/java/com/android/server/wm/ActivityRecord.java
+@@ -290,6 +290,10 @@ import android.view.WindowManager;
+ import android.view.WindowManager.LayoutParams;
+ import android.view.animation.Animation;
+ import android.window.WindowContainerToken;
++import android.os.SystemProperties;
++import android.os.Parcel;
++import android.os.SystemService;
++import android.os.ServiceManager;
+ 
+ import com.android.internal.R;
+ import com.android.internal.annotations.VisibleForTesting;
+@@ -5322,12 +5326,49 @@ final class ActivityRecord extends WindowToken implements WindowManagerService.A
+         }
+     }
+ 
++    private void stopBootanim() {
++        boolean wallpaperEnabled = mAtmService.mContext.getResources().getBoolean(
++            com.android.internal.R.bool.config_enableWallpaperService);
++        if(wallpaperEnabled){
++            Log.d(TAG,"----Launcher drawn done,not keyguradk,has wallpaper,ummmmmm----");
++            try {
++                    Thread.sleep(1000);
++            } catch (Exception e) {
++            }
++        }
++        Log.d(TAG,"----launcher drawn done,exit bootanim----");
++        SystemProperties.set("service.bootanim.exit", "1");
++	    //SystemService.stop("bootanim");
++        try {
++    	    IBinder surfaceFlinger = ServiceManager.getService("SurfaceFlinger");
++            if (surfaceFlinger != null) {
++               Slog.i(TAG_WM, "******* TELLING SURFACE FLINGER WE ARE BOOTED!");
++               Parcel data = Parcel.obtain();
++               data.writeInterfaceToken("android.ui.ISurfaceComposer");
++               surfaceFlinger.transact(IBinder.FIRST_CALL_TRANSACTION, // BOOT_FINISHED
++                   data, null, 0);
++               data.recycle();
++           }
++        } catch (RemoteException ex) {
++            Slog.e(TAG_WM, "Boot completed: SurfaceFlinger is dead!");
++        }
++   }
++
+     /** Called when the windows associated app window container are drawn. */
+     void onWindowsDrawn(boolean drawn, long timestampNs) {
+         mDrawn = drawn;
+         if (!drawn) {
+             return;
+         }
++
++        //Launcher is drawn completed,box can exit bootanim
++        if ("box".equals(SystemProperties.get("ro.target.product"))){
++            if(shortComponentName!=null && !shortComponentName.contains(".FallbackHome")
++                && !"1".equals(SystemProperties.get("service.bootanim.exit"))){
++                    stopBootanim();
++            }
++        }
++
+         final TransitionInfoSnapshot info = mStackSupervisor
+                 .getActivityMetricsLogger().notifyWindowsDrawn(this, timestampNs);
+         final boolean validInfo = info != null;
+diff --git a/services/core/java/com/android/server/wm/WindowManagerService.java b/services/core/java/com/android/server/wm/WindowManagerService.java
+index ef81c0a5d20..08d7f3556d3 100644
+--- a/services/core/java/com/android/server/wm/WindowManagerService.java
++++ b/services/core/java/com/android/server/wm/WindowManagerService.java
+@@ -3428,6 +3428,8 @@ public class WindowManagerService extends IWindowManager.Stub
+                 }
+             }
+ 
++        //box:skip FallbackHome to fix 2-3s black screen before launcher.
++        if (!"box".equals(SystemProperties.get("ro.target.product"))) {
+             if (!mBootAnimationStopped) {
+                 Trace.asyncTraceBegin(TRACE_TAG_WINDOW_MANAGER, "Stop bootanim", 0);
+                 // stop boot animation
+@@ -3455,6 +3457,7 @@ public class WindowManagerService extends IWindowManager.Stub
+             } catch (RemoteException ex) {
+                 ProtoLog.e(WM_ERROR, "Boot completed: SurfaceFlinger is dead!");
+             }
++        }
+ 
+             EventLogTags.writeWmBootAnimationDone(SystemClock.uptimeMillis());
+             Trace.asyncTraceEnd(TRACE_TAG_WINDOW_MANAGER, "Stop bootanim", 0);
+-- 
+2.35.1
+

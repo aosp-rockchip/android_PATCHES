@@ -1,0 +1,32 @@
+From f4fab6473fc612cfcd93705942a9320501e75bed Mon Sep 17 00:00:00 2001
+From: Jooyung Han <jooyung@google.com>
+Date: Wed, 16 Oct 2019 22:42:03 +0000
+Subject: [PATCH 02/33] Revert "Make libbinder available to VNDK APEX"
+
+This reverts commit 03ab48771d7d385339e44301fc6c4751fe2d23a7.
+
+Reason for revert: some targets are broken
+
+Test: m
+Bug: 142773030
+Change-Id: I2b39e399ddfbadb975ea87bb0ca74e3834742bb6
+(cherry picked from commit 7148b355f3c8da8e209c4eb833a3639a27091d9c)
+---
+ libs/binder/Android.bp | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/libs/binder/Android.bp b/libs/binder/Android.bp
+index e5646ef70..643a956b4 100644
+--- a/libs/binder/Android.bp
++++ b/libs/binder/Android.bp
+@@ -73,7 +73,6 @@ cc_library {
+     // or dessert updates. Instead, apex users should use libbinder_ndk.
+     apex_available: [
+         "//apex_available:platform",
+-        "com.android.vndk.current",
+         // TODO(b/139016109) remove these three
+         "com.android.media.swcodec",
+         "test_com.android.media.swcodec",
+-- 
+2.35.1
+

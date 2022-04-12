@@ -1,0 +1,30 @@
+From c1b5eef3dbbc15c98c904b4c23473a264a8b1e19 Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Fri, 9 Oct 2020 16:07:41 +0800
+Subject: [PATCH 204/297] Never sleep if set screen off time Integer.MAX_VALUE
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: Icbed8b827254c8d5f90dab73a040b3f119f41f14
+---
+ .../java/com/android/server/power/PowerManagerService.java   | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/services/core/java/com/android/server/power/PowerManagerService.java b/services/core/java/com/android/server/power/PowerManagerService.java
+index 764ac969e18..839cebf62a3 100644
+--- a/services/core/java/com/android/server/power/PowerManagerService.java
++++ b/services/core/java/com/android/server/power/PowerManagerService.java
+@@ -2348,6 +2348,11 @@ public final class PowerManagerService extends SystemService
+                     nextTimeout = Math.min(nextTimeout, nextProfileTimeout);
+                 }
+ 
++                if (Integer.MAX_VALUE == screenOffTimeout) {
++                    mUserActivitySummary = USER_ACTIVITY_SCREEN_BRIGHT;
++                    //Slog.d(TAG, "set mUserActivitySummary USER_ACTIVITY_SCREEN_BRIGHT never sleep " + nextTimeout);
++                }
++
+                 if (mUserActivitySummary != 0 && nextTimeout >= 0) {
+                     scheduleUserInactivityTimeout(nextTimeout);
+                 }
+-- 
+2.35.1
+

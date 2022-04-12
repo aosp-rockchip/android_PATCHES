@@ -1,0 +1,31 @@
+From 1962168caa8b475c22d35c79880959bd4628303f Mon Sep 17 00:00:00 2001
+From: Zim <zezeozue@google.com>
+Date: Wed, 29 Jan 2020 02:44:46 +0000
+Subject: [PATCH 2/5] Allow media_rw access to /mnt/user
+
+This allows the FUSE daemon (with media_rw) explicitly use /mnt/user
+paths for redaction.
+
+Test: atest FuseDaemonHostTest#testVfsCacheConsistency
+Change-Id: If5b5f5aa6a0ce7c8e2fd300ff6146b345b25cf04
+(cherry picked from commit 4dd47090a5b64796f9b3978d0d11534b5b515335)
+---
+ Utils.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Utils.cpp b/Utils.cpp
+index 67e92c9..4720645 100644
+--- a/Utils.cpp
++++ b/Utils.cpp
+@@ -1038,7 +1038,7 @@ status_t MountUserFuse(userid_t user_id, const std::string& absolute_lower_path,
+ 
+     // Ensure that /mnt/user is 0700. With FUSE, apps don't need access to /mnt/user paths directly.
+     // Without FUSE however, apps need /mnt/user access so /mnt/user in init.rc is 0755 until here
+-    auto result = PrepareDir("/mnt/user", 0700, AID_ROOT, AID_ROOT);
++    auto result = PrepareDir("/mnt/user", 0750, AID_ROOT, AID_MEDIA_RW);
+     if (result != android::OK) {
+         PLOG(ERROR) << "Failed to prepare directory /mnt/user";
+         return -1;
+-- 
+2.35.1
+

@@ -1,0 +1,31 @@
+From 6117e4ded2d11f81b2d3241654cc7f053af1d7d6 Mon Sep 17 00:00:00 2001
+From: Aran Ink <nesciosquid@google.com>
+Date: Tue, 21 Apr 2020 14:25:46 -0400
+Subject: [PATCH 151/297] Disable overflow menu on lock screen.
+
+Test: Manual -- overflow menu does not appear when power menu launched from keyguard. All items appear in one row.
+
+Fixes: 154441764
+Change-Id: I5430b08749603e9d4fcbbbedeeb9644966235d1d
+(cherry picked from commit cf313aaaad8a76b2b8ae55d54f1753268c1d3dc3)
+---
+ .../android/systemui/globalactions/GlobalActionsDialog.java    | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/globalactions/GlobalActionsDialog.java b/packages/SystemUI/src/com/android/systemui/globalactions/GlobalActionsDialog.java
+index 322660521ee..910a7e33bcc 100644
+--- a/packages/SystemUI/src/com/android/systemui/globalactions/GlobalActionsDialog.java
++++ b/packages/SystemUI/src/com/android/systemui/globalactions/GlobalActionsDialog.java
+@@ -479,7 +479,8 @@ public class GlobalActionsDialog implements DialogInterface.OnDismissListener,
+      */
+     @VisibleForTesting
+     protected int getMaxShownPowerItems() {
+-        if (shouldUseControlsLayout()) {
++        // TODO: Overflow disabled on keyguard while we solve for touch blocking issues.
++        if (shouldUseControlsLayout() && !mKeyguardShowing) {
+             return mResources.getInteger(com.android.systemui.R.integer.power_menu_max_columns);
+         } else {
+             return Integer.MAX_VALUE;
+-- 
+2.35.1
+

@@ -1,0 +1,69 @@
+From 2a4ac76dced7a53295c49df571c7e41916f3a609 Mon Sep 17 00:00:00 2001
+From: Jooyung Han <jooyung@google.com>
+Date: Wed, 16 Oct 2019 22:34:27 +0000
+Subject: [PATCH 1/6] Revert "Use VNDK APEX instead of /system/lib/vndk"
+
+This reverts commit f5f85e3619c5b24165a455d99a3285dac63c3025.
+
+Reason for revert: some targets are broken
+
+Bug: 142773030
+Change-Id: I0302ba35f354de6feb2a42b70acb65e70ba0c224
+(cherry picked from commit a98213baf744c0389c4a1bbe85a8f89720f34420)
+---
+ contents/namespace/rs.cc   |  4 ++--
+ contents/namespace/vndk.cc | 12 ++++++------
+ 2 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/contents/namespace/rs.cc b/contents/namespace/rs.cc
+index df6e988..e843876 100644
+--- a/contents/namespace/rs.cc
++++ b/contents/namespace/rs.cc
+@@ -27,8 +27,8 @@ Namespace BuildRsNamespace([[maybe_unused]] const Context& ctx) {
+ 
+   ns.AddSearchPath("/odm/${LIB}/vndk-sp", AsanPath::WITH_DATA_ASAN);
+   ns.AddSearchPath("/vendor/${LIB}/vndk-sp", AsanPath::WITH_DATA_ASAN);
+-  ns.AddSearchPath("/apex/com.android.vndk.v@{VNDK_VER}/${LIB}",
+-                   AsanPath::SAME_PATH);
++  ns.AddSearchPath("/system/${LIB}/vndk-sp-@{VNDK_VER}",
++                   AsanPath::WITH_DATA_ASAN);
+   ns.AddSearchPath("/odm/${LIB}", AsanPath::WITH_DATA_ASAN);
+   ns.AddSearchPath("/vendor/${LIB}", AsanPath::WITH_DATA_ASAN);
+ 
+diff --git a/contents/namespace/vndk.cc b/contents/namespace/vndk.cc
+index 593121c..65e7ef9 100644
+--- a/contents/namespace/vndk.cc
++++ b/contents/namespace/vndk.cc
+@@ -32,14 +32,14 @@ Namespace BuildVndkNamespace([[maybe_unused]] const Context& ctx) {
+ 
+   ns.AddSearchPath("/odm/${LIB}/vndk-sp", AsanPath::WITH_DATA_ASAN);
+   ns.AddSearchPath("/vendor/${LIB}/vndk-sp", AsanPath::WITH_DATA_ASAN);
+-  ns.AddSearchPath("/apex/com.android.vndk.v@{VNDK_VER}/${LIB}",
+-                   AsanPath::SAME_PATH);
++  ns.AddSearchPath("/system/${LIB}/vndk-sp-@{VNDK_VER}",
++                   AsanPath::WITH_DATA_ASAN);
+ 
+   if (!is_system_section) {
+     ns.AddSearchPath("/odm/${LIB}/vndk", AsanPath::WITH_DATA_ASAN);
+     ns.AddSearchPath("/vendor/${LIB}/vndk", AsanPath::WITH_DATA_ASAN);
+-    ns.AddSearchPath("/apex/com.android.vndk.v@{VNDK_VER}/${LIB}",
+-                     AsanPath::SAME_PATH);
++    ns.AddSearchPath("/system/${LIB}/vndk-@{VNDK_VER}",
++                     AsanPath::WITH_DATA_ASAN);
+   }
+ 
+   if (is_system_section) {
+@@ -49,8 +49,8 @@ Namespace BuildVndkNamespace([[maybe_unused]] const Context& ctx) {
+     ns.AddPermittedPath("/vendor/${LIB}/egl", AsanPath::WITH_DATA_ASAN);
+     ns.AddPermittedPath("/system/vendor/${LIB}/hw", AsanPath::NONE);
+     ns.AddPermittedPath("/system/vendor/${LIB}/egl", AsanPath::NONE);
+-    ns.AddPermittedPath("/apex/com.android.vndk.v@{VNDK_VER}/${LIB}/hw",
+-                        AsanPath::SAME_PATH);
++    ns.AddPermittedPath("/system/${LIB}/vndk-sp-@{VNDK_VER}/hw",
++                        AsanPath::WITH_DATA_ASAN);
+   }
+ 
+   ns.GetLink(ctx.GetSystemNamespaceName()).AddSharedLib({"@{LLNDK_LIBRARIES}"});
+-- 
+2.35.1
+

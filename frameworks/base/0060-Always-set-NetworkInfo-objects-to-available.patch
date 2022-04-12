@@ -1,0 +1,37 @@
+From 2bd7857680a7f5add640663bab2909f0d2ba87d8 Mon Sep 17 00:00:00 2001
+From: Lorenzo Colitti <lorenzo@google.com>
+Date: Thu, 23 Jan 2020 09:33:48 +0900
+Subject: [PATCH 060/297] Always set NetworkInfo objects to available.
+
+For all networks, NetworkInfo.isAvailble has basically always
+been true for all connected networks. The new NetworkAgent API
+sets it to false, and this causes application breakage. Always
+set it to true.
+
+Bug: 148126438
+Test: builds, boots, searching in maps works again
+Change-Id: Ia9876b0ce7f02120bd05cab526346cad22cf62b3
+(cherry picked from commit 0a39e0e71a2b92d1b73897a23c659673e3079a44)
+---
+ core/java/android/net/NetworkAgent.java | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/core/java/android/net/NetworkAgent.java b/core/java/android/net/NetworkAgent.java
+index 7cc78f7389c..7cc569a42b0 100644
+--- a/core/java/android/net/NetworkAgent.java
++++ b/core/java/android/net/NetworkAgent.java
+@@ -304,7 +304,10 @@ public abstract class NetworkAgent {
+     private static NetworkInfo getLegacyNetworkInfo(final NetworkAgentConfig config) {
+         // The subtype can be changed with (TODO) setLegacySubtype, but it starts
+         // with the type and an empty description.
+-        return new NetworkInfo(config.legacyType, config.legacyType, config.legacyTypeName, "");
++        final NetworkInfo ni = new NetworkInfo(config.legacyType, config.legacyType,
++                config.legacyTypeName, "");
++        ni.setIsAvailable(true);
++        return ni;
+     }
+ 
+     /**
+-- 
+2.35.1
+

@@ -1,0 +1,32 @@
+From 9b9966ea21df2035442153b5a9bdc07ec6e4cf2e Mon Sep 17 00:00:00 2001
+From: Zhen Chen <chenzhen@rock-chips.com>
+Date: Fri, 4 Dec 2020 18:09:06 +0800
+Subject: [PATCH 34/36] Define HAL_PIXEL_FORMAT_YUV420_8BIT_I,
+ HAL_PIXEL_FORMAT_YUV420_10BIT_I, HAL_PIXEL_FORMAT_Y210
+
+They are base_formats of RK video AFBC YUV buffers.
+
+Change-Id: I81ffac13280615695975c60df0dff415389644c2
+---
+ include/hardware/hardware.h | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/include/hardware/hardware.h b/include/hardware/hardware.h
+index a1a230bf..8b47d64b 100755
+--- a/include/hardware/hardware.h
++++ b/include/hardware/hardware.h
+@@ -230,6 +230,11 @@ typedef enum {
+     HAL_PIXEL_FORMAT_YCrCb_NV12_10      = 0x17, // YUY2_1obit
+     HAL_PIXEL_FORMAT_YCbCr_422_SP_10    = 0x18, //
+     HAL_PIXEL_FORMAT_YCrCb_420_SP_10    = 0x19, //
++
++    HAL_PIXEL_FORMAT_YUV420_8BIT_I      = 0x1A, // 420I 8bit
++    HAL_PIXEL_FORMAT_YUV420_10BIT_I     = 0x1B, // 420I 10bit
++    HAL_PIXEL_FORMAT_Y210               = 0x1C, // 422I 10bit
++
+     HAL_PIXEL_FORMAT_BPP_1              = 0x30,
+     HAL_PIXEL_FORMAT_BPP_2              = 0x31,
+     HAL_PIXEL_FORMAT_BPP_4              = 0x32,
+-- 
+2.35.1
+

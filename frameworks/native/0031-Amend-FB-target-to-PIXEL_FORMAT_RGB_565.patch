@@ -1,0 +1,29 @@
+From 05029bc51778798d2d6ecc437b2e8792a29f0740 Mon Sep 17 00:00:00 2001
+From: libin <bin.li@rock-chips.com>
+Date: Tue, 5 Jan 2021 14:20:53 +0800
+Subject: [PATCH 31/33] Amend FB target to PIXEL_FORMAT_RGB_565
+
+Signed-off-by: libin <bin.li@rock-chips.com>
+Change-Id: Ifecf7ab12bba7ef934b8187729c4487480fc694f
+---
+ .../surfaceflinger/CompositionEngine/src/RenderSurface.cpp    | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/services/surfaceflinger/CompositionEngine/src/RenderSurface.cpp b/services/surfaceflinger/CompositionEngine/src/RenderSurface.cpp
+index cb90cc7d9..2c47c7191 100755
+--- a/services/surfaceflinger/CompositionEngine/src/RenderSurface.cpp
++++ b/services/surfaceflinger/CompositionEngine/src/RenderSurface.cpp
+@@ -79,8 +79,8 @@ void RenderSurface::initialize() {
+ 
+     int status = native_window_api_connect(window, NATIVE_WINDOW_API_EGL);
+     ALOGE_IF(status != NO_ERROR, "Unable to connect BQ producer: %d", status);
+-    status = native_window_set_buffers_format(window, HAL_PIXEL_FORMAT_RGBA_8888);
+-    ALOGE_IF(status != NO_ERROR, "Unable to set BQ format to RGBA888: %d", status);
++    status = native_window_set_buffers_format(window, HAL_PIXEL_FORMAT_RGB_565);
++    ALOGE_IF(status != NO_ERROR, "Unable to set BQ format to PIXEL_FORMAT_RGB_565: %d", status);
+     status = native_window_set_usage(window, GRALLOC_USAGE_HW_RENDER);
+     ALOGE_IF(status != NO_ERROR, "Unable to set BQ usage bits for GPU rendering: %d", status);
+ }
+-- 
+2.35.1
+

@@ -1,0 +1,35 @@
+From 16f4f45164d126af42ccdea78f43a7750b46d1b4 Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Fri, 20 Mar 2020 10:57:35 +0800
+Subject: [PATCH 04/13] libwifi_hal: add librkwifi-ctrl-static for PCBA.
+
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+Change-Id: I3d65802fb92b3a7ae03e178d48769c05bec4c7af
+---
+ libwifi_hal/Android.bp | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+ mode change 100755 => 100644 libwifi_hal/Android.bp
+
+diff --git a/libwifi_hal/Android.bp b/libwifi_hal/Android.bp
+old mode 100755
+new mode 100644
+index 4e04435b4..10e2aa2fc
+--- a/libwifi_hal/Android.bp
++++ b/libwifi_hal/Android.bp
+@@ -33,3 +33,13 @@ cc_library_shared {
+     header_libs: ["libcutils_headers"],
+     srcs: ["rk_wifi_ctrl.cpp"],
+ }
++cc_library_static {
++    name: "librkwifi-ctrl-static",
++    recovery_available: true,
++    cflags: wifi_hal_cflags,
++    local_include_dirs: ["include"],
++    export_include_dirs: ["include"],
++    shared_libs: ["libbase"],
++    header_libs: ["libcutils_headers"],
++    srcs: ["rk_wifi_ctrl.cpp"],
++}
+-- 
+2.35.1
+

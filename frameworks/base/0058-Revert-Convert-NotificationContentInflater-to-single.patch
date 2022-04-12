@@ -1,0 +1,1482 @@
+From cb658666dcdb240b236638f3c9d1911a22106874 Mon Sep 17 00:00:00 2001
+From: Dan Sandler <dsandler@android.com>
+Date: Thu, 9 Jan 2020 10:14:52 -0500
+Subject: [PATCH 058/297] Revert "Convert NotificationContentInflater to
+ singleton"
+
+This reverts commit 8b6968328d3d6776d2e55fcb29f70f80296c1aff.
+
+Bug: 147407617
+Change-Id: I6208344a26069239e47665710dd2fea93136ab95
+(cherry picked from commit dc4c1003a8e69b42bb773fbbde58442dd3dca608)
+---
+ .../systemui/statusbar/car/CarStatusBar.java  |   3 -
+ .../statusbar/car/CarStatusBarModule.java     |   3 -
+ .../NotificationRemoteInputManager.java       |  10 +-
+ .../StatusBarDependenciesModule.java          |   4 +-
+ .../collection/NotificationRowBinderImpl.java |  10 +-
+ .../row/ExpandableNotificationRow.java        |  28 +--
+ .../row/NotifRemoteViewCache.java             |  75 --------
+ .../row/NotifRemoteViewCacheImpl.java         | 100 -----------
+ .../row/NotificationContentInflater.java      | 168 ++++++++----------
+ .../row/NotificationRowModule.java            |  44 -----
+ .../NotificationGroupAlertTransferHelper.java |   3 +-
+ .../systemui/statusbar/phone/StatusBar.java   |   5 -
+ .../statusbar/phone/StatusBarModule.java      |   3 -
+ .../statusbar/NotificationTestHelper.java     |   7 +-
+ .../NotificationEntryManagerTest.java         |  11 +-
+ .../row/NotifRemoteViewCacheImplTest.java     | 112 ------------
+ .../row/NotificationContentInflaterTest.java  |  86 +--------
+ .../statusbar/phone/StatusBarTest.java        |   3 -
+ 18 files changed, 102 insertions(+), 573 deletions(-)
+ delete mode 100644 packages/SystemUI/src/com/android/systemui/statusbar/notification/row/NotifRemoteViewCache.java
+ delete mode 100644 packages/SystemUI/src/com/android/systemui/statusbar/notification/row/NotifRemoteViewCacheImpl.java
+ delete mode 100644 packages/SystemUI/src/com/android/systemui/statusbar/notification/row/NotificationRowModule.java
+ delete mode 100644 packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/row/NotifRemoteViewCacheImplTest.java
+
+diff --git a/packages/CarSystemUI/src/com/android/systemui/statusbar/car/CarStatusBar.java b/packages/CarSystemUI/src/com/android/systemui/statusbar/car/CarStatusBar.java
+index 1ee85188eac..3c3ebe2fe22 100644
+--- a/packages/CarSystemUI/src/com/android/systemui/statusbar/car/CarStatusBar.java
++++ b/packages/CarSystemUI/src/com/android/systemui/statusbar/car/CarStatusBar.java
+@@ -110,7 +110,6 @@ import com.android.systemui.statusbar.notification.VisualStabilityManager;
+ import com.android.systemui.statusbar.notification.collection.init.NewNotifPipeline;
+ import com.android.systemui.statusbar.notification.logging.NotificationLogger;
+ import com.android.systemui.statusbar.notification.row.NotificationGutsManager;
+-import com.android.systemui.statusbar.notification.row.NotificationRowContentBinder;
+ import com.android.systemui.statusbar.phone.AutoHideController;
+ import com.android.systemui.statusbar.phone.BiometricUnlockController;
+ import com.android.systemui.statusbar.phone.CollapsedStatusBarFragment;
+@@ -277,7 +276,6 @@ public class CarStatusBar extends StatusBar implements CarBatteryController.Batt
+             NotificationGutsManager notificationGutsManager,
+             NotificationLogger notificationLogger,
+             NotificationEntryManager notificationEntryManager,
+-            NotificationRowContentBinder notificationRowContentBinder,
+             NotificationInterruptionStateProvider notificationInterruptionStateProvider,
+             NotificationViewHierarchyManager notificationViewHierarchyManager,
+             KeyguardViewMediator keyguardViewMediator,
+@@ -365,7 +363,6 @@ public class CarStatusBar extends StatusBar implements CarBatteryController.Batt
+                 notificationGutsManager,
+                 notificationLogger,
+                 notificationEntryManager,
+-                notificationRowContentBinder,
+                 notificationInterruptionStateProvider,
+                 notificationViewHierarchyManager,
+                 keyguardViewMediator,
+diff --git a/packages/CarSystemUI/src/com/android/systemui/statusbar/car/CarStatusBarModule.java b/packages/CarSystemUI/src/com/android/systemui/statusbar/car/CarStatusBarModule.java
+index 7108e65c8bc..a1eccceea77 100644
+--- a/packages/CarSystemUI/src/com/android/systemui/statusbar/car/CarStatusBarModule.java
++++ b/packages/CarSystemUI/src/com/android/systemui/statusbar/car/CarStatusBarModule.java
+@@ -70,7 +70,6 @@ import com.android.systemui.statusbar.notification.VisualStabilityManager;
+ import com.android.systemui.statusbar.notification.collection.init.NewNotifPipeline;
+ import com.android.systemui.statusbar.notification.logging.NotificationLogger;
+ import com.android.systemui.statusbar.notification.row.NotificationGutsManager;
+-import com.android.systemui.statusbar.notification.row.NotificationRowContentBinder;
+ import com.android.systemui.statusbar.phone.AutoHideController;
+ import com.android.systemui.statusbar.phone.BiometricUnlockController;
+ import com.android.systemui.statusbar.phone.DozeParameters;
+@@ -147,7 +146,6 @@ public class CarStatusBarModule {
+             NotificationGutsManager notificationGutsManager,
+             NotificationLogger notificationLogger,
+             NotificationEntryManager notificationEntryManager,
+-            NotificationRowContentBinder notificationRowContentBinder,
+             NotificationInterruptionStateProvider notificationInterruptionStateProvider,
+             NotificationViewHierarchyManager notificationViewHierarchyManager,
+             KeyguardViewMediator keyguardViewMediator,
+@@ -234,7 +232,6 @@ public class CarStatusBarModule {
+                 notificationGutsManager,
+                 notificationLogger,
+                 notificationEntryManager,
+-                notificationRowContentBinder,
+                 notificationInterruptionStateProvider,
+                 notificationViewHierarchyManager,
+                 keyguardViewMediator,
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/NotificationRemoteInputManager.java b/packages/SystemUI/src/com/android/systemui/statusbar/NotificationRemoteInputManager.java
+index 667e721ae37..43d0399c6d6 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/NotificationRemoteInputManager.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/NotificationRemoteInputManager.java
+@@ -584,15 +584,7 @@ public class NotificationRemoteInputManager implements Dumpable {
+ 
+     public void bindRow(ExpandableNotificationRow row) {
+         row.setRemoteInputController(mRemoteInputController);
+-    }
+-
+-    /**
+-     * Return on-click handler for notification remote views
+-     *
+-     * @return on-click handler
+-     */
+-    public RemoteViews.OnClickHandler getRemoteViewsOnClickHandler() {
+-        return mOnClickHandler;
++        row.setRemoteViewClickHandler(mOnClickHandler);
+     }
+ 
+     @VisibleForTesting
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/StatusBarDependenciesModule.java b/packages/SystemUI/src/com/android/systemui/statusbar/StatusBarDependenciesModule.java
+index ec8dbead7de..d1f6ebf3826 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/StatusBarDependenciesModule.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/StatusBarDependenciesModule.java
+@@ -18,8 +18,6 @@ package com.android.systemui.statusbar;
+ 
+ import android.content.Context;
+ 
+-import com.android.systemui.statusbar.notification.row.NotificationRowModule;
+-
+ import javax.inject.Singleton;
+ 
+ import dagger.Module;
+@@ -28,7 +26,7 @@ import dagger.Provides;
+ /**
+  * Dagger Module providing common dependencies of StatusBar.
+  */
+-@Module(includes = {NotificationRowModule.class})
++@Module
+ public class StatusBarDependenciesModule {
+     /**
+      * Provides our instance of CommandQueue which is considered optional.
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/NotificationRowBinderImpl.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/NotificationRowBinderImpl.java
+index 9d4c1d2c3a0..6dc647d3304 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/NotificationRowBinderImpl.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/collection/NotificationRowBinderImpl.java
+@@ -41,8 +41,8 @@ import com.android.systemui.statusbar.notification.NotificationClicker;
+ import com.android.systemui.statusbar.notification.NotificationInterruptionStateProvider;
+ import com.android.systemui.statusbar.notification.logging.NotificationLogger;
+ import com.android.systemui.statusbar.notification.row.ExpandableNotificationRow;
++import com.android.systemui.statusbar.notification.row.NotificationContentInflater;
+ import com.android.systemui.statusbar.notification.row.NotificationGutsManager;
+-import com.android.systemui.statusbar.notification.row.NotificationRowContentBinder;
+ import com.android.systemui.statusbar.notification.row.RowInflaterTask;
+ import com.android.systemui.statusbar.notification.stack.NotificationListContainer;
+ import com.android.systemui.statusbar.phone.KeyguardBypassController;
+@@ -65,7 +65,6 @@ public class NotificationRowBinderImpl implements NotificationRowBinder {
+             Dependency.get(NotificationInterruptionStateProvider.class);
+ 
+     private final Context mContext;
+-    private final NotificationRowContentBinder mRowContentBinder;
+     private final NotificationMessagingUtil mMessagingUtil;
+     private final ExpandableNotificationRow.ExpansionLogger mExpansionLogger =
+             this::logNotificationExpansion;
+@@ -77,7 +76,7 @@ public class NotificationRowBinderImpl implements NotificationRowBinder {
+     private NotificationPresenter mPresenter;
+     private NotificationListContainer mListContainer;
+     private HeadsUpManager mHeadsUpManager;
+-    private NotificationRowContentBinder.InflationCallback mInflationCallback;
++    private NotificationContentInflater.InflationCallback mInflationCallback;
+     private ExpandableNotificationRow.OnAppOpsClickListener mOnAppOpsClickListener;
+     private BindRowCallback mBindRowCallback;
+     private NotificationClicker mNotificationClicker;
+@@ -85,13 +84,11 @@ public class NotificationRowBinderImpl implements NotificationRowBinder {
+ 
+     public NotificationRowBinderImpl(
+             Context context,
+-            NotificationRowContentBinder rowContentBinder,
+             boolean allowLongPress,
+             KeyguardBypassController keyguardBypassController,
+             StatusBarStateController statusBarStateController,
+             NotificationLogger logger) {
+         mContext = context;
+-        mRowContentBinder = rowContentBinder;
+         mMessagingUtil = new NotificationMessagingUtil(context);
+         mAllowLongPress = allowLongPress;
+         mKeyguardBypassController = keyguardBypassController;
+@@ -120,7 +117,7 @@ public class NotificationRowBinderImpl implements NotificationRowBinder {
+         mOnAppOpsClickListener = mGutsManager::openGuts;
+     }
+ 
+-    public void setInflationCallback(NotificationRowContentBinder.InflationCallback callback) {
++    public void setInflationCallback(NotificationContentInflater.InflationCallback callback) {
+         mInflationCallback = callback;
+     }
+ 
+@@ -165,7 +162,6 @@ public class NotificationRowBinderImpl implements NotificationRowBinder {
+         row.setGroupManager(mGroupManager);
+         row.setHeadsUpManager(mHeadsUpManager);
+         row.setOnExpandClickListener(mPresenter);
+-        row.setContentBinder(mRowContentBinder);
+         row.setInflationCallback(mInflationCallback);
+         if (mAllowLongPress) {
+             row.setLongPressListener(mGutsManager::openGuts);
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/ExpandableNotificationRow.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/ExpandableNotificationRow.java
+index 50f21990eae..3c247df692f 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/ExpandableNotificationRow.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/ExpandableNotificationRow.java
+@@ -65,6 +65,7 @@ import android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction;
+ import android.widget.Chronometer;
+ import android.widget.FrameLayout;
+ import android.widget.ImageView;
++import android.widget.RemoteViews;
+ 
+ import com.android.internal.annotations.VisibleForTesting;
+ import com.android.internal.logging.MetricsLogger;
+@@ -149,7 +150,7 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+     private StatusBarStateController mStatusbarStateController;
+     private KeyguardBypassController mBypassController;
+     private LayoutListener mLayoutListener;
+-    private NotificationRowContentBinder mNotificationContentBinder;
++    private final NotificationContentInflater mNotificationInflater;
+     private int mIconTransformContentShift;
+     private int mIconTransformContentShiftNoIcon;
+     private int mMaxHeadsUpHeightBeforeN;
+@@ -463,7 +464,7 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+      * Inflate views based off the inflation flags set. Inflation happens asynchronously.
+      */
+     public void inflateViews() {
+-        mNotificationContentBinder.bindContent(mEntry, this, mInflationFlags, mBindParams,
++        mNotificationInflater.bindContent(mEntry, this, mInflationFlags, mBindParams,
+                 false /* forceInflate */, mInflationCallback);
+     }
+ 
+@@ -477,7 +478,7 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+         // View should not be reinflated in the future
+         clearInflationFlags(inflationFlag);
+         Runnable freeViewRunnable =
+-                () -> mNotificationContentBinder.unbindContent(mEntry, this, inflationFlag);
++                () -> mNotificationInflater.unbindContent(mEntry, this, inflationFlag);
+         switch (inflationFlag) {
+             case FLAG_CONTENT_VIEW_HEADS_UP:
+                 getPrivateLayout().performWhenContentInactive(VISIBLE_TYPE_HEADSUP,
+@@ -851,7 +852,7 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+             mIsChildInGroup = isChildInGroup;
+             if (mIsLowPriority) {
+                 int flags = FLAG_CONTENT_VIEW_CONTRACTED | FLAG_CONTENT_VIEW_EXPANDED;
+-                mNotificationContentBinder.bindContent(mEntry, this, flags, mBindParams,
++                mNotificationInflater.bindContent(mEntry, this, flags, mBindParams,
+                         false /* forceInflate */, mInflationCallback);
+             }
+         }
+@@ -1258,7 +1259,7 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+             l.reInflateViews();
+         }
+         mEntry.getSbn().clearPackageContext();
+-        mNotificationContentBinder.bindContent(mEntry, this, mInflationFlags, mBindParams,
++        mNotificationInflater.bindContent(mEntry, this, mInflationFlags, mBindParams,
+                 true /* forceInflate */, mInflationCallback);
+     }
+ 
+@@ -1633,6 +1634,10 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+         mBindParams.usesIncreasedHeadsUpHeight = use;
+     }
+ 
++    public void setRemoteViewClickHandler(RemoteViews.OnClickHandler remoteViewClickHandler) {
++        mNotificationInflater.setRemoteViewClickHandler(remoteViewClickHandler);
++    }
++
+     /**
+      * Set callback for notification content inflation
+      *
+@@ -1647,7 +1652,7 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+             mNeedsRedaction = needsRedaction;
+             if (needsRedaction) {
+                 setInflationFlags(FLAG_CONTENT_VIEW_PUBLIC);
+-                mNotificationContentBinder.bindContent(mEntry, this, FLAG_CONTENT_VIEW_PUBLIC,
++                mNotificationInflater.bindContent(mEntry, this, FLAG_CONTENT_VIEW_PUBLIC,
+                         mBindParams, false /* forceInflate */, mInflationCallback);
+             } else {
+                 clearInflationFlags(FLAG_CONTENT_VIEW_PUBLIC);
+@@ -1656,13 +1661,9 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+         }
+     }
+ 
+-    /**
+-     * Set the binder implementation for notification content views.
+-     *
+-     * @param contentBinder content binder
+-     */
+-    public void setContentBinder(NotificationRowContentBinder contentBinder) {
+-        mNotificationContentBinder = contentBinder;
++    @VisibleForTesting
++    public NotificationContentInflater getNotificationInflater() {
++        return mNotificationInflater;
+     }
+ 
+     public interface ExpansionLogger {
+@@ -1671,6 +1672,7 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
+ 
+     public ExpandableNotificationRow(Context context, AttributeSet attrs) {
+         super(context, attrs);
++        mNotificationInflater = new NotificationContentInflater();
+         mMenuRow = new NotificationMenuRow(mContext);
+         mImageResolver = new NotificationInlineImageResolver(context,
+                 new NotificationInlineImageCache());
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/NotifRemoteViewCache.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/NotifRemoteViewCache.java
+deleted file mode 100644
+index c11c60fcdd0..00000000000
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/NotifRemoteViewCache.java
++++ /dev/null
+@@ -1,75 +0,0 @@
+-/*
+- * Copyright (C) 2020 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-package com.android.systemui.statusbar.notification.row;
+-
+-import android.widget.RemoteViews;
+-
+-import androidx.annotation.Nullable;
+-
+-import com.android.systemui.statusbar.notification.collection.NotificationEntry;
+-import com.android.systemui.statusbar.notification.row.NotificationRowContentBinder.InflationFlag;
+-
+-/**
+- * Caches {@link RemoteViews} for a notification's content views.
+- */
+-public interface NotifRemoteViewCache {
+-
+-    /**
+-     * Whether the notification has the remote view cached
+-     *
+-     * @param entry notification
+-     * @param flag inflation flag for content view
+-     * @return true if the remote view is cached
+-     */
+-    boolean hasCachedView(NotificationEntry entry, @InflationFlag int flag);
+-
+-    /**
+-     * Get the remote view for the content flag specified.
+-     *
+-     * @param entry notification
+-     * @param flag inflation flag for the content view
+-     * @return the remote view if it is cached, null otherwise
+-     */
+-    @Nullable RemoteViews getCachedView(NotificationEntry entry, @InflationFlag int flag);
+-
+-    /**
+-     * Cache a remote view for a given content flag on a notification.
+-     *
+-     * @param entry notification
+-     * @param flag inflation flag for the content view
+-     * @param remoteView remote view to store
+-     */
+-    void putCachedView(
+-            NotificationEntry entry,
+-            @InflationFlag int flag,
+-            RemoteViews remoteView);
+-
+-    /**
+-     * Remove a cached remote view for a given content flag on a notification.
+-     *
+-     * @param entry notification
+-     * @param flag inflation flag for the content view
+-     */
+-    void removeCachedView(NotificationEntry entry, @InflationFlag int flag);
+-
+-    /**
+-     * Clear a notification's remote view cache.
+-     *
+-     * @param entry notification
+-     */
+-    void clearCache(NotificationEntry entry);
+-}
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/NotifRemoteViewCacheImpl.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/NotifRemoteViewCacheImpl.java
+deleted file mode 100644
+index a19099a6ea5..00000000000
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/NotifRemoteViewCacheImpl.java
++++ /dev/null
+@@ -1,100 +0,0 @@
+-/*
+- * Copyright (C) 2020 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-package com.android.systemui.statusbar.notification.row;
+-
+-import android.util.ArrayMap;
+-import android.util.SparseArray;
+-import android.widget.RemoteViews;
+-
+-import androidx.annotation.NonNull;
+-import androidx.annotation.Nullable;
+-
+-import com.android.internal.statusbar.NotificationVisibility;
+-import com.android.systemui.statusbar.notification.NotificationEntryListener;
+-import com.android.systemui.statusbar.notification.NotificationEntryManager;
+-import com.android.systemui.statusbar.notification.collection.NotificationEntry;
+-import com.android.systemui.statusbar.notification.row.NotificationRowContentBinder.InflationFlag;
+-
+-import java.util.Map;
+-
+-import javax.inject.Inject;
+-
+-/**
+- * Implementation of remote view cache that keeps remote views cached for all active notifications.
+- */
+-public class NotifRemoteViewCacheImpl implements NotifRemoteViewCache {
+-    private final Map<NotificationEntry, SparseArray<RemoteViews>> mNotifCachedContentViews =
+-            new ArrayMap<>();
+-
+-    @Inject
+-    NotifRemoteViewCacheImpl(NotificationEntryManager entryManager) {
+-        entryManager.addNotificationEntryListener(mEntryListener);
+-    }
+-
+-    @Override
+-    public boolean hasCachedView(NotificationEntry entry, @InflationFlag int flag) {
+-        return getCachedView(entry, flag) != null;
+-    }
+-
+-    @Override
+-    public @Nullable RemoteViews getCachedView(NotificationEntry entry, @InflationFlag int flag) {
+-        return getContentViews(entry).get(flag);
+-    }
+-
+-    @Override
+-    public void putCachedView(
+-            NotificationEntry entry,
+-            @InflationFlag int flag,
+-            RemoteViews remoteView) {
+-        getContentViews(entry).put(flag, remoteView);
+-    }
+-
+-    @Override
+-    public void removeCachedView(NotificationEntry entry, @InflationFlag int flag) {
+-        getContentViews(entry).remove(flag);
+-    }
+-
+-    @Override
+-    public void clearCache(NotificationEntry entry) {
+-        getContentViews(entry).clear();
+-    }
+-
+-    private @NonNull SparseArray<RemoteViews> getContentViews(NotificationEntry entry) {
+-        SparseArray<RemoteViews> contentViews = mNotifCachedContentViews.get(entry);
+-        if (contentViews == null) {
+-            throw new IllegalStateException(
+-                    String.format("Remote view cache was never created for notification %s",
+-                            entry.getKey()));
+-        }
+-        return contentViews;
+-    }
+-
+-    private final NotificationEntryListener mEntryListener = new NotificationEntryListener() {
+-        @Override
+-        public void onPendingEntryAdded(NotificationEntry entry) {
+-            mNotifCachedContentViews.put(entry, new SparseArray<>());
+-        }
+-
+-        @Override
+-        public void onEntryRemoved(
+-                NotificationEntry entry,
+-                @Nullable NotificationVisibility visibility,
+-                boolean removedByUser) {
+-            mNotifCachedContentViews.remove(entry);
+-        }
+-    };
+-}
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/NotificationContentInflater.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/NotificationContentInflater.java
+index e1a6747b539..30f22ac5e16 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/NotificationContentInflater.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/NotificationContentInflater.java
+@@ -16,7 +16,6 @@
+ 
+ package com.android.systemui.statusbar.notification.row;
+ 
+-import static com.android.internal.annotations.VisibleForTesting.Visibility.PACKAGE;
+ import static com.android.systemui.statusbar.notification.row.NotificationContentView.VISIBLE_TYPE_CONTRACTED;
+ import static com.android.systemui.statusbar.notification.row.NotificationContentView.VISIBLE_TYPE_HEADSUP;
+ 
+@@ -27,6 +26,7 @@ import android.content.Context;
+ import android.os.AsyncTask;
+ import android.os.CancellationSignal;
+ import android.service.notification.StatusBarNotification;
++import android.util.ArrayMap;
+ import android.util.Log;
+ import android.view.View;
+ import android.widget.RemoteViews;
+@@ -35,7 +35,6 @@ import com.android.internal.annotations.VisibleForTesting;
+ import com.android.internal.widget.ImageMessageConsumer;
+ import com.android.systemui.Dependency;
+ import com.android.systemui.statusbar.InflationTask;
+-import com.android.systemui.statusbar.NotificationRemoteInputManager;
+ import com.android.systemui.statusbar.SmartReplyController;
+ import com.android.systemui.statusbar.notification.InflationException;
+ import com.android.systemui.statusbar.notification.MediaNotificationProcessor;
+@@ -50,30 +49,17 @@ import com.android.systemui.util.Assert;
+ 
+ import java.util.HashMap;
+ 
+-import javax.inject.Inject;
+-import javax.inject.Singleton;
+-
+ /**
+  * {@link NotificationContentInflater} binds content to a {@link ExpandableNotificationRow} by
+  * asynchronously building the content's {@link RemoteViews} and applying it to the row.
+  */
+-@Singleton
+-@VisibleForTesting(visibility = PACKAGE)
+ public class NotificationContentInflater implements NotificationRowContentBinder {
+ 
+     public static final String TAG = "NotifContentInflater";
+ 
++    private RemoteViews.OnClickHandler mRemoteViewClickHandler;
+     private boolean mInflateSynchronously = false;
+-    private final NotificationRemoteInputManager mRemoteInputManager;
+-    private final NotifRemoteViewCache mRemoteViewCache;
+-
+-    @Inject
+-    public NotificationContentInflater(
+-            NotifRemoteViewCache remoteViewCache,
+-            NotificationRemoteInputManager remoteInputManager) {
+-        mRemoteViewCache = remoteViewCache;
+-        mRemoteInputManager = remoteInputManager;
+-    }
++    private final ArrayMap<Integer, RemoteViews> mCachedContentViews = new ArrayMap<>();
+ 
+     @Override
+     public void bindContent(
+@@ -90,27 +76,27 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+             return;
+         }
+ 
+-        StatusBarNotification sbn = entry.getSbn();
++        StatusBarNotification sbn = row.getEntry().getSbn();
+ 
+         // To check if the notification has inline image and preload inline image if necessary.
+         row.getImageResolver().preloadImages(sbn.getNotification());
+ 
+         if (forceInflate) {
+-            mRemoteViewCache.clearCache(entry);
++            mCachedContentViews.clear();
+         }
+ 
+         AsyncInflationTask task = new AsyncInflationTask(
++                sbn,
+                 mInflateSynchronously,
+                 contentToBind,
+-                mRemoteViewCache,
+-                entry,
++                mCachedContentViews,
+                 row,
+                 bindParams.isLowPriority,
+                 bindParams.isChildInGroup,
+                 bindParams.usesIncreasedHeight,
+                 bindParams.usesIncreasedHeadsUpHeight,
+                 callback,
+-                mRemoteInputManager.getRemoteViewsOnClickHandler());
++                mRemoteViewClickHandler);
+         if (mInflateSynchronously) {
+             task.onPostExecute(task.doInBackground());
+         } else {
+@@ -137,15 +123,13 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+         result = inflateSmartReplyViews(result, reInflateFlags, entry,
+                 row.getContext(), packageContext, row.getHeadsUpManager(),
+                 row.getExistingSmartRepliesAndActions());
+-
+         apply(
+                 inflateSynchronously,
+                 result,
+                 reInflateFlags,
+-                mRemoteViewCache,
+-                entry,
++                mCachedContentViews,
+                 row,
+-                mRemoteInputManager.getRemoteViewsOnClickHandler(),
++                mRemoteViewClickHandler,
+                 null);
+         return result;
+     }
+@@ -165,33 +149,42 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+         int curFlag = 1;
+         while (contentToUnbind != 0) {
+             if ((contentToUnbind & curFlag) != 0) {
+-                freeNotificationView(entry, row, curFlag);
++                freeNotificationView(row, curFlag);
+             }
+             contentToUnbind &= ~curFlag;
+             curFlag = curFlag << 1;
+         }
+     }
+ 
++    /**
++     * Set click handler for notification remote views
++     *
++     * @param remoteViewClickHandler click handler for remote views
++     */
++    public void setRemoteViewClickHandler(RemoteViews.OnClickHandler remoteViewClickHandler) {
++        mRemoteViewClickHandler = remoteViewClickHandler;
++    }
++
+     /**
+      * Frees the content view associated with the inflation flag.  Will only succeed if the
+      * view is safe to remove.
+      *
+      * @param inflateFlag the flag corresponding to the content view which should be freed
+      */
+-    private void freeNotificationView(NotificationEntry entry, ExpandableNotificationRow row,
++    private void freeNotificationView(ExpandableNotificationRow row,
+             @InflationFlag int inflateFlag) {
+         switch (inflateFlag) {
+             case FLAG_CONTENT_VIEW_HEADS_UP:
+                 if (row.getPrivateLayout().isContentViewInactive(VISIBLE_TYPE_HEADSUP)) {
+                     row.getPrivateLayout().setHeadsUpChild(null);
+-                    mRemoteViewCache.removeCachedView(entry, FLAG_CONTENT_VIEW_HEADS_UP);
++                    mCachedContentViews.remove(FLAG_CONTENT_VIEW_HEADS_UP);
+                     row.getPrivateLayout().setHeadsUpInflatedSmartReplies(null);
+                 }
+                 break;
+             case FLAG_CONTENT_VIEW_PUBLIC:
+                 if (row.getPublicLayout().isContentViewInactive(VISIBLE_TYPE_CONTRACTED)) {
+                     row.getPublicLayout().setContractedChild(null);
+-                    mRemoteViewCache.removeCachedView(entry, FLAG_CONTENT_VIEW_PUBLIC);
++                    mCachedContentViews.remove(FLAG_CONTENT_VIEW_PUBLIC);
+                 }
+                 break;
+             case FLAG_CONTENT_VIEW_CONTRACTED:
+@@ -252,12 +245,11 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+         return result;
+     }
+ 
+-    private static CancellationSignal apply(
++    public static CancellationSignal apply(
+             boolean inflateSynchronously,
+             InflationProgress result,
+             @InflationFlag int reInflateFlags,
+-            NotifRemoteViewCache remoteViewCache,
+-            NotificationEntry entry,
++            ArrayMap<Integer, RemoteViews> cachedContentViews,
+             ExpandableNotificationRow row,
+             RemoteViews.OnClickHandler remoteViewClickHandler,
+             @Nullable InflationCallback callback) {
+@@ -269,7 +261,7 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+         if ((reInflateFlags & flag) != 0) {
+             boolean isNewView =
+                     !canReapplyRemoteView(result.newContentView,
+-                            remoteViewCache.getCachedView(entry, FLAG_CONTENT_VIEW_CONTRACTED));
++                            cachedContentViews.get(FLAG_CONTENT_VIEW_CONTRACTED));
+             ApplyCallback applyCallback = new ApplyCallback() {
+                 @Override
+                 public void setResultView(View v) {
+@@ -281,8 +273,8 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+                     return result.newContentView;
+                 }
+             };
+-            applyRemoteView(inflateSynchronously, result, reInflateFlags, flag, remoteViewCache,
+-                    entry, row, isNewView, remoteViewClickHandler, callback, privateLayout,
++            applyRemoteView(inflateSynchronously, result, reInflateFlags, flag, cachedContentViews,
++                    row, isNewView, remoteViewClickHandler, callback, privateLayout,
+                     privateLayout.getContractedChild(), privateLayout.getVisibleWrapper(
+                             NotificationContentView.VISIBLE_TYPE_CONTRACTED),
+                     runningInflations, applyCallback);
+@@ -293,7 +285,7 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+             if (result.newExpandedView != null) {
+                 boolean isNewView =
+                         !canReapplyRemoteView(result.newExpandedView,
+-                                remoteViewCache.getCachedView(entry, FLAG_CONTENT_VIEW_EXPANDED));
++                                cachedContentViews.get(FLAG_CONTENT_VIEW_EXPANDED));
+                 ApplyCallback applyCallback = new ApplyCallback() {
+                     @Override
+                     public void setResultView(View v) {
+@@ -305,8 +297,8 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+                         return result.newExpandedView;
+                     }
+                 };
+-                applyRemoteView(inflateSynchronously, result, reInflateFlags, flag, remoteViewCache,
+-                        entry, row, isNewView, remoteViewClickHandler,
++                applyRemoteView(inflateSynchronously, result, reInflateFlags, flag,
++                        cachedContentViews, row, isNewView, remoteViewClickHandler,
+                         callback, privateLayout, privateLayout.getExpandedChild(),
+                         privateLayout.getVisibleWrapper(
+                                 NotificationContentView.VISIBLE_TYPE_EXPANDED), runningInflations,
+@@ -319,7 +311,7 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+             if (result.newHeadsUpView != null) {
+                 boolean isNewView =
+                         !canReapplyRemoteView(result.newHeadsUpView,
+-                                remoteViewCache.getCachedView(entry, FLAG_CONTENT_VIEW_HEADS_UP));
++                                cachedContentViews.get(FLAG_CONTENT_VIEW_HEADS_UP));
+                 ApplyCallback applyCallback = new ApplyCallback() {
+                     @Override
+                     public void setResultView(View v) {
+@@ -331,8 +323,8 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+                         return result.newHeadsUpView;
+                     }
+                 };
+-                applyRemoteView(inflateSynchronously, result, reInflateFlags, flag, remoteViewCache,
+-                        entry, row, isNewView, remoteViewClickHandler,
++                applyRemoteView(inflateSynchronously, result, reInflateFlags, flag,
++                        cachedContentViews, row, isNewView, remoteViewClickHandler,
+                         callback, privateLayout, privateLayout.getHeadsUpChild(),
+                         privateLayout.getVisibleWrapper(
+                                 VISIBLE_TYPE_HEADSUP), runningInflations,
+@@ -344,7 +336,7 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+         if ((reInflateFlags & flag) != 0) {
+             boolean isNewView =
+                     !canReapplyRemoteView(result.newPublicView,
+-                            remoteViewCache.getCachedView(entry, FLAG_CONTENT_VIEW_PUBLIC));
++                            cachedContentViews.get(FLAG_CONTENT_VIEW_PUBLIC));
+             ApplyCallback applyCallback = new ApplyCallback() {
+                 @Override
+                 public void setResultView(View v) {
+@@ -356,16 +348,15 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+                     return result.newPublicView;
+                 }
+             };
+-            applyRemoteView(inflateSynchronously, result, reInflateFlags, flag, remoteViewCache,
+-                    entry, row, isNewView, remoteViewClickHandler, callback,
++            applyRemoteView(inflateSynchronously, result, reInflateFlags, flag, cachedContentViews,
++                    row, isNewView, remoteViewClickHandler, callback,
+                     publicLayout, publicLayout.getContractedChild(),
+                     publicLayout.getVisibleWrapper(NotificationContentView.VISIBLE_TYPE_CONTRACTED),
+                     runningInflations, applyCallback);
+         }
+ 
+         // Let's try to finish, maybe nobody is even inflating anything
+-        finishIfDone(result, reInflateFlags, remoteViewCache, runningInflations, callback, entry,
+-                row);
++        finishIfDone(result, reInflateFlags, cachedContentViews, runningInflations, callback, row);
+         CancellationSignal cancellationSignal = new CancellationSignal();
+         cancellationSignal.setOnCancelListener(
+                 () -> runningInflations.values().forEach(CancellationSignal::cancel));
+@@ -378,8 +369,7 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+             final InflationProgress result,
+             final @InflationFlag int reInflateFlags,
+             @InflationFlag int inflationId,
+-            final NotifRemoteViewCache remoteViewCache,
+-            final NotificationEntry entry,
++            final ArrayMap<Integer, RemoteViews> cachedContentViews,
+             final ExpandableNotificationRow row,
+             boolean isNewView,
+             RemoteViews.OnClickHandler remoteViewClickHandler,
+@@ -432,8 +422,8 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+                     existingWrapper.onReinflated();
+                 }
+                 runningInflations.remove(inflationId);
+-                finishIfDone(result, reInflateFlags, remoteViewCache, runningInflations,
+-                        callback, entry, row);
++                finishIfDone(result, reInflateFlags, cachedContentViews, runningInflations,
++                        callback, row);
+             }
+ 
+             @Override
+@@ -498,11 +488,11 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+      * @return true if the inflation was finished
+      */
+     private static boolean finishIfDone(InflationProgress result,
+-            @InflationFlag int reInflateFlags, NotifRemoteViewCache remoteViewCache,
++            @InflationFlag int reInflateFlags, ArrayMap<Integer, RemoteViews> cachedContentViews,
+             HashMap<Integer, CancellationSignal> runningInflations,
+-            @Nullable InflationCallback endListener, NotificationEntry entry,
+-            ExpandableNotificationRow row) {
++            @Nullable InflationCallback endListener, ExpandableNotificationRow row) {
+         Assert.isMainThread();
++        NotificationEntry entry = row.getEntry();
+         NotificationContentView privateLayout = row.getPrivateLayout();
+         NotificationContentView publicLayout = row.getPublicLayout();
+         if (runningInflations.isEmpty()) {
+@@ -510,27 +500,23 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+                 if (result.inflatedContentView != null) {
+                     // New view case
+                     privateLayout.setContractedChild(result.inflatedContentView);
+-                    remoteViewCache.putCachedView(entry, FLAG_CONTENT_VIEW_CONTRACTED,
+-                            result.newContentView);
+-                } else if (remoteViewCache.hasCachedView(entry, FLAG_CONTENT_VIEW_CONTRACTED)) {
++                    cachedContentViews.put(FLAG_CONTENT_VIEW_CONTRACTED, result.newContentView);
++                } else if (cachedContentViews.get(FLAG_CONTENT_VIEW_CONTRACTED) != null) {
+                     // Reinflation case. Only update if it's still cached (i.e. view has not been
+                     // freed while inflating).
+-                    remoteViewCache.putCachedView(entry, FLAG_CONTENT_VIEW_CONTRACTED,
+-                            result.newContentView);
++                    cachedContentViews.put(FLAG_CONTENT_VIEW_CONTRACTED, result.newContentView);
+                 }
+             }
+ 
+             if ((reInflateFlags & FLAG_CONTENT_VIEW_EXPANDED) != 0) {
+                 if (result.inflatedExpandedView != null) {
+                     privateLayout.setExpandedChild(result.inflatedExpandedView);
+-                    remoteViewCache.putCachedView(entry, FLAG_CONTENT_VIEW_EXPANDED,
+-                            result.newExpandedView);
++                    cachedContentViews.put(FLAG_CONTENT_VIEW_EXPANDED, result.newExpandedView);
+                 } else if (result.newExpandedView == null) {
+                     privateLayout.setExpandedChild(null);
+-                    remoteViewCache.removeCachedView(entry, FLAG_CONTENT_VIEW_EXPANDED);
+-                } else if (remoteViewCache.hasCachedView(entry, FLAG_CONTENT_VIEW_EXPANDED)) {
+-                    remoteViewCache.putCachedView(entry, FLAG_CONTENT_VIEW_EXPANDED,
+-                            result.newExpandedView);
++                    cachedContentViews.put(FLAG_CONTENT_VIEW_EXPANDED, null);
++                } else if (cachedContentViews.get(FLAG_CONTENT_VIEW_EXPANDED) != null) {
++                    cachedContentViews.put(FLAG_CONTENT_VIEW_EXPANDED, result.newExpandedView);
+                 }
+                 if (result.newExpandedView != null) {
+                     privateLayout.setExpandedInflatedSmartReplies(
+@@ -544,14 +530,12 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+             if ((reInflateFlags & FLAG_CONTENT_VIEW_HEADS_UP) != 0) {
+                 if (result.inflatedHeadsUpView != null) {
+                     privateLayout.setHeadsUpChild(result.inflatedHeadsUpView);
+-                    remoteViewCache.putCachedView(entry, FLAG_CONTENT_VIEW_HEADS_UP,
+-                            result.newHeadsUpView);
++                    cachedContentViews.put(FLAG_CONTENT_VIEW_HEADS_UP, result.newHeadsUpView);
+                 } else if (result.newHeadsUpView == null) {
+                     privateLayout.setHeadsUpChild(null);
+-                    remoteViewCache.removeCachedView(entry, FLAG_CONTENT_VIEW_HEADS_UP);
+-                } else if (remoteViewCache.hasCachedView(entry, FLAG_CONTENT_VIEW_HEADS_UP)) {
+-                    remoteViewCache.putCachedView(entry, FLAG_CONTENT_VIEW_HEADS_UP,
+-                            result.newHeadsUpView);
++                    cachedContentViews.put(FLAG_CONTENT_VIEW_HEADS_UP, null);
++                } else if (cachedContentViews.get(FLAG_CONTENT_VIEW_HEADS_UP) != null) {
++                    cachedContentViews.put(FLAG_CONTENT_VIEW_HEADS_UP, result.newHeadsUpView);
+                 }
+                 if (result.newHeadsUpView != null) {
+                     privateLayout.setHeadsUpInflatedSmartReplies(
+@@ -564,18 +548,16 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+             if ((reInflateFlags & FLAG_CONTENT_VIEW_PUBLIC) != 0) {
+                 if (result.inflatedPublicView != null) {
+                     publicLayout.setContractedChild(result.inflatedPublicView);
+-                    remoteViewCache.putCachedView(entry, FLAG_CONTENT_VIEW_PUBLIC,
+-                            result.newPublicView);
+-                } else if (remoteViewCache.hasCachedView(entry, FLAG_CONTENT_VIEW_PUBLIC)) {
+-                    remoteViewCache.putCachedView(entry, FLAG_CONTENT_VIEW_PUBLIC,
+-                            result.newPublicView);
++                    cachedContentViews.put(FLAG_CONTENT_VIEW_PUBLIC, result.newPublicView);
++                } else if (cachedContentViews.get(FLAG_CONTENT_VIEW_PUBLIC) != null) {
++                    cachedContentViews.put(FLAG_CONTENT_VIEW_PUBLIC, result.newPublicView);
+                 }
+             }
+ 
+             entry.headsUpStatusBarText = result.headsUpStatusBarText;
+             entry.headsUpStatusBarTextPublic = result.headsUpStatusBarTextPublic;
+             if (endListener != null) {
+-                endListener.onAsyncInflationFinished(entry, reInflateFlags);
++                endListener.onAsyncInflationFinished(row.getEntry(), reInflateFlags);
+             }
+             return true;
+         }
+@@ -633,7 +615,7 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+     public static class AsyncInflationTask extends AsyncTask<Void, Void, InflationProgress>
+             implements InflationCallback, InflationTask {
+ 
+-        private final NotificationEntry mEntry;
++        private final StatusBarNotification mSbn;
+         private final Context mContext;
+         private final boolean mInflateSynchronously;
+         private final boolean mIsLowPriority;
+@@ -642,17 +624,17 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+         private final InflationCallback mCallback;
+         private final boolean mUsesIncreasedHeadsUpHeight;
+         private @InflationFlag int mReInflateFlags;
+-        private final NotifRemoteViewCache mRemoteViewCache;
++        private final ArrayMap<Integer, RemoteViews> mCachedContentViews;
+         private ExpandableNotificationRow mRow;
+         private Exception mError;
+         private RemoteViews.OnClickHandler mRemoteViewClickHandler;
+         private CancellationSignal mCancellationSignal;
+ 
+         private AsyncInflationTask(
++                StatusBarNotification notification,
+                 boolean inflateSynchronously,
+                 @InflationFlag int reInflateFlags,
+-                NotifRemoteViewCache cache,
+-                NotificationEntry entry,
++                ArrayMap<Integer, RemoteViews> cachedContentViews,
+                 ExpandableNotificationRow row,
+                 boolean isLowPriority,
+                 boolean isChildInGroup,
+@@ -660,11 +642,11 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+                 boolean usesIncreasedHeadsUpHeight,
+                 InflationCallback callback,
+                 RemoteViews.OnClickHandler remoteViewClickHandler) {
+-            mEntry = entry;
+             mRow = row;
++            mSbn = notification;
+             mInflateSynchronously = inflateSynchronously;
+             mReInflateFlags = reInflateFlags;
+-            mRemoteViewCache = cache;
++            mCachedContentViews = cachedContentViews;
+             mContext = mRow.getContext();
+             mIsLowPriority = isLowPriority;
+             mIsChildInGroup = isChildInGroup;
+@@ -672,6 +654,7 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+             mUsesIncreasedHeadsUpHeight = usesIncreasedHeadsUpHeight;
+             mRemoteViewClickHandler = remoteViewClickHandler;
+             mCallback = callback;
++            NotificationEntry entry = row.getEntry();
+             entry.setInflationTask(this);
+         }
+ 
+@@ -684,13 +667,12 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+         @Override
+         protected InflationProgress doInBackground(Void... params) {
+             try {
+-                final StatusBarNotification sbn = mEntry.getSbn();
+                 final Notification.Builder recoveredBuilder
+                         = Notification.Builder.recoverBuilder(mContext,
+-                        sbn.getNotification());
++                        mSbn.getNotification());
+ 
+-                Context packageContext = sbn.getPackageContext(mContext);
+-                Notification notification = sbn.getNotification();
++                Context packageContext = mSbn.getPackageContext(mContext);
++                Notification notification = mSbn.getNotification();
+                 if (notification.isMediaNotification()) {
+                     MediaNotificationProcessor processor = new MediaNotificationProcessor(mContext,
+                             packageContext);
+@@ -699,7 +681,7 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+                 InflationProgress inflationProgress = createRemoteViews(mReInflateFlags,
+                         recoveredBuilder, mIsLowPriority, mIsChildInGroup, mUsesIncreasedHeight,
+                         mUsesIncreasedHeadsUpHeight, packageContext);
+-                return inflateSmartReplyViews(inflationProgress, mReInflateFlags, mEntry,
++                return inflateSmartReplyViews(inflationProgress, mReInflateFlags, mRow.getEntry(),
+                         mRow.getContext(), packageContext, mRow.getHeadsUpManager(),
+                         mRow.getExistingSmartRepliesAndActions());
+             } catch (Exception e) {
+@@ -712,15 +694,15 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+         protected void onPostExecute(InflationProgress result) {
+             if (mError == null) {
+                 mCancellationSignal = apply(mInflateSynchronously, result, mReInflateFlags,
+-                        mRemoteViewCache, mEntry, mRow, mRemoteViewClickHandler, this);
++                        mCachedContentViews, mRow, mRemoteViewClickHandler, this);
+             } else {
+                 handleError(mError);
+             }
+         }
+ 
+         private void handleError(Exception e) {
+-            mEntry.onInflationTaskFinished();
+-            StatusBarNotification sbn = mEntry.getSbn();
++            mRow.getEntry().onInflationTaskFinished();
++            StatusBarNotification sbn = mRow.getEntry().getSbn();
+             final String ident = sbn.getPackageName() + "/0x"
+                     + Integer.toHexString(sbn.getId());
+             Log.e(StatusBar.TAG, "couldn't inflate view for notification " + ident, e);
+@@ -754,10 +736,10 @@ public class NotificationContentInflater implements NotificationRowContentBinder
+         @Override
+         public void onAsyncInflationFinished(NotificationEntry entry,
+                 @InflationFlag int inflatedFlags) {
+-            mEntry.onInflationTaskFinished();
++            mRow.getEntry().onInflationTaskFinished();
+             mRow.onNotificationUpdated();
+             if (mCallback != null) {
+-                mCallback.onAsyncInflationFinished(mEntry, inflatedFlags);
++                mCallback.onAsyncInflationFinished(mRow.getEntry(), inflatedFlags);
+             }
+ 
+             // Notify the resolver that the inflation task has finished,
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/NotificationRowModule.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/NotificationRowModule.java
+deleted file mode 100644
+index df8653cf240..00000000000
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/row/NotificationRowModule.java
++++ /dev/null
+@@ -1,44 +0,0 @@
+-/*
+- * Copyright (C) 2020 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-package com.android.systemui.statusbar.notification.row;
+-
+-import javax.inject.Singleton;
+-
+-import dagger.Binds;
+-import dagger.Module;
+-
+-/**
+- * Dagger Module containing notification row and view inflation implementations.
+- */
+-@Module
+-public abstract class NotificationRowModule {
+-    /**
+-     * Provides notification row content binder instance.
+-     */
+-    @Binds
+-    @Singleton
+-    public abstract NotificationRowContentBinder provideNotificationRowContentBinder(
+-            NotificationContentInflater contentBinderImpl);
+-
+-    /**
+-     * Provides notification remote view cache instance.
+-     */
+-    @Binds
+-    @Singleton
+-    public abstract NotifRemoteViewCache provideNotifRemoteViewCache(
+-            NotifRemoteViewCacheImpl cacheImpl);
+-}
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationGroupAlertTransferHelper.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationGroupAlertTransferHelper.java
+index 896b6e570da..fe0739f9088 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationGroupAlertTransferHelper.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NotificationGroupAlertTransferHelper.java
+@@ -32,6 +32,7 @@ import com.android.systemui.statusbar.InflationTask;
+ import com.android.systemui.statusbar.notification.NotificationEntryListener;
+ import com.android.systemui.statusbar.notification.NotificationEntryManager;
+ import com.android.systemui.statusbar.notification.collection.NotificationEntry;
++import com.android.systemui.statusbar.notification.row.NotificationContentInflater.AsyncInflationTask;
+ import com.android.systemui.statusbar.notification.row.NotificationRowContentBinder.InflationFlag;
+ import com.android.systemui.statusbar.phone.NotificationGroupManager.NotificationGroup;
+ import com.android.systemui.statusbar.phone.NotificationGroupManager.OnGroupChangeListener;
+@@ -427,7 +428,7 @@ public class NotificationGroupAlertTransferHelper implements OnHeadsUpChangedLis
+          * The notification is still pending inflation but we've decided that we no longer need
+          * the content view (e.g. suppression might have changed and we decided we need to transfer
+          * back). However, there is no way to abort just this inflation if other inflation requests
+-         * have started (see {@link InflationTask#supersedeTask(InflationTask)}). So instead
++         * have started (see {@link AsyncInflationTask#supersedeTask(InflationTask)}). So instead
+          * we just flag it as aborted and free when it's inflated.
+          */
+         boolean mAbortOnInflation;
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBar.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBar.java
+index 30825ed65eb..ccc86b1f8c5 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBar.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBar.java
+@@ -205,7 +205,6 @@ import com.android.systemui.statusbar.notification.collection.init.NewNotifPipel
+ import com.android.systemui.statusbar.notification.logging.NotificationLogger;
+ import com.android.systemui.statusbar.notification.row.ExpandableNotificationRow;
+ import com.android.systemui.statusbar.notification.row.NotificationGutsManager;
+-import com.android.systemui.statusbar.notification.row.NotificationRowContentBinder;
+ import com.android.systemui.statusbar.notification.stack.NotificationListContainer;
+ import com.android.systemui.statusbar.phone.dagger.StatusBarComponent;
+ import com.android.systemui.statusbar.policy.BatteryController;
+@@ -414,7 +413,6 @@ public class StatusBar extends SystemUI implements DemoMode,
+     private final NotificationGutsManager mGutsManager;
+     private final NotificationLogger mNotificationLogger;
+     private final NotificationEntryManager mEntryManager;
+-    private final NotificationRowContentBinder mRowContentBinder;
+     private NotificationListController mNotificationListController;
+     private final NotificationInterruptionStateProvider mNotificationInterruptionStateProvider;
+     private final NotificationViewHierarchyManager mViewHierarchyManager;
+@@ -636,7 +634,6 @@ public class StatusBar extends SystemUI implements DemoMode,
+             NotificationGutsManager notificationGutsManager,
+             NotificationLogger notificationLogger,
+             NotificationEntryManager notificationEntryManager,
+-            NotificationRowContentBinder notificationRowContentBinder,
+             NotificationInterruptionStateProvider notificationInterruptionStateProvider,
+             NotificationViewHierarchyManager notificationViewHierarchyManager,
+             KeyguardViewMediator keyguardViewMediator,
+@@ -718,7 +715,6 @@ public class StatusBar extends SystemUI implements DemoMode,
+         mGutsManager = notificationGutsManager;
+         mNotificationLogger = notificationLogger;
+         mEntryManager = notificationEntryManager;
+-        mRowContentBinder = notificationRowContentBinder;
+         mNotificationInterruptionStateProvider = notificationInterruptionStateProvider;
+         mViewHierarchyManager = notificationViewHierarchyManager;
+         mKeyguardViewMediator = keyguardViewMediator;
+@@ -1244,7 +1240,6 @@ public class StatusBar extends SystemUI implements DemoMode,
+         final NotificationRowBinderImpl rowBinder =
+                 new NotificationRowBinderImpl(
+                         mContext,
+-                        mRowContentBinder,
+                         mAllowNotificationLongPress,
+                         mKeyguardBypassController,
+                         mStatusBarStateController,
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarModule.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarModule.java
+index df741079de2..153ca22933a 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarModule.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarModule.java
+@@ -69,7 +69,6 @@ import com.android.systemui.statusbar.notification.VisualStabilityManager;
+ import com.android.systemui.statusbar.notification.collection.init.NewNotifPipeline;
+ import com.android.systemui.statusbar.notification.logging.NotificationLogger;
+ import com.android.systemui.statusbar.notification.row.NotificationGutsManager;
+-import com.android.systemui.statusbar.notification.row.NotificationRowContentBinder;
+ import com.android.systemui.statusbar.phone.dagger.StatusBarComponent;
+ import com.android.systemui.statusbar.policy.BatteryController;
+ import com.android.systemui.statusbar.policy.ConfigurationController;
+@@ -126,7 +125,6 @@ public class StatusBarModule {
+             NotificationGutsManager notificationGutsManager,
+             NotificationLogger notificationLogger,
+             NotificationEntryManager notificationEntryManager,
+-            NotificationRowContentBinder notificationRowContentBinder,
+             NotificationInterruptionStateProvider notificationInterruptionStateProvider,
+             NotificationViewHierarchyManager notificationViewHierarchyManager,
+             KeyguardViewMediator keyguardViewMediator,
+@@ -209,7 +207,6 @@ public class StatusBarModule {
+                 notificationGutsManager,
+                 notificationLogger,
+                 notificationEntryManager,
+-                notificationRowContentBinder,
+                 notificationInterruptionStateProvider,
+                 notificationViewHierarchyManager,
+                 keyguardViewMediator,
+diff --git a/packages/SystemUI/tests/src/com/android/systemui/statusbar/NotificationTestHelper.java b/packages/SystemUI/tests/src/com/android/systemui/statusbar/NotificationTestHelper.java
+index fbfd92314e6..77659df738c 100644
+--- a/packages/SystemUI/tests/src/com/android/systemui/statusbar/NotificationTestHelper.java
++++ b/packages/SystemUI/tests/src/com/android/systemui/statusbar/NotificationTestHelper.java
+@@ -47,7 +47,6 @@ import com.android.systemui.plugins.statusbar.StatusBarStateController;
+ import com.android.systemui.statusbar.notification.collection.NotificationEntry;
+ import com.android.systemui.statusbar.notification.collection.NotificationEntryBuilder;
+ import com.android.systemui.statusbar.notification.row.ExpandableNotificationRow;
+-import com.android.systemui.statusbar.notification.row.NotifRemoteViewCache;
+ import com.android.systemui.statusbar.notification.row.NotificationContentInflater;
+ import com.android.systemui.statusbar.notification.row.NotificationRowContentBinder.InflationFlag;
+ import com.android.systemui.statusbar.phone.HeadsUpManagerPhone;
+@@ -330,11 +329,6 @@ public class NotificationTestHelper {
+         entry.setRow(row);
+         entry.createIcons(mContext, entry.getSbn());
+         row.setEntry(entry);
+-        NotificationContentInflater contentBinder = new NotificationContentInflater(
+-                mock(NotifRemoteViewCache.class),
+-                mock(NotificationRemoteInputManager.class));
+-        contentBinder.setInflateSynchronously(true);
+-        row.setContentBinder(contentBinder);
+         row.setInflationFlags(extraInflationFlags);
+         inflateAndWait(row);
+ 
+@@ -347,6 +341,7 @@ public class NotificationTestHelper {
+ 
+     private static void inflateAndWait(ExpandableNotificationRow row) throws Exception {
+         CountDownLatch countDownLatch = new CountDownLatch(1);
++        row.getNotificationInflater().setInflateSynchronously(true);
+         NotificationContentInflater.InflationCallback callback =
+                 new NotificationContentInflater.InflationCallback() {
+                     @Override
+diff --git a/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/NotificationEntryManagerTest.java b/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/NotificationEntryManagerTest.java
+index 1c294531ea6..c559265d28c 100644
+--- a/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/NotificationEntryManagerTest.java
++++ b/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/NotificationEntryManagerTest.java
+@@ -87,10 +87,7 @@ import com.android.systemui.statusbar.notification.logging.NotifLog;
+ import com.android.systemui.statusbar.notification.logging.NotificationLogger;
+ import com.android.systemui.statusbar.notification.people.PeopleNotificationIdentifier;
+ import com.android.systemui.statusbar.notification.row.ExpandableNotificationRow;
+-import com.android.systemui.statusbar.notification.row.NotifRemoteViewCache;
+-import com.android.systemui.statusbar.notification.row.NotificationContentInflater;
+ import com.android.systemui.statusbar.notification.row.NotificationGutsManager;
+-import com.android.systemui.statusbar.notification.row.NotificationRowContentBinder;
+ import com.android.systemui.statusbar.notification.row.RowInflaterTask;
+ import com.android.systemui.statusbar.notification.stack.NotificationListContainer;
+ import com.android.systemui.statusbar.phone.KeyguardBypassController;
+@@ -244,14 +241,8 @@ public class NotificationEntryManagerTest extends SysuiTestCase {
+         mEntryManager.addNotificationEntryListener(mEntryListener);
+         mEntryManager.setNotificationRemoveInterceptor(mRemoveInterceptor);
+ 
+-        NotificationRowContentBinder contentBinder = new NotificationContentInflater(
+-                mock(NotifRemoteViewCache.class),
+-                mRemoteInputManager);
+-
+         NotificationRowBinderImpl notificationRowBinder =
+-                new NotificationRowBinderImpl(mContext,
+-                        contentBinder,
+-                        true, /* allowLongPress */
++                new NotificationRowBinderImpl(mContext, true, /* allowLongPress */
+                         mock(KeyguardBypassController.class),
+                         mock(StatusBarStateController.class),
+                         mock(NotificationLogger.class));
+diff --git a/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/row/NotifRemoteViewCacheImplTest.java b/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/row/NotifRemoteViewCacheImplTest.java
+deleted file mode 100644
+index d7214f3b922..00000000000
+--- a/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/row/NotifRemoteViewCacheImplTest.java
++++ /dev/null
+@@ -1,112 +0,0 @@
+-/*
+- * Copyright (C) 2020 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-package com.android.systemui.statusbar.notification.row;
+-
+-import static com.android.systemui.statusbar.notification.row.NotificationRowContentBinder.FLAG_CONTENT_VIEW_CONTRACTED;
+-import static com.android.systemui.statusbar.notification.row.NotificationRowContentBinder.FLAG_CONTENT_VIEW_EXPANDED;
+-
+-import static junit.framework.Assert.assertEquals;
+-import static junit.framework.Assert.assertFalse;
+-import static junit.framework.Assert.assertTrue;
+-
+-import static org.mockito.Mockito.mock;
+-import static org.mockito.Mockito.verify;
+-
+-import android.testing.AndroidTestingRunner;
+-import android.widget.RemoteViews;
+-
+-import androidx.test.filters.SmallTest;
+-
+-import com.android.systemui.SysuiTestCase;
+-import com.android.systemui.statusbar.notification.NotificationEntryListener;
+-import com.android.systemui.statusbar.notification.NotificationEntryManager;
+-import com.android.systemui.statusbar.notification.collection.NotificationEntry;
+-import com.android.systemui.statusbar.notification.collection.NotificationEntryBuilder;
+-
+-import org.junit.Before;
+-import org.junit.Test;
+-import org.junit.runner.RunWith;
+-import org.mockito.ArgumentCaptor;
+-import org.mockito.Mock;
+-import org.mockito.MockitoAnnotations;
+-
+-@SmallTest
+-@RunWith(AndroidTestingRunner.class)
+-public class NotifRemoteViewCacheImplTest extends SysuiTestCase {
+-
+-    private NotifRemoteViewCacheImpl mNotifRemoteViewCache;
+-    private NotificationEntry mEntry;
+-    private NotificationEntryListener mEntryListener;
+-    @Mock private RemoteViews mRemoteViews;
+-
+-    @Before
+-    public void setUp() {
+-        MockitoAnnotations.initMocks(this);
+-        mEntry = new NotificationEntryBuilder().build();
+-
+-        NotificationEntryManager entryManager = mock(NotificationEntryManager.class);
+-        mNotifRemoteViewCache = new NotifRemoteViewCacheImpl(entryManager);
+-        ArgumentCaptor<NotificationEntryListener> entryListenerCaptor =
+-                ArgumentCaptor.forClass(NotificationEntryListener.class);
+-        verify(entryManager).addNotificationEntryListener(entryListenerCaptor.capture());
+-        mEntryListener = entryListenerCaptor.getValue();
+-    }
+-
+-    @Test
+-    public void testPutCachedView() {
+-        // GIVEN an initialized cache for an entry.
+-        mEntryListener.onPendingEntryAdded(mEntry);
+-
+-        // WHEN a notification's cached remote views is put in.
+-        mNotifRemoteViewCache.putCachedView(mEntry, FLAG_CONTENT_VIEW_CONTRACTED, mRemoteViews);
+-
+-        // THEN the remote view is cached.
+-        assertTrue(mNotifRemoteViewCache.hasCachedView(mEntry, FLAG_CONTENT_VIEW_CONTRACTED));
+-        assertEquals(
+-                "Cached remote view is not the one we put in.",
+-                mRemoteViews,
+-                mNotifRemoteViewCache.getCachedView(mEntry, FLAG_CONTENT_VIEW_CONTRACTED));
+-    }
+-
+-    @Test
+-    public void testRemoveCachedView() {
+-        // GIVEN a cache with a cached view.
+-        mEntryListener.onPendingEntryAdded(mEntry);
+-        mNotifRemoteViewCache.putCachedView(mEntry, FLAG_CONTENT_VIEW_CONTRACTED, mRemoteViews);
+-
+-        // WHEN we remove the cached view.
+-        mNotifRemoteViewCache.removeCachedView(mEntry, FLAG_CONTENT_VIEW_CONTRACTED);
+-
+-        // THEN the remote view is not cached.
+-        assertFalse(mNotifRemoteViewCache.hasCachedView(mEntry, FLAG_CONTENT_VIEW_CONTRACTED));
+-    }
+-
+-    @Test
+-    public void testClearCache() {
+-        // GIVEN a non-empty cache.
+-        mEntryListener.onPendingEntryAdded(mEntry);
+-        mNotifRemoteViewCache.putCachedView(mEntry, FLAG_CONTENT_VIEW_CONTRACTED, mRemoteViews);
+-        mNotifRemoteViewCache.putCachedView(mEntry, FLAG_CONTENT_VIEW_EXPANDED, mRemoteViews);
+-
+-        // WHEN we clear the cache.
+-        mNotifRemoteViewCache.clearCache(mEntry);
+-
+-        // THEN the cache is empty.
+-        assertFalse(mNotifRemoteViewCache.hasCachedView(mEntry, FLAG_CONTENT_VIEW_CONTRACTED));
+-        assertFalse(mNotifRemoteViewCache.hasCachedView(mEntry, FLAG_CONTENT_VIEW_EXPANDED));
+-    }
+-}
+diff --git a/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/row/NotificationContentInflaterTest.java b/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/row/NotificationContentInflaterTest.java
+index cb9da6a40cb..f916fe5ad7f 100644
+--- a/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/row/NotificationContentInflaterTest.java
++++ b/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/row/NotificationContentInflaterTest.java
+@@ -22,16 +22,11 @@ import static com.android.systemui.statusbar.notification.row.NotificationRowCon
+ import static com.android.systemui.statusbar.notification.row.NotificationRowContentBinder.FLAG_CONTENT_VIEW_HEADS_UP;
+ 
+ import static org.junit.Assert.assertEquals;
+-import static org.junit.Assert.assertNotEquals;
+ import static org.junit.Assert.assertNotNull;
+ import static org.junit.Assert.assertTrue;
+-import static org.mockito.ArgumentMatchers.any;
+-import static org.mockito.ArgumentMatchers.eq;
+-import static org.mockito.Mockito.mock;
+ import static org.mockito.Mockito.spy;
+ import static org.mockito.Mockito.times;
+ import static org.mockito.Mockito.verify;
+-import static org.mockito.Mockito.when;
+ 
+ import android.app.Notification;
+ import android.content.Context;
+@@ -40,17 +35,16 @@ import android.os.Handler;
+ import android.os.Looper;
+ import android.testing.AndroidTestingRunner;
+ import android.testing.TestableLooper.RunWithLooper;
++import android.util.ArrayMap;
+ import android.view.View;
+ import android.view.ViewGroup;
+ import android.widget.RemoteViews;
+-import android.widget.TextView;
+ 
+ import androidx.test.filters.SmallTest;
+ import androidx.test.filters.Suppress;
+ 
+ import com.android.systemui.SysuiTestCase;
+ import com.android.systemui.statusbar.InflationTask;
+-import com.android.systemui.statusbar.NotificationRemoteInputManager;
+ import com.android.systemui.statusbar.NotificationTestHelper;
+ import com.android.systemui.statusbar.notification.collection.NotificationEntry;
+ import com.android.systemui.statusbar.notification.row.NotificationRowContentBinder.BindParams;
+@@ -63,8 +57,6 @@ import org.junit.Before;
+ import org.junit.Ignore;
+ import org.junit.Test;
+ import org.junit.runner.RunWith;
+-import org.mockito.Mock;
+-import org.mockito.MockitoAnnotations;
+ 
+ import java.util.HashMap;
+ import java.util.concurrent.CountDownLatch;
+@@ -81,11 +73,8 @@ public class NotificationContentInflaterTest extends SysuiTestCase {
+     private Notification.Builder mBuilder;
+     private ExpandableNotificationRow mRow;
+ 
+-    @Mock private NotifRemoteViewCache mCache;
+-
+     @Before
+     public void setUp() throws Exception {
+-        MockitoAnnotations.initMocks(this);
+         mBuilder = new Notification.Builder(mContext).setSmallIcon(
+                 R.drawable.ic_person)
+                 .setContentTitle("Title")
+@@ -94,9 +83,7 @@ public class NotificationContentInflaterTest extends SysuiTestCase {
+         ExpandableNotificationRow row = new NotificationTestHelper(mContext, mDependency).createRow(
+                 mBuilder.build());
+         mRow = spy(row);
+-        mNotificationInflater = new NotificationContentInflater(
+-                mCache,
+-                mock(NotificationRemoteInputManager.class));
++        mNotificationInflater = new NotificationContentInflater();
+     }
+ 
+     @Test
+@@ -187,9 +174,7 @@ public class NotificationContentInflaterTest extends SysuiTestCase {
+                 result,
+                 FLAG_CONTENT_VIEW_EXPANDED,
+                 0,
+-                mock(NotifRemoteViewCache.class),
+-                mRow.getEntry(),
+-                mRow,
++                new ArrayMap() /* cachedContentViews */, mRow,
+                 true /* isNewView */, (v, p, r) -> true,
+                 new InflationCallback() {
+                     @Override
+@@ -259,71 +244,6 @@ public class NotificationContentInflaterTest extends SysuiTestCase {
+                 NotificationContentInflater.canReapplyRemoteView(mediaView, decoratedMediaView));
+     }
+ 
+-    @Test
+-    public void testUsesSameViewWhenCachedPossibleToReuse() throws Exception {
+-        // GIVEN a cached view.
+-        RemoteViews contractedRemoteView = mBuilder.createContentView();
+-        when(mCache.hasCachedView(mRow.getEntry(), FLAG_CONTENT_VIEW_CONTRACTED))
+-                .thenReturn(true);
+-        when(mCache.getCachedView(mRow.getEntry(), FLAG_CONTENT_VIEW_CONTRACTED))
+-                .thenReturn(contractedRemoteView);
+-
+-        // GIVEN existing bound view with same layout id.
+-        View view = contractedRemoteView.apply(mContext, null /* parent */);
+-        mRow.getPrivateLayout().setContractedChild(view);
+-
+-        // WHEN inflater inflates
+-        inflateAndWait(mNotificationInflater, FLAG_CONTENT_VIEW_CONTRACTED, mRow);
+-
+-        // THEN the view should be re-used
+-        assertEquals("Binder inflated a new view even though the old one was cached and usable.",
+-                view, mRow.getPrivateLayout().getContractedChild());
+-    }
+-
+-    @Test
+-    public void testInflatesNewViewWhenCachedNotPossibleToReuse() throws Exception {
+-        // GIVEN a cached remote view.
+-        RemoteViews contractedRemoteView = mBuilder.createHeadsUpContentView();
+-        when(mCache.hasCachedView(mRow.getEntry(), FLAG_CONTENT_VIEW_CONTRACTED))
+-                .thenReturn(true);
+-        when(mCache.getCachedView(mRow.getEntry(), FLAG_CONTENT_VIEW_CONTRACTED))
+-                .thenReturn(contractedRemoteView);
+-
+-        // GIVEN existing bound view with different layout id.
+-        View view = new TextView(mContext);
+-        mRow.getPrivateLayout().setContractedChild(view);
+-
+-        // WHEN inflater inflates
+-        inflateAndWait(mNotificationInflater, FLAG_CONTENT_VIEW_CONTRACTED, mRow);
+-
+-        // THEN the view should be a new view
+-        assertNotEquals("Binder (somehow) used the same view when inflating.",
+-                view, mRow.getPrivateLayout().getContractedChild());
+-    }
+-
+-    @Test
+-    public void testInflationCachesCreatedRemoteView() throws Exception {
+-        // WHEN inflater inflates
+-        inflateAndWait(mNotificationInflater, FLAG_CONTENT_VIEW_CONTRACTED, mRow);
+-
+-        // THEN inflater informs cache of the new remote view
+-        verify(mCache).putCachedView(
+-                eq(mRow.getEntry()),
+-                eq(FLAG_CONTENT_VIEW_CONTRACTED),
+-                any());
+-    }
+-
+-    @Test
+-    public void testUnbindRemovesCachedRemoteView() {
+-        // WHEN inflated unbinds content
+-        mNotificationInflater.unbindContent(mRow.getEntry(), mRow, FLAG_CONTENT_VIEW_HEADS_UP);
+-
+-        // THEN inflated informs cache to remove remote view
+-        verify(mCache).removeCachedView(
+-                eq(mRow.getEntry()),
+-                eq(FLAG_CONTENT_VIEW_HEADS_UP));
+-    }
+-
+     private static void inflateAndWait(NotificationContentInflater inflater,
+             @InflationFlag int contentToInflate,
+             ExpandableNotificationRow row)
+diff --git a/packages/SystemUI/tests/src/com/android/systemui/statusbar/phone/StatusBarTest.java b/packages/SystemUI/tests/src/com/android/systemui/statusbar/phone/StatusBarTest.java
+index 3da87ea2fb5..7e485f45e5e 100644
+--- a/packages/SystemUI/tests/src/com/android/systemui/statusbar/phone/StatusBarTest.java
++++ b/packages/SystemUI/tests/src/com/android/systemui/statusbar/phone/StatusBarTest.java
+@@ -122,7 +122,6 @@ import com.android.systemui.statusbar.notification.collection.NotificationEntry;
+ import com.android.systemui.statusbar.notification.collection.NotificationEntryBuilder;
+ import com.android.systemui.statusbar.notification.collection.init.NewNotifPipeline;
+ import com.android.systemui.statusbar.notification.logging.NotificationLogger;
+-import com.android.systemui.statusbar.notification.row.NotificationContentInflater;
+ import com.android.systemui.statusbar.notification.row.NotificationGutsManager;
+ import com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout;
+ import com.android.systemui.statusbar.phone.dagger.StatusBarComponent;
+@@ -248,7 +247,6 @@ public class StatusBarTest extends SysuiTestCase {
+     @Mock private DismissCallbackRegistry mDismissCallbackRegistry;
+     @Mock private ScreenPinningRequest mScreenPinningRequest;
+     @Mock private NotificationEntryManager mEntryManager;
+-    @Mock private NotificationContentInflater mNotificationContentInflater;
+     @Mock private LockscreenLockIconController mLockscreenLockIconController;
+     @Mock private StatusBarNotificationActivityStarter.Builder
+             mStatusBarNotificationActivityStarterBuilder;
+@@ -358,7 +356,6 @@ public class StatusBarTest extends SysuiTestCase {
+                 mNotificationGutsManager,
+                 notificationLogger,
+                 mEntryManager,
+-                mNotificationContentInflater,
+                 mNotificationInterruptionStateProvider,
+                 mNotificationViewHierarchyManager,
+                 mKeyguardViewMediator,
+-- 
+2.35.1
+

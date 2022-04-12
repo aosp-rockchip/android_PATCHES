@@ -1,0 +1,33 @@
+From 45354e137062bbb6c24e5c9663056b5a497311e1 Mon Sep 17 00:00:00 2001
+From: Beverly <beverlyt@google.com>
+Date: Tue, 15 Sep 2020 09:23:54 -0400
+Subject: [PATCH 244/297] Add telecom to priorityOnlyDndExemptPackages
+
+telecom plays dialer's ringtone, so we allow them to play sounds when
+DND is on in priority mode. We trust that telecom will abide by the DND
+rules and exceptions (ie: checking for starred contacts)
+
+Test: manual
+Bug: 163525045
+Change-Id: I798f1d968821e7d1b0a97b9b034c1ef0726f8242
+Merged-In: I798f1d968821e7d1b0a97b9b034c1ef0726f8242
+(cherry picked from commit c384c930fd64e8c8e02b7bc28314b7f692ef8c9f)
+---
+ core/res/res/values/config.xml | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/core/res/res/values/config.xml b/core/res/res/values/config.xml
+index 6ca5bf27f54..46f2fdeb5e5 100644
+--- a/core/res/res/values/config.xml
++++ b/core/res/res/values/config.xml
+@@ -3478,6 +3478,7 @@
+      mode -->
+     <string-array translatable="false" name="config_priorityOnlyDndExemptPackages">
+         <item>com.android.dialer</item>
++        <item>com.android.server.telecom</item>
+         <item>com.android.systemui</item>
+         <item>android</item>
+     </string-array>
+-- 
+2.35.1
+

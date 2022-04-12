@@ -1,0 +1,126 @@
+From 24f0d65b9f1fef7a202ffcaa02b75718a8f547c6 Mon Sep 17 00:00:00 2001
+From: huangds <hds@rock-chips.com>
+Date: Thu, 13 Nov 2014 16:30:49 +0800
+Subject: [PATCH 03/36] Add compile support and modify files
+
+Change-Id: Ib5ab8b4fa864158b15a13f61c99b7e8a191f7329
+Signed-off-by: wzq <wzq@rock-chips.com>
+---
+ include/hardware/gralloc.h         |  6 ++++++
+ include/hardware/hwcomposer.h      | 23 +++++++++++++++++++++++
+ include/hardware/hwcomposer_defs.h | 13 ++++++++++++-
+ 3 files changed, 41 insertions(+), 1 deletion(-)
+ mode change 100644 => 100755 include/hardware/gralloc.h
+ mode change 100644 => 100755 include/hardware/hwcomposer.h
+ mode change 100644 => 100755 include/hardware/hwcomposer_defs.h
+
+diff --git a/include/hardware/gralloc.h b/include/hardware/gralloc.h
+old mode 100644
+new mode 100755
+index 8cb8f422..0f01d87a
+--- a/include/hardware/gralloc.h
++++ b/include/hardware/gralloc.h
+@@ -131,11 +131,17 @@ enum {
+      * handle this flag. */
+     GRALLOC_USAGE_FOREIGN_BUFFERS       = 0x00200000U,
+ 
++
+     /* Mask of all flags which could be passed to a gralloc module for buffer
+      * allocation. Any flags not in this mask do not need to be handled by
+      * gralloc modules. */
+     GRALLOC_USAGE_ALLOC_MASK            = ~(GRALLOC_USAGE_FOREIGN_BUFFERS),
+ 
++
++    /* buffer may be used as a cursor */
++    GRALLOC_USAGE_CURSOR                = 0x00008000,
++	 GRALLOC_USAGE_ROT_MASK              = 0x0F000000,
++
+     /* implementation-specific private usage flags */
+     GRALLOC_USAGE_PRIVATE_0             = 0x10000000U,
+     GRALLOC_USAGE_PRIVATE_1             = 0x20000000U,
+diff --git a/include/hardware/hwcomposer.h b/include/hardware/hwcomposer.h
+old mode 100644
+new mode 100755
+index 9eb1aafb..51b58644
+--- a/include/hardware/hwcomposer.h
++++ b/include/hardware/hwcomposer.h
+@@ -178,6 +178,22 @@ typedef struct hwc_layer_1 {
+              * The visible region INCLUDES areas overlapped by a translucent layer.
+              */
+             hwc_region_t visibleRegionScreen;
++    		char LayerName[LayerNameLength + 1];
++			int32_t bufferCount;
++            int32_t bufferUpdate;
++            int32_t bufferChange;
++            int32_t dospecialflag;
++            int32_t exTop;
++            int32_t exBottom;
++            int32_t exLeft;
++            int32_t exRight;
++            int32_t exAddrOffset;
++			uint32_t realtransform;
++			#ifdef TARGET_BOARD_PLATFORM_RK312X
++			uint32_t direct_fd;
++			#else
++			uint32_t direct_addr;
++			#endif
+ 
+             /* Sync fence object that will be signaled when the buffer's
+              * contents are available. May be -1 if the contents are already
+@@ -402,6 +418,7 @@ typedef struct hwc_display_contents_1 {
+      * performed by SurfaceFlinger.
+      */
+     uint32_t flags;
++    uint32_t skipflag;
+     size_t numHwLayers;
+     hwc_layer_1_t hwLayers[0];
+ 
+@@ -573,6 +590,12 @@ typedef struct hwc_composer_device_1 {
+     int (*set)(struct hwc_composer_device_1 *dev,
+                 size_t numDisplays, hwc_display_contents_1_t** displays);
+ 
++	int (*fbPost2)(struct hwc_composer_device_1 *dev,size_t numDisplays, hwc_display_contents_1_t** displays);
++	int (*fbPost3)(struct hwc_composer_device_1 *dev,size_t numDisplays, hwc_display_contents_1_t** displays,buffer_handle_t buffer);
++    int (*layer_recover)(struct hwc_composer_device_1 *dev,
++                    size_t numDisplays, hwc_display_contents_1_t** displays);
++	int (*rkCopybit)(struct hwc_composer_device_1 *dev,buffer_handle_t src_handle,
++	                    buffer_handle_t dst_handle,int flag);
+     /*
+      * eventControl(..., event, enabled)
+      * Enables or disables h/w composer events for a display.
+diff --git a/include/hardware/hwcomposer_defs.h b/include/hardware/hwcomposer_defs.h
+old mode 100644
+new mode 100755
+index fd373e31..c2313f60
+--- a/include/hardware/hwcomposer_defs.h
++++ b/include/hardware/hwcomposer_defs.h
+@@ -108,6 +108,11 @@ typedef enum {
+  * Beyond this point are things only used by HWC1, which should be ignored when
+  * implementing a HWC2 device
+  ******************************************************************************/
++#define HWC_BLENDING_DIM		0x0805
++#define HWC_BLENDING_CLEAR_HOLE          0x0806
++
++#define HWC_Layer_DEBUG
++#define LayerNameLength 60
+ 
+ enum {
+     /* hwc_composer_device_t::set failed in EGL */
+@@ -186,7 +191,13 @@ enum {
+        cursor overlay hardware. hwcomposer will also all async position updates
+        of this layer outside of the normal prepare()/set() loop. Added in
+        HWC_DEVICE_API_VERSION_1_4. */
+-    HWC_CURSOR_OVERLAY =  5
++    HWC_CURSOR_OVERLAY =  5,
++    HWC_TOWIN0,
++    HWC_TOWIN1,
++    HWC_LCDC,
++    HWC_NODRAW,
++    HWC_MIX,
++    HWC_MIX_V2
+  };
+ /*
+  * hwc_layer_t::blending values
+-- 
+2.35.1
+

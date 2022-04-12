@@ -1,0 +1,28 @@
+From ebe0c6c5daef6a871c9767fd7f972a3a4c3a4893 Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Tue, 24 Nov 2020 11:30:10 +0800
+Subject: [PATCH 229/297] SystemUI: remove the headset from the blacklist
+
+remove from blacklist,so that can show headset icon in statusbar if headset insert
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: I968cf635ddf059412e785ebc2080f00af3ad6ecf
+---
+ packages/SystemUI/res/values/config.xml | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/packages/SystemUI/res/values/config.xml b/packages/SystemUI/res/values/config.xml
+index fb3f2aca240..4a7727e730c 100644
+--- a/packages/SystemUI/res/values/config.xml
++++ b/packages/SystemUI/res/values/config.xml
+@@ -510,7 +510,6 @@
+      -->
+     <string-array name="config_statusBarIconBlackList" translatable="false">
+         <item>@*android:string/status_bar_rotate</item>
+-        <item>@*android:string/status_bar_headset</item>
+     </string-array>
+ 
+     <!-- A path similar to frameworks/base/core/res/res/values/config.xml
+-- 
+2.35.1
+

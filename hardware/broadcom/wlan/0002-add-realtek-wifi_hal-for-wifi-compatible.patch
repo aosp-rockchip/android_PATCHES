@@ -1,0 +1,727 @@
+From 486f90070f15a53804cfd3483d201e2ee571a423 Mon Sep 17 00:00:00 2001
+From: Alex Zhao <zzc@rock-chips.com>
+Date: Mon, 20 Aug 2018 16:02:21 +0800
+Subject: [PATCH 02/10] add realtek wifi_hal for wifi compatible
+
+Change-Id: I77fcb81ef534825e5845aca7227b64339cd8a333
+Signed-off-by: Alex Zhao <zzc@rock-chips.com>
+---
+ bcmdhd/wifi_hal/Android.mk           |   1 +
+ bcmdhd/wifi_hal/common.cpp           |  17 ++
+ bcmdhd/wifi_hal/common.h             |   6 +
+ bcmdhd/wifi_hal/gscan.cpp            |   4 +
+ bcmdhd/wifi_hal/link_layer_stats.cpp | 193 +++++++++++++++++++++-
+ bcmdhd/wifi_hal/wifi_hal.cpp         |  23 ++-
+ bcmdhd/wifi_hal/wifi_logger.cpp      | 231 +++++++++++++++++++++++++--
+ 7 files changed, 452 insertions(+), 23 deletions(-)
+
+diff --git a/bcmdhd/wifi_hal/Android.mk b/bcmdhd/wifi_hal/Android.mk
+index b4fe46e..47e8ab4 100644
+--- a/bcmdhd/wifi_hal/Android.mk
++++ b/bcmdhd/wifi_hal/Android.mk
+@@ -45,6 +45,7 @@ LOCAL_SRC_FILES := \
+ 	wifi_logger.cpp \
+ 	wifi_offload.cpp
+ 
++LOCAL_SHARED_LIBRARIES := librkwifi-ctrl
+ LOCAL_MODULE := libwifi-hal-bcm
+ LOCAL_PROPRIETARY_MODULE := true
+ 
+diff --git a/bcmdhd/wifi_hal/common.cpp b/bcmdhd/wifi_hal/common.cpp
+index 3540d49..062862c 100644
+--- a/bcmdhd/wifi_hal/common.cpp
++++ b/bcmdhd/wifi_hal/common.cpp
+@@ -261,3 +261,20 @@ wifi_error wifi_cancel_cmd(wifi_request_id id, wifi_interface_handle iface)
+     return WIFI_ERROR_INVALID_ARGS;
+ }
+ 
++static char wifi_type[64] = {0};
++extern "C" int check_wifi_chip_type_string(char *type);
++int check_wifi_chip_type()
++{
++	int type;
++	if (wifi_type[0] == 0) {
++		check_wifi_chip_type_string(wifi_type);
++		ALOGE("WIFI_TYPE = %s\n",wifi_type);
++	}
++	if (0 == strncmp(wifi_type, "RTL", 3)) {
++		type = REALTEK_WIFI;
++	} else {
++		type = BROADCOM_WIFI;
++	}
++	return type;
++}
++
+diff --git a/bcmdhd/wifi_hal/common.h b/bcmdhd/wifi_hal/common.h
+index 28e2156..7b8bc73 100644
+--- a/bcmdhd/wifi_hal/common.h
++++ b/bcmdhd/wifi_hal/common.h
+@@ -237,6 +237,11 @@ typedef struct wifi_gscan_full_result {
+     u8  ie_data[1];                  // IE data to follow
+ } wifi_gscan_full_result_t;
+ 
++enum {
++	REALTEK_WIFI = 1,
++	BROADCOM_WIFI,
++};
++
+ wifi_error wifi_register_handler(wifi_handle handle, int cmd, nl_recvmsg_msg_cb_t func, void *arg);
+ wifi_error wifi_register_vendor_handler(wifi_handle handle,
+             uint32_t id, int subcmd, nl_recvmsg_msg_cb_t func, void *arg);
+@@ -256,6 +261,7 @@ hal_info *getHalInfo(wifi_interface_handle handle);
+ wifi_handle getWifiHandle(hal_info *info);
+ wifi_interface_handle getIfaceHandle(interface_info *info);
+ wifi_error wifi_cancel_cmd(wifi_request_id id, wifi_interface_handle iface);
++int check_wifi_chip_type();
+ 
+ // some common macros
+ 
+diff --git a/bcmdhd/wifi_hal/gscan.cpp b/bcmdhd/wifi_hal/gscan.cpp
+index 1ccaf30..aa229a2 100644
+--- a/bcmdhd/wifi_hal/gscan.cpp
++++ b/bcmdhd/wifi_hal/gscan.cpp
+@@ -320,6 +320,10 @@ protected:
+ wifi_error wifi_get_valid_channels(wifi_interface_handle handle,
+         int band, int max_channels, wifi_channel *channels, int *num_channels)
+ {
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		*num_channels = 12;
++		return WIFI_SUCCESS;
++	}
+     GetChannelListCommand command(handle, channels, num_channels,
+                                         max_channels, band);
+     return (wifi_error) command.requestResponse();
+diff --git a/bcmdhd/wifi_hal/link_layer_stats.cpp b/bcmdhd/wifi_hal/link_layer_stats.cpp
+index 42e3f2f..1e4d54c 100644
+--- a/bcmdhd/wifi_hal/link_layer_stats.cpp
++++ b/bcmdhd/wifi_hal/link_layer_stats.cpp
+@@ -61,6 +61,8 @@ typedef struct {
+ 
+ enum {
+     LSTATS_SUBCMD_GET_INFO = ANDROID_NL80211_SUBCMD_LSTATS_RANGE_START,
++	LSTATS_SUBCMD_SET_INFO,
++	LSTATS_SUBCMD_CLEAR_INFO,
+ };
+ 
+ class GetLinkStatsCommand : public WifiCommand
+@@ -160,24 +162,203 @@ private:
+     }
+ };
+ 
++class RTKGetLinkStatsCommand : public WifiCommand
++{
++    wifi_stats_result_handler mHandler;
++public:
++    RTKGetLinkStatsCommand(wifi_interface_handle iface, wifi_stats_result_handler handler)
++        : WifiCommand("GetLinkStatsCommand", iface, 0), mHandler(handler)
++    { }
++
++    virtual int create() {
++        // ALOGI("Creating message to get link statistics; iface = %d", mIfaceInfo->id);
++
++        int ret = mMsg.create(GOOGLE_OUI, LSTATS_SUBCMD_GET_INFO);
++        if (ret < 0) {
++            ALOGE("Failed to create %x - %d", LSTATS_SUBCMD_GET_INFO, ret);
++            return ret;
++        }
++
++        return ret;
++    }
++
++protected:
++    virtual int handleResponse(WifiEvent& reply) {
++
++        // ALOGI("In GetLinkStatsCommand::handleResponse");
++
++        if (reply.get_cmd() != NL80211_CMD_VENDOR) {
++            ALOGD("Ignoring reply with cmd = %d", reply.get_cmd());
++            return NL_SKIP;
++        }
++
++        int id = reply.get_vendor_id();
++        int subcmd = reply.get_vendor_subcmd();
++
++        // ALOGI("Id = %0x, subcmd = %d", id, subcmd);
++
++        void *data = reply.get_vendor_data();
++        int len = reply.get_vendor_data_len();
++        wifi_radio_stat *radio_stat = (wifi_radio_stat *)data;
++	radio_stat->tx_time_per_levels = (u32*)((char*)data + sizeof(wifi_radio_stat) + sizeof(wifi_iface_stat));
++#if 0
++	ALOGE("radio: = %d", radio_stat->radio);
++        ALOGE("on_time: = %u ms", radio_stat->on_time);
++        ALOGE("tx_time: = %u ms", radio_stat->tx_time);
++	ALOGE("num_tx_levels: = %u", radio_stat->num_tx_levels);
++	ALOGE("tx_time_per_levels: = %u ms", radio_stat->tx_time_per_levels[0]);
++        ALOGE("rx_time: = %u ms", radio_stat->rx_time);
++        ALOGE("on_time_scan: = %u ms", radio_stat->on_time_scan);
++        ALOGE("on_time_nbd: = %u ms", radio_stat->on_time_nbd);
++        ALOGE("on_time_gscan: = %u ms", radio_stat->on_time_gscan);
++        ALOGE("on_time_pno_scan: = %u ms", radio_stat->on_time_pno_scan);
++        ALOGE("on_time_hs20: = %u ms", radio_stat->on_time_hs20);
++#endif
++	if (!radio_stat) {
++            ALOGE("Invalid stats pointer received");
++            return NL_SKIP;
++        }
++        if (radio_stat->num_channels > 11) {
++            ALOGE("Incorrect number of channels = %d", radio_stat->num_channels);
++            // dump data before num_channels
++            ALOGE("radio: = %d", radio_stat->radio);
++            ALOGE("on_time: = %u ms", radio_stat->on_time);
++            ALOGE("tx_time: = %u ms", radio_stat->tx_time);
++            ALOGE("rx_time: = %u ms", radio_stat->rx_time);
++            ALOGE("on_time_scan: = %u ms", radio_stat->on_time_scan);
++            ALOGE("on_time_nbd: = %u ms", radio_stat->on_time_nbd);
++            ALOGE("on_time_gscan: = %u ms", radio_stat->on_time_gscan);
++            ALOGE("on_time_pno_scan: = %u ms", radio_stat->on_time_pno_scan);
++            ALOGE("on_time_hs20: = %u ms", radio_stat->on_time_hs20);
++            free(radio_stat);
++            return NL_SKIP;
++        }
++	wifi_iface_stat *iface_stat = NULL;
++	iface_stat = (wifi_iface_stat *)((char* )data + sizeof(wifi_radio_stat));
++
++	if(*mHandler.on_link_stats_results == NULL) {
++		ALOGE("*mHandler.on_link_stats_results is NULL");
++	} else {
++		(*mHandler.on_link_stats_results)(id, iface_stat, 1, radio_stat);
++	}
++        //free(radio_stat);
++        return NL_OK;
++    }
++
++};
++
++class RTKSetLinkStatsCommand : public WifiCommand
++{
++    wifi_stats_result_handler mHandler;
++public:
++    RTKSetLinkStatsCommand(wifi_interface_handle iface)
++        : WifiCommand("SetLinkStatsCommand", iface, 0)
++    { }
++
++    virtual int create() {
++        // ALOGI("Creating message to get link statistics; iface = %d", mIfaceInfo->id);
++
++        int ret = mMsg.create(GOOGLE_OUI, LSTATS_SUBCMD_SET_INFO);
++        if (ret < 0) {
++            ALOGE("Failed to create %x - %d", LSTATS_SUBCMD_SET_INFO, ret);
++            return ret;
++        }
++
++        return ret;
++    }
++
++protected:
++    virtual int handleResponse(WifiEvent& reply) {
++
++        // ALOGI("In GetLinkStatsCommand::handleResponse");
++
++        if (reply.get_cmd() != NL80211_CMD_VENDOR) {
++            ALOGD("Ignoring reply with cmd = %d", reply.get_cmd());
++            return NL_SKIP;
++        }
++
++        int id = reply.get_vendor_id();
++        int subcmd = reply.get_vendor_subcmd();
++
++        // ALOGI("Id = %0x, subcmd = %d", id, subcmd);
++
++        void *data = reply.get_vendor_data();
++        int len = reply.get_vendor_data_len();
++         return NL_OK;
++    }
++
++};
++
++class RTKClearLinkStatsCommand : public WifiCommand
++{
++    wifi_stats_result_handler mHandler;
++public:
++    RTKClearLinkStatsCommand(wifi_interface_handle iface)
++        : WifiCommand("ClearLinkStatsCommand", iface, 0)
++    { }
++
++    virtual int create() {
++        // ALOGI("Creating message to get link statistics; iface = %d", mIfaceInfo->id);
++
++        int ret = mMsg.create(GOOGLE_OUI, LSTATS_SUBCMD_CLEAR_INFO);
++        if (ret < 0) {
++            ALOGE("Failed to create %x - %d", LSTATS_SUBCMD_CLEAR_INFO, ret);
++            return ret;
++        }
++
++        return ret;
++    }
++
++protected:
++    virtual int handleResponse(WifiEvent& reply) {
++
++        // ALOGI("In GetLinkStatsCommand::handleResponse");
++
++        if (reply.get_cmd() != NL80211_CMD_VENDOR) {
++            ALOGD("Ignoring reply with cmd = %d", reply.get_cmd());
++            return NL_SKIP;
++        }
++
++        int id = reply.get_vendor_id();
++        int subcmd = reply.get_vendor_subcmd();
++
++        // ALOGI("Id = %0x, subcmd = %d", id, subcmd);
++
++        void *data = reply.get_vendor_data();
++        int len = reply.get_vendor_data_len();
++         return NL_OK;
++    }
++
++};
+ wifi_error wifi_get_link_stats(wifi_request_id id,
+         wifi_interface_handle iface, wifi_stats_result_handler handler)
+ {
+-    GetLinkStatsCommand command(iface, handler);
+-    return (wifi_error) command.requestResponse();
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		RTKGetLinkStatsCommand command(iface, handler);
++		return (wifi_error) command.requestResponse();
++	}
++	GetLinkStatsCommand command(iface, handler);
++	return (wifi_error) command.requestResponse();
+ }
+ 
+ wifi_error wifi_set_link_stats(
+-        wifi_interface_handle /* iface */, wifi_link_layer_params /* params */)
++        wifi_interface_handle iface, wifi_link_layer_params params)
+ {
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		RTKSetLinkStatsCommand command(iface);
++		return (wifi_error) command.requestResponse();
++	}
+     /* Return success here since bcom HAL does not need set link stats. */
+     return WIFI_SUCCESS;
+ }
+ 
+-wifi_error wifi_clear_link_stats(
+-        wifi_interface_handle /* iface */, u32 /* stats_clear_req_mask */,
+-        u32 * /* stats_clear_rsp_mask */, u8 /* stop_req */, u8 * /* stop_rsp */)
++wifi_error wifi_clear_link_stats(wifi_interface_handle iface,
++      u32 stats_clear_req_mask, u32 *stats_clear_rsp_mask, u8 stop_req, u8 *stop_rsp)
+ {
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		RTKClearLinkStatsCommand command(iface);
++		return (wifi_error) command.requestResponse();
++	}
+     /* Return success here since bcom HAL does not support clear link stats. */
+     return WIFI_SUCCESS;
+ }
+diff --git a/bcmdhd/wifi_hal/wifi_hal.cpp b/bcmdhd/wifi_hal/wifi_hal.cpp
+index 81cad8a..adecab1 100644
+--- a/bcmdhd/wifi_hal/wifi_hal.cpp
++++ b/bcmdhd/wifi_hal/wifi_hal.cpp
+@@ -82,6 +82,9 @@ static wifi_error wifi_get_packet_filter_capabilities(wifi_interface_handle hand
+                 u32 *version, u32 *max_len);
+ static wifi_error wifi_configure_nd_offload(wifi_interface_handle iface, u8 enable);
+ 
++wifi_error wifi_get_wake_reason_stats(wifi_interface_handle iface,
++                             WLAN_DRIVER_WAKE_REASON_CNT *wifi_wake_reason_cnt);
++
+ typedef enum wifi_attr {
+     ANDR_WIFI_ATTRIBUTE_NUM_FEATURE_SET,
+     ANDR_WIFI_ATTRIBUTE_FEATURE_SET,
+@@ -209,6 +212,7 @@ wifi_error init_wifi_vendor_hal_func_table(wifi_hal_fn *fn)
+     fn->wifi_get_rx_pkt_fates = wifi_get_rx_pkt_fates;
+     fn->wifi_get_packet_filter_capabilities = wifi_get_packet_filter_capabilities;
+     fn->wifi_set_packet_filter = wifi_set_packet_filter;
++    fn->wifi_get_wake_reason_stats = wifi_get_wake_reason_stats;
+     return WIFI_SUCCESS;
+ }
+ 
+@@ -216,7 +220,12 @@ wifi_error wifi_initialize(wifi_handle *handle)
+ {
+     srand(getpid());
+ 
+-    ALOGI("Initializing wifi");
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		ALOGI("Initializing REALTEK_WIFI");
++	} else {
++		ALOGI("Initializing BROADCOM_WIFI");
++	}
++
+     hal_info *info = (hal_info *)malloc(sizeof(hal_info));
+     if (info == NULL) {
+         ALOGE("Could not allocate hal_info");
+@@ -1266,6 +1275,9 @@ wifi_error wifi_get_concurrency_matrix(wifi_interface_handle handle, int set_siz
+ 
+ wifi_error wifi_set_scanning_mac_oui(wifi_interface_handle handle, oui scan_oui)
+ {
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		return WIFI_SUCCESS;
++	}
+     SetPnoMacAddrOuiCommand command(handle, scan_oui);
+     return (wifi_error)command.start();
+ 
+@@ -1279,6 +1291,9 @@ wifi_error wifi_set_nodfs_flag(wifi_interface_handle handle, u32 nodfs)
+ 
+ wifi_error wifi_set_country_code(wifi_interface_handle handle, const char *country_code)
+ {
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		return WIFI_SUCCESS;
++	}
+     SetCountryCodeCommand command(handle, country_code);
+     return (wifi_error) command.requestResponse();
+ }
+@@ -1326,6 +1341,9 @@ static wifi_error wifi_stop_rssi_monitoring(wifi_request_id id, wifi_interface_h
+ static wifi_error wifi_get_packet_filter_capabilities(wifi_interface_handle handle,
+         u32 *version, u32 *max_len)
+ {
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		return WIFI_SUCCESS;
++	}
+     ALOGD("Getting APF capabilities, halHandle = %p\n", handle);
+     AndroidPktFilterCommand *cmd = new AndroidPktFilterCommand(handle, version, max_len);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+@@ -1350,6 +1368,9 @@ static wifi_error wifi_set_packet_filter(wifi_interface_handle handle,
+ 
+ static wifi_error wifi_configure_nd_offload(wifi_interface_handle handle, u8 enable)
+ {
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		return WIFI_SUCCESS;
++	}
+     SetNdoffloadCommand command(handle, enable);
+     return (wifi_error) command.requestResponse();
+ }
+diff --git a/bcmdhd/wifi_hal/wifi_logger.cpp b/bcmdhd/wifi_hal/wifi_logger.cpp
+index 7a38883..e95899f 100644
+--- a/bcmdhd/wifi_hal/wifi_logger.cpp
++++ b/bcmdhd/wifi_hal/wifi_logger.cpp
+@@ -15,7 +15,7 @@
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+-
++#include <string>
+ #include <stdint.h>
+ #include <fcntl.h>
+ #include <sys/socket.h>
+@@ -59,6 +59,7 @@ typedef enum {
+     LOGGER_START_PKT_FATE_MONITORING,
+     LOGGER_GET_TX_PKT_FATES,
+     LOGGER_GET_RX_PKT_FATES,
++    LOGGER_GET_WAKE_REASON_STATS
+ } DEBUG_SUB_COMMAND;
+ 
+ typedef enum {
+@@ -105,6 +106,29 @@ typedef enum {
+     RX_PACKET_FATE,
+ } PktFateReqType;
+ 
++enum wake_stat_attributes {
++    WAKE_STAT_ATTRIBUTE_TOTAL_CMD_EVENT,
++    WAKE_STAT_ATTRIBUTE_CMD_EVENT_WAKE,
++    WAKE_STAT_ATTRIBUTE_CMD_EVENT_COUNT,
++    WAKE_STAT_ATTRIBUTE_CMD_COUNT_USED,
++    WAKE_STAT_ATTRIBUTE_TOTAL_DRIVER_FW,
++    WAKE_STAT_ATTRIBUTE_DRIVER_FW_WAKE,
++    WAKE_STAT_ATTRIBUTE_DRIVER_FW_COUNT,
++    WAKE_STAT_ATTRIBUTE_DRIVER_FW_COUNT_USED,
++    WAKE_STAT_ATTRIBUTE_TOTAL_RX_DATA_WAKE,
++    WAKE_STAT_ATTRIBUTE_RX_UNICAST_COUNT,
++    WAKE_STAT_ATTRIBUTE_RX_MULTICAST_COUNT,
++    WAKE_STAT_ATTRIBUTE_RX_BROADCAST_COUNT,
++    WAKE_STAT_ATTRIBUTE_RX_ICMP_PKT,
++    WAKE_STAT_ATTRIBUTE_RX_ICMP6_PKT,
++    WAKE_STAT_ATTRIBUTE_RX_ICMP6_RA,
++    WAKE_STAT_ATTRIBUTE_RX_ICMP6_NA,
++    WAKE_STAT_ATTRIBUTE_RX_ICMP6_NS,
++    WAKE_STAT_ATTRIBUTE_IPV4_RX_MULTICAST_ADD_CNT,
++    WAKE_STAT_ATTRIBUTE_IPV6_RX_MULTICAST_ADD_CNT,
++    WAKE_STAT_ATTRIBUTE_OTHER__RX_MULTICAST_ADD_CNT,
++    WAKE_STAT_ATTRIBUTE_RX_MULTICAST_PKT_INFO
++};
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ class DebugCommand : public WifiCommand
+@@ -402,6 +426,11 @@ public:
+ wifi_error wifi_get_firmware_version(wifi_interface_handle iface, char *buffer,
+         int buffer_size)
+ {
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		std::string pFirmwareVer = "RTK_FIRMWARE";
++		memcpy(buffer, pFirmwareVer.c_str(), pFirmwareVer.length()+1);
++		return WIFI_SUCCESS;
++	}
+     if (buffer && (buffer_size > 0)) {
+         DebugCommand *cmd = new DebugCommand(iface, buffer, &buffer_size, GET_FW_VER);
+         NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+@@ -417,6 +446,11 @@ wifi_error wifi_get_firmware_version(wifi_interface_handle iface, char *buffer,
+ /* API to collect a driver version string */
+ wifi_error wifi_get_driver_version(wifi_interface_handle iface, char *buffer, int buffer_size)
+ {
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		std::string pDriverVer = "RTK_DRIVER";
++		memcpy(buffer, pDriverVer.c_str(), pDriverVer.length()+1);
++		return WIFI_SUCCESS;
++	}
+     if (buffer && (buffer_size > 0)) {
+         DebugCommand *cmd = new DebugCommand(iface, buffer, &buffer_size, GET_DRV_VER);
+         NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+@@ -432,6 +466,9 @@ wifi_error wifi_get_driver_version(wifi_interface_handle iface, char *buffer, in
+ /* API to collect driver records */
+ wifi_error wifi_get_ring_data(wifi_interface_handle iface, char *ring_name)
+ {
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		return WIFI_SUCCESS;
++	}
+     DebugCommand *cmd = new DebugCommand(iface, ring_name, GET_RING_DATA);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+     wifi_error result = (wifi_error)cmd->start();
+@@ -443,16 +480,24 @@ wifi_error wifi_get_ring_data(wifi_interface_handle iface, char *ring_name)
+ wifi_error wifi_get_ring_buffers_status(wifi_interface_handle iface,
+         u32 *num_rings, wifi_ring_buffer_status *status)
+ {
+-    if (status && num_rings) {
+-        DebugCommand *cmd = new DebugCommand(iface, num_rings, status, GET_RING_STATUS);
+-        NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+-        wifi_error result = (wifi_error)cmd->start();
+-        cmd->releaseRef();
+-        return result;
+-    } else {
+-        ALOGE("Ring status buffer NULL");
+-        return  WIFI_ERROR_INVALID_ARGS;
+-    }
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		wifi_ring_buffer_status* pLocalstatus = NULL;
++		std::string from = "RTK_RING";
++		memcpy(status->name, from.c_str(), strlen(from.c_str())+1);
++		*num_rings = 1;
++
++		return  WIFI_SUCCESS;
++	}
++	if (status && num_rings) {
++		DebugCommand *cmd = new DebugCommand(iface, num_rings, status, GET_RING_STATUS);
++		NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
++		wifi_error result = (wifi_error)cmd->start();
++		cmd->releaseRef();
++		return result;
++	} else {
++		ALOGE("Ring status buffer NULL");
++		return  WIFI_ERROR_INVALID_ARGS;
++	}
+ }
+ 
+ /* API to get supportable feature */
+@@ -460,11 +505,17 @@ wifi_error wifi_get_logger_supported_feature_set(wifi_interface_handle iface,
+         unsigned int *support)
+ {
+     if (support) {
+-        DebugCommand *cmd = new DebugCommand(iface, support, GET_FEATURE);
+-        NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+-        wifi_error result = (wifi_error)cmd->start();
+-        cmd->releaseRef();
+-        return result;
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		wifi_error result = WIFI_SUCCESS;
++		*support = WIFI_LOGGER_MEMORY_DUMP_SUPPORTED;
++		return result;
++	} else {
++		DebugCommand *cmd = new DebugCommand(iface, support, GET_FEATURE);
++		NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
++		wifi_error result = (wifi_error)cmd->start();
++		cmd->releaseRef();
++		return result;
++	}
+     } else {
+         ALOGE("Get support buffer NULL");
+         return  WIFI_ERROR_INVALID_ARGS;
+@@ -474,6 +525,9 @@ wifi_error wifi_get_logger_supported_feature_set(wifi_interface_handle iface,
+ wifi_error wifi_start_logging(wifi_interface_handle iface, u32 verbose_level,
+         u32 flags, u32 max_interval_sec, u32 min_data_size, char *ring_name)
+ {
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		return WIFI_SUCCESS;
++	}
+     if (ring_name) {
+         DebugCommand *cmd = new DebugCommand(iface, verbose_level, flags, max_interval_sec,
+                     min_data_size, ring_name, START_RING_LOG);
+@@ -906,6 +960,9 @@ public:
+ wifi_error wifi_get_firmware_memory_dump( wifi_interface_handle iface,
+         wifi_firmware_memory_dump_handler handler)
+ {
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		return WIFI_SUCCESS;
++	}
+     MemoryDumpCommand *cmd = new MemoryDumpCommand(iface, handler);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+     wifi_error result = (wifi_error)cmd->start();
+@@ -1075,8 +1132,130 @@ public:
+     }
+ };
+ 
++class GetWakeReasonCountCommand : public WifiCommand {
++    WLAN_DRIVER_WAKE_REASON_CNT *mWlanDriverWakeReasonCnt;
++    void *mCmdEventWakeCount;
++public:
++    GetWakeReasonCountCommand(wifi_interface_handle handle, WLAN_DRIVER_WAKE_REASON_CNT *wlanDriverWakeReasonCount)
++        : WifiCommand("GetWakeReasonCountCommand", handle, 0), mWlanDriverWakeReasonCnt(wlanDriverWakeReasonCount)
++    {
++        mCmdEventWakeCount = mWlanDriverWakeReasonCnt->cmd_event_wake_cnt;
++    }
++
++     int createRequest(WifiRequest& request) {
++        ALOGE("Start create wake stats command\n");
++        int result = request.create(GOOGLE_OUI, LOGGER_GET_WAKE_REASON_STATS);
++        if (result < 0) {
++           return result;
++        }
++
++        nlattr *data = request.attr_start(NL80211_ATTR_VENDOR_DATA);
++
++        request.attr_end(data);
++        return WIFI_SUCCESS;
++    }
++
++    int start() {
++        ALOGE("Start get wake stats command\n");
++        WifiRequest request(familyId(), ifaceId());
++
++        int result = createRequest(request);
++        if (result < 0) {
++            ALOGE("Failed to create request result = %d\n", result);
++            return result;
++        }
++
++        result = requestResponse(request);
++        if (result != WIFI_SUCCESS) {
++            ALOGE("Failed to register wake stats  response; result = %d\n", result);
++        }
++        return result;
++    }
++
++protected:
++     int handleResponse(WifiEvent& reply) {
++
++        ALOGE("In GetWakeReasonCountCommand::handleResponse");
++
++        if (reply.get_cmd() != NL80211_CMD_VENDOR) {
++            ALOGE("Ignoring reply with cmd = %d", reply.get_cmd());
++            return NL_SKIP;
++        }
++
++        int id = reply.get_vendor_id();
++        int subcmd = reply.get_vendor_subcmd();
++
++        nlattr *vendor_data = reply.get_attribute(NL80211_ATTR_VENDOR_DATA);
++        int len = reply.get_vendor_data_len();
++
++        ALOGV("Id = %0x, subcmd = %d, len = %d", id, subcmd, len);
++        if (vendor_data == NULL || len == 0) {
++            ALOGE("no vendor data in GetGetWakeReasonCountCommand response; ignoring it");
++            return NL_SKIP;
++        }
++
++        for (nl_iterator it(vendor_data); it.has_next(); it.next()) {
++            switch (it.get_type()) {
++                case WAKE_STAT_ATTRIBUTE_TOTAL_CMD_EVENT:
++                mWlanDriverWakeReasonCnt->total_cmd_event_wake = it.get_u32();
++                    break;
++                case WAKE_STAT_ATTRIBUTE_CMD_COUNT_USED:
++                    mWlanDriverWakeReasonCnt->cmd_event_wake_cnt_used = it.get_u32();
++                    break;
++                case WAKE_STAT_ATTRIBUTE_CMD_EVENT_WAKE:
++                    memcpy(mCmdEventWakeCount, it.get_data(),
++                        (mWlanDriverWakeReasonCnt->cmd_event_wake_cnt_used * sizeof(int)));
++                    break;
++                case WAKE_STAT_ATTRIBUTE_TOTAL_RX_DATA_WAKE:
++                     mWlanDriverWakeReasonCnt->total_rx_data_wake = it.get_u32();
++                    break;
++                case WAKE_STAT_ATTRIBUTE_RX_UNICAST_COUNT:
++                    mWlanDriverWakeReasonCnt->rx_wake_details.rx_unicast_cnt = it.get_u32();
++                    break;
++                case WAKE_STAT_ATTRIBUTE_RX_MULTICAST_COUNT:
++                    mWlanDriverWakeReasonCnt->rx_wake_details.rx_multicast_cnt = it.get_u32();
++                    break;
++                case WAKE_STAT_ATTRIBUTE_RX_BROADCAST_COUNT:
++                    mWlanDriverWakeReasonCnt->rx_wake_details.rx_broadcast_cnt = it.get_u32();
++                    break;
++                case WAKE_STAT_ATTRIBUTE_RX_ICMP_PKT:
++                     mWlanDriverWakeReasonCnt->rx_wake_pkt_classification_info.icmp_pkt = it.get_u32();
++                    break;
++                case WAKE_STAT_ATTRIBUTE_RX_ICMP6_PKT:
++                    mWlanDriverWakeReasonCnt->rx_wake_pkt_classification_info.icmp6_pkt = it.get_u32();
++                    break;
++                case WAKE_STAT_ATTRIBUTE_RX_ICMP6_RA:
++                     mWlanDriverWakeReasonCnt->rx_wake_pkt_classification_info.icmp6_ra = it.get_u32();
++                    break;
++                case WAKE_STAT_ATTRIBUTE_RX_ICMP6_NA:
++                    mWlanDriverWakeReasonCnt->rx_wake_pkt_classification_info.icmp6_na = it.get_u32();
++                    break;
++                case WAKE_STAT_ATTRIBUTE_RX_ICMP6_NS:
++                    mWlanDriverWakeReasonCnt->rx_wake_pkt_classification_info.icmp6_ns = it.get_u32();
++                    break;
++                case WAKE_STAT_ATTRIBUTE_IPV4_RX_MULTICAST_ADD_CNT:
++                    mWlanDriverWakeReasonCnt->rx_multicast_wake_pkt_info.ipv4_rx_multicast_addr_cnt = it.get_u32();
++                    break;
++                case WAKE_STAT_ATTRIBUTE_IPV6_RX_MULTICAST_ADD_CNT:
++                    mWlanDriverWakeReasonCnt->rx_multicast_wake_pkt_info.ipv6_rx_multicast_addr_cnt = it.get_u32();
++                    break;
++                case WAKE_STAT_ATTRIBUTE_OTHER__RX_MULTICAST_ADD_CNT:
++                    mWlanDriverWakeReasonCnt->rx_multicast_wake_pkt_info.other_rx_multicast_addr_cnt = it.get_u32();
++                    break;
++                default:
++                    break;
++            }
++
++         }
++        return NL_OK;
++    }
++};
++
+ wifi_error wifi_start_pkt_fate_monitoring(wifi_interface_handle handle)
+ {
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		return WIFI_SUCCESS;
++	}
+     PacketFateCommand *cmd = new PacketFateCommand(handle);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+     wifi_error result = (wifi_error)cmd->start();
+@@ -1088,6 +1267,9 @@ wifi_error wifi_get_tx_pkt_fates(wifi_interface_handle handle,
+         wifi_tx_report *tx_report_bufs, size_t n_requested_fates,
+         size_t *n_provided_fates)
+ {
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		return WIFI_SUCCESS;
++	}
+     PacketFateCommand *cmd = new PacketFateCommand(handle, tx_report_bufs,
+                 n_requested_fates, n_provided_fates);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+@@ -1100,6 +1282,9 @@ wifi_error wifi_get_rx_pkt_fates(wifi_interface_handle handle,
+         wifi_rx_report *rx_report_bufs, size_t n_requested_fates,
+         size_t *n_provided_fates)
+ {
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		return WIFI_SUCCESS;
++	}
+     PacketFateCommand *cmd = new PacketFateCommand(handle, rx_report_bufs,
+                 n_requested_fates, n_provided_fates);
+     NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
+@@ -1107,3 +1292,17 @@ wifi_error wifi_get_rx_pkt_fates(wifi_interface_handle handle,
+     cmd->releaseRef();
+     return result;
+ }
++
++wifi_error wifi_get_wake_reason_stats(wifi_interface_handle handle,
++        WLAN_DRIVER_WAKE_REASON_CNT *wifi_wake_reason_cnt)
++{
++	if (check_wifi_chip_type() == REALTEK_WIFI) {
++		return WIFI_SUCCESS;
++	}
++    GetWakeReasonCountCommand *cmd = new GetWakeReasonCountCommand(handle,
++                wifi_wake_reason_cnt);
++    NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
++    wifi_error result = (wifi_error)cmd->start();
++    cmd->releaseRef();
++    return result;
++}
+-- 
+2.35.1
+

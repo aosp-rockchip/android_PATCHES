@@ -1,0 +1,31 @@
+From 6301570222d07a0381428e067aeb1db1e96a3ea8 Mon Sep 17 00:00:00 2001
+From: Jon Miranda <jonmiranda@google.com>
+Date: Thu, 29 Aug 2019 11:41:53 -0700
+Subject: [PATCH 01/13] [DO NOT MERGE] Fix NumberFormatException for launcher.
+
+Fix is already in ub-launcher3-master: I5094b22ddc77c45590cea1a5f5dead0dc7580abf
+
+Bug: 140076379
+Change-Id: I01948cf71ef2e058dc1ef8c506f174856ee09e0d
+(cherry picked from commit d49fe3130ed2460022ba98b376543e1a7aa30605)
+(cherry picked from commit 241cd902035d05d9d7300c2f63b4f01af833d275)
+---
+ src/com/android/launcher3/Utilities.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/com/android/launcher3/Utilities.java b/src/com/android/launcher3/Utilities.java
+index 3bef5986d..ba122f944 100644
+--- a/src/com/android/launcher3/Utilities.java
++++ b/src/com/android/launcher3/Utilities.java
+@@ -732,7 +732,7 @@ public final class Utilities {
+         int[] array = new int[tokenizer.countTokens()];
+         int count = 0;
+         while (tokenizer.hasMoreTokens()) {
+-            array[count] = Integer.parseInt(tokenizer.nextToken());
++            array[count] = Integer.parseInt(tokenizer.nextToken().trim());
+             count++;
+         }
+         return array;
+-- 
+2.35.1
+

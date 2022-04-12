@@ -1,0 +1,38 @@
+From e95a490dd1fdeeb64a2e19e71f5b7685a10040be Mon Sep 17 00:00:00 2001
+From: Lorenzo Colitti <lorenzo@google.com>
+Date: Tue, 28 Jul 2020 09:18:46 +0000
+Subject: [PATCH 195/297] Set the NetworkInfo subtype to 0.
+
+For non-telephony networks, this was always set to 0 before R.
+In R, it is currently set to the same value as the network type.
+This is incorrect because the two have different namespaces.
+or example, currently, any network of type WIFI (==1) will have
+a subtype of NETWORK_TYPE_GPRS (==1). Similarly, all ETHERNET
+networks will have subtype NETWORK_TYPE_1XRTT, all VPN networks
+will have a subtype of NETWORK_TYPE_TD_SCDMA, etd.
+
+Bug: 161653721
+Test: builds, boots
+Change-Id: I07e111c1762e0021c931cefc27f193f78578748b
+(cherry picked from commit a40ff70cad00a6c298e07c2c38e95d58074a7157)
+---
+ core/java/android/net/NetworkAgent.java | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/core/java/android/net/NetworkAgent.java b/core/java/android/net/NetworkAgent.java
+index 482d2d2192b..327e42bdd2f 100644
+--- a/core/java/android/net/NetworkAgent.java
++++ b/core/java/android/net/NetworkAgent.java
+@@ -354,8 +354,7 @@ public abstract class NetworkAgent {
+     private static NetworkInfo getLegacyNetworkInfo(final NetworkAgentConfig config) {
+         // The subtype can be changed with (TODO) setLegacySubtype, but it starts
+         // with the type and an empty description.
+-        final NetworkInfo ni = new NetworkInfo(config.legacyType, config.legacyType,
+-                config.legacyTypeName, "");
++        final NetworkInfo ni = new NetworkInfo(config.legacyType, 0, config.legacyTypeName, "");
+         ni.setIsAvailable(true);
+         ni.setExtraInfo(config.getLegacyExtraInfo());
+         return ni;
+-- 
+2.35.1
+

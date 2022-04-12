@@ -1,0 +1,86 @@
+From c2fdb545ecf2e74a427dcb19b1a6cec769377895 Mon Sep 17 00:00:00 2001
+From: aisx <aisx@rock-chips.com>
+Date: Tue, 30 Oct 2018 10:22:53 +0800
+Subject: [PATCH 20/36] hw_output: fix bcsh set err
+
+Change-Id: I0614f33c065fb00b8e1ee6e40cb5917f9b8e6ab3
+---
+ modules/hw_output/hw_output.cpp | 25 ++++++++++++-------------
+ 1 file changed, 12 insertions(+), 13 deletions(-)
+
+diff --git a/modules/hw_output/hw_output.cpp b/modules/hw_output/hw_output.cpp
+index 072b5e50..dc064624 100644
+--- a/modules/hw_output/hw_output.cpp
++++ b/modules/hw_output/hw_output.cpp
+@@ -911,14 +911,13 @@ static int hw_output_set_brightness(struct hw_output_device*, int dpy, int brigh
+     }
+ 
+     if (atoi(property) != brightness) {
+-        timeline++;
+-        memset(tmp, 0, sizeof(tmp));
+-        sprintf(tmp, "%d", timeline);
+-
+         if (dpy == HWC_DISPLAY_PRIMARY)
+             property_set("persist.vendor.brightness.main", tmp);
+         else
+             property_set("persist.vendor.brightness.aux", tmp);
++        timeline++;
++        memset(tmp, 0, sizeof(tmp));
++        sprintf(tmp, "%d", timeline);
+         property_set("vendor.display.timeline", tmp);
+     }
+     return 0;
+@@ -937,13 +936,13 @@ static int hw_output_set_contrast(struct hw_output_device*, int dpy, int contras
+     }
+ 
+     if (atoi(property) != contrast) {
+-        timeline++;
+-        memset(tmp, 0, sizeof(tmp));
+-        sprintf(tmp, "%d", timeline);
+         if (dpy == HWC_DISPLAY_PRIMARY)
+             property_set("persist.vendor.contrast.main", tmp);
+         else
+             property_set("persist.vendor.contrast.aux", tmp);
++        timeline++;
++        memset(tmp, 0, sizeof(tmp));
++        sprintf(tmp, "%d", timeline);
+         property_set("vendor.display.timeline", tmp);
+     }
+     return 0;
+@@ -962,13 +961,13 @@ static int hw_output_set_sat(struct hw_output_device*, int dpy, int sat)
+     }
+ 
+     if (atoi(property) != sat) {
+-        timeline++;
+-        memset(tmp, 0, sizeof(tmp));
+-        sprintf(tmp, "%d", timeline);
+         if (dpy == HWC_DISPLAY_PRIMARY)
+             property_set("persist.vendor.saturation.main", tmp);
+         else
+             property_set("persist.vendor.saturation.aux", tmp);
++        timeline++;
++        memset(tmp, 0, sizeof(tmp));
++        sprintf(tmp, "%d", timeline);
+         property_set("vendor.display.timeline", tmp);
+     }
+     return 0;
+@@ -987,13 +986,13 @@ static int hw_output_set_hue(struct hw_output_device*, int dpy, int hue)
+     }
+ 
+     if (atoi(property) != hue) {
+-        timeline++;
+-        memset(tmp, 0, sizeof(tmp));
+-        sprintf(tmp, "%d", timeline);
+         if (dpy == HWC_DISPLAY_PRIMARY)
+             property_set("persist.vendor.hue.main", tmp);
+         else
+             property_set("persist.vendor.hue.aux", tmp);
++        timeline++;
++        memset(tmp, 0, sizeof(tmp));
++        sprintf(tmp, "%d", timeline);
+         property_set("vendor.display.timeline", tmp);
+     }
+     return 0;
+-- 
+2.35.1
+

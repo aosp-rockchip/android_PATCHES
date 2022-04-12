@@ -1,0 +1,63 @@
+From 15f08e8adf21bbb0c80c85220c8183abc3573739 Mon Sep 17 00:00:00 2001
+From: Wu Liangqing <wlq@rock-chips.com>
+Date: Tue, 29 Dec 2020 08:58:51 +0800
+Subject: [PATCH 6/6] Revert "temp: vdso_clock_gettime/vdso_gettimeofday
+ callback to system call"
+
+This reverts commit c48de7c610c6edcd950c2f0f6868d1abee235bb7.
+
+kernel fixed final:
+https://10.10.10.29/c/rk/kernel/+/117596
+UPSTREAM: timekeeping/vsyscall: Prevent math overflow in BOOTTIME update
+Change-Id: I61f5da6821a95b4cb855f737ef0dc94acbb1ccfe
+
+Change-Id: Icf14bd77fa3c4f973c65ed8626314532e395f293
+---
+ libc/bionic/vdso.cpp | 24 ++++++++++--------------
+ 1 file changed, 10 insertions(+), 14 deletions(-)
+
+diff --git a/libc/bionic/vdso.cpp b/libc/bionic/vdso.cpp
+index 033e07b00..dbca9c013 100644
+--- a/libc/bionic/vdso.cpp
++++ b/libc/bionic/vdso.cpp
+@@ -34,13 +34,11 @@ static inline int vdso_return(int result) {
+ }
+ 
+ int clock_gettime(int clock_id, timespec* tp) {
+-  /*
+-   *auto vdso_clock_gettime = reinterpret_cast<decltype(&clock_gettime)>(
+-   *  __libc_globals->vdso[VDSO_CLOCK_GETTIME].fn);
+-   *if (__predict_true(vdso_clock_gettime)) {
+-   *  return vdso_return(vdso_clock_gettime(clock_id, tp));
+-   *}
+-   */
++  auto vdso_clock_gettime = reinterpret_cast<decltype(&clock_gettime)>(
++    __libc_globals->vdso[VDSO_CLOCK_GETTIME].fn);
++  if (__predict_true(vdso_clock_gettime)) {
++    return vdso_return(vdso_clock_gettime(clock_id, tp));
++  }
+   return __clock_gettime(clock_id, tp);
+ }
+ 
+@@ -54,13 +52,11 @@ int clock_getres(int clock_id, timespec* tp) {
+ }
+ 
+ int gettimeofday(timeval* tv, struct timezone* tz) {
+-  /*
+-   *auto vdso_gettimeofday = reinterpret_cast<decltype(&gettimeofday)>(
+-   *  __libc_globals->vdso[VDSO_GETTIMEOFDAY].fn);
+-   *if (__predict_true(vdso_gettimeofday)) {
+-   *  return vdso_return(vdso_gettimeofday(tv, tz));
+-   *}
+-   */
++  auto vdso_gettimeofday = reinterpret_cast<decltype(&gettimeofday)>(
++    __libc_globals->vdso[VDSO_GETTIMEOFDAY].fn);
++  if (__predict_true(vdso_gettimeofday)) {
++    return vdso_return(vdso_gettimeofday(tv, tz));
++  }
+   return __gettimeofday(tv, tz);
+ }
+ 
+-- 
+2.35.1
+

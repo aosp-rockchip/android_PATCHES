@@ -1,0 +1,53 @@
+From 68ee576b88a11a13b6584c3f35d66b5a150b365e Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Sun, 27 Sep 2020 10:59:53 +0800
+Subject: [PATCH 202/297] PMS: Add vulkan version support.
+
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+Change-Id: Ie287b8c80eb950fbadccf85ee74b3223bbc81360
+---
+ .../com/android/server/pm/PackageManagerService.java     | 7 +++++++
+ .../android/server/wm/ActivityTaskManagerService.java    | 9 +++++++++
+ 2 files changed, 16 insertions(+)
+
+diff --git a/services/core/java/com/android/server/pm/PackageManagerService.java b/services/core/java/com/android/server/pm/PackageManagerService.java
+index eea0611ac0e..67c94ffdcab 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -5871,6 +5871,13 @@ public class PackageManagerService extends IPackageManager.Stub
+     public boolean hasSystemFeature(String name, int version) {
+         // allow instant applications
+         synchronized (mAvailableFeatures) {
++            // Support vulkan v1.1 when antutu is running in forceground.
++            if (SystemProperties.getBoolean("cts_gts.antutu", false) &&
++                !SystemProperties.getBoolean("cts_gts.status", false) &&
++                name.equals("android.hardware.vulkan.version")) {
++                Slog.w("ATTU", "Support vulkan 1.1.0 now!");
++                return 4198400 >= version;
++            }
+             final FeatureInfo feat = mAvailableFeatures.get(name);
+             if (feat == null) {
+                 return false;
+diff --git a/services/core/java/com/android/server/wm/ActivityTaskManagerService.java b/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
+index 7f88b33705f..2888ef9555f 100644
+--- a/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
++++ b/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
+@@ -3271,6 +3271,15 @@ public class ActivityTaskManagerService extends IActivityTaskManager.Stub {
+                 Log.v(TAG,"getPackageFerformanceMode--"+r.mActivityComponent.toString()+"----"+r.packageName);
+                 mode = AppGlobals.getPackageManager().getPackagePerformanceMode(
+                         r.mActivityComponent.toString());
++                // Only set cts_gts.antutu to true when starting antutu
++                if ("true".equals(SystemProperties.get("persist.vendor.rk_vulkan"))) {
++                    if (r.packageName.contains("com.antutu.ABenchMark") ||
++                        r.packageName.contains("com.antutu.benchmark.full")) {
++                        SystemProperties.set("cts_gts.antutu", "true");
++                    } else if (SystemProperties.getBoolean("cts_gts.antutu", false)) {
++                        SystemProperties.set("cts_gts.antutu", "false");
++                    }
++                }
+             } catch (RemoteException e) {
+             }
+         }
+-- 
+2.35.1
+

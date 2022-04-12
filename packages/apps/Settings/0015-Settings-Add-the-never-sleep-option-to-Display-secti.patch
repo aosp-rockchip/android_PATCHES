@@ -1,0 +1,99 @@
+From f527fc364611de9e393779b15894e5945372e7c4 Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Fri, 9 Oct 2020 16:17:38 +0800
+Subject: [PATCH 15/25] Settings: Add the never sleep option to Display section
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: I634aa2859a075e7a86d1a5c88be1f4f49e3b79ef
+---
+ res/xml/display_settings.xml                  |  4 ++--
+ .../display/TimeoutListPreference.java        |  7 +++++-
+ .../display/TimeoutPreferenceController.java  | 24 ++++++++++++++-----
+ 3 files changed, 26 insertions(+), 9 deletions(-)
+
+diff --git a/res/xml/display_settings.xml b/res/xml/display_settings.xml
+index 30dad01749..05e23f3eb4 100644
+--- a/res/xml/display_settings.xml
++++ b/res/xml/display_settings.xml
+@@ -67,8 +67,8 @@
+         android:key="screen_timeout"
+         android:title="@string/screen_timeout"
+         android:summary="@string/summary_placeholder"
+-        android:entries="@array/screen_timeout_entries"
+-        android:entryValues="@array/screen_timeout_values"
++        android:entries="@array/dream_timeout_entries"
++        android:entryValues="@array/dream_timeout_values"
+         settings:keywords="@string/keywords_screen_timeout" />
+ 
+     <Preference
+diff --git a/src/com/android/settings/display/TimeoutListPreference.java b/src/com/android/settings/display/TimeoutListPreference.java
+index f9a731d32e..2937f0f95d 100644
+--- a/src/com/android/settings/display/TimeoutListPreference.java
++++ b/src/com/android/settings/display/TimeoutListPreference.java
+@@ -91,7 +91,12 @@ public class TimeoutListPreference extends RestrictedListPreference {
+ 
+         ArrayList<CharSequence> revisedEntries = new ArrayList<CharSequence>();
+         ArrayList<CharSequence> revisedValues = new ArrayList<CharSequence>();
+-        for (int i = 0; i < mInitialValues.length; ++i) {
++        int startPos = 0;
++        if ("screen_timeout".equals(getKey())) {
++            //fix set maximum time to lock test of CtsVerifier
++            startPos = 1;
++        }
++        for (int i = startPos; i < mInitialValues.length; ++i) {
+             long timeout = Long.parseLong(mInitialValues[i].toString());
+             if (timeout <= maxTimeout) {
+                 revisedEntries.add(mInitialEntries[i]);
+diff --git a/src/com/android/settings/display/TimeoutPreferenceController.java b/src/com/android/settings/display/TimeoutPreferenceController.java
+index 60b7e24b85..243164a496 100644
+--- a/src/com/android/settings/display/TimeoutPreferenceController.java
++++ b/src/com/android/settings/display/TimeoutPreferenceController.java
+@@ -59,8 +59,11 @@ public class TimeoutPreferenceController extends AbstractPreferenceController im
+     @Override
+     public void updateState(Preference preference) {
+         final TimeoutListPreference timeoutListPreference = (TimeoutListPreference) preference;
+-        final long currentTimeout = Settings.System.getLong(mContext.getContentResolver(),
++        long currentTimeout = Settings.System.getLong(mContext.getContentResolver(),
+                 SCREEN_OFF_TIMEOUT, FALLBACK_SCREEN_TIMEOUT_VALUE);
++        if (Integer.MAX_VALUE == currentTimeout) {
++            currentTimeout = 0;
++        }
+         timeoutListPreference.setValue(String.valueOf(currentTimeout));
+         final DevicePolicyManager dpm =
+                 (DevicePolicyManager) mContext.getSystemService(Context.DEVICE_POLICY_SERVICE);
+@@ -86,6 +89,9 @@ public class TimeoutPreferenceController extends AbstractPreferenceController im
+     public boolean onPreferenceChange(Preference preference, Object newValue) {
+         try {
+             int value = Integer.parseInt((String) newValue);
++            if (value == 0) {
++                value = Integer.MAX_VALUE;
++            }
+             Settings.System.putInt(mContext.getContentResolver(), SCREEN_OFF_TIMEOUT, value);
+             updateTimeoutPreferenceDescription((TimeoutListPreference) preference, value);
+         } catch (NumberFormatException e) {
+@@ -118,11 +124,17 @@ public class TimeoutPreferenceController extends AbstractPreferenceController im
+         if (preference.isDisabledByAdmin()) {
+             summary = mContext.getString(com.android.settings.R.string.disabled_by_policy_title);
+         } else {
+-            final CharSequence timeoutDescription = getTimeoutDescription(
+-                    currentTimeout, entries, values);
+-            summary = timeoutDescription == null
+-                    ? ""
+-                    : mContext.getString(R.string.screen_timeout_summary, timeoutDescription);
++            if (0 == currentTimeout || Integer.MAX_VALUE == currentTimeout) {
++                summary = preference.getContext().getResources().getStringArray(R.array.dream_timeout_entries)[0];
++            } else {
++                final CharSequence timeoutDescription = getTimeoutDescription(
++                        currentTimeout, entries, values);
++                if (timeoutDescription == null) {
++                    summary = "";
++                } else {
++                    summary = mContext.getString(R.string.screen_timeout_summary, timeoutDescription);
++                }
++            }
+         }
+         preference.setSummary(summary);
+     }
+-- 
+2.35.1
+

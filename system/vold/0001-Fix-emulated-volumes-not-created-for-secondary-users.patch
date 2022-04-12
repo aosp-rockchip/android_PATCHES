@@ -1,0 +1,101 @@
+From 4bfca3d88e604e6dd190a90046d333ae49943437 Mon Sep 17 00:00:00 2001
+From: Zim <zezeozue@google.com>
+Date: Thu, 14 Nov 2019 16:19:05 +0000
+Subject: [PATCH 1/5] Fix emulated volumes not created for secondary users
+
+Ifabaa12368e5a591fbcdce4ee71c83ff35fdac6b introduced individual
+emulated volumes for each Android user. The change however didn't
+create the volumes for the secondary users on user start in vold
+without the persist.sys.fuse flag
+
+Now we always create the volumes but only mount sdcardfs volumes
+for user 0 because the sdcardfs mount paths do not change with for
+different users unlike the FUSE mount paths.
+
+Bug: 144473552
+Test: atest AdoptableHostTest
+Test: Start a guest user in Settings and launch chrome browser in that
+user, verify that chrome does not crash
+
+Change-Id: I89f3591d0197d86267f0e3934f496273e2f9fd7e
+(cherry picked from commit 2d45d9b42063d57f8be769555fc9c47eabe74f9a)
+---
+ VolumeManager.cpp        | 20 +++++++-------------
+ model/EmulatedVolume.cpp |  9 +++++++++
+ 2 files changed, 16 insertions(+), 13 deletions(-)
+
+diff --git a/VolumeManager.cpp b/VolumeManager.cpp
+index 3e7101c..546f802 100644
+--- a/VolumeManager.cpp
++++ b/VolumeManager.cpp
+@@ -455,24 +455,19 @@ int VolumeManager::onUserAdded(userid_t userId, int userSerialNumber) {
+ int VolumeManager::onUserRemoved(userid_t userId) {
+     LOG(INFO) << "onUserRemoved: " << userId;
+ 
+-    if (GetBoolProperty(android::vold::kPropFuseSnapshot, false) &&
+-        mAddedUsers.find(userId) != mAddedUsers.end()) {
+-        destroyEmulatedVolumesForUser(userId);
+-    }
+-
++    onUserStopped(userId);
+     mAddedUsers.erase(userId);
+-    mStartedUsers.erase(userId);
+     return 0;
+ }
+ 
+ int VolumeManager::onUserStarted(userid_t userId) {
+     LOG(INFO) << "onUserStarted: " << userId;
+ 
+-    if (GetBoolProperty(android::vold::kPropFuseSnapshot, false)) {
+-        if (mStartedUsers.find(userId) == mStartedUsers.end()) {
+-            createEmulatedVolumesForUser(userId);
+-        }
+-    } else {
++    if (mStartedUsers.find(userId) == mStartedUsers.end()) {
++        createEmulatedVolumesForUser(userId);
++    }
++
++    if (!GetBoolProperty(android::vold::kPropFuseSnapshot, false)) {
+         // Note that sometimes the system will spin up processes from Zygote
+         // before actually starting the user, so we're okay if Zygote
+         // already created this directory.
+@@ -491,8 +486,7 @@ int VolumeManager::onUserStarted(userid_t userId) {
+ int VolumeManager::onUserStopped(userid_t userId) {
+     LOG(VERBOSE) << "onUserStopped: " << userId;
+ 
+-    if (GetBoolProperty(android::vold::kPropFuseSnapshot, false) &&
+-        mStartedUsers.find(userId) != mStartedUsers.end()) {
++    if (mStartedUsers.find(userId) != mStartedUsers.end()) {
+         destroyEmulatedVolumesForUser(userId);
+     }
+ 
+diff --git a/model/EmulatedVolume.cpp b/model/EmulatedVolume.cpp
+index e6702c9..e0d0109 100644
+--- a/model/EmulatedVolume.cpp
++++ b/model/EmulatedVolume.cpp
+@@ -99,6 +99,11 @@ status_t EmulatedVolume::doMount() {
+         }
+         setFuseFd(std::move(fd));
+         return 0;
++    } else if (getMountUserId() != 0) {
++        // For sdcardfs, only mount for user 0, since user 0 will always be running
++        // and the paths don't change for different users. Trying to double mount
++        // will cause sepolicy to scream since sdcardfs prevents 'mounton'
++        return OK;
+     }
+ 
+     if (!(mFusePid = fork())) {
+@@ -174,6 +179,10 @@ status_t EmulatedVolume::doUnmount() {
+         rmdir(pass_through_path.c_str());
+         setFuseFd(android::base::unique_fd());
+         return OK;
++    } else if (getMountUserId() != 0) {
++        // For sdcardfs, only unmount for user 0, since user 0 will always be running
++        // and the paths don't change for different users.
++        return OK;
+     }
+ 
+     ForceUnmount(mFuseDefault);
+-- 
+2.35.1
+

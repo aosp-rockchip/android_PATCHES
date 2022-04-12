@@ -1,0 +1,35 @@
+From e4bf3393f099bea34a4b49e1da3e6527497196c1 Mon Sep 17 00:00:00 2001
+From: Ned Burns <pixel@google.com>
+Date: Thu, 24 Oct 2019 13:35:47 -0400
+Subject: [PATCH 028/297] Mark BiometricUnlockController as @Singleton
+
+We were creating more than one, which was causing NPEs.
+
+Test: atest
+Bug: 143258869
+Change-Id: I500fdb62a53ab95a532777a667933c93a140b91b
+(cherry picked from commit cb235b232abb0c225f43ebc906ddc76569018f57)
+---
+ .../systemui/statusbar/phone/BiometricUnlockController.java     | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/BiometricUnlockController.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/BiometricUnlockController.java
+index bd3d848eaf7..ffcbc40e7b7 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/BiometricUnlockController.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/BiometricUnlockController.java
+@@ -47,10 +47,12 @@ import java.lang.annotation.Retention;
+ import java.lang.annotation.RetentionPolicy;
+ 
+ import javax.inject.Inject;
++import javax.inject.Singleton;
+ 
+ /**
+  * Controller which coordinates all the biometric unlocking actions with the UI.
+  */
++@Singleton
+ public class BiometricUnlockController extends KeyguardUpdateMonitorCallback {
+ 
+     private static final String TAG = "BiometricUnlockCtrl";
+-- 
+2.35.1
+

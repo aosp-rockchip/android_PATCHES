@@ -1,0 +1,97 @@
+From 3005aa78c7a02b54241858ee582618670bacddce Mon Sep 17 00:00:00 2001
+From: Soonil Nagarkar <sooniln@google.com>
+Date: Wed, 30 Oct 2019 16:59:11 -0700
+Subject: [PATCH 038/297] Prevent crash when invoking GNSS apis
+
+GNSS APIs may crash when invoked on devices without GNSS, fix this
+implementation.
+
+Bug: 143591625
+Test: manual
+Change-Id: I6de563df96bc4605852989243c38e5d5278cbda0
+(cherry picked from commit c4a4833708e01065627501c37f02084974470eaa)
+---
+ .../android/location/LocationManager.java     | 46 +++++++++++++------
+ 1 file changed, 32 insertions(+), 14 deletions(-)
+
+diff --git a/location/java/android/location/LocationManager.java b/location/java/android/location/LocationManager.java
+index 87b3be9cc26..ca9d4d3e881 100644
+--- a/location/java/android/location/LocationManager.java
++++ b/location/java/android/location/LocationManager.java
+@@ -2757,9 +2757,14 @@ public class LocationManager {
+         protected boolean registerService() throws RemoteException {
+             Preconditions.checkState(mListenerTransport == null);
+ 
+-            mListenerTransport = new GnssStatusListener();
+-            return mService.registerGnssStatusCallback(mListenerTransport,
+-                    mContext.getPackageName(), mContext.getFeatureId());
++            GnssStatusListener transport = new GnssStatusListener();
++            if (mService.registerGnssStatusCallback(transport, mContext.getPackageName(),
++                    mContext.getFeatureId())) {
++                mListenerTransport = transport;
++                return true;
++            } else {
++                return false;
++            }
+         }
+ 
+         @Override
+@@ -2817,10 +2822,14 @@ public class LocationManager {
+         protected boolean registerService() throws RemoteException {
+             Preconditions.checkState(mListenerTransport == null);
+ 
+-            mListenerTransport = new GnssMeasurementsListener();
+-            return mService.addGnssMeasurementsListener(mListenerTransport,
+-                    mContext.getPackageName(), mContext.getFeatureId(),
+-                    "gnss measurement callback");
++            GnssMeasurementsListener transport = new GnssMeasurementsListener();
++            if (mService.addGnssMeasurementsListener(transport, mContext.getPackageName(),
++                    mContext.getFeatureId(), "gnss measurement callback")) {
++                mListenerTransport = transport;
++                return true;
++            } else {
++                return false;
++            }
+         }
+ 
+         @Override
+@@ -2854,10 +2863,14 @@ public class LocationManager {
+         protected boolean registerService() throws RemoteException {
+             Preconditions.checkState(mListenerTransport == null);
+ 
+-            mListenerTransport = new GnssNavigationMessageListener();
+-            return mService.addGnssNavigationMessageListener(mListenerTransport,
+-                    mContext.getPackageName(), mContext.getFeatureId(),
+-                    "gnss navigation callback");
++            GnssNavigationMessageListener transport = new GnssNavigationMessageListener();
++            if (mService.addGnssNavigationMessageListener(transport, mContext.getPackageName(),
++                    mContext.getFeatureId(), "gnss navigation callback")) {
++                mListenerTransport = transport;
++                return true;
++            } else {
++                return false;
++            }
+         }
+ 
+         @Override
+@@ -2891,9 +2904,14 @@ public class LocationManager {
+         protected boolean registerService() throws RemoteException {
+             Preconditions.checkState(mListenerTransport == null);
+ 
+-            mListenerTransport = new BatchedLocationCallback();
+-            return mService.addGnssBatchingCallback(mListenerTransport, mContext.getPackageName(),
+-                     mContext.getFeatureId(), "batched location callback");
++            BatchedLocationCallback transport = new BatchedLocationCallback();
++            if (mService.addGnssBatchingCallback(transport, mContext.getPackageName(),
++                     mContext.getFeatureId(), "batched location callback")) {
++                mListenerTransport = transport;
++                return true;
++            } else {
++                return false;
++            }
+         }
+ 
+         @Override
+-- 
+2.35.1
+

@@ -1,0 +1,699 @@
+From 53e4bf8b95cd6d2fe7b4e2f4a08be2f1db033398 Mon Sep 17 00:00:00 2001
+From: Josh Gao <jmgao@google.com>
+Date: Wed, 19 Feb 2020 13:50:57 -0800
+Subject: [PATCH 04/21] adbd: remove static dependency on libcutils.
+
+We were previously statically linking libcutils into adbd for several
+different reasons, which were addressed as follows:
+
+  socket functions: extracted to a statically linked libcutils_network
+  fs_config: wrapped with a shared library on /system
+  ATRACE: deleted the single use in adbd
+
+Test: treehugger
+Change-Id: I821fa174cfcbfa8e29a4be10de4016b817adbaf8
+(cherry picked from commit a9b62d545275ca32775a0bc5f004abe03aaa38ad)
+---
+ adb/Android.bp                                | 85 ++++------------
+ adb/adb_trace.h                               |  7 --
+ adb/client/adb_install.cpp                    |  1 +
+ adb/client/incremental_server.cpp             |  1 +
+ adb/daemon/file_sync_service.cpp              | 16 ++--
+ adb/daemon/usb.cpp                            |  1 +
+ .../deploypatchgenerator/apk_archive.cpp      |  2 +
+ adb/{adbconnection => libs}/.clang-format     |  0
+ adb/libs/adbconnection/.clang-format          |  1 +
+ adb/libs/adbconnection/Android.bp             | 59 ++++++++++++
+ .../adbconnection/adbconnection_client.cpp    |  0
+ .../adbconnection/adbconnection_server.cpp    |  0
+ .../include/adbconnection/client.h            |  0
+ .../include/adbconnection/server.h            |  0
+ .../libadbconnection_client.map.txt           |  0
+ adb/libs/libadbd_fs/Android.bp                | 30 ++++++
+ adb/libs/libadbd_fs/adbd_fs.cpp               | 30 ++++++
+ adb/libs/libadbd_fs/include/adbd_fs.h         | 26 +++++
+ adb/libs/libadbd_fs/libadbd_fs.map.txt        |  6 ++
+ libcutils/Android.bp                          | 96 ++++++++++++++++---
+ 20 files changed, 266 insertions(+), 95 deletions(-)
+ rename adb/{adbconnection => libs}/.clang-format (100%)
+ create mode 120000 adb/libs/adbconnection/.clang-format
+ create mode 100644 adb/libs/adbconnection/Android.bp
+ rename adb/{ => libs}/adbconnection/adbconnection_client.cpp (100%)
+ rename adb/{ => libs}/adbconnection/adbconnection_server.cpp (100%)
+ rename adb/{ => libs}/adbconnection/include/adbconnection/client.h (100%)
+ rename adb/{ => libs}/adbconnection/include/adbconnection/server.h (100%)
+ rename adb/{ => libs}/adbconnection/libadbconnection_client.map.txt (100%)
+ create mode 100644 adb/libs/libadbd_fs/Android.bp
+ create mode 100644 adb/libs/libadbd_fs/adbd_fs.cpp
+ create mode 100644 adb/libs/libadbd_fs/include/adbd_fs.h
+ create mode 100644 adb/libs/libadbd_fs/libadbd_fs.map.txt
+
+diff --git a/adb/Android.bp b/adb/Android.bp
+index 1004483ac..2f1fe3ca0 100644
+--- a/adb/Android.bp
++++ b/adb/Android.bp
+@@ -114,66 +114,6 @@ cc_defaults {
+     },
+ }
+ 
+-// libadbconnection
+-// =========================================================
+-// libadbconnection_client/server implement the socket handling for jdwp
+-// forwarding and the track-jdwp service.
+-cc_library {
+-    name: "libadbconnection_server",
+-    srcs: ["adbconnection/adbconnection_server.cpp"],
+-
+-    export_include_dirs: ["adbconnection/include"],
+-
+-    stl: "libc++_static",
+-    shared_libs: ["liblog"],
+-    static_libs: ["libbase"],
+-
+-    defaults: ["adbd_defaults", "host_adbd_supported"],
+-
+-    // Avoid getting duplicate symbol of android::build::getbuildnumber().
+-    use_version_lib: false,
+-
+-    recovery_available: true,
+-    compile_multilib: "both",
+-}
+-
+-cc_library {
+-    name: "libadbconnection_client",
+-    srcs: ["adbconnection/adbconnection_client.cpp"],
+-
+-    export_include_dirs: ["adbconnection/include"],
+-
+-    stl: "libc++_static",
+-    shared_libs: ["liblog"],
+-    static_libs: ["libbase"],
+-
+-    defaults: ["adbd_defaults"],
+-    visibility: [
+-        "//art:__subpackages__",
+-        "//system/core/adb/apex:__subpackages__",
+-    ],
+-    apex_available: [
+-        "com.android.adbd",
+-        "test_com.android.adbd",
+-    ],
+-
+-    // libadbconnection_client doesn't need an embedded build number.
+-    use_version_lib: false,
+-
+-    target: {
+-        linux: {
+-            version_script: "adbconnection/libadbconnection_client.map.txt",
+-        },
+-    },
+-    stubs: {
+-        symbol_file: "adbconnection/libadbconnection_client.map.txt",
+-        versions: ["1"],
+-    },
+-
+-    host_supported: true,
+-    compile_multilib: "both",
+-}
+-
+ // libadb
+ // =========================================================
+ // These files are compiled for both the host and the device.
+@@ -459,7 +399,6 @@ cc_library_static {
+         "libbase",
+         "libcrypto",
+         "libcrypto_utils",
+-        "libcutils",
+         "liblog",
+     ],
+ 
+@@ -483,7 +422,7 @@ cc_library_static {
+     },
+ }
+ 
+-cc_library {
++cc_library_static {
+     name: "libadbd_services",
+     defaults: ["adbd_defaults", "host_adbd_supported"],
+     recovery_available: true,
+@@ -513,11 +452,11 @@ cc_library {
+         "libadb_protos",
+         "libadb_tls_connection",
+         "libadbd_auth",
++        "libadbd_fs",
+         "libasyncio",
+         "libbase",
+         "libcrypto",
+         "libcrypto_utils",
+-        "libcutils",
+         "liblog",
+     ],
+ 
+@@ -564,13 +503,19 @@ cc_library {
+         "libadb_pairing_connection",
+         "libadb_tls_connection",
+         "libadbd_auth",
+-        "libadbd_services",
++        "libadbd_fs",
+         "libasyncio",
+         "libbase",
+         "libcrypto",
+         "libcrypto_utils",
+-        "libcutils",
+         "liblog",
++        "libselinux",
++    ],
++
++    static_libs: [
++        "libadbd_services",
++        "libcutils_sockets",
++        "libdiagnose_usb",
+     ],
+ 
+     export_include_dirs: [
+@@ -605,7 +550,7 @@ cc_binary {
+         "libbase",
+         "libcap",
+         "libcrypto_utils",
+-        "libcutils",
++        "libcutils_sockets",
+         "libdiagnose_usb",
+         "liblog",
+         "libmdnssd",
+@@ -620,10 +565,14 @@ cc_binary {
+         "libadb_protos",
+         "libadb_tls_connection",
+         "libadbd_auth",
++        "libadbd_fs",
+         "libcrypto",
+     ],
+ 
+-    required: ["libadbd_auth"],
++    required: [
++        "libadbd_auth",
++        "libadbd_fs",
++    ],
+ }
+ 
+ phony {
+@@ -699,9 +648,9 @@ cc_test {
+         "libadb_pairing_connection_static",
+         "libadb_tls_connection_static",
+         "libbase",
+-        "libcutils",
+         "libcrypto_utils",
+         "libcrypto_static",
++        "libcutils_sockets",
+         "libdiagnose_usb",
+         "liblog",
+         "libusb",
+diff --git a/adb/adb_trace.h b/adb/adb_trace.h
+index ed4be88a6..3421a0296 100644
+--- a/adb/adb_trace.h
++++ b/adb/adb_trace.h
+@@ -59,11 +59,4 @@ extern int adb_trace_mask;
+ void adb_trace_init(char**);
+ void adb_trace_enable(AdbTrace trace_tag);
+ 
+-// Include <atomic> before stdatomic.h (introduced in cutils/trace.h) to avoid compile error.
+-#include <atomic>
+-
+-#define ATRACE_TAG ATRACE_TAG_ADB
+-#include <cutils/trace.h>
+-#include <utils/Trace.h>
+-
+ #endif /* __ADB_TRACE_H */
+diff --git a/adb/client/adb_install.cpp b/adb/client/adb_install.cpp
+index 982a96b74..21b8f4999 100644
+--- a/adb/client/adb_install.cpp
++++ b/adb/client/adb_install.cpp
+@@ -17,6 +17,7 @@
+ #include "adb_install.h"
+ 
+ #include <fcntl.h>
++#include <inttypes.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <unistd.h>
+diff --git a/adb/client/incremental_server.cpp b/adb/client/incremental_server.cpp
+index 726533d2a..8d1f48ce6 100644
+--- a/adb/client/incremental_server.cpp
++++ b/adb/client/incremental_server.cpp
+@@ -27,6 +27,7 @@
+ 
+ #include <android-base/endian.h>
+ #include <android-base/strings.h>
++#include <inttypes.h>
+ #include <lz4.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+diff --git a/adb/daemon/file_sync_service.cpp b/adb/daemon/file_sync_service.cpp
+index d6af7087d..edf5683d3 100644
+--- a/adb/daemon/file_sync_service.cpp
++++ b/adb/daemon/file_sync_service.cpp
+@@ -40,10 +40,13 @@
+ #include <android-base/stringprintf.h>
+ #include <android-base/strings.h>
+ 
+-#include <private/android_filesystem_config.h>
++#include <adbd_fs.h>
++
++// Needed for __android_log_security_bswrite.
+ #include <private/android_logger.h>
+ 
+ #if defined(__ANDROID__)
++#include <linux/capability.h>
+ #include <selinux/android.h>
+ #include <sys/xattr.h>
+ #endif
+@@ -98,7 +101,7 @@ static bool secure_mkdirs(const std::string& path) {
+     for (const auto& path_component : path_components) {
+         uid_t uid = -1;
+         gid_t gid = -1;
+-        unsigned int mode = 0775;
++        mode_t mode = 0775;
+         uint64_t capabilities = 0;
+ 
+         if (path_component.empty()) {
+@@ -111,7 +114,7 @@ static bool secure_mkdirs(const std::string& path) {
+         partial_path += path_component;
+ 
+         if (should_use_fs_config(partial_path)) {
+-            fs_config(partial_path.c_str(), 1, nullptr, &uid, &gid, &mode, &capabilities);
++            adbd_fs_config(partial_path.c_str(), 1, nullptr, &uid, &gid, &mode, &capabilities);
+         }
+         if (adb_mkdir(partial_path.c_str(), mode) == -1) {
+             if (errno != EEXIST) {
+@@ -468,9 +471,7 @@ static bool do_send(int s, const std::string& spec, std::vector<char>& buffer) {
+         gid_t gid = -1;
+         uint64_t capabilities = 0;
+         if (should_use_fs_config(path)) {
+-            unsigned int broken_api_hack = mode;
+-            fs_config(path.c_str(), 0, nullptr, &uid, &gid, &broken_api_hack, &capabilities);
+-            mode = broken_api_hack;
++            adbd_fs_config(path.c_str(), 0, nullptr, &uid, &gid, &mode, &capabilities);
+         }
+ 
+         result = handle_send_file(s, path.c_str(), &timestamp, uid, gid, capabilities, mode, buffer,
+@@ -550,7 +551,6 @@ static const char* sync_id_to_name(uint32_t id) {
+ static bool handle_sync_command(int fd, std::vector<char>& buffer) {
+     D("sync: waiting for request");
+ 
+-    ATRACE_CALL();
+     SyncRequest request;
+     if (!ReadFdExactly(fd, &request, sizeof(request))) {
+         SendSyncFail(fd, "command read failure");
+@@ -569,8 +569,6 @@ static bool handle_sync_command(int fd, std::vector<char>& buffer) {
+     name[path_length] = 0;
+ 
+     std::string id_name = sync_id_to_name(request.id);
+-    std::string trace_name = StringPrintf("%s(%s)", id_name.c_str(), name);
+-    ATRACE_NAME(trace_name.c_str());
+ 
+     D("sync: %s('%s')", id_name.c_str(), name);
+     switch (request.id) {
+diff --git a/adb/daemon/usb.cpp b/adb/daemon/usb.cpp
+index c7f8895b8..092819807 100644
+--- a/adb/daemon/usb.cpp
++++ b/adb/daemon/usb.cpp
+@@ -19,6 +19,7 @@
+ #include "sysdeps.h"
+ 
+ #include <errno.h>
++#include <inttypes.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+diff --git a/adb/fastdeploy/deploypatchgenerator/apk_archive.cpp b/adb/fastdeploy/deploypatchgenerator/apk_archive.cpp
+index 932d579b5..9da256e24 100644
+--- a/adb/fastdeploy/deploypatchgenerator/apk_archive.cpp
++++ b/adb/fastdeploy/deploypatchgenerator/apk_archive.cpp
+@@ -18,6 +18,8 @@
+ 
+ #include "apk_archive.h"
+ 
++#include <inttypes.h>
++
+ #include "adb_trace.h"
+ #include "sysdeps.h"
+ 
+diff --git a/adb/adbconnection/.clang-format b/adb/libs/.clang-format
+similarity index 100%
+rename from adb/adbconnection/.clang-format
+rename to adb/libs/.clang-format
+diff --git a/adb/libs/adbconnection/.clang-format b/adb/libs/adbconnection/.clang-format
+new file mode 120000
+index 000000000..e545823f4
+--- /dev/null
++++ b/adb/libs/adbconnection/.clang-format
+@@ -0,0 +1 @@
++../../.clang-format-2
+\ No newline at end of file
+diff --git a/adb/libs/adbconnection/Android.bp b/adb/libs/adbconnection/Android.bp
+new file mode 100644
+index 000000000..f6b0a4239
+--- /dev/null
++++ b/adb/libs/adbconnection/Android.bp
+@@ -0,0 +1,59 @@
++// libadbconnection
++// =========================================================
++// libadbconnection_client/server implement the socket handling for jdwp
++// forwarding and the track-jdwp service.
++cc_library {
++    name: "libadbconnection_server",
++    srcs: ["adbconnection_server.cpp"],
++
++    export_include_dirs: ["include"],
++
++    stl: "libc++_static",
++    shared_libs: ["liblog"],
++    static_libs: ["libbase"],
++
++    defaults: ["adbd_defaults", "host_adbd_supported"],
++
++    // Avoid getting duplicate symbol of android::build::GetBuildNumber().
++    use_version_lib: false,
++
++    recovery_available: true,
++    compile_multilib: "both",
++}
++
++cc_library {
++    name: "libadbconnection_client",
++    srcs: ["adbconnection_client.cpp"],
++
++    export_include_dirs: ["include"],
++
++    stl: "libc++_static",
++    shared_libs: ["liblog"],
++    static_libs: ["libbase"],
++
++    defaults: ["adbd_defaults"],
++    visibility: [
++        "//art:__subpackages__",
++        "//system/core/adb/apex:__subpackages__",
++    ],
++    apex_available: [
++        "com.android.adbd",
++        "test_com.android.adbd",
++    ],
++
++    // libadbconnection_client doesn't need an embedded build number.
++    use_version_lib: false,
++
++    target: {
++        linux: {
++            version_script: "libadbconnection_client.map.txt",
++        },
++    },
++    stubs: {
++        symbol_file: "libadbconnection_client.map.txt",
++        versions: ["1"],
++    },
++
++    host_supported: true,
++    compile_multilib: "both",
++}
+diff --git a/adb/adbconnection/adbconnection_client.cpp b/adb/libs/adbconnection/adbconnection_client.cpp
+similarity index 100%
+rename from adb/adbconnection/adbconnection_client.cpp
+rename to adb/libs/adbconnection/adbconnection_client.cpp
+diff --git a/adb/adbconnection/adbconnection_server.cpp b/adb/libs/adbconnection/adbconnection_server.cpp
+similarity index 100%
+rename from adb/adbconnection/adbconnection_server.cpp
+rename to adb/libs/adbconnection/adbconnection_server.cpp
+diff --git a/adb/adbconnection/include/adbconnection/client.h b/adb/libs/adbconnection/include/adbconnection/client.h
+similarity index 100%
+rename from adb/adbconnection/include/adbconnection/client.h
+rename to adb/libs/adbconnection/include/adbconnection/client.h
+diff --git a/adb/adbconnection/include/adbconnection/server.h b/adb/libs/adbconnection/include/adbconnection/server.h
+similarity index 100%
+rename from adb/adbconnection/include/adbconnection/server.h
+rename to adb/libs/adbconnection/include/adbconnection/server.h
+diff --git a/adb/adbconnection/libadbconnection_client.map.txt b/adb/libs/adbconnection/libadbconnection_client.map.txt
+similarity index 100%
+rename from adb/adbconnection/libadbconnection_client.map.txt
+rename to adb/libs/adbconnection/libadbconnection_client.map.txt
+diff --git a/adb/libs/libadbd_fs/Android.bp b/adb/libs/libadbd_fs/Android.bp
+new file mode 100644
+index 000000000..d17814825
+--- /dev/null
++++ b/adb/libs/libadbd_fs/Android.bp
+@@ -0,0 +1,30 @@
++// libadbd_fs
++// =========================================================
++cc_library {
++    name: "libadbd_fs",
++    defaults: ["adbd_defaults"],
++
++    srcs: ["adbd_fs.cpp"],
++    static_libs: [
++        "libbase",
++        "libcutils",
++        "liblog",
++    ],
++    export_include_dirs: ["include"],
++
++    version_script: "libadbd_fs.map.txt",
++    stubs: {
++        versions: ["1"],
++        symbol_file: "libadbd_fs.map.txt",
++    },
++
++    host_supported: true,
++    recovery_available: true,
++    compile_multilib: "both",
++
++    target: {
++        darwin: {
++            enabled: false,
++        }
++    },
++}
+diff --git a/adb/libs/libadbd_fs/adbd_fs.cpp b/adb/libs/libadbd_fs/adbd_fs.cpp
+new file mode 100644
+index 000000000..8e62d40d1
+--- /dev/null
++++ b/adb/libs/libadbd_fs/adbd_fs.cpp
+@@ -0,0 +1,30 @@
++/*
++ * Copyright (C) 2020 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#include <adbd_fs.h>
++
++#include <private/fs_config.h>
++
++void adbd_fs_config(const char* path, int dir, const char* target_out_path, uid_t* uid, gid_t* gid,
++                    mode_t* mode, uint64_t* capabilities) {
++  unsigned uid_hack;
++  unsigned gid_hack;
++  unsigned mode_hack;
++  fs_config(path, dir, target_out_path, &uid_hack, &gid_hack, &mode_hack, capabilities);
++  *uid = uid_hack;
++  *gid = gid_hack;
++  *mode = mode_hack;
++}
+diff --git a/adb/libs/libadbd_fs/include/adbd_fs.h b/adb/libs/libadbd_fs/include/adbd_fs.h
+new file mode 100644
+index 000000000..6158d7208
+--- /dev/null
++++ b/adb/libs/libadbd_fs/include/adbd_fs.h
+@@ -0,0 +1,26 @@
++/*
++ * Copyright (C) 2020 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#pragma once
++
++#include <stdint.h>
++#include <sys/types.h>
++
++extern "C" {
++// Thin wrapper around libcutils fs_config.
++void adbd_fs_config(const char* path, int dir, const char* target_out_path, uid_t* uid, gid_t* gid,
++                    mode_t* mode, uint64_t* capabilities);
++}
+diff --git a/adb/libs/libadbd_fs/libadbd_fs.map.txt b/adb/libs/libadbd_fs/libadbd_fs.map.txt
+new file mode 100644
+index 000000000..1454e9639
+--- /dev/null
++++ b/adb/libs/libadbd_fs/libadbd_fs.map.txt
+@@ -0,0 +1,6 @@
++LIBADBD_FS {
++  global:
++    adbd_fs_config; # apex
++  local:
++    *;
++};
+diff --git a/libcutils/Android.bp b/libcutils/Android.bp
+index 0379f6e2e..4e93df370 100644
+--- a/libcutils/Android.bp
++++ b/libcutils/Android.bp
+@@ -21,11 +21,6 @@ libcutils_nonwindows_sources = [
+     "fs.cpp",
+     "hashmap.cpp",
+     "multiuser.cpp",
+-    "socket_inaddr_any_server_unix.cpp",
+-    "socket_local_client_unix.cpp",
+-    "socket_local_server_unix.cpp",
+-    "socket_network_client_unix.cpp",
+-    "sockets_unix.cpp",
+     "str_parms.cpp",
+ ]
+ 
+@@ -49,6 +44,90 @@ cc_library_headers {
+     },
+ }
+ 
++// Socket specific parts of libcutils that are safe to statically link into an APEX.
++cc_library_static {
++    name: "libcutils_sockets",
++    vendor_available: true,
++    vndk: {
++        enabled: true,
++        support_system_process: true,
++    },
++    recovery_available: true,
++    host_supported: true,
++    native_bridge_supported: true,
++    apex_available: [
++        "//apex_available:platform",
++        "//apex_available:anyapex",
++    ],
++
++    export_include_dirs: ["include"],
++
++    srcs: ["sockets.cpp"],
++    target: {
++        linux_bionic: {
++            enabled: true,
++        },
++
++        not_windows: {
++            srcs: [
++                "socket_inaddr_any_server_unix.cpp",
++                "socket_local_client_unix.cpp",
++                "socket_local_server_unix.cpp",
++                "socket_network_client_unix.cpp",
++                "sockets_unix.cpp",
++            ],
++        },
++
++        // "not_windows" means "non-Windows host".
++        android: {
++            srcs: [
++                "android_get_control_file.cpp",
++                "socket_inaddr_any_server_unix.cpp",
++                "socket_local_client_unix.cpp",
++                "socket_local_server_unix.cpp",
++                "socket_network_client_unix.cpp",
++                "sockets_unix.cpp",
++            ],
++            static_libs: ["libbase"],
++        },
++
++        windows: {
++            host_ldlibs: ["-lws2_32"],
++            srcs: [
++                "socket_inaddr_any_server_windows.cpp",
++                "socket_network_client_windows.cpp",
++                "sockets_windows.cpp",
++            ],
++
++            enabled: true,
++            cflags: [
++                "-D_GNU_SOURCE",
++            ],
++        },
++    },
++}
++
++cc_test {
++    name: "libcutils_sockets_test",
++    test_suites: ["device-tests"],
++    static_libs: ["libbase", "libcutils_sockets"],
++    cflags: [
++        "-Wall",
++        "-Wextra",
++        "-Werror",
++    ],
++
++    srcs: ["sockets_test.cpp"],
++    target: {
++        android: {
++            srcs: [
++                "android_get_control_file_test.cpp",
++                "android_get_control_socket_test.cpp",
++            ],
++        },
++    },
++}
++
+ cc_library {
+     name: "libcutils",
+     vendor_available: true,
+@@ -66,7 +145,6 @@ cc_library {
+         "load_file.cpp",
+         "native_handle.cpp",
+         "record_stream.cpp",
+-        "sockets.cpp",
+         "strlcpy.c",
+         "threads.cpp",
+     ],
+@@ -86,9 +164,6 @@ cc_library {
+             host_ldlibs: ["-lws2_32"],
+ 
+             srcs: [
+-                "socket_inaddr_any_server_windows.cpp",
+-                "socket_network_client_windows.cpp",
+-                "sockets_windows.cpp",
+                 "trace-host.cpp",
+             ],
+ 
+@@ -97,10 +172,8 @@ cc_library {
+                 "-D_GNU_SOURCE",
+             ],
+         },
+-
+         android: {
+             srcs: libcutils_nonwindows_sources + [
+-                "android_get_control_file.cpp",
+                 "android_reboot.cpp",
+                 "ashmem-dev.cpp",
+                 "fs_config.cpp",
+@@ -149,6 +222,7 @@ cc_library {
+         }
+     },
+ 
++    whole_static_libs: ["libcutils_sockets"],
+     shared_libs: [
+         "liblog",
+         "libbase",
+-- 
+2.35.1
+

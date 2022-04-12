@@ -1,0 +1,41 @@
+From 02d879f4b4e0d90ae5a531be055462d9f30ae03e Mon Sep 17 00:00:00 2001
+From: Nick Moukhine <oni@google.com>
+Date: Mon, 16 Mar 2020 17:51:37 +0100
+Subject: [PATCH 120/297] Use BIND_INCLUDE_CAPABILITIES for SoundTriggerService
+
+SoundTriggerService is used by Now Playing to read DSP audio.  Now that audio permissions are gated on process capability, we need this flag for system server to pass on its capability during the bind.  With the new capability, permissions will no longer be denied.
+
+Bug: 150508177
+Fixes: 150508177
+Test: todo
+Change-Id: I79a18a9c98e5f36000f329bf15ca5a5f73826ffe
+(cherry picked from commit 67b5e387b5d5af90a3be266a37282073b5f84fdd)
+---
+ .../com/android/server/soundtrigger/SoundTriggerService.java  | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/services/voiceinteraction/java/com/android/server/soundtrigger/SoundTriggerService.java b/services/voiceinteraction/java/com/android/server/soundtrigger/SoundTriggerService.java
+index 767010ae821..3196758996b 100644
+--- a/services/voiceinteraction/java/com/android/server/soundtrigger/SoundTriggerService.java
++++ b/services/voiceinteraction/java/com/android/server/soundtrigger/SoundTriggerService.java
+@@ -19,6 +19,7 @@ package com.android.server.soundtrigger;
+ import static android.Manifest.permission.BIND_SOUND_TRIGGER_DETECTION_SERVICE;
+ import static android.content.Context.BIND_AUTO_CREATE;
+ import static android.content.Context.BIND_FOREGROUND_SERVICE;
++import static android.content.Context.BIND_INCLUDE_CAPABILITIES;
+ import static android.content.pm.PackageManager.GET_META_DATA;
+ import static android.content.pm.PackageManager.GET_SERVICES;
+ import static android.content.pm.PackageManager.MATCH_DEBUG_TRIAGED_MISSING;
+@@ -1133,7 +1134,8 @@ public class SoundTriggerService extends SystemService {
+                 }
+ 
+                 mIsBound = mContext.bindServiceAsUser(i, this,
+-                        BIND_AUTO_CREATE | BIND_FOREGROUND_SERVICE, mUser);
++                        BIND_AUTO_CREATE | BIND_FOREGROUND_SERVICE | BIND_INCLUDE_CAPABILITIES,
++                        mUser);
+ 
+                 if (mIsBound) {
+                     mRemoteServiceWakeLock.acquire();
+-- 
+2.35.1
+

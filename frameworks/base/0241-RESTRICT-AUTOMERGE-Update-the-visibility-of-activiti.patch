@@ -1,0 +1,102 @@
+From 66aa377428d7473837d3829ff7386bd5c3439269 Mon Sep 17 00:00:00 2001
+From: Jeff Chang <chengjeff@google.com>
+Date: Fri, 7 Aug 2020 16:08:15 +0800
+Subject: [PATCH 241/297] [RESTRICT AUTOMERGE] Update the visibility of
+ activities on sleeping display
+
+Activity with showWhenLocked flag is visible when screen is off and
+leads to activity restart called.
+
+This CL update the visibility condition for showWhenLocked and
+dismisskeyguard activities and refer the keyguard visibility to
+ensure the function works as expected.
+
+Bug: 161036653
+Test: atest ActivityRecordTests
+      atest CtsWindowManagerDeviceTestCases:KeyguardTests
+      atest CtsWindowManagerDeviceTestCases:KeyguardLockedTests
+
+Change-Id: I9d56e40de964e9d11193fec7008f8d880028ac50
+(cherry picked from commit 73d6c7926d2cdc39de617f7213fc85f303501f37)
+(cherry picked from commit 31fc73a70719ed9a07a9a865c71b602e2fd0c53e)
+(cherry picked from commit 1e8e7a94872de70aa6e661fe960854e01447b1c0)
+---
+ .../com/android/server/wm/ActivityRecord.java | 15 ++++------
+ .../server/wm/ActivityRecordTests.java        | 28 +++++++++++++++++++
+ 2 files changed, 34 insertions(+), 9 deletions(-)
+
+diff --git a/services/core/java/com/android/server/wm/ActivityRecord.java b/services/core/java/com/android/server/wm/ActivityRecord.java
+index d785321f3df..e17841457fc 100755
+--- a/services/core/java/com/android/server/wm/ActivityRecord.java
++++ b/services/core/java/com/android/server/wm/ActivityRecord.java
+@@ -4582,15 +4582,6 @@ final class ActivityRecord extends WindowToken implements WindowManagerService.A
+             return false;
+         }
+ 
+-        // Check if the activity is on a sleeping display, and if it can turn it ON.
+-        if (getDisplay().isSleeping()) {
+-            final boolean canTurnScreenOn = !mSetToSleep || canTurnScreenOn()
+-                    || canShowWhenLocked() || containsDismissKeyguardWindow();
+-            if (!canTurnScreenOn) {
+-                return false;
+-            }
+-        }
+-
+         // Now check whether it's really visible depending on Keyguard state, and update
+         // {@link ActivityStack} internal states.
+         // Inform the method if this activity is the top activity of this stack, but exclude the
+@@ -4601,6 +4592,12 @@ final class ActivityRecord extends WindowToken implements WindowManagerService.A
+         final boolean visibleIgnoringDisplayStatus = stack.checkKeyguardVisibility(this,
+                 visibleIgnoringKeyguard, isTop && isTopNotPinnedStack);
+ 
++        // Check if the activity is on a sleeping display, and if it can turn it ON.
++        // TODO(b/163993448): Do not make activity visible before display awake.
++        if (visibleIgnoringDisplayStatus && getDisplay().isSleeping()) {
++            return !mSetToSleep || canTurnScreenOn();
++        }
++
+         return visibleIgnoringDisplayStatus;
+     }
+ 
+diff --git a/services/tests/wmtests/src/com/android/server/wm/ActivityRecordTests.java b/services/tests/wmtests/src/com/android/server/wm/ActivityRecordTests.java
+index c7b45efb2de..6ab0697206e 100644
+--- a/services/tests/wmtests/src/com/android/server/wm/ActivityRecordTests.java
++++ b/services/tests/wmtests/src/com/android/server/wm/ActivityRecordTests.java
+@@ -1099,6 +1099,34 @@ public class ActivityRecordTests extends ActivityTestsBase {
+         verify(topActivity).destroyIfPossible(anyString());
+     }
+ 
++    /**
++     * Verify the visibility of a show-when-locked and dismiss keyguard activity on sleeping
++     * display.
++     */
++    @Test
++    public void testDisplaySleeping_activityInvisible() {
++        final KeyguardController keyguardController =
++                mActivity.mStackSupervisor.getKeyguardController();
++        doReturn(true).when(keyguardController).isKeyguardLocked();
++        final ActivityRecord topActivity = new ActivityBuilder(mService).setTask(mTask).build();
++        topActivity.mVisibleRequested = true;
++        topActivity.nowVisible = true;
++        topActivity.setState(RESUMED, "test" /*reason*/);
++        doReturn(true).when(topActivity).containsDismissKeyguardWindow();
++        doCallRealMethod().when(mRootWindowContainer).ensureActivitiesVisible(
++                any() /* starting */, anyInt() /* configChanges */,
++                anyBoolean() /* preserveWindows */, anyBoolean() /* notifyClients */);
++        topActivity.setShowWhenLocked(true);
++
++        // Verify the top activity is occluded keyguard.
++        assertEquals(topActivity, mStack.topRunningActivity());
++        assertTrue(mStack.topActivityOccludesKeyguard());
++
++        final DisplayContent display = mActivity.mDisplayContent;
++        doReturn(true).when(display).isSleeping();
++        assertFalse(topActivity.shouldBeVisible());
++    }
++
+     /**
+      * Verify that complete finish request for a show-when-locked activity must ensure the
+      * keyguard occluded state being updated.
+-- 
+2.35.1
+

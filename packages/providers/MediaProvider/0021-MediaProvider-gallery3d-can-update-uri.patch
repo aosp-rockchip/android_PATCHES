@@ -1,0 +1,36 @@
+From 7d57d27d62cbefbc6c1fb6e27fa5ad5bffdb13c9 Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Mon, 28 Sep 2020 19:12:41 +0800
+Subject: [PATCH 21/26] MediaProvider: gallery3d can update uri
+
+Signed-off-by: wh <wanghang@rock-chips.com>
+Change-Id: Ic169b7aa70cd89e225d4ea24011b52461d47471d
+---
+ src/com/android/providers/media/MediaProvider.java | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/com/android/providers/media/MediaProvider.java b/src/com/android/providers/media/MediaProvider.java
+index 206aae1d..35b38060 100644
+--- a/src/com/android/providers/media/MediaProvider.java
++++ b/src/com/android/providers/media/MediaProvider.java
+@@ -4959,7 +4959,6 @@ public class MediaProvider extends ContentProvider {
+         final int targetSdkVersion = getCallingPackageTargetSdkVersion();
+         final boolean allowHidden = isCallingPackageAllowedHidden();
+         final int match = matchUri(uri, allowHidden);
+-
+         switch (match) {
+             case AUDIO_PLAYLISTS_ID_MEMBERS_ID:
+                 extras.putString(QUERY_ARG_SQL_SELECTION,
+@@ -5095,6 +5094,9 @@ public class MediaProvider extends ContentProvider {
+                     } else if (isPending.get()) {
+                         // Mutation relaxed while pending
+                     } else {
++                        if ("com.android.gallery3d".equals(getCallingPackageOrSelf())) {
++                            continue;
++                        }
+                         Log.w(TAG, "Ignoring mutation of " + column + " from "
+                                 + getCallingPackageOrSelf());
+                         initialValues.remove(column);
+-- 
+2.35.1
+

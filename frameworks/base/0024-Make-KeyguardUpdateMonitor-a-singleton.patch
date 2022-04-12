@@ -1,0 +1,40 @@
+From 3c5355b346b464178074b56892fa85de4200cd16 Mon Sep 17 00:00:00 2001
+From: Lucas Dupin <dupin@google.com>
+Date: Tue, 8 Oct 2019 14:42:00 -0700
+Subject: [PATCH 024/297] Make KeyguardUpdateMonitor a singleton
+
+It was already supposed to be a singleton, but multiple instances ended
+up being created during the Dagger migration.
+
+Fixes: 142219747
+Bug: 141751146
+Bug: 136279712
+Test: manual
+Change-Id: Iada305bd424c7de53bc3148459afb3a4b764e44c
+(cherry picked from commit ab39e80e6f911baf9c9a4efcf456eccbd470afc4)
+---
+ .../src/com/android/keyguard/KeyguardUpdateMonitor.java         | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java b/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
+index dc8ee16e864..9bcccbc903d 100644
+--- a/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
++++ b/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
+@@ -118,12 +118,14 @@ import java.util.function.Consumer;
+ 
+ import javax.inject.Inject;
+ import javax.inject.Named;
++import javax.inject.Singleton;
+ 
+ /**
+  * Watches for updates that may be interesting to the keyguard, and provides
+  * the up to date information as well as a registration for callbacks that care
+  * to be updated.
+  */
++@Singleton
+ public class KeyguardUpdateMonitor implements TrustManager.TrustListener {
+ 
+     private static final String TAG = "KeyguardUpdateMonitor";
+-- 
+2.35.1
+

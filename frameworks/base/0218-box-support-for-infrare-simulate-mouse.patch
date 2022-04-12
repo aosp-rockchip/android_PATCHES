@@ -1,0 +1,401 @@
+From 3114768816eaaa7e49874bf7544e254231f67134 Mon Sep 17 00:00:00 2001
+From: Alex Wang <alex.wang@rock-chips.com>
+Date: Tue, 27 Oct 2020 19:55:15 +0800
+Subject: [PATCH 218/297] box:support for infrare simulate mouse.
+
+Change-Id: I48ffcbe3c85ca3f2b6713df3d79231403f090821
+---
+ core/java/android/app/Activity.java           | 28 ++++++++
+ core/java/android/view/IWindowManager.aidl    |  4 ++
+ .../server/input/InputManagerService.java     | 10 +++
+ .../server/policy/PhoneWindowManager.java     | 71 ++++++++++++++++++
+ .../server/wm/WindowManagerService.java       | 58 +++++++++++++++
+ ...droid_server_input_InputManagerService.cpp | 72 +++++++++++++++++++
+ 6 files changed, 243 insertions(+)
+
+diff --git a/core/java/android/app/Activity.java b/core/java/android/app/Activity.java
+index 3772755beca..7ef9f209836 100644
+--- a/core/java/android/app/Activity.java
++++ b/core/java/android/app/Activity.java
+@@ -36,6 +36,20 @@ import android.annotation.StyleRes;
+ import android.annotation.SystemApi;
+ import android.annotation.TestApi;
+ import android.app.VoiceInteractor.Request;
++import android.os.PersistableBundle;
++import android.transition.Scene;
++import android.transition.TransitionManager;
++import android.util.ArrayMap;
++import android.util.SuperNotCalledException;
++import android.widget.Toolbar;
++import android.widget.Toast;
++
++import com.android.internal.app.IVoiceInteractor;
++import com.android.internal.app.WindowDecorActionBar;
++import com.android.internal.app.ToolbarActionBar;
++
++import android.annotation.SystemApi;
++import android.os.SystemProperties;
+ import android.app.admin.DevicePolicyManager;
+ import android.app.assist.AssistContent;
+ import android.compat.annotation.UnsupportedAppUsage;
+@@ -3683,6 +3697,20 @@ public class Activity extends ContextThemeWrapper
+      * @see android.view.KeyEvent
+      */
+     public boolean onKeyDown(int keyCode, KeyEvent event)  {
++        if("box".equals(SystemProperties.get("ro.target.product","unkonw"))){
++            String mstate=null;
++            mstate = SystemProperties.get("sys.KeyMouse.mKeyMouseState");
++
++            if ((keyCode == KeyEvent.KEYCODE_PROFILE_SWITCH)) {
++                if ("on".equals(mstate)) {
++                    Toast.makeText(Activity.this, "Enter into mouse mode, click again to quit", Toast.LENGTH_LONG).show();
++                } else if ("off".equals(mstate)) {
++                    Toast.makeText(Activity.this, "Restore to default button mode", Toast.LENGTH_LONG).show();
++                }
++            }
++        }
++
++
+         if (keyCode == KeyEvent.KEYCODE_BACK) {
+             if (getApplicationInfo().targetSdkVersion
+                     >= Build.VERSION_CODES.ECLAIR) {
+diff --git a/core/java/android/view/IWindowManager.aidl b/core/java/android/view/IWindowManager.aidl
+index 58597cf3fb6..057d5240849 100644
+--- a/core/java/android/view/IWindowManager.aidl
++++ b/core/java/android/view/IWindowManager.aidl
+@@ -113,6 +113,10 @@ interface IWindowManager
+     void clearForcedDisplayDensityForUser(int displayId, int userId);
+     void setForcedDisplayScalingMode(int displayId, int mode); // 0 = auto, 1 = disable
+ 
++    //interfaces for mouse keyevent input
++    void dispatchMouse(float x, float y, int w, int h);
++    void dispatchMouseByCd(float x, float y);
++
+     // These can only be called when holding the MANAGE_APP_TOKENS permission.
+     void setEventDispatching(boolean enabled);
+ 
+diff --git a/services/core/java/com/android/server/input/InputManagerService.java b/services/core/java/com/android/server/input/InputManagerService.java
+index 115899a2a51..3f62f218976 100644
+--- a/services/core/java/com/android/server/input/InputManagerService.java
++++ b/services/core/java/com/android/server/input/InputManagerService.java
+@@ -249,6 +249,8 @@ public class InputManagerService extends IInputManager.Stub
+     private static native boolean nativeCanDispatchToDisplay(long ptr, int deviceId, int displayId);
+     private static native void nativeNotifyPortAssociationsChanged(long ptr);
+     private static native void nativeSetMotionClassifierEnabled(long ptr, boolean enabled);
++    private static native void nativedispatchMouse(float x, float y, int w, int h, long ptr);
++    private static native void nativedispatchMouseByCd(float x, float y, long ptr);
+ 
+     // Input event injection constants defined in InputDispatcher.h.
+     private static final int INPUT_EVENT_INJECTION_SUCCEEDED = 0;
+@@ -432,6 +434,14 @@ public class InputManagerService extends IInputManager.Stub
+         nativeSetDisplayViewports(mPtr, viewports.toArray(new DisplayViewport[0]));
+     }
+ 
++    public void dispatchMouse(float x, float y, int w, int h) {
++        nativedispatchMouse(x, y, w, h, mPtr);
++    }
++
++    public void dispatchMousebyCd(float x, float y) {
++        nativedispatchMouseByCd(x, y, mPtr);
++    }
++
+     /**
+      * Gets the current state of a key or button by key code.
+      * @param deviceId The input device id, or -1 to consult all devices.
+diff --git a/services/core/java/com/android/server/policy/PhoneWindowManager.java b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+index a7129750d21..f7222fcd300 100755
+--- a/services/core/java/com/android/server/policy/PhoneWindowManager.java
++++ b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+@@ -632,6 +632,51 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+     private static final int MSG_POWER_VERY_LONG_PRESS = 25;
+     private static final int MSG_RINGER_TOGGLE_CHORD = 26;
+ 
++    private int screenWidth;
++    private int screenHeight;
++    private String mstate = null;
++    private float mdeltax, mdeltay;
++    boolean keydown;
++
++    public Handler mKeyMouseHandler = new Handler() {
++        public void handleMessage(Message msg) {
++            switch(msg.what){
++            case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_LEFT:
++                mdeltax = -1.0f;
++                mdeltay = 0;
++                break;
++            case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_RIGHT:
++                mdeltax = 1.0f;
++                mdeltay = 0;
++                break;
++            case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_UP:
++                mdeltax = 0;
++                mdeltay = -1.0f;
++                break;
++            case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_DOWN:
++                mdeltax = 0;
++                mdeltay = 1.0f;
++                break;
++            case KeyEvent.KEYCODE_PROFILE_SWITCH:
++                mdeltax = 0;
++                mdeltay = 0;
++                break;
++            default:
++                break;
++            }
++
++            try {
++                mWindowManager.dispatchMouse(mdeltax,mdeltay,screenWidth,screenHeight);
++            } catch (Exception e){
++                e.printStackTrace();
++            }
++
++            if (keydown) {
++                mKeyMouseHandler.sendEmptyMessageDelayed(msg.what,30);
++            }
++        }
++    };
++
+     private class PolicyHandler extends Handler {
+         @Override
+         public void handleMessage(Message msg) {
+@@ -2568,6 +2613,26 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+                     + repeatCount + " keyguardOn=" + keyguardOn + " canceled=" + canceled);
+         }
+ 
++        //infrare simulate mouse
++        boolean isBox = "box".equals(SystemProperties.get("ro.target.product"));
++        if(isBox){
++           mstate = SystemProperties.get("sys.KeyMouse.mKeyMouseState");
++           if (mstate.equals("on") && ((keyCode == KeyEvent.KEYCODE_SYSTEM_NAVIGATION_LEFT)
++                || (keyCode == KeyEvent.KEYCODE_SYSTEM_NAVIGATION_RIGHT)
++                || (keyCode == KeyEvent.KEYCODE_SYSTEM_NAVIGATION_UP)
++                || (keyCode == KeyEvent.KEYCODE_SYSTEM_NAVIGATION_DOWN)
++                || (keyCode == KeyEvent.KEYCODE_PROFILE_SWITCH))) {
++            keydown = down;
++            mKeyMouseHandler.sendEmptyMessage(keyCode);
++            //return -1;
++           }
++
++           if (mstate.equals("on") && ((keyCode == KeyEvent.KEYCODE_ENTER)
++                ||(keyCode == KeyEvent.KEYCODE_DPAD_CENTER))) {
++            return -1;
++           }
++         }
++
+         // If we think we might have a volume down & power key chord on the way
+         // but we're not sure, then tell the dispatcher to wait a little while and
+         // try again later before dispatching.
+@@ -3615,8 +3680,12 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+ 
+         // Basic policy based on interactive state.
+         int result;
++        boolean isBox = "box".equals(SystemProperties.get("ro.target.product"));
+         boolean isWakeKey = (policyFlags & WindowManagerPolicy.FLAG_WAKE) != 0
+                 || event.isWakeKey();
++        if (isBox) {
++            isWakeKey = false;
++        }
+         if (interactive || (isInjected && !isWakeKey)) {
+             // When the device is interactive or the key is injected pass the
+             // key to the application.
+@@ -3853,8 +3922,10 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+             case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_LEFT:
+                 // fall through
+             case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_RIGHT: {
++               if(!isBox){
+                 result &= ~ACTION_PASS_TO_USER;
+                 interceptSystemNavigationKey(event);
++               }
+                 break;
+             }
+ 
+diff --git a/services/core/java/com/android/server/wm/WindowManagerService.java b/services/core/java/com/android/server/wm/WindowManagerService.java
+index 08d7f3556d3..924d39d265f 100644
+--- a/services/core/java/com/android/server/wm/WindowManagerService.java
++++ b/services/core/java/com/android/server/wm/WindowManagerService.java
+@@ -349,6 +349,16 @@ public class WindowManagerService extends IWindowManager.Stub
+      */
+     static final int MAX_ANIMATION_DURATION = 10 * 1000;
+ 
++    /** The time for mouse input injection
++     *
++     */
++    static final int INJECTION_TIMEOUT_MILLIS = 30 * 1000;
++
++    /** Amount of time (in milliseconds) to animate the fade-in-out transition for
++     * compatible windows.
++     */
++    static final int DEFAULT_FADE_IN_OUT_DURATION = 400;
++
+     /** Amount of time (in milliseconds) to delay before declaring a window freeze timeout. */
+     static final int WINDOW_FREEZE_TIMEOUT_DURATION = 2000;
+ 
+@@ -4547,6 +4557,54 @@ public class WindowManagerService extends IWindowManager.Stub
+     final InputManagerCallback mInputManagerCallback = new InputManagerCallback(this);
+     private boolean mEventDispatchingEnabled;
+ 
++    public void dispatchMouse(float x, float y, int w, int h) {
++            mInputManager.dispatchMouse(x,y,w,h);
++    }
++
++    public void dispatchMouseByCd(float x, float y) {
++            mInputManager.dispatchMousebyCd(x,y);
++    }
++
++    public boolean injectKeyEvent(KeyEvent ev, boolean sync) {
++            int action = ev.getAction();
++            int code = ev.getKeyCode();
++            int repeatCount = ev.getRepeatCount();
++            int metaState = ev.getMetaState();
++            int deviceId = ev.getDeviceId();
++            int scancode = ev.getScanCode();
++            int source = ev.getSource();
++            int flags = ev.getFlags();
++            long downTime = ev.getDownTime();
++            long eventTime = ev.getEventTime();
++
++            if (source == InputDevice.SOURCE_UNKNOWN) {
++                source = InputDevice.SOURCE_KEYBOARD;
++            }
++
++            if (eventTime == 0) {
++                eventTime = SystemClock.uptimeMillis();
++            }
++
++            if (downTime == 0) {
++                downTime = eventTime;
++            }
++
++            KeyEvent newEvent = new KeyEvent(downTime, eventTime, action, code, repeatCount, metaState,
++                       deviceId, scancode, flags | KeyEvent.FLAG_FROM_SYSTEM, source);
++
++            final boolean result = mInputManager.injectInputEvent(newEvent,sync ? 2:1);
++            return result;
++    }
++
++    public boolean injectPointerEvent(MotionEvent ev, boolean sync) {
++            MotionEvent newEvent = MotionEvent.obtain(ev);
++            if ((newEvent.getSource() & InputDevice.SOURCE_CLASS_POINTER) == 0) {
++                    newEvent.setSource(InputDevice.SOURCE_TOUCHSCREEN);
++            }
++            final boolean result = mInputManager.injectInputEvent(newEvent,sync ? 2:1);
++            return result;
++    }
++
+     @Override
+     public void setEventDispatching(boolean enabled) {
+         if (!checkCallingPermission(MANAGE_APP_TOKENS, "setEventDispatching()")) {
+diff --git a/services/core/jni/com_android_server_input_InputManagerService.cpp b/services/core/jni/com_android_server_input_InputManagerService.cpp
+index 75ec2248602..5231ecc7d02 100644
+--- a/services/core/jni/com_android_server_input_InputManagerService.cpp
++++ b/services/core/jni/com_android_server_input_InputManagerService.cpp
+@@ -41,6 +41,7 @@
+ #include <utils/Trace.h>
+ 
+ #include <binder/IServiceManager.h>
++#include <cutils/properties.h>
+ 
+ #include <input/PointerController.h>
+ #include <input/SpriteController.h>
+@@ -62,6 +63,13 @@
+ #include <nativehelper/ScopedPrimitiveArray.h>
+ #include <nativehelper/ScopedUtfChars.h>
+ 
++#include <stddef.h>
++#include <stdlib.h>
++#include <unistd.h>
++#include <errno.h>
++#include <limits.h>
++#include <math.h>
++
+ #include "com_android_server_power_PowerManagerService.h"
+ #include "android_hardware_input_InputApplicationHandle.h"
+ #include "android_hardware_input_InputWindowHandle.h"
+@@ -81,6 +89,7 @@ namespace android {
+ // The scaling factor is calculated as 2 ^ (speed * exponent),
+ // where the speed ranges from -7 to + 7 and is supplied by the user.
+ static const float POINTER_SPEED_EXPONENT = 1.0f / 4;
++static sp<PointerControllerInterface> mPointerController;
+ 
+ static struct {
+     jclass clazz;
+@@ -1749,6 +1758,67 @@ static void nativeSetMotionClassifierEnabled(JNIEnv* /* env */, jclass /* clazz
+     im->setMotionClassifierEnabled(enabled);
+ }
+ 
++static void android_server_InputManager_nativedispatchMouse(JNIEnv* env,
++              jclass clazz,jfloat x,jfloat y,jint w,jint h,jlong ptr) {
++    NativeInputManager* im = reinterpret_cast<NativeInputManager*>(ptr);
++
++    int mID;
++    float mx, my;
++    float screenWidth,screenHeight;
++    char *mgetID=new char[PROPERTY_VALUE_MAX];
++    const char *mkeyMouseState;
++    screenWidth=(float)w;
++    screenHeight=(float)h;
++
++    property_get("sys.ID.mID",mgetID,0);
++    mID=atoi(mgetID);
++
++    mPointerController=im->obtainPointerController(mID);
++
++    //start to dispatchMouse
++    mPointerController->setPresentation(
++                    PointerControllerInterface::PRESENTATION_POINTER);
++    mPointerController->move(x,y);
++    mPointerController->unfade(PointerControllerInterface::TRANSITION_IMMEDIATE);
++    mPointerController->getPosition(&mx, &my);
++
++    //if((mx<=0)||((mx>=(screenWidth-10.0f))||(my<=0)||(my>=(screenHeight-10.0f)))
++    //	x=0;y=0;
++
++    if (mx == 0) {
++           mkeyMouseState="left";
++    } else if (mx>=(screenWidth-5.0f)) {
++           mkeyMouseState="right";
++    } else if (my == 0) {
++           mkeyMouseState="up";
++    } else if (my >= (screenHeight-5.0f)) {
++           mkeyMouseState="down";
++    } else {
++           mkeyMouseState="Non-boundary";
++    }
++
++    property_set("sys.keymouselimitstate",mkeyMouseState);
++}
++
++static void android_server_InputManager_nativedispatchMouseByCd(JNIEnv* env,
++jclass clazz,jfloat x,jfloat y,jlong ptr) {
++   NativeInputManager* im = reinterpret_cast<NativeInputManager*>(ptr);
++   int mID;
++   char *mgetID=new char[PROPERTY_VALUE_MAX];
++
++   property_get("sys.ID.mID",mgetID,0);
++   mID=atoi(mgetID);
++
++   mPointerController=im->obtainPointerController(mID);
++
++   //start to dispatchMouse
++    mPointerController->setPresentation(
++                    PointerControllerInterface::PRESENTATION_POINTER);
++    mPointerController->setPosition(x,y);
++    mPointerController->unfade(PointerControllerInterface::TRANSITION_IMMEDIATE);
++   //mPointerController->fade(PointerControllerInterface::TRANSITION_IMMEDIATE);
++}
++
+ // ----------------------------------------------------------------------------
+ 
+ static const JNINativeMethod gInputManagerMethods[] = {
+@@ -1807,6 +1877,8 @@ static const JNINativeMethod gInputManagerMethods[] = {
+         {"nativeCanDispatchToDisplay", "(JII)Z", (void*)nativeCanDispatchToDisplay},
+         {"nativeNotifyPortAssociationsChanged", "(J)V", (void*)nativeNotifyPortAssociationsChanged},
+         {"nativeSetMotionClassifierEnabled", "(JZ)V", (void*)nativeSetMotionClassifierEnabled},
++        { "nativedispatchMouse", "(FFIIJ)V", (void*) android_server_InputManager_nativedispatchMouse },
++        { "nativedispatchMouseByCd", "(FFJ)V", (void*) android_server_InputManager_nativedispatchMouseByCd },
+ };
+ 
+ #define FIND_CLASS(var, className) \
+-- 
+2.35.1
+

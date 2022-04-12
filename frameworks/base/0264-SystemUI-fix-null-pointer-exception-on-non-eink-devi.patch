@@ -1,0 +1,82 @@
+From 002f78d41e48d554d16f556c4ff5713eb9fa298e Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Fri, 4 Dec 2020 11:00:59 +0800
+Subject: [PATCH 264/297] SystemUI: fix null pointer exception on non-eink
+ device.
+
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+Change-Id: I278f4ea4bba40c603a2d61cda316d592d97852cd
+---
+ .../statusbar/phone/NavigationBarFragment.java       |  2 +-
+ .../statusbar/phone/NavigationBarInflaterView.java   |  4 +---
+ .../systemui/statusbar/phone/NavigationBarView.java  | 12 +++---------
+ 3 files changed, 5 insertions(+), 13 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
+index 423d782c97e..1c6d23a1d9b 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarFragment.java
+@@ -1013,7 +1013,7 @@ public class NavigationBarFragment extends LifecycleFragment implements Callback
+             refreshButton.setOnClickListener(this:: onRefreshClick);
+             refreshButton.setOnTouchListener(this:: onRefreshTouch);
+             refreshButton.setVisibility(View.VISIBLE);
+-        } else{
++        } else {
+             ButtonDispatcher refreshButton = mNavigationBarView.getRefreshButton();
+             refreshButton.setLongClickable(true);
+             refreshButton.setOnClickListener(this:: onRefreshClick);
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarInflaterView.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarInflaterView.java
+index feb211e8621..2d6416c7e1a 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarInflaterView.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarInflaterView.java
+@@ -405,9 +405,7 @@ public class NavigationBarInflaterView extends FrameLayout
+         } else if (VOLUME_ADD.equals(button)) {
+             v = inflater.inflate(R.layout.volume_add, parent, false);
+         } else if (REFRESH.equals(button)) {
+-            if (getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)){
+-                v = inflater.inflate(R.layout.refresh, parent, false);
+-            }
++            v = inflater.inflate(R.layout.refresh, parent, false);
+         } else if (VOLUME_SUB.equals(button)) {
+             v = inflater.inflate(R.layout.volume_sub, parent, false);
+         } else if (button.startsWith(KEY)) {
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarView.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarView.java
+index 7fcbb0bb4f9..d3cf15ec295 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarView.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/NavigationBarView.java
+@@ -337,9 +337,7 @@ public class NavigationBarView extends FrameLayout implements
+         mButtonDispatchers.put(R.id.menu_container, mContextualButtonGroup);
+         mButtonDispatchers.put(R.id.screenshot, new ButtonDispatcher(R.id.screenshot));
+         mButtonDispatchers.put(R.id.volume_add, new ButtonDispatcher(R.id.volume_add));
+-        if (getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)) {
+-            mButtonDispatchers.put(R.id.refresh, new ButtonDispatcher(R.id.refresh));
+-        }
++        mButtonDispatchers.put(R.id.refresh, new ButtonDispatcher(R.id.refresh));
+         mButtonDispatchers.put(R.id.volume_sub, new ButtonDispatcher(R.id.volume_sub));
+         mDeadZone = new DeadZone(this);
+ 
+@@ -541,9 +539,7 @@ public class NavigationBarView extends FrameLayout implements
+         if (orientationChange || densityChange || dirChange) {
+             mBackIcon = getBackDrawable();
+         }
+-        if (getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)) {
+-            mRefreshIcon = getDrawable(R.drawable.ic_sysbar_refresh_button);
+-        }
++        mRefreshIcon = getDrawable(R.drawable.ic_sysbar_refresh_button);
+         mVolumeAddIcon = getDrawable(R.drawable.ic_sysbar_volume_add_button);
+         mVolumeSubIcon = getDrawable(R.drawable.ic_sysbar_volume_sub_button);
+         mScreenshotIcon = getDrawable(R.drawable.ic_sysbar_capture_button);
+@@ -700,9 +696,7 @@ public class NavigationBarView extends FrameLayout implements
+         }
+         getHomeButton().setImageDrawable(homeIcon);
+         getBackButton().setImageDrawable(backIcon);
+-        if (getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)) {
+-            getRefreshButton().setImageDrawable(mRefreshIcon);
+-        }
++        getRefreshButton().setImageDrawable(mRefreshIcon);
+         getVolumeAddButton().setImageDrawable(mVolumeAddIcon);
+         getVolumeSubButton().setImageDrawable(mVolumeSubIcon);
+         getScreenshotButton().setImageDrawable(mScreenshotIcon);
+-- 
+2.35.1
+

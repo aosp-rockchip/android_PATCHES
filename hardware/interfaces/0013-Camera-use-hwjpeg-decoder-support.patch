@@ -1,0 +1,2628 @@
+From 6717efc1682a99a2358f2bdc44bbe3d87a9a92e5 Mon Sep 17 00:00:00 2001
+From: Wang Panzhenzhuan <randy.wang@rock-chips.com>
+Date: Mon, 4 Jan 2021 15:30:10 +0800
+Subject: [PATCH 13/24] Camera: use hwjpeg decoder support
+
+Signed-off-by: Wang Panzhenzhuan <randy.wang@rock-chips.com>
+Change-Id: I0288e78b2b0b32650094172bc9eb289e7e4f980a
+---
+ camera/device/3.4/default/Android.bp          |  20 +
+ .../3.4/default/ExternalCameraDevice.cpp      |  16 +-
+ .../default/ExternalCameraDeviceSession.cpp   | 415 ++++++++++++++-
+ .../3.4/default/ExternalCameraGralloc.cpp     | 262 +++++++++
+ .../3.4/default/ExternalCameraMemManager.cpp  | 289 ++++++++++
+ .../3.4/default/ExternalCameraUtils.cpp       |   2 +-
+ camera/device/3.4/default/RgaCropScale.cpp    | 199 +++++++
+ .../ExternalCameraDeviceSession_3.4.h         | 496 ++++++++++++++++++
+ .../ExternalCameraDevice_3_4.h                |   2 +-
+ .../ExternalCameraGralloc.h                   |  96 ++++
+ .../ExternalCameraMemManager.h                | 105 ++++
+ .../ExternalCameraUtils_3.4.h                 | 306 +++++++++++
+ .../ext_device_v3_4_impl/RgaCropScale.h       |  53 ++
+ .../default/ExternalCameraProviderImpl_2_4.h  |   2 +-
+ 14 files changed, 2246 insertions(+), 17 deletions(-)
+ create mode 100644 camera/device/3.4/default/ExternalCameraGralloc.cpp
+ create mode 100644 camera/device/3.4/default/ExternalCameraMemManager.cpp
+ create mode 100644 camera/device/3.4/default/RgaCropScale.cpp
+ create mode 100644 camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraDeviceSession_3.4.h
+ create mode 100644 camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraGralloc.h
+ create mode 100644 camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraMemManager.h
+ create mode 100644 camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraUtils_3.4.h
+ create mode 100644 camera/device/3.4/default/include/ext_device_v3_4_impl/RgaCropScale.h
+
+diff --git a/camera/device/3.4/default/Android.bp b/camera/device/3.4/default/Android.bp
+index 982dce1aa..b2cf09e7d 100644
+--- a/camera/device/3.4/default/Android.bp
++++ b/camera/device/3.4/default/Android.bp
+@@ -73,6 +73,17 @@ cc_library_shared {
+         "ExternalCameraDevice.cpp",
+         "ExternalCameraDeviceSession.cpp",
+         "ExternalCameraUtils.cpp",
++        "RgaCropScale.cpp",
++        "ExternalCameraMemManager.cpp",
++        "ExternalCameraGralloc.cpp"
++    ],
++    include_dirs: [
++        "hardware/rockchip/libhwjpeg/inc",
++        "hardware/rockchip/libhwjpeg/inc/mpp_inc",
++        "hardware/rockchip/librga"
++    ],
++    header_libs: [
++        "gl_headers",
+     ],
+     shared_libs: [
+         "libhidlbase",
+@@ -97,12 +108,21 @@ cc_library_shared {
+         "libjpeg",
+         "libexif",
+         "libtinyxml2",
++        "libui",
++        "librga",
++        "libhwjpeg"
+     ],
+     static_libs: [
+         "android.hardware.camera.common@1.0-helper",
+     ],
++    cppflags: [
++        "-Wno-error",
++        "-Wno-unused",
++        "-DRK_HW_JPEG_DECODER"
++    ],
+     local_include_dirs: ["include/ext_device_v3_4_impl"],
+     export_shared_lib_headers: [
+         "libfmq",
++        "libhwjpeg"
+     ],
+ }
+diff --git a/camera/device/3.4/default/ExternalCameraDevice.cpp b/camera/device/3.4/default/ExternalCameraDevice.cpp
+index 677b49632..8050ca942 100644
+--- a/camera/device/3.4/default/ExternalCameraDevice.cpp
++++ b/camera/device/3.4/default/ExternalCameraDevice.cpp
+@@ -39,8 +39,8 @@ namespace {
+ // Other formats to consider in the future:
+ // * V4L2_PIX_FMT_YVU420 (== YV12)
+ // * V4L2_PIX_FMT_YVYU (YVYU: can be converted to YV12 or other YUV420_888 formats)
+-const std::array<uint32_t, /*size*/ 2> kSupportedFourCCs{
+-    {V4L2_PIX_FMT_MJPEG, V4L2_PIX_FMT_Z16}};  // double braces required in C++11
++const std::array<uint32_t, /*size*/ 3> kSupportedFourCCs{
++    {V4L2_PIX_FMT_MJPEG, V4L2_PIX_FMT_YUYV, V4L2_PIX_FMT_Z16}};  // double braces required in C++11
+ 
+ constexpr int MAX_RETRY = 5; // Allow retry v4l2 open failures a few times.
+ constexpr int OPEN_RETRY_SLEEP_US = 100000; // 100ms * MAX_RETRY = 0.5 seconds
+@@ -275,6 +275,7 @@ status_t ExternalCameraDevice::initAvailableCapabilities(
+         switch (fmt.fourcc) {
+             case V4L2_PIX_FMT_Z16: hasDepth = true; break;
+             case V4L2_PIX_FMT_MJPEG: hasColor = true; break;
++            case V4L2_PIX_FMT_YUYV: hasColor = true; break;
+             default: ALOGW("%s: Unsupported format found", __FUNCTION__);
+         }
+     }
+@@ -697,6 +698,7 @@ status_t ExternalCameraDevice::initOutputCharsKeys(
+ 
+     bool hasDepth = false;
+     bool hasColor = false;
++    bool hasColor_yuv = false;
+ 
+     // For V4L2_PIX_FMT_Z16
+     std::array<int, /*size*/ 1> halDepthFormats{{HAL_PIXEL_FORMAT_Y16}};
+@@ -712,6 +714,9 @@ status_t ExternalCameraDevice::initOutputCharsKeys(
+             case V4L2_PIX_FMT_MJPEG:
+                 hasColor = true;
+                 break;
++            case V4L2_PIX_FMT_YUYV:
++                hasColor_yuv = true;
++                break;
+             default:
+                 ALOGW("%s: format %c%c%c%c is not supported!", __FUNCTION__,
+                       supportedFormat.fourcc & 0xFF, (supportedFormat.fourcc >> 8) & 0xFF,
+@@ -733,6 +738,13 @@ status_t ExternalCameraDevice::initOutputCharsKeys(
+                 ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS,
+                 ANDROID_SCALER_AVAILABLE_STALL_DURATIONS);
+     }
++    if (hasColor_yuv) {
++        initOutputCharskeysByFormat(metadata, V4L2_PIX_FMT_YUYV, halFormats,
++                ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT,
++                ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
++                ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS,
++                ANDROID_SCALER_AVAILABLE_STALL_DURATIONS);
++    }
+ 
+     calculateMinFps(metadata);
+ 
+diff --git a/camera/device/3.4/default/ExternalCameraDeviceSession.cpp b/camera/device/3.4/default/ExternalCameraDeviceSession.cpp
+index 5f8674219..e564f4cba 100644
+--- a/camera/device/3.4/default/ExternalCameraDeviceSession.cpp
++++ b/camera/device/3.4/default/ExternalCameraDeviceSession.cpp
+@@ -19,7 +19,7 @@
+ #include <log/log.h>
+ 
+ #include <inttypes.h>
+-#include "ExternalCameraDeviceSession.h"
++#include "ExternalCameraDeviceSession_3.4.h"
+ 
+ #include "android-base/macros.h"
+ #include <utils/Timers.h>
+@@ -31,7 +31,9 @@
+ #include <libyuv.h>
+ 
+ #include <jpeglib.h>
++#include "RgaCropScale.h"
+ 
++#include "ExternalCameraGralloc.h"
+ 
+ namespace android {
+ namespace hardware {
+@@ -106,6 +108,23 @@ ExternalCameraDeviceSession::ExternalCameraDeviceSession(
+         mMaxThumbResolution(getMaxThumbResolution()),
+         mMaxJpegResolution(getMaxJpegResolution()) {}
+ 
++void ExternalCameraDeviceSession::createPreviewBuffer() {
++    struct bufferinfo_s mGrallocBuf;
++    int tempWidth, tempHeight;
++
++    memset(&mGrallocBuf,0,sizeof(struct bufferinfo_s));
++    mGrallocBuf.mNumBffers = mCfg.numVideoBuffers;
++    tempWidth = (mV4l2StreamingFmt.width + 15) & (~15);
++    tempHeight = (mV4l2StreamingFmt.height + 15) & (~15);
++    LOGD("alloc buffer W:H=%dx%d", tempWidth, tempHeight);
++    mGrallocBuf.mPerBuffersize = PAGE_ALIGN(tempWidth * tempHeight * 2);
++    mGrallocBuf.mBufType = PREVIEWBUFFER;
++    mFormatConvertThread->mCamMemManager = new GrallocDrmMemManager(false);
++    if(mFormatConvertThread->mCamMemManager->createPreviewBuffer(&mGrallocBuf)) {
++        LOGE("alloc graphic buffer failed !");
++    }
++}
++
+ bool ExternalCameraDeviceSession::initialize() {
+     if (mV4l2Fd.get() < 0) {
+         ALOGE("%s: invalid v4l2 device fd %d!", __FUNCTION__, mV4l2Fd.get());
+@@ -146,6 +165,7 @@ bool ExternalCameraDeviceSession::initialize() {
+         return true;
+     }
+     mOutputThread->setExifMakeModel(mExifMake, mExifModel);
++    mFormatConvertThread->createJpegDecoder();
+ 
+     status_t status = initDefaultRequests();
+     if (status != OK) {
+@@ -168,6 +188,7 @@ bool ExternalCameraDeviceSession::initialize() {
+ 
+     // TODO: check is PRIORITY_DISPLAY enough?
+     mOutputThread->run("ExtCamOut", PRIORITY_DISPLAY);
++    mFormatConvertThread->run("ExtFmtCvt", PRIORITY_DISPLAY);
+     return false;
+ }
+ 
+@@ -182,6 +203,7 @@ bool ExternalCameraDeviceSession::isInitFailed() {
+ 
+ void ExternalCameraDeviceSession::initOutputThread() {
+     mOutputThread = new OutputThread(this, mCroppingType, mCameraCharacteristics);
++    mFormatConvertThread = new FormatConvertThread(mOutputThread);
+ }
+ 
+ void ExternalCameraDeviceSession::closeOutputThread() {
+@@ -208,6 +230,7 @@ Status ExternalCameraDeviceSession::initStatus() const {
+ }
+ 
+ ExternalCameraDeviceSession::~ExternalCameraDeviceSession() {
++    mFormatConvertThread->destroyJpegDecoder();
+     if (!isClosed()) {
+         ALOGE("ExternalCameraDeviceSession deleted before close!");
+         close(/*callerIsDtor*/true);
+@@ -480,6 +503,9 @@ Return<void> ExternalCameraDeviceSession::close(bool callerIsDtor) {
+         } else {
+             closeOutputThread();
+         }
++        //mFormatConvertThread->flush();
++        mFormatConvertThread->requestExit();
++        mFormatConvertThread->join();
+ 
+         Mutex::Autolock _l(mLock);
+         // free all buffers
+@@ -738,7 +764,8 @@ Status ExternalCameraDeviceSession::processOneCaptureRequest(const CaptureReques
+         mInflightFrames.insert(halReq->frameNumber);
+     }
+     // Send request to OutputThread for the rest of processing
+-    mOutputThread->submitRequest(halReq);
++    //mOutputThread->submitRequest(halReq);
++    mFormatConvertThread->submitRequest(halReq);;
+     mFirstRequest = false;
+     return Status::OK;
+ }
+@@ -918,6 +945,220 @@ void ExternalCameraDeviceSession::invokeProcessCaptureResultCallback(
+     mProcessCaptureResultLock.unlock();
+ }
+ 
++extern "C" void debugShowFPS() {
++    static int mFrameCount = 0;
++    static int mLastFrameCount = 0;
++    static nsecs_t mLastFpsTime = 0;
++    static float mFps = 0;
++    mFrameCount++;
++    if (!(mFrameCount & 0x1F)) {
++        nsecs_t now = systemTime();
++        nsecs_t diff = now - mLastFpsTime;
++        mFps = ((mFrameCount - mLastFrameCount) * float(s2ns(1))) / diff;
++        mLastFpsTime = now;
++        mLastFrameCount = mFrameCount;
++        LOGD("Camera %d Frames, %2.3f FPS", mFrameCount, mFps);
++    }
++}
++ExternalCameraDeviceSession::FormatConvertThread::FormatConvertThread(
++        sp<OutputThread>& mOutputThread) {
++    //memset(&mHWJpegDecoder, 0, sizeof(MpiJpegDecoder));
++    //memset(&mHWDecoderFrameOut, 0, sizeof(MpiJpegDecoder::OutputFrame_t));
++    mFmtOutputThread  = mOutputThread;
++}
++
++ExternalCameraDeviceSession::FormatConvertThread::~FormatConvertThread() {}
++
++void ExternalCameraDeviceSession::FormatConvertThread::createJpegDecoder() {
++    int ret = mHWJpegDecoder.prepareDecoder();
++    if (!ret) {
++        ALOGE("failed to prepare JPEG decoder");
++        mHWJpegDecoder.flushBuffer();
++    }
++    memset(&mHWDecoderFrameOut, 0, sizeof(MpiJpegDecoder::OutputFrame_t));
++}
++
++void ExternalCameraDeviceSession::FormatConvertThread::destroyJpegDecoder() {
++    //mHWJpegDecoder.deinitOutputFrame(&mHWDecoderFrameOut);
++    mHWJpegDecoder.flushBuffer();
++}
++
++int ExternalCameraDeviceSession::FormatConvertThread::jpegDecoder(
++        unsigned int mShareFd, uint8_t* inData, size_t inDataSize) {
++    int ret = 0;
++    unsigned int output_len = 0;
++    unsigned int input_len = inDataSize;
++    char *srcbuf = (char*)inData;
++
++    mHWJpegDecoder.deinitOutputFrame(&mHWDecoderFrameOut);
++    if (input_len <= 0) {
++        LOGE("frame size is invalid !");
++        return -1;
++    }
++    mHWDecoderFrameOut.outputPhyAddr = mShareFd;
++    if ((srcbuf[0] == 0xff) && (srcbuf[1] == 0xd8) && (srcbuf[2] == 0xff)) {
++        // decoder to NV12
++        ret = mHWJpegDecoder.decodePacket((char*)inData, inDataSize, &mHWDecoderFrameOut);
++        if (!ret) {
++            ALOGE("mjpeg decodePacket failed!");
++            mHWJpegDecoder.flushBuffer();
++        }
++    } else {
++        LOGE("mjpeg data error!!");
++        return -1;
++    }
++
++    return ret;
++}
++
++void ExternalCameraDeviceSession::FormatConvertThread:: yuyvToNv12(
++            int v4l2_fmt_dst, char *srcbuf, char *dstbuf,
++            int src_w, int src_h,int dst_w, int dst_h) {
++    int *dstint_y, *dstint_uv, *srcint, y_size, i;
++
++    y_size = src_w * src_h;
++    if (v4l2_fmt_dst == V4L2_PIX_FMT_NV12) {
++        if ((src_w == dst_w) && (src_h == dst_h)) {
++            dstint_y = (int*)dstbuf;
++            srcint = (int*)srcbuf;
++            dstint_uv =  (int*)(dstbuf + y_size);
++#if defined(__arm64__) || defined(__aarch64__)
++            for (i = 0; i < src_h; i++) {
++                for (int j = 0; j < (src_w >> 2); j++) {
++                    if (i % 2 == 0) {
++                        *dstint_uv++ = (*(srcint+1) & 0xff000000) |
++                                    ((*(srcint+1) & 0x0000ff00) << 8) |
++                                    ((*srcint & 0xff000000) >> 16) |
++                                    ((*srcint & 0x0000ff00) >> 8);
++                    }
++                    *dstint_y++ = ((*(srcint+1) & 0x00ff0000) << 8) |
++                                    ((*(srcint+1) & 0x000000ff) << 16) |
++                                    ((*srcint & 0x00ff0000) >> 8) |
++                                    (*srcint & 0x000000ff);
++                    srcint += 2;
++                }
++            }
++#else
++            for (i = 0; i < src_h; i++) {
++                int n = src_w;
++                char tmp = i % 2; // get uv only when in even row
++                asm volatile (
++                    "   pld [%[src], %[src_stride], lsl #2]                 \n\t"
++                    "   cmp %[n], #16                                       \n\t"
++                    "   blt 5f                                              \n\t"
++                    "0: @ 16 pixel swap                                     \n\t"
++                    "   vld2.8  {q0,q1} , [%[src]]!  @ q0 = y q1 = uv       \n\t"
++                    "   vst1.16 {q0},[%[dst_y]]!     @ now q0  -> dst       \n\t"
++                    "   cmp %[tmp], #1                                      \n\t"
++                    "   bge 1f                                              \n\t"
++                    "   vst1.16 {q1},[%[dst_uv]]!    @ now q1  -> dst       \n\t"
++                    "1: @ don't need get uv in odd row                      \n\t"
++                    "   sub %[n], %[n], #16                                 \n\t"
++                    "   cmp %[n], #16                                       \n\t"
++                    "   bge 0b                                              \n\t"
++                    "5: @ end                                               \n\t"
++                    : [dst_y] "+r" (dstint_y), [dst_uv] "+r" (dstint_uv),
++                      [src] "+r" (srcint), [n] "+r" (n),[tmp] "+r" (tmp)
++                    : [src_stride] "r" (src_w)
++                    : "cc", "memory", "q0", "q1", "q2"
++                );
++            }
++#endif
++        }
++    } else {
++        LOGE("don't support this format !");
++    }
++}
++
++bool ExternalCameraDeviceSession::FormatConvertThread::threadLoop() {
++    std::shared_ptr<HalRequest> req;
++    uint8_t* inData;
++    size_t inDataSize;
++    unsigned long mVirAddr;
++    unsigned long mShareFd;
++
++    waitForNextRequest(&req);
++    if (req == nullptr) {
++        // No new request, wait again
++        return true;
++    }
++    if (req->frameIn->mFourcc != V4L2_PIX_FMT_MJPEG &&
++            req->frameIn->mFourcc != V4L2_PIX_FMT_YUYV) {
++         LOGD("do not support V4L2 format %c%c%c%c",
++                req->frameIn->mFourcc & 0xFF,
++                (req->frameIn->mFourcc >> 8) & 0xFF,
++                (req->frameIn->mFourcc >> 16) & 0xFF,
++                (req->frameIn->mFourcc >> 24) & 0xFF);
++         return true;
++    }
++    debugShowFPS();
++    if (req->frameIn->getData(&inData, &inDataSize) != 0) {
++         LOGE("%s(%d)getData failed!\n", __FUNCTION__, __LINE__);
++    }
++
++    mShareFd = mCamMemManager->getBufferAddr(
++            PREVIEWBUFFER, req->frameIn->mBufferIndex, buffer_sharre_fd);
++    mVirAddr = mCamMemManager->getBufferAddr(
++            PREVIEWBUFFER, req->frameIn->mBufferIndex, buffer_addr_vir);
++    int tmpW = req->frameIn->mWidth;
++    int tmpH = req->frameIn->mHeight;
++    if (req->frameIn->mFourcc == V4L2_PIX_FMT_MJPEG) {
++        int ret = jpegDecoder(mShareFd, inData, inDataSize);
++        if(!ret) {
++            LOGE("mjpeg decode failed");
++            mFmtOutputThread->submitRequest(req);
++            return true;
++        }
++        req->mShareFd = mShareFd;
++    } else if (req->frameIn->mFourcc == V4L2_PIX_FMT_YUYV) {
++        //yuyvToNv12(V4L2_PIX_FMT_NV12, (char*)inData,
++        //        (char*)mVirAddr, tmpW, tmpH, tmpW, tmpH);
++        //mShareFd = mVirAddr; // YUYV:rga use vir addr
++        //req->mShareFd = reinterpret_cast<unsigned long>(inData);
++    }
++
++    req->inData = inData;
++    req->inDataSize = inDataSize;
++    mFmtOutputThread->submitRequest(req);
++
++    return true;
++}
++
++Status ExternalCameraDeviceSession::FormatConvertThread::submitRequest(
++        const std::shared_ptr<HalRequest>& req) {
++    std::unique_lock<std::mutex> lk(mRequestListLock);
++    mRequestList.push_back(req);
++    lk.unlock();
++    mRequestCond.notify_one();
++    return Status::OK;
++}
++
++void ExternalCameraDeviceSession::FormatConvertThread::waitForNextRequest(
++        std::shared_ptr<HalRequest>* out) {
++    ATRACE_CALL();
++    if (out == nullptr) {
++        ALOGE("%s: out is null", __FUNCTION__);
++        return;
++    }
++    std::unique_lock<std::mutex> lk(mRequestListLock);
++    int waitTimes = 0;
++    while (mRequestList.empty()) {
++        if (exitPending()) {
++            return;
++        }
++        std::chrono::milliseconds timeout = std::chrono::milliseconds(kReqWaitTimeoutMs);
++        auto st = mRequestCond.wait_for(lk, timeout);
++        if (st == std::cv_status::timeout) {
++            waitTimes++;
++            if (waitTimes == kReqWaitTimesMax) {
++                // no new request, return
++                return;
++            }
++        }
++    }
++    *out = mRequestList.front();
++    mRequestList.pop_front();
++}
+ ExternalCameraDeviceSession::OutputThread::OutputThread(
+         wp<OutputThreadInterface> parent, CroppingType ct,
+         const common::V1_0::helper::CameraMetadata& chars) :
+@@ -1438,7 +1679,9 @@ bool ExternalCameraDeviceSession::OutputThread::threadLoop() {
+         return false;
+     };
+ 
+-    if (req->frameIn->mFourcc != V4L2_PIX_FMT_MJPEG && req->frameIn->mFourcc != V4L2_PIX_FMT_Z16) {
++    if (req->frameIn->mFourcc != V4L2_PIX_FMT_MJPEG &&
++			req->frameIn->mFourcc != V4L2_PIX_FMT_Z16 &&
++			req->frameIn->mFourcc != V4L2_PIX_FMT_YUYV) {
+         return onDeviceError("%s: do not support V4L2 format %c%c%c%c", __FUNCTION__,
+                 req->frameIn->mFourcc & 0xFF,
+                 (req->frameIn->mFourcc >> 8) & 0xFF,
+@@ -1455,18 +1698,37 @@ bool ExternalCameraDeviceSession::OutputThread::threadLoop() {
+     std::unique_lock<std::mutex> lk(mBufferLock);
+     // Convert input V4L2 frame to YU12 of the same size
+     // TODO: see if we can save some computation by converting to YV12 here
++    /* remove to FormatConvertThread
+     uint8_t* inData;
+     size_t inDataSize;
+     if (req->frameIn->getData(&inData, &inDataSize) != 0) {
+         lk.unlock();
+         return onDeviceError("%s: V4L2 buffer map failed", __FUNCTION__);
+     }
+-
++	*/
+     // TODO: in some special case maybe we can decode jpg directly to gralloc output?
++    int is16Align = true;
++    bool isBlobOrYv12 = false;
++    int tempFrameWidth  = mYu12Frame->mWidth;
++    int tempFrameHeight = mYu12Frame->mHeight;
++    for (auto& halBuf : req->buffers) {
++        if(halBuf.format == PixelFormat::BLOB || halBuf.format == PixelFormat::YV12) {
++            isBlobOrYv12 = true;
++        }
++    }
+     if (req->frameIn->mFourcc == V4L2_PIX_FMT_MJPEG) {
++        if((tempFrameWidth & 0x0f) || (tempFrameHeight & 0x0f)) {
++            is16Align = false;
++            tempFrameWidth  = ((tempFrameWidth + 15) & (~15));
++            tempFrameHeight = ((tempFrameHeight + 15) & (~15));
++        }
++    }
++
++    if (isBlobOrYv12 && req->frameIn->mFourcc == V4L2_PIX_FMT_MJPEG) {
++            LOGD("format is BLOB or YV12,use software jpeg decoder");
+         ATRACE_BEGIN("MJPGtoI420");
+         int res = libyuv::MJPGToI420(
+-            inData, inDataSize, static_cast<uint8_t*>(mYu12FrameLayout.y), mYu12FrameLayout.yStride,
++            req->inData, req->inDataSize, static_cast<uint8_t*>(mYu12FrameLayout.y), mYu12FrameLayout.yStride,
+             static_cast<uint8_t*>(mYu12FrameLayout.cb), mYu12FrameLayout.cStride,
+             static_cast<uint8_t*>(mYu12FrameLayout.cr), mYu12FrameLayout.cStride,
+             mYu12Frame->mWidth, mYu12Frame->mHeight, mYu12Frame->mWidth, mYu12Frame->mHeight);
+@@ -1494,7 +1756,34 @@ bool ExternalCameraDeviceSession::OutputThread::threadLoop() {
+         lk.unlock();
+         return onDeviceError("%s: failed to process buffer request error!", __FUNCTION__);
+     }
+-
++    if (isBlobOrYv12 && req->frameIn->mFourcc == V4L2_PIX_FMT_YUYV) {
++        YCbCrLayout input;
++        input.y = (uint8_t*)req->inData;
++        input.yStride = mYu12Frame->mWidth;
++        input.cb = (uint8_t*)(req->mShareFd) + tempFrameWidth * tempFrameHeight;
++        input.cStride = mYu12Frame->mWidth;
++        LOGD("format is BLOB or YV12, use software YUYVtoI420");
++
++        ALOGV("%s libyuvToI420", __FUNCTION__);
++        ATRACE_BEGIN("YUYVtoI420");
++        int ret = libyuv::YUY2ToI420(
++            req->inData, (mYu12Frame->mWidth)*2, static_cast<uint8_t*>(mYu12FrameLayout.y), mYu12FrameLayout.yStride,
++            static_cast<uint8_t*>(mYu12FrameLayout.cb), mYu12FrameLayout.cStride,
++            static_cast<uint8_t*>(mYu12FrameLayout.cr), mYu12FrameLayout.cStride,
++            mYu12Frame->mWidth, mYu12Frame->mHeight);
++        ATRACE_END();
++        if (ret != 0) {
++            // For some webcam, the first few V4L2 frames might be malformed...
++            ALOGE("%s: Convert V4L2 frame to YU12 failed! res %d", __FUNCTION__, ret);
++            lk.unlock();
++            Status st = parent->processCaptureRequestError(req);
++            if (st != Status::OK) {
++                return onDeviceError("%s: failed to process capture request error!", __FUNCTION__);
++            }
++            signalRequestDone();
++            return true;
++        }
++    }
+     ALOGV("%s processing new request", __FUNCTION__);
+     const int kSyncWaitTimeoutMs = 500;
+     for (auto& halBuf : req->buffers) {
+@@ -1527,9 +1816,9 @@ bool ExternalCameraDeviceSession::OutputThread::threadLoop() {
+                 }
+             } break;
+             case PixelFormat::Y16: {
+-                void* outLayout = sHandleImporter.lock(*(halBuf.bufPtr), halBuf.usage, inDataSize);
++                void* outLayout = sHandleImporter.lock(*(halBuf.bufPtr), halBuf.usage, req->inDataSize);
+ 
+-                std::memcpy(outLayout, inData, inDataSize);
++                std::memcpy(outLayout, req->inData, req->inDataSize);
+ 
+                 int relFence = sHandleImporter.unlock(*(halBuf.bufPtr));
+                 if (relFence >= 0) {
+@@ -1580,6 +1869,89 @@ bool ExternalCameraDeviceSession::OutputThread::threadLoop() {
+                     halBuf.acquireFence = relFence;
+                 }
+             } break;
++            case PixelFormat::IMPLEMENTATION_DEFINED:
++            case PixelFormat::YCRCB_420_SP: {
++                if (req->frameIn->mFourcc == V4L2_PIX_FMT_YUYV){
++                    ALOGV("%s libyuvToI420", __FUNCTION__);
++                    ATRACE_BEGIN("YUYVtoI420");
++                    int ret = libyuv::YUY2ToI420(
++                        req->inData, (mYu12Frame->mWidth)*2, static_cast<uint8_t*>(mYu12FrameLayout.y), mYu12FrameLayout.yStride,
++                        static_cast<uint8_t*>(mYu12FrameLayout.cb), mYu12FrameLayout.cStride,
++                        static_cast<uint8_t*>(mYu12FrameLayout.cr), mYu12FrameLayout.cStride,
++                        mYu12Frame->mWidth, mYu12Frame->mHeight);
++                    ATRACE_END();
++                    IMapper::Rect outRect {0, 0,
++                            static_cast<int32_t>(halBuf.width),
++                            static_cast<int32_t>(halBuf.height)};
++                    YCbCrLayout outLayout = sHandleImporter.lockYCbCr(
++                            *(halBuf.bufPtr), halBuf.usage, outRect);
++                    ALOGV("%s: outLayout y %p cb %p cr %p y_str %d c_str %d c_step %d",
++                            __FUNCTION__, outLayout.y, outLayout.cb, outLayout.cr,
++                            outLayout.yStride, outLayout.cStride, outLayout.chromaStep);
++
++                    // Convert to output buffer size/format
++                    uint32_t outputFourcc = getFourCcFromLayout(outLayout);
++                    ALOGV("%s: converting to format %c%c%c%c", __FUNCTION__,
++                            outputFourcc & 0xFF,
++                            (outputFourcc >> 8) & 0xFF,
++                            (outputFourcc >> 16) & 0xFF,
++                            (outputFourcc >> 24) & 0xFF);
++
++                    YCbCrLayout cropAndScaled;
++                    ATRACE_BEGIN("cropAndScaleLocked");
++                    ret = cropAndScaleLocked(
++                            mYu12Frame,
++                            Size { halBuf.width, halBuf.height },
++                            &cropAndScaled);
++                    ATRACE_END();
++                    if (ret != 0) {
++                        lk.unlock();
++                        return onDeviceError("%s: crop and scale failed!", __FUNCTION__);
++                    }
++                    Size sz {halBuf.width, halBuf.height};
++                    ATRACE_BEGIN("formatConvert");
++                    ret = formatConvert(cropAndScaled, outLayout, sz, outputFourcc);
++                    ATRACE_END();
++                    if (ret != 0) {
++                        lk.unlock();
++                        return onDeviceError("%s: format coversion failed!", __FUNCTION__);
++                    }
++                    int relFence = sHandleImporter.unlock(*(halBuf.bufPtr));
++                    if (relFence >= 0) {
++                        halBuf.acquireFence = relFence;
++                    }
++                } else {
++                    if (req->mShareFd <= 0) {
++                        lk.unlock();
++                        Status st = parent->processCaptureRequestError(req);
++                        if (st != Status::OK) {
++                            return onDeviceError("%s: failed to process capture request error!", __FUNCTION__);
++                        }
++                        signalRequestDone();
++                        return true;
++                    }
++                    int handle_fd = -1, ret;
++                    gralloc_module_t const* mGrallocModule;
++                    const hw_module_t *allocMod = NULL;
++                    const native_handle_t* tmp_hand = (const native_handle_t*)*(halBuf.bufPtr);
++                    ret= hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &allocMod);
++                    mGrallocModule = reinterpret_cast<gralloc_module_t const *>(allocMod);
++                    mGrallocModule->perform(
++                            mGrallocModule,
++                            GRALLOC_MODULE_PERFORM_GET_HADNLE_PRIME_FD,
++                            tmp_hand,
++                            &handle_fd);
++                    if (handle_fd == -1) {
++                        LOGE("convert tmp_hand to dst_fd error");
++                        return -EINVAL;
++                    }
++                    camera2::RgaCropScale::rga_nv12_scale_crop(
++                        tempFrameWidth, tempFrameHeight, req->mShareFd, handle_fd,
++                        halBuf.width, halBuf.height, 100, false, true,
++                        (halBuf.format == PixelFormat::YCRCB_420_SP), is16Align,
++                        req->frameIn->mFourcc == V4L2_PIX_FMT_YUYV);
++                }
++            } break;
+             default:
+                 lk.unlock();
+                 return onDeviceError("%s: unknown output format %x", __FUNCTION__, halBuf.format);
+@@ -1852,6 +2224,7 @@ bool ExternalCameraDeviceSession::isSupported(const Stream& stream,
+         case PixelFormat::IMPLEMENTATION_DEFINED:
+         case PixelFormat::YCBCR_420_888:
+         case PixelFormat::YV12:
++        case PixelFormat::YCRCB_420_SP:
+             // TODO: check what dataspace we can support here.
+             // intentional no-ops.
+             break;
+@@ -1959,6 +2332,12 @@ int ExternalCameraDeviceSession::setV4l2FpsLocked(double fps) {
+ int ExternalCameraDeviceSession::configureV4l2StreamLocked(
+         const SupportedV4L2Format& v4l2Fmt, double requestFps) {
+     ATRACE_CALL();
++    ALOGD("V4L configuration format:%c%c%c%c, w %d, h %d",
++        v4l2Fmt.fourcc & 0xFF,
++        (v4l2Fmt.fourcc >> 8) & 0xFF,
++        (v4l2Fmt.fourcc >> 16) & 0xFF,
++        (v4l2Fmt.fourcc >> 24) & 0xFF,
++        v4l2Fmt.width, v4l2Fmt.height);
+     int ret = v4l2StreamOffLocked();
+     if (ret != OK) {
+         ALOGE("%s: stop v4l2 streaming failed: ret %d", __FUNCTION__, ret);
+@@ -2010,7 +2389,7 @@ int ExternalCameraDeviceSession::configureV4l2StreamLocked(
+     if ((bufferSize == 0) || (bufferSize > expectedMaxBufferSize)) {
+         ALOGE("%s: V4L2 buffer size: %u looks invalid. Expected maximum size: %u", __FUNCTION__,
+                 bufferSize, expectedMaxBufferSize);
+-        return -EINVAL;
++        //return -EINVAL;
+     }
+     mMaxV4L2BufferSize = bufferSize;
+ 
+@@ -2311,7 +2690,7 @@ Status ExternalCameraDeviceSession::configureStreams(
+     uint32_t maxDim = 0;
+     for (const auto& stream : config.streams) {
+         float aspectRatio = ASPECT_RATIO(stream);
+-        ALOGI("%s: request stream %dx%d", __FUNCTION__, stream.width, stream.height);
++        ALOGI("%s: request stream %dx%d, format: 0x%x", __FUNCTION__, stream.width, stream.height, stream.format);
+         if ((mCroppingType == VERTICAL && aspectRatio < desiredAr) ||
+                 (mCroppingType == HORIZONTAL && aspectRatio > desiredAr)) {
+             desiredAr = aspectRatio;
+@@ -2325,18 +2704,23 @@ Status ExternalCameraDeviceSession::configureStreams(
+     }
+     // Find the smallest format that matches the desired aspect ratio and is wide/high enough
+     SupportedV4L2Format v4l2Fmt {.width = 0, .height = 0};
++    SupportedV4L2Format v4l2Fmt_tmp {.width = 0, .height = 0};
+     for (const auto& fmt : mSupportedFormats) {
+         uint32_t dim = (mCroppingType == VERTICAL) ? fmt.width : fmt.height;
+         if (dim >= maxDim) {
+             float aspectRatio = ASPECT_RATIO(fmt);
+             if (isAspectRatioClose(aspectRatio, desiredAr)) {
+-                v4l2Fmt = fmt;
++                v4l2Fmt_tmp = fmt;
+                 // since mSupportedFormats is sorted by width then height, the first matching fmt
+                 // will be the smallest one with matching aspect ratio
+-                break;
++                if (fmt.fourcc == V4L2_PIX_FMT_MJPEG) {
++                    v4l2Fmt_tmp = fmt;
++                    break;
++                }
+             }
+         }
+     }
++    v4l2Fmt = v4l2Fmt_tmp;
+     if (v4l2Fmt.width == 0) {
+         // Cannot find exact good aspect ratio candidate, try to find a close one
+         for (const auto& fmt : mSupportedFormats) {
+@@ -2369,6 +2753,8 @@ Status ExternalCameraDeviceSession::configureStreams(
+         return Status::INTERNAL_ERROR;
+     }
+ 
++    createPreviewBuffer();
++
+     Size v4lSize = {v4l2Fmt.width, v4l2Fmt.height};
+     Size thumbSize { 0, 0 };
+     camera_metadata_ro_entry entry =
+@@ -2414,11 +2800,16 @@ Status ExternalCameraDeviceSession::configureStreams(
+                 // No override
+                 out->streams[i].v3_2.overrideFormat = config.streams[i].format;
+                 break;
++			case PixelFormat::YCRCB_420_SP:
+             case PixelFormat::IMPLEMENTATION_DEFINED:
++			
+                 // Override based on VIDEO or not
++                /*
+                 out->streams[i].v3_2.overrideFormat =
+                         (config.streams[i].usage & BufferUsage::VIDEO_ENCODER) ?
+                         PixelFormat::YCBCR_420_888 : PixelFormat::YV12;
++                */
++                out->streams[i].v3_2.overrideFormat = config.streams[i].format;
+                 // Save overridden formt in mStreamMap
+                 mStreamMap[config.streams[i].id].format = out->streams[i].v3_2.overrideFormat;
+                 break;
+diff --git a/camera/device/3.4/default/ExternalCameraGralloc.cpp b/camera/device/3.4/default/ExternalCameraGralloc.cpp
+new file mode 100644
+index 000000000..60c4fb80f
+--- /dev/null
++++ b/camera/device/3.4/default/ExternalCameraGralloc.cpp
+@@ -0,0 +1,262 @@
++/*
++ * Copyright (c) 2018, Fuzhou Rockchip Electronics Co., Ltd
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#define LOG_TAG "CamGraBuf"
++#include <utils/threads.h>
++#include <utils/Log.h>
++#include <ui/GraphicBufferAllocator.h>
++#include <ui/GraphicBufferMapper.h>
++#include <ui/GraphicBuffer.h>
++#include <linux/videodev2.h>
++#include "ExternalCameraGralloc.h"
++
++using namespace android;
++
++struct dma_buf_sync {
++    __u64 flags;
++};
++
++#define DMA_BUF_SYNC_READ      (1 << 0)
++#define DMA_BUF_SYNC_WRITE     (2 << 0)
++#define DMA_BUF_SYNC_RW        (DMA_BUF_SYNC_READ | DMA_BUF_SYNC_WRITE)
++#define DMA_BUF_SYNC_START     (0 << 2)
++#define DMA_BUF_SYNC_END       (1 << 2)
++#define DMA_BUF_SYNC_VALID_FLAGS_MASK \
++        (DMA_BUF_SYNC_RW | DMA_BUF_SYNC_END)
++#define DMA_BUF_BASE            'b'
++#define DMA_BUF_IOCTL_SYNC      _IOW(DMA_BUF_BASE, 0, struct dma_buf_sync)
++
++static cam_mem_handle_t*  cam_mem_gralloc_ops_init(
++        int iommu_enabled, unsigned int mem_flag, int phy_continuos)
++{
++    int ret = 0;
++    const hw_module_t *allocMod = NULL;
++    gralloc_module_t const* gm;
++    cam_mem_handle_t* handle = NULL;
++    ret= hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &allocMod);
++    if (ret == 0)
++        gm = reinterpret_cast<gralloc_module_t const *>(allocMod);
++    else
++        goto init_error;
++    handle = (cam_mem_handle_t*)malloc(sizeof(cam_mem_handle_t));
++    if (!handle) {
++        LOGE("%s:can't alloc handle!",__FUNCTION__);
++        goto init_error;
++    }
++    memset(handle, 0x0, sizeof(*handle));
++
++    handle->mem_type = CAM_MEM_TYPE_GRALLOC;
++    handle->iommu_enabled = iommu_enabled;
++    handle->phy_continuos = phy_continuos;
++    handle->priv = (void*)gm;
++
++    if (mem_flag & CAM_MEM_FLAG_HW_WRITE)
++        handle->flag |= GRALLOC_USAGE_HW_CAMERA_WRITE;
++    if (mem_flag & CAM_MEM_FLAG_HW_READ)
++        handle->flag |= GRALLOC_USAGE_HW_CAMERA_READ;
++    if (mem_flag & CAM_MEM_FLAG_SW_WRITE)
++        handle->flag |= GRALLOC_USAGE_SW_WRITE_OFTEN;
++    if (mem_flag & CAM_MEM_FLAG_SW_READ)
++        handle->flag |= GRALLOC_USAGE_SW_READ_OFTEN;
++
++    return handle;
++init_error:
++    if (!handle)
++        free(handle);
++    return NULL;
++}
++
++//alloc GraphicBuffer
++static cam_mem_info_t* cam_mem_gralloc_ops_alloc(
++        cam_mem_handle_t* handle, size_t size)
++{
++    int ret;
++    unsigned int grallocFlags = 0;
++    unsigned int halPixFmt;
++    void* mem_addr = NULL;
++    GraphicBuffer* mgraphicbuf;
++    cam_mem_info_t* mem = NULL;
++    gralloc_module_t* mGrallocModule;
++
++    if (!handle) {
++        LOGE("invalid ion mem handle!");
++        return NULL;
++    }
++    mGrallocModule = (gralloc_module_t*)(handle->priv);
++
++    mem = (cam_mem_info_t*)malloc(sizeof(cam_mem_info_t));
++    if (!mem) {
++        LOGE("can't alloc cam_mem_info_t!");
++        goto  error_alloc;
++    }
++    halPixFmt = HAL_PIXEL_FORMAT_RGB_565;
++    // use rgb565 format to alloce buffer size, so size should be divided 2
++
++    grallocFlags = handle->flag;
++    mgraphicbuf = new GraphicBuffer(size/2, 1, halPixFmt,grallocFlags);
++    mgraphicbuf->incStrong(mgraphicbuf);
++    if (mgraphicbuf->initCheck()) {
++        LOGE("GraphicBuffer error : %s", strerror(errno));
++        goto error_alloc;
++    }
++
++    ret = mgraphicbuf->lock(grallocFlags, (void**)&mem_addr);
++    if (ret) {
++        LOGE("lock buffer error : %s", strerror(errno));
++        goto lock_error;
++    }
++    mgraphicbuf->unlock();
++    ret = mGrallocModule->perform(
++        mGrallocModule,
++        GRALLOC_MODULE_PERFORM_GET_HADNLE_PRIME_FD,
++        mgraphicbuf->handle,
++        &mem->fd);
++    if (ret) {
++        LOGE("get handle error : %s", strerror(errno));
++        goto lock_error;
++    }
++
++    mem->vir_addr = (unsigned long)mem_addr;
++    mem->handlle = handle;
++    mem->iommu_maped = 0;
++    mem->mmu_addr = 0;
++    mem->phy_addr = 0;
++    mem->size = size;
++    mem->priv = (void*)(mgraphicbuf);
++
++    LOGD("alloc graphic buffer sucess,mem %p, vir_addr %p, fd %d",
++        mem, mem_addr, mem->fd);
++
++    return mem;
++lock_error:
++    //delete mgraphicbuf;
++    mgraphicbuf->decStrong(mgraphicbuf);
++    mgraphicbuf = NULL;
++error_alloc:
++    if (mem)
++        free(mem);
++    return NULL;
++}
++
++//free
++static int cam_mem_gralloc_ops_free(
++        cam_mem_handle_t* handle, cam_mem_info_t* mem)
++{
++    int ret = 0;
++    GraphicBuffer* mgraphicbuf;
++
++    if (!handle || !mem) {
++        LOGE("invalid ion mem handle!");
++        return -1;
++    }
++
++    if (mem->iommu_maped) {
++        LOGE("ion mem is mmumaped, should be unmapped firstly!");
++        return -1;
++    }
++    mgraphicbuf = (GraphicBuffer*)(mem->priv);
++    mgraphicbuf->decStrong(mgraphicbuf);
++    free(mem);
++
++    return ret;
++}
++
++//flush cache
++static int cam_mem_gralloc_ops_flush_cache(
++        cam_mem_handle_t* handle, cam_mem_info_t* mem)
++{
++    struct dma_buf_sync sync_args;
++    int ret = 0;
++    void* mem_addr;
++
++    GraphicBuffer* mgraphicbuf = (GraphicBuffer*)(mem->priv);
++    if (!handle || !mem) {
++        LOGE("invalid ion mem handle!");
++        return -1;
++    }
++
++    ret = mgraphicbuf->lock(handle->flag, (void**)&mem_addr);
++    if (ret) {
++        LOGE("lock buffer error : %s",strerror(errno));
++        return -1;
++    }
++
++    sync_args.flags = DMA_BUF_SYNC_END | DMA_BUF_SYNC_RW;
++    ret = ioctl(mem->fd, DMA_BUF_IOCTL_SYNC, &sync_args);
++    if (ret != 0)
++        LOGE("ret %d ,DMA_BUF_IOCTL_SYNC failed!", ret);
++    mgraphicbuf->unlock();
++
++    return ret;
++}
++
++//deinit
++static int cam_mem_gralloc_ops_deInit(cam_mem_handle_t* handle)
++{
++    int ret = 0;
++
++    if (!handle) {
++        LOGE("invalid ion mem handle!");
++        return -1;
++    }
++    free(handle);
++
++    return ret;
++}
++
++cam_mem_ops_t g_rk_gralloc_mem_ops {
++    //init
++    .init = cam_mem_gralloc_ops_init,
++    //alloc
++    .alloc = cam_mem_gralloc_ops_alloc,
++    //free
++    .free = cam_mem_gralloc_ops_free,
++    //flush cache
++    .flush_cache = cam_mem_gralloc_ops_flush_cache,
++    //deinit
++    .deInit = cam_mem_gralloc_ops_deInit,
++};
++
++static struct cam_mem_ops_des_s cam_mem_ops_array[] = {
++    {"ion",CAM_MEM_TYPE_ION,NULL},
++    {"ionDma",CAM_MEM_TYPE_IONDMA,NULL},
++    {"gralloc",CAM_MEM_TYPE_GRALLOC,&g_rk_gralloc_mem_ops},
++};
++
++cam_mem_ops_t* get_cam_ops(enum cam_mem_type_e mem_type)
++{
++    int ops_index = -1;
++    switch(mem_type) {
++        case CAM_MEM_TYPE_ION:
++        ops_index = 0;
++    break;
++    case CAM_MEM_TYPE_IONDMA:
++        ops_index = 1;
++    break;
++    case CAM_MEM_TYPE_GRALLOC:
++        ops_index = 2;
++    break;
++    default:
++        ops_index = -1;
++    break;
++    }
++
++    if (ops_index != -1)
++        return cam_mem_ops_array[ops_index].ops;
++    else
++        return NULL;
++}
++
+diff --git a/camera/device/3.4/default/ExternalCameraMemManager.cpp b/camera/device/3.4/default/ExternalCameraMemManager.cpp
+new file mode 100644
+index 000000000..fa09d3c29
+--- /dev/null
++++ b/camera/device/3.4/default/ExternalCameraMemManager.cpp
+@@ -0,0 +1,289 @@
++/*
++ * Copyright (c) 2018, Fuzhou Rockchip Electronics Co., Ltd
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#define LOG_TAG "CamBufMgr"
++#include <sys/stat.h>
++#include <unistd.h>
++#include <log/log.h>
++#include "ExternalCameraMemManager.h"
++
++namespace android {
++MemManagerBase::MemManagerBase()
++{
++    mPreviewBufferInfo = NULL;
++}
++MemManagerBase::~MemManagerBase()
++{
++    mPreviewBufferInfo = NULL;
++}
++
++unsigned long MemManagerBase::getBufferAddr(enum buffer_type_enum buf_type,
++                                unsigned int buf_idx, buffer_addr_t addr_type)
++{
++    unsigned long addr = 0x00;
++    struct bufferinfo_s *buf_info;
++
++    switch(buf_type)
++    {
++        case PREVIEWBUFFER:
++            buf_info = mPreviewBufferInfo;
++        break;
++        default:
++            LOGE("Buffer type(0x%x) is invaildate",buf_type);
++            goto getVirAddr_end;
++    }
++
++    if (buf_idx > buf_info->mNumBffers) {
++        LOGE("Buffer index(0x%x) is invalidate, Total buffer is 0x%x",
++            buf_idx,buf_info->mNumBffers);
++        goto getVirAddr_end;
++    }
++
++    if (addr_type == buffer_addr_vir) {
++        addr = (buf_info+buf_idx)->mVirBaseAddr;
++    } else if (addr_type == buffer_addr_phy) {
++        addr = (buf_info+buf_idx)->mPhyBaseAddr;
++    } else if (addr_type == buffer_sharre_fd) {
++        addr = (buf_info+buf_idx)->mShareFd;
++    }
++
++getVirAddr_end:
++    return addr;
++}
++
++int MemManagerBase::dump()
++{
++    return 0;
++}
++
++GrallocDrmMemManager::GrallocDrmMemManager(bool iommuEnabled)
++                    :MemManagerBase(),
++                    mPreviewData(NULL),
++                    mHandle(NULL),
++                    mOps(NULL)
++{
++    mOps = get_cam_ops(CAM_MEM_TYPE_GRALLOC);
++
++    if (mOps) {
++        mHandle = mOps->init(iommuEnabled ? 1:0,
++                        CAM_MEM_FLAG_HW_WRITE |
++                        CAM_MEM_FLAG_HW_READ  |
++                        CAM_MEM_FLAG_SW_WRITE |
++                        CAM_MEM_FLAG_SW_READ,
++                        0);
++    }
++}
++
++GrallocDrmMemManager::~GrallocDrmMemManager()
++{
++    LOGD("destruct mem manager");
++    if (mPreviewData) {
++        destroyPreviewBuffer();
++        free(mPreviewData);
++        mPreviewData = NULL;
++    }
++    if(mHandle)
++        mOps->deInit(mHandle);
++}
++
++int GrallocDrmMemManager::createGrallocDrmBuffer(struct bufferinfo_s* grallocbuf)
++{
++    int ret =0,i = 0;
++    int numBufs;
++    int frame_size;
++    cam_mem_info_t** tmpalloc = NULL;
++    struct bufferinfo_s* tmp_buf = NULL;
++
++    if (!grallocbuf) {
++        LOGE("gralloc_alloc malloc buffer failed");
++        return -1;
++    }
++
++    numBufs = grallocbuf->mNumBffers;
++    frame_size = grallocbuf->mPerBuffersize;
++    grallocbuf->mBufferSizes = numBufs*PAGE_ALIGN(frame_size);
++    switch(grallocbuf->mBufType)
++    {
++        case PREVIEWBUFFER:
++            tmpalloc = mPreviewData ;
++            if((tmp_buf  = (struct bufferinfo_s*)malloc(numBufs*sizeof(struct bufferinfo_s))) != NULL) {
++                mPreviewBufferInfo = tmp_buf;
++            } else {
++                LOGE("gralloc_alloc malloc buffer failed");
++            return -1;
++            }
++        break;
++        default:
++            LOGE("do not support this buffer type");
++            return -1;
++    }
++
++    for(i = 0;i < numBufs; i++) {
++        *tmpalloc = mOps->alloc(mHandle,grallocbuf->mPerBuffersize);
++        if (*tmpalloc) {
++            LOGD("alloc success");
++        } else {
++            LOGE("gralloc mOps->alloc failed");
++            ret = -1;
++            break;
++        }
++        grallocbuf->mPhyBaseAddr = (unsigned long)((*tmpalloc)->phy_addr);
++        grallocbuf->mVirBaseAddr = (unsigned long)((*tmpalloc)->vir_addr);
++        grallocbuf->mPerBuffersize = PAGE_ALIGN(frame_size);
++        grallocbuf->mShareFd     = (unsigned int)((*tmpalloc)->fd);
++        LOGD("grallocbuf->mVirBaseAddr=0x%lx, grallocbuf->mShareFd=0x%lx",
++            grallocbuf->mVirBaseAddr, grallocbuf->mShareFd);
++        *tmp_buf = *grallocbuf;
++        tmp_buf++;
++        tmpalloc++;
++    }
++    if(ret < 0) {
++        LOGE(" failed !");
++        while(--i >= 0) {
++            --tmpalloc;
++            --tmp_buf;
++            mOps->free(mHandle,*tmpalloc);
++        }
++        switch(grallocbuf->mBufType) {
++            case PREVIEWBUFFER:
++            if(mPreviewBufferInfo) {
++                free(mPreviewBufferInfo);
++                mPreviewBufferInfo = NULL;
++            }
++            break;
++            default:
++            break;
++        }
++    }
++    return ret;
++}
++
++void GrallocDrmMemManager::destroyGrallocDrmBuffer(buffer_type_enum buftype)
++{
++    cam_mem_info_t** tmpalloc = NULL;
++    struct bufferinfo_s* tmp_buf = NULL;
++
++    switch(buftype)
++    {
++        case PREVIEWBUFFER:
++            tmpalloc = mPreviewData;
++            tmp_buf = mPreviewBufferInfo;
++        break;
++        default:
++            LOGE("buffer type is wrong !");
++        break;
++    }
++
++
++    for(unsigned int i = 0;(tmp_buf && (i < tmp_buf->mNumBffers));i++) {
++        if(*tmpalloc && (*tmpalloc)->vir_addr) {
++            LOGD("free graphic buffer");
++            mOps->free(mHandle,*tmpalloc);
++        }
++        tmpalloc++;
++    }
++
++    switch(buftype)
++    {
++        case PREVIEWBUFFER:
++            free(mPreviewData);
++            mPreviewData = NULL;
++            free(mPreviewBufferInfo);
++            mPreviewBufferInfo = NULL;
++            LOGD("free mPreviewData");
++        break;
++        default:
++            LOGE("buffer type is wrong !");
++        break;
++    }
++}
++
++int GrallocDrmMemManager::createPreviewBuffer(struct bufferinfo_s* previewbuf)
++{
++    int ret;
++    Mutex::Autolock lock(mLock);
++
++    if(previewbuf->mBufType != PREVIEWBUFFER)
++        LOGE("the type is not PREVIEWBUFFER");
++
++    if(!mPreviewData) {
++        mPreviewData = (cam_mem_info_t**)malloc(sizeof(cam_mem_info_t*) * previewbuf->mNumBffers);
++        if(!mPreviewData) {
++            LOGE("malloc mPreviewData failed!");
++            ret = -1;
++            return ret;
++        }
++    } else if ((*mPreviewData)->vir_addr) {
++        LOGD("FREE the preview buffer alloced before firstly");
++        destroyPreviewBuffer();
++    }
++
++    memset(mPreviewData,0,sizeof(cam_mem_info_t*)* previewbuf->mNumBffers);
++
++    ret = createGrallocDrmBuffer(previewbuf);
++    if (ret == 0) {
++        LOGD("Preview buffer information(phy:0x%lx vir:0x%lx size:0x%zx)",
++            mPreviewBufferInfo->mPhyBaseAddr,
++            mPreviewBufferInfo->mVirBaseAddr,
++            mPreviewBufferInfo->mBufferSizes);
++    } else {
++        LOGE("Preview buffer alloc failed");
++        if (mPreviewData){
++            free(mPreviewData);
++            mPreviewData = NULL;
++        }
++    }
++
++    return ret;
++}
++int GrallocDrmMemManager::destroyPreviewBuffer()
++{
++    Mutex::Autolock lock(mLock);
++    destroyGrallocDrmBuffer(PREVIEWBUFFER);
++
++    return 0;
++}
++
++int GrallocDrmMemManager::flushCacheMem(buffer_type_enum buftype)
++{
++    Mutex::Autolock lock(mLock);
++    cam_mem_info_t** tmpalloc = NULL;
++    struct bufferinfo_s* tmp_buf = NULL;
++
++    switch(buftype)
++    {
++        case PREVIEWBUFFER:
++            tmpalloc = mPreviewData;
++            tmp_buf = mPreviewBufferInfo;
++        break;
++        default:
++            LOGE("buffer type is wrong !");
++        break;
++    }
++
++    for(unsigned int i = 0;(tmp_buf && (i < tmp_buf->mNumBffers));i++) {
++        if(*tmpalloc && (*tmpalloc)->vir_addr) {
++            int ret = mOps->flush_cache(mHandle, *tmpalloc);
++            if(ret != 0)
++                LOGD("flush cache failed !");
++        }
++        tmpalloc++;
++    }
++
++    return 0;
++}
++
++}/* namespace android */
+diff --git a/camera/device/3.4/default/ExternalCameraUtils.cpp b/camera/device/3.4/default/ExternalCameraUtils.cpp
+index 8f4626c56..457b6e996 100644
+--- a/camera/device/3.4/default/ExternalCameraUtils.cpp
++++ b/camera/device/3.4/default/ExternalCameraUtils.cpp
+@@ -27,7 +27,7 @@
+ 
+ #include <jpeglib.h>
+ 
+-#include "ExternalCameraUtils.h"
++#include "ExternalCameraUtils_3.4.h"
+ 
+ namespace {
+ 
+diff --git a/camera/device/3.4/default/RgaCropScale.cpp b/camera/device/3.4/default/RgaCropScale.cpp
+new file mode 100644
+index 000000000..23d018fb6
+--- /dev/null
++++ b/camera/device/3.4/default/RgaCropScale.cpp
+@@ -0,0 +1,199 @@
++/*
++ * Copyright (c) 2018, Fuzhou Rockchip Electronics Co., Ltd
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#include "RgaCropScale.h"
++#include <utils/Singleton.h>
++#include <RockchipRga.h>
++
++namespace android {
++namespace camera2 {
++
++#if (defined(TARGET_RK32) || defined(TARGET_RK3368))
++#define RGA_VER (2.0)
++#define RGA_ACTIVE_W (4096)
++#define RGA_VIRTUAL_W (4096)
++#define RGA_ACTIVE_H (4096)
++#define RGA_VIRTUAL_H (4096)
++
++#else
++#define RGA_VER (1.0)
++#define RGA_ACTIVE_W (2048)
++#define RGA_VIRTUAL_W (4096)
++#define RGA_ACTIVE_H (2048)
++#define RGA_VIRTUAL_H (2048)
++
++#endif
++
++int RgaCropScale::CropScaleNV12Or21(struct Params* in, struct Params* out)
++{
++    rga_info_t src, dst;
++
++    memset(&src, 0, sizeof(rga_info_t));
++    memset(&dst, 0, sizeof(rga_info_t));
++
++    if (!in || !out)
++        return -1;
++
++    if((out->width > RGA_VIRTUAL_W) || (out->height > RGA_VIRTUAL_H)){
++        ALOGE("%s(%d): out wxh %dx%d beyond rga capability",
++            __FUNCTION__, __LINE__,
++            out->width, out->height);
++        return -1;
++    }
++
++    if ((in->fmt != HAL_PIXEL_FORMAT_YCrCb_NV12 &&
++        in->fmt != HAL_PIXEL_FORMAT_YCrCb_420_SP) ||
++        (out->fmt != HAL_PIXEL_FORMAT_YCrCb_NV12 &&
++        out->fmt != HAL_PIXEL_FORMAT_YCrCb_420_SP)) {
++        ALOGE("%s(%d): only accept NV12 or NV21 now. in fmt %d, out fmt %d",
++            __FUNCTION__, __LINE__,
++            in->fmt, out->fmt);
++        return -1;
++    }
++    RockchipRga& rkRga(RockchipRga::get());
++
++    if (in->fd == -1) {
++        src.fd = -1;
++        src.virAddr = (void*)in->vir_addr;
++    } else {
++        src.fd = in->fd;
++    }
++    src.mmuFlag = ((2 & 0x3) << 4) | 1 | (1 << 8) | (1 << 10);
++
++    if (out->fd == -1 ) {
++        dst.fd = -1;
++        dst.virAddr = (void*)out->vir_addr;
++    } else {
++        dst.fd = out->fd;
++    }
++    dst.mmuFlag = ((2 & 0x3) << 4) | 1 | (1 << 8) | (1 << 10);
++
++    rga_set_rect(&src.rect,
++                in->offset_x,
++                in->offset_y,
++                in->width,
++                in->height,
++                in->width_stride,
++                in->height_stride,
++                in->fmt);
++
++    rga_set_rect(&dst.rect,
++                out->offset_x,
++                out->offset_y,
++                out->width,
++                out->height,
++                out->width_stride,
++                out->height_stride,
++                out->fmt);
++    if (in->mirror)
++        src.rotation = DRM_RGA_TRANSFORM_FLIP_H;
++
++    if (rkRga.RkRgaBlit(&src, &dst, NULL)) {
++        ALOGE("%s:rga blit failed", __FUNCTION__);
++        return -1;
++    }
++
++    return 0;
++}
++
++int RgaCropScale::rga_nv12_scale_crop(
++		int src_width, int src_height,
++		unsigned long src_fd, unsigned long dst_fd,
++		int dst_width, int dst_height,
++		int zoom_val, bool mirror, bool isNeedCrop,
++		bool isDstNV21, bool is16Align, bool isYuyvFormat)
++{
++    int ret = 0;
++    rga_info_t src,dst;
++    int zoom_cropW,zoom_cropH;
++    int ratio = 0;
++    int zoom_top_offset=0,zoom_left_offset=0;
++
++    RockchipRga& rkRga(RockchipRga::get());
++
++    memset(&src, 0, sizeof(rga_info_t));
++    if (isYuyvFormat) {
++        src.fd = -1;
++        src.virAddr = (void*)src_fd;
++    } else {
++        src.fd = src_fd;
++    }
++    src.mmuFlag = ((2 & 0x3) << 4) | 1 | (1 << 8) | (1 << 10);
++    memset(&dst, 0, sizeof(rga_info_t));
++    dst.fd = dst_fd;
++    dst.mmuFlag = ((2 & 0x3) << 4) | 1 | (1 << 8) | (1 << 10);
++
++    if((dst_width > RGA_VIRTUAL_W) || (dst_height > RGA_VIRTUAL_H)){
++        ALOGE("(dst_width > RGA_VIRTUAL_W) || (dst_height > RGA_VIRTUAL_H), switch to arm ");
++        ret = -1;
++        goto END;
++    }
++
++    //need crop ? when cts FOV,don't crop
++    if(isNeedCrop && (src_width*100/src_height) != (dst_width*100/dst_height)) {
++        ratio = ((src_width*100/dst_width) >= (src_height*100/dst_height))?
++                (src_height*100/dst_height):
++                (src_width*100/dst_width);
++        zoom_cropW = (ratio*dst_width/100) & (~0x01);
++        zoom_cropH = (ratio*dst_height/100) & (~0x01);
++        zoom_left_offset=((src_width-zoom_cropW)>>1) & (~0x01);
++        zoom_top_offset=((src_height-zoom_cropH)>>1) & (~0x01);
++    }else{
++        zoom_cropW = src_width;
++        zoom_cropH = src_height;
++        zoom_left_offset=0;
++        zoom_top_offset=0;
++    }
++
++    if(zoom_val > 100){
++        zoom_cropW = zoom_cropW*100/zoom_val & (~0x01);
++        zoom_cropH = zoom_cropH*100/zoom_val & (~0x01);
++        zoom_left_offset = ((src_width-zoom_cropW)>>1) & (~0x01);
++        zoom_top_offset= ((src_height-zoom_cropH)>>1) & (~0x01);
++    }
++
++    //usb camera height align to 16,the extra eight rows need to be croped.
++    if(!is16Align){
++        zoom_top_offset = zoom_top_offset & (~0x07);
++    }
++
++    rga_set_rect(&src.rect, zoom_left_offset, zoom_top_offset,
++                zoom_cropW, zoom_cropH, src_width,
++                src_height, HAL_PIXEL_FORMAT_YCrCb_NV12);
++    if (isDstNV21)
++        rga_set_rect(&dst.rect, 0, 0, dst_width, dst_height,
++                    dst_width, dst_height,
++                    HAL_PIXEL_FORMAT_YCrCb_420_SP);
++    else
++        rga_set_rect(&dst.rect, 0,0,dst_width,dst_height,
++                    dst_width,dst_height,
++                    HAL_PIXEL_FORMAT_YCrCb_NV12);
++
++    if (mirror)
++        src.rotation = DRM_RGA_TRANSFORM_FLIP_H;
++    //TODO:sina,cosa,scale_mode,render_mode
++    ret = rkRga.RkRgaBlit(&src, &dst, NULL);
++    if (ret) {
++        ALOGE("%s:rga blit failed", __FUNCTION__);
++        goto END;
++    }
++
++    END:
++    return ret;
++}
++
++} /* namespace camera2 */
++} /* namespace android */
+diff --git a/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraDeviceSession_3.4.h b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraDeviceSession_3.4.h
+new file mode 100644
+index 000000000..4c52291dc
+--- /dev/null
++++ b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraDeviceSession_3.4.h
+@@ -0,0 +1,496 @@
++/*
++ * Copyright (C) 2018 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ANDROID_HARDWARE_CAMERA_DEVICE_V3_4_EXTCAMERADEVICESESSION_H
++#define ANDROID_HARDWARE_CAMERA_DEVICE_V3_4_EXTCAMERADEVICESESSION_H
++
++#include <android/hardware/camera/device/3.2/ICameraDevice.h>
++#include <android/hardware/camera/device/3.4/ICameraDeviceSession.h>
++#include <fmq/MessageQueue.h>
++#include <hidl/MQDescriptor.h>
++#include <hidl/Status.h>
++#include <include/convert.h>
++#include <chrono>
++#include <condition_variable>
++#include <list>
++#include <unordered_map>
++#include <unordered_set>
++#include "CameraMetadata.h"
++#include "HandleImporter.h"
++#include "Exif.h"
++#include "utils/KeyedVector.h"
++#include "utils/Mutex.h"
++#include "utils/Thread.h"
++#include "android-base/unique_fd.h"
++#include "ExternalCameraUtils_3.4.h"
++#include "MpiJpegDecoder.h"
++#include <utils/Singleton.h>
++#include "ExternalCameraMemManager.h"
++
++namespace android {
++namespace hardware {
++namespace camera {
++namespace device {
++namespace V3_4 {
++namespace implementation {
++
++using ::android::hardware::camera::device::V3_2::BufferCache;
++using ::android::hardware::camera::device::V3_2::BufferStatus;
++using ::android::hardware::camera::device::V3_2::CameraMetadata;
++using ::android::hardware::camera::device::V3_2::CaptureRequest;
++using ::android::hardware::camera::device::V3_2::CaptureResult;
++using ::android::hardware::camera::device::V3_2::ErrorCode;
++using ::android::hardware::camera::device::V3_2::ICameraDeviceCallback;
++using ::android::hardware::camera::device::V3_2::MsgType;
++using ::android::hardware::camera::device::V3_2::NotifyMsg;
++using ::android::hardware::camera::device::V3_2::RequestTemplate;
++using ::android::hardware::camera::device::V3_2::Stream;
++using ::android::hardware::camera::device::V3_4::StreamConfiguration;
++using ::android::hardware::camera::device::V3_2::StreamConfigurationMode;
++using ::android::hardware::camera::device::V3_2::StreamRotation;
++using ::android::hardware::camera::device::V3_2::StreamType;
++using ::android::hardware::camera::device::V3_2::DataspaceFlags;
++using ::android::hardware::camera::device::V3_2::CameraBlob;
++using ::android::hardware::camera::device::V3_2::CameraBlobId;
++using ::android::hardware::camera::device::V3_4::HalStreamConfiguration;
++using ::android::hardware::camera::device::V3_4::ICameraDeviceSession;
++using ::android::hardware::camera::common::V1_0::Status;
++using ::android::hardware::camera::common::V1_0::helper::HandleImporter;
++using ::android::hardware::camera::common::V1_0::helper::ExifUtils;
++using ::android::hardware::camera::external::common::ExternalCameraConfig;
++using ::android::hardware::camera::external::common::Size;
++using ::android::hardware::camera::external::common::SizeHasher;
++using ::android::hardware::graphics::common::V1_0::BufferUsage;
++using ::android::hardware::graphics::common::V1_0::Dataspace;
++using ::android::hardware::graphics::common::V1_0::PixelFormat;
++using ::android::hardware::kSynchronizedReadWrite;
++using ::android::hardware::MessageQueue;
++using ::android::hardware::MQDescriptorSync;
++using ::android::hardware::Return;
++using ::android::hardware::Void;
++using ::android::hardware::hidl_vec;
++using ::android::hardware::hidl_string;
++using ::android::sp;
++using ::android::Mutex;
++using ::android::base::unique_fd;
++
++struct ExternalCameraDeviceSession : public virtual RefBase,
++        public virtual OutputThreadInterface {
++
++    ExternalCameraDeviceSession(const sp<ICameraDeviceCallback>&,
++            const ExternalCameraConfig& cfg,
++            const std::vector<SupportedV4L2Format>& sortedFormats,
++            const CroppingType& croppingType,
++            const common::V1_0::helper::CameraMetadata& chars,
++            const std::string& cameraId,
++            unique_fd v4l2Fd);
++    virtual ~ExternalCameraDeviceSession();
++    // Call by CameraDevice to dump active device states
++    void dumpState(const native_handle_t*);
++    // Caller must use this method to check if CameraDeviceSession ctor failed
++    bool isInitFailed();
++    bool isClosed();
++
++    // Retrieve the HIDL interface, split into its own class to avoid inheritance issues when
++    // dealing with minor version revs and simultaneous implementation and interface inheritance
++    virtual sp<ICameraDeviceSession> getInterface() {
++        return new TrampolineSessionInterface_3_4(this);
++    }
++
++    static const int kMaxProcessedStream = 2;
++    static const int kMaxStallStream = 1;
++    static const uint32_t kMaxBytesPerPixel = 2;
++	void createPreviewBuffer();
++
++    class OutputThread : public android::Thread {
++    public:
++        OutputThread(wp<OutputThreadInterface> parent, CroppingType,
++                const common::V1_0::helper::CameraMetadata&);
++        virtual ~OutputThread();
++
++        Status allocateIntermediateBuffers(
++                const Size& v4lSize, const Size& thumbSize,
++                const hidl_vec<Stream>& streams,
++                uint32_t blobBufferSize);
++        Status submitRequest(const std::shared_ptr<HalRequest>&);
++        void flush();
++        void dump(int fd);
++        virtual bool threadLoop() override;
++
++        void setExifMakeModel(const std::string& make, const std::string& model);
++
++        // The remaining request list is returned for offline processing
++        std::list<std::shared_ptr<HalRequest>> switchToOffline();
++
++    protected:
++        // Methods to request output buffer in parallel
++        // No-op for device@3.4. Implemented in device@3.5
++        virtual int requestBufferStart(const std::vector<HalStreamBuffer>&) { return 0; }
++        virtual int waitForBufferRequestDone(
++                /*out*/std::vector<HalStreamBuffer>*) { return 0; }
++
++        static const int kFlushWaitTimeoutSec = 3; // 3 sec
++        static const int kReqWaitTimeoutMs = 33;   // 33ms
++        static const int kReqWaitTimesMax = 90;    // 33ms * 90 ~= 3 sec
++
++        void waitForNextRequest(std::shared_ptr<HalRequest>* out);
++        void signalRequestDone();
++
++        int cropAndScaleLocked(
++                sp<AllocatedFrame>& in, const Size& outSize,
++                YCbCrLayout* out);
++
++        int cropAndScaleThumbLocked(
++                sp<AllocatedFrame>& in, const Size& outSize,
++                YCbCrLayout* out);
++
++        int createJpegLocked(HalStreamBuffer &halBuf,
++                const common::V1_0::helper::CameraMetadata& settings);
++
++        void clearIntermediateBuffers();
++
++        const wp<OutputThreadInterface> mParent;
++        const CroppingType mCroppingType;
++        const common::V1_0::helper::CameraMetadata mCameraCharacteristics;
++
++        mutable std::mutex mRequestListLock;      // Protect acccess to mRequestList,
++                                                  // mProcessingRequest and mProcessingFrameNumer
++        std::condition_variable mRequestCond;     // signaled when a new request is submitted
++        std::condition_variable mRequestDoneCond; // signaled when a request is done processing
++        std::list<std::shared_ptr<HalRequest>> mRequestList;
++        bool mProcessingRequest = false;
++        uint32_t mProcessingFrameNumer = 0;
++
++        // V4L2 frameIn
++        // (MJPG decode)-> mYu12Frame
++        // (Scale)-> mScaledYu12Frames
++        // (Format convert) -> output gralloc frames
++        mutable std::mutex mBufferLock; // Protect access to intermediate buffers
++        sp<AllocatedFrame> mYu12Frame;
++        sp<AllocatedFrame> mYu12ThumbFrame;
++        std::unordered_map<Size, sp<AllocatedFrame>, SizeHasher> mIntermediateBuffers;
++        std::unordered_map<Size, sp<AllocatedFrame>, SizeHasher> mScaledYu12Frames;
++        YCbCrLayout mYu12FrameLayout;
++        YCbCrLayout mYu12ThumbFrameLayout;
++        uint32_t mBlobBufferSize = 0; // 0 -> HAL derive buffer size, else: use given size
++
++        std::string mExifMake;
++        std::string mExifModel;
++    };
++
++    class FormatConvertThread : public android::Thread {
++    public:
++        FormatConvertThread(sp<OutputThread>& mOutputThread);
++        ~FormatConvertThread();
++        void createJpegDecoder();
++        void destroyJpegDecoder();
++        Status submitRequest(const std::shared_ptr<HalRequest>&);
++        virtual bool threadLoop() override;
++
++        sp <MemManagerBase> mCamMemManager;
++    private:
++        int jpegDecoder(unsigned int mShareFd, uint8_t* inData, size_t inDataSize);
++        void yuyvToNv12(int v4l2_fmt_dst, char *srcbuf, char *dstbuf,
++                int src_w, int src_h,int dst_w, int dst_h);
++        void setOutputThread(sp<OutputThread>& mOutputThread);
++        void waitForNextRequest(std::shared_ptr<HalRequest>* out);
++        //void signalRequestDone();
++
++        MpiJpegDecoder mHWJpegDecoder;
++        MpiJpegDecoder::OutputFrame_t mHWDecoderFrameOut;
++        sp<OutputThread> mFmtOutputThread;
++        mutable std::mutex mRequestListLock;      // Protect acccess to mRequestList,
++                                                  // mProcessingRequest and mProcessingFrameNumer
++        std::condition_variable mRequestCond;     // signaled when a new request is submitted
++        std::list<std::shared_ptr<HalRequest>> mRequestList;
++        static const int kReqWaitTimeoutMs = 33;   // 33ms
++        static const int kReqWaitTimesMax = 90;    // 33ms * 90 ~= 3 sec
++    };
++
++protected:
++
++    // Methods from ::android::hardware::camera::device::V3_2::ICameraDeviceSession follow
++
++    Return<void> constructDefaultRequestSettings(
++            RequestTemplate,
++            ICameraDeviceSession::constructDefaultRequestSettings_cb _hidl_cb);
++
++    Return<void> configureStreams(
++            const V3_2::StreamConfiguration&,
++            ICameraDeviceSession::configureStreams_cb);
++
++    Return<void> getCaptureRequestMetadataQueue(
++        ICameraDeviceSession::getCaptureRequestMetadataQueue_cb);
++
++    Return<void> getCaptureResultMetadataQueue(
++        ICameraDeviceSession::getCaptureResultMetadataQueue_cb);
++
++    Return<void> processCaptureRequest(
++            const hidl_vec<CaptureRequest>&,
++            const hidl_vec<BufferCache>&,
++            ICameraDeviceSession::processCaptureRequest_cb);
++
++    Return<Status> flush();
++    Return<void> close(bool callerIsDtor = false);
++
++    Return<void> configureStreams_3_3(
++            const V3_2::StreamConfiguration&,
++            ICameraDeviceSession::configureStreams_3_3_cb);
++
++    Return<void> configureStreams_3_4(
++            const V3_4::StreamConfiguration& requestedConfiguration,
++            ICameraDeviceSession::configureStreams_3_4_cb _hidl_cb);
++
++    Return<void> processCaptureRequest_3_4(
++            const hidl_vec<V3_4::CaptureRequest>& requests,
++            const hidl_vec<V3_2::BufferCache>& cachesToRemove,
++            ICameraDeviceSession::processCaptureRequest_3_4_cb _hidl_cb);
++
++protected:
++    // Methods from OutputThreadInterface
++    virtual Status importBuffer(int32_t streamId,
++            uint64_t bufId, buffer_handle_t buf,
++            /*out*/buffer_handle_t** outBufPtr,
++            bool allowEmptyBuf) override;
++
++    virtual Status processCaptureResult(std::shared_ptr<HalRequest>&) override;
++
++    virtual Status processCaptureRequestError(const std::shared_ptr<HalRequest>&,
++        /*out*/std::vector<NotifyMsg>* msgs = nullptr,
++        /*out*/std::vector<CaptureResult>* results = nullptr) override;
++
++    virtual ssize_t getJpegBufferSize(uint32_t width, uint32_t height) const override;
++
++    virtual void notifyError(uint32_t frameNumber, int32_t streamId, ErrorCode ec) override;
++    // End of OutputThreadInterface methods
++
++    Status constructDefaultRequestSettingsRaw(RequestTemplate type,
++            V3_2::CameraMetadata *outMetadata);
++
++    bool initialize();
++    // To init/close different version of output thread
++    virtual void initOutputThread();
++    virtual void closeOutputThread();
++    void closeOutputThreadImpl();
++
++    Status initStatus() const;
++    status_t initDefaultRequests();
++    status_t fillCaptureResult(common::V1_0::helper::CameraMetadata& md, nsecs_t timestamp);
++    Status configureStreams(const V3_2::StreamConfiguration&,
++            V3_3::HalStreamConfiguration* out,
++            // Only filled by configureStreams_3_4, and only one blob stream supported
++            uint32_t blobBufferSize = 0);
++    // fps = 0.0 means default, which is
++    // slowest fps that is at least 30, or fastest fps if 30 is not supported
++    int configureV4l2StreamLocked(const SupportedV4L2Format& fmt, double fps = 0.0);
++    int v4l2StreamOffLocked();
++    int setV4l2FpsLocked(double fps);
++    static Status isStreamCombinationSupported(const V3_2::StreamConfiguration& config,
++            const std::vector<SupportedV4L2Format>& supportedFormats,
++            const ExternalCameraConfig& devCfg);
++
++    // TODO: change to unique_ptr for better tracking
++    sp<V4L2Frame> dequeueV4l2FrameLocked(/*out*/nsecs_t* shutterTs); // Called with mLock hold
++    void enqueueV4l2Frame(const sp<V4L2Frame>&);
++
++    // Check if input Stream is one of supported stream setting on this device
++    static bool isSupported(const Stream& stream,
++            const std::vector<SupportedV4L2Format>& supportedFormats,
++            const ExternalCameraConfig& cfg);
++
++    // Validate and import request's output buffers and acquire fence
++    virtual Status importRequestLocked(
++            const CaptureRequest& request,
++            hidl_vec<buffer_handle_t*>& allBufPtrs,
++            hidl_vec<int>& allFences);
++
++    Status importRequestLockedImpl(
++            const CaptureRequest& request,
++            hidl_vec<buffer_handle_t*>& allBufPtrs,
++            hidl_vec<int>& allFences,
++            // Optional argument for ICameraDeviceSession@3.5 impl
++            bool allowEmptyBuf = false);
++
++    Status importBufferLocked(int32_t streamId,
++            uint64_t bufId, buffer_handle_t buf,
++            /*out*/buffer_handle_t** outBufPtr,
++            bool allowEmptyBuf);
++
++    static void cleanupInflightFences(
++            hidl_vec<int>& allFences, size_t numFences);
++    void cleanupBuffersLocked(int id);
++    void updateBufferCaches(const hidl_vec<BufferCache>& cachesToRemove);
++
++    Status processOneCaptureRequest(const CaptureRequest& request);
++
++    void notifyShutter(uint32_t frameNumber, nsecs_t shutterTs);
++    void invokeProcessCaptureResultCallback(
++            hidl_vec<CaptureResult> &results, bool tryWriteFmq);
++
++    Size getMaxJpegResolution() const;
++    Size getMaxThumbResolution() const;
++
++    int waitForV4L2BufferReturnLocked(std::unique_lock<std::mutex>& lk);
++
++    // Protect (most of) HIDL interface methods from synchronized-entering
++    mutable Mutex mInterfaceLock;
++
++    mutable Mutex mLock; // Protect all private members except otherwise noted
++    const sp<ICameraDeviceCallback> mCallback;
++    const ExternalCameraConfig& mCfg;
++    const common::V1_0::helper::CameraMetadata mCameraCharacteristics;
++    const std::vector<SupportedV4L2Format> mSupportedFormats;
++    const CroppingType mCroppingType;
++    const std::string mCameraId;
++
++    // Not protected by mLock, this is almost a const.
++    // Setup in constructor, reset in close() after OutputThread is joined
++    unique_fd mV4l2Fd;
++
++    // device is closed either
++    //    - closed by user
++    //    - init failed
++    //    - camera disconnected
++    bool mClosed = false;
++    bool mInitialized = false;
++    bool mInitFail = false;
++    bool mFirstRequest = false;
++    common::V1_0::helper::CameraMetadata mLatestReqSetting;
++
++    bool mV4l2Streaming = false;
++    SupportedV4L2Format mV4l2StreamingFmt;
++    double mV4l2StreamingFps = 0.0;
++    size_t mV4L2BufferCount = 0;
++
++    static const int kBufferWaitTimeoutSec = 3; // TODO: handle long exposure (or not allowing)
++    std::mutex mV4l2BufferLock; // protect the buffer count and condition below
++    std::condition_variable mV4L2BufferReturned;
++    size_t mNumDequeuedV4l2Buffers = 0;
++    uint32_t mMaxV4L2BufferSize = 0;
++
++    // Not protected by mLock (but might be used when mLock is locked)
++    sp<OutputThread> mOutputThread;
++    sp<FormatConvertThread> mFormatConvertThread;
++
++    // Stream ID -> Camera3Stream cache
++    std::unordered_map<int, Stream> mStreamMap;
++
++    std::mutex mInflightFramesLock; // protect mInflightFrames
++    std::unordered_set<uint32_t>  mInflightFrames;
++
++    // Stream ID -> circulating buffers map
++    std::map<int, CirculatingBuffers> mCirculatingBuffers;
++    // Protect mCirculatingBuffers, must not lock mLock after acquiring this lock
++    mutable Mutex mCbsLock;
++
++    std::mutex mAfTriggerLock; // protect mAfTrigger
++    bool mAfTrigger = false;
++
++    uint32_t mBlobBufferSize = 0;
++
++    static HandleImporter sHandleImporter;
++
++    /* Beginning of members not changed after initialize() */
++    using RequestMetadataQueue = MessageQueue<uint8_t, kSynchronizedReadWrite>;
++    std::unique_ptr<RequestMetadataQueue> mRequestMetadataQueue;
++    using ResultMetadataQueue = MessageQueue<uint8_t, kSynchronizedReadWrite>;
++    std::shared_ptr<ResultMetadataQueue> mResultMetadataQueue;
++
++    // Protect against invokeProcessCaptureResultCallback()
++    Mutex mProcessCaptureResultLock;
++
++    std::unordered_map<RequestTemplate, CameraMetadata> mDefaultRequests;
++
++    const Size mMaxThumbResolution;
++    const Size mMaxJpegResolution;
++
++    std::string mExifMake;
++    std::string mExifModel;
++    /* End of members not changed after initialize() */
++
++private:
++
++    struct TrampolineSessionInterface_3_4 : public ICameraDeviceSession {
++        TrampolineSessionInterface_3_4(sp<ExternalCameraDeviceSession> parent) :
++                mParent(parent) {}
++
++        virtual Return<void> constructDefaultRequestSettings(
++                RequestTemplate type,
++                V3_3::ICameraDeviceSession::constructDefaultRequestSettings_cb _hidl_cb) override {
++            return mParent->constructDefaultRequestSettings(type, _hidl_cb);
++        }
++
++        virtual Return<void> configureStreams(
++                const V3_2::StreamConfiguration& requestedConfiguration,
++                V3_3::ICameraDeviceSession::configureStreams_cb _hidl_cb) override {
++            return mParent->configureStreams(requestedConfiguration, _hidl_cb);
++        }
++
++        virtual Return<void> processCaptureRequest(const hidl_vec<V3_2::CaptureRequest>& requests,
++                const hidl_vec<V3_2::BufferCache>& cachesToRemove,
++                V3_3::ICameraDeviceSession::processCaptureRequest_cb _hidl_cb) override {
++            return mParent->processCaptureRequest(requests, cachesToRemove, _hidl_cb);
++        }
++
++        virtual Return<void> getCaptureRequestMetadataQueue(
++                V3_3::ICameraDeviceSession::getCaptureRequestMetadataQueue_cb _hidl_cb) override  {
++            return mParent->getCaptureRequestMetadataQueue(_hidl_cb);
++        }
++
++        virtual Return<void> getCaptureResultMetadataQueue(
++                V3_3::ICameraDeviceSession::getCaptureResultMetadataQueue_cb _hidl_cb) override  {
++            return mParent->getCaptureResultMetadataQueue(_hidl_cb);
++        }
++
++        virtual Return<Status> flush() override {
++            return mParent->flush();
++        }
++
++        virtual Return<void> close() override {
++            return mParent->close();
++        }
++
++        virtual Return<void> configureStreams_3_3(
++                const V3_2::StreamConfiguration& requestedConfiguration,
++                configureStreams_3_3_cb _hidl_cb) override {
++            return mParent->configureStreams_3_3(requestedConfiguration, _hidl_cb);
++        }
++
++        virtual Return<void> configureStreams_3_4(
++                const V3_4::StreamConfiguration& requestedConfiguration,
++                configureStreams_3_4_cb _hidl_cb) override {
++            return mParent->configureStreams_3_4(requestedConfiguration, _hidl_cb);
++        }
++
++        virtual Return<void> processCaptureRequest_3_4(const hidl_vec<V3_4::CaptureRequest>& requests,
++                const hidl_vec<V3_2::BufferCache>& cachesToRemove,
++                ICameraDeviceSession::processCaptureRequest_3_4_cb _hidl_cb) override {
++            return mParent->processCaptureRequest_3_4(requests, cachesToRemove, _hidl_cb);
++        }
++
++    private:
++        sp<ExternalCameraDeviceSession> mParent;
++    };
++};
++
++}  // namespace implementation
++}  // namespace V3_4
++}  // namespace device
++}  // namespace camera
++}  // namespace hardware
++}  // namespace android
++
++#endif  // ANDROID_HARDWARE_CAMERA_DEVICE_V3_4_EXTCAMERADEVICESESSION_H
+diff --git a/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraDevice_3_4.h b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraDevice_3_4.h
+index 88726f496..6e0e4ebab 100644
+--- a/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraDevice_3_4.h
++++ b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraDevice_3_4.h
+@@ -23,7 +23,7 @@
+ #include <android/hardware/camera/device/3.2/ICameraDevice.h>
+ #include <hidl/Status.h>
+ #include <hidl/MQDescriptor.h>
+-#include "ExternalCameraDeviceSession.h"
++#include "ExternalCameraDeviceSession_3.4.h"
+ 
+ #include <vector>
+ 
+diff --git a/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraGralloc.h b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraGralloc.h
+new file mode 100644
+index 000000000..33f354a38
+--- /dev/null
++++ b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraGralloc.h
+@@ -0,0 +1,96 @@
++/*
++ * Copyright (c) 2018, Fuzhou Rockchip Electronics Co., Ltd
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ANDROID_HARDWARE_CAMERA_GRALLOC
++#define ANDROID_HARDWARE_CAMERA_GRALLOC
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
++#include <log/log.h>
++#include "utils/Mutex.h"
++
++#define LOGD(msg,...)       ALOGD("%s(%d): " msg ,__FUNCTION__,__LINE__,##__VA_ARGS__)
++#define LOGE(msg,...)       ALOGE("%s(%d): " msg ,__FUNCTION__,__LINE__,##__VA_ARGS__)
++#define PAGE_ALIGN(x)   (((x) + 0xFFF) & (~0xFFF)) // Set as multiple of 4K
++
++#ifdef __cplusplus
++extern "C"
++{
++#endif
++
++enum cam_mem_type_e {
++    CAM_MEM_TYPE_INVALID,
++    CAM_MEM_TYPE_ION,
++    CAM_MEM_TYPE_IONDMA,
++    CAM_MEM_TYPE_GRALLOC,
++};
++
++enum cam_mem_flag_e {
++    CAM_MEM_FLAG_HW_WRITE	= 0x1,
++    CAM_MEM_FLAG_HW_READ	= 0x2,
++    CAM_MEM_FLAG_SW_WRITE	= 0x4,
++    CAM_MEM_FLAG_SW_READ	= 0x8,
++};
++
++typedef struct cam_mem_handle_s {
++    enum cam_mem_type_e mem_type;
++    int iommu_enabled;
++    int phy_continuos;
++    int camsys_fd;
++    unsigned int flag;
++    void* priv;
++}cam_mem_handle_t;
++
++typedef struct cam_mem_info_s {
++    cam_mem_handle_t* handlle;
++    unsigned long vir_addr;
++    unsigned long phy_addr;
++    unsigned long mmu_addr;
++    int iommu_maped;
++    size_t size;
++    int fd;
++    void* priv;
++}cam_mem_info_t;
++
++typedef struct cam_mem_ops_s {
++    //init
++    cam_mem_handle_t* (*init)(int iommu_enabled, unsigned int mem_flag, int phy_continuos);
++    //alloc
++    cam_mem_info_t* (*alloc)(cam_mem_handle_t* handle,size_t size);
++    //free
++    int (*free)(cam_mem_handle_t* handle, cam_mem_info_t* mem);
++    //flush cache
++    int (*flush_cache)(cam_mem_handle_t* handle, cam_mem_info_t* mem);
++    //deinit
++    int (*deInit)(cam_mem_handle_t* handle);
++}cam_mem_ops_t;
++
++cam_mem_ops_t* get_cam_ops(enum cam_mem_type_e mem_type);
++
++struct cam_mem_ops_des_s{
++    const char* name;
++    enum cam_mem_type_e mem_type;
++    cam_mem_ops_t* ops;
++};
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif // ANDROID_HARDWARE_CAMERA_GRALLOC
++
+diff --git a/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraMemManager.h b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraMemManager.h
+new file mode 100644
+index 000000000..736aa7a5d
+--- /dev/null
++++ b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraMemManager.h
+@@ -0,0 +1,105 @@
++/*
++ * Copyright (c) 2018, Fuzhou Rockchip Electronics Co., Ltd
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ANDROID_HARDWARE_CAMERA_MEM_MANAGER
++#define ANDROID_HARDWARE_CAMERA_MEM_MANAGER
++
++#include "ExternalCameraGralloc.h"
++#include <dlfcn.h>
++#include "utils/LightRefBase.h"
++
++namespace android {
++
++enum buffer_type_enum{
++    PREVIEWBUFFER,
++    RAWBUFFER,
++    JPEGBUFFER,
++    VIDEOENCBUFFER,
++};
++
++struct bufferinfo_s{
++    unsigned int mNumBffers; //invaild if this value is 0
++    size_t mPerBuffersize;
++    size_t mBufferSizes;
++    unsigned long mPhyBaseAddr;
++    unsigned long mVirBaseAddr;
++    unsigned long mShareFd;
++    buffer_type_enum mBufType;
++};
++
++typedef enum buffer_addr_e {
++    buffer_addr_phy,
++    buffer_addr_vir,
++    buffer_sharre_fd
++}buffer_addr_t;
++
++typedef unsigned long ulong_t;
++/* mjpeg decoder interface in librk_vpu_api.*/
++typedef void* (*getMjpegDecoderFun)(void);
++typedef void (*destroyMjpegDecoderFun)(void* jpegDecoder);
++
++typedef int (*initMjpegDecoderFun)(void* jpegDecoder);
++typedef int (*deInitMjpegDecoderFun)(void* jpegDecoder);
++
++typedef int (*mjpegDecodeOneFrameFun)(
++            void * jpegDecoder, uint8_t* aOutBuffer,
++            uint32_t *aOutputLength, uint8_t* aInputBuf,
++            uint32_t* aInBufSize, ulong_t out_phyaddr);
++
++typedef struct mjpeg_interface {
++    void*                       decoder;
++    int                         state;
++
++    getMjpegDecoderFun          get;
++    destroyMjpegDecoderFun      destroy;
++    initMjpegDecoderFun         init;
++    deInitMjpegDecoderFun       deInit;
++    mjpegDecodeOneFrameFun      decode;
++} mjpeg_interface_t;
++
++class MemManagerBase : public virtual VirtualLightRefBase {
++public :
++    MemManagerBase();
++    virtual ~MemManagerBase();
++    virtual int createPreviewBuffer(struct bufferinfo_s* previewbuf) = 0;
++    virtual int destroyPreviewBuffer() = 0;
++    virtual int flushCacheMem(buffer_type_enum buftype) = 0;
++    unsigned long getBufferAddr(enum buffer_type_enum buf_type,
++            unsigned int buf_idx, buffer_addr_t addr_type);
++    int dump();
++protected:
++    struct bufferinfo_s* mPreviewBufferInfo;
++    mutable Mutex mLock;
++};
++
++class GrallocDrmMemManager:public MemManagerBase {
++    public :
++        GrallocDrmMemManager(bool iommuEnabled);
++        ~GrallocDrmMemManager();
++        virtual int createPreviewBuffer(struct bufferinfo_s* previewbuf);
++        virtual int destroyPreviewBuffer();
++        virtual int flushCacheMem(buffer_type_enum buftype);
++    private:
++        int createGrallocDrmBuffer(struct bufferinfo_s* grallocbuf);
++        void destroyGrallocDrmBuffer(buffer_type_enum buftype);
++        cam_mem_info_t** mPreviewData;
++        cam_mem_handle_t* mHandle;
++        cam_mem_ops_t* mOps;
++};
++
++}/* namespace android */
++
++#endif // ANDROID_HARDWARE_CAMERA_MEM_MANAGER
+\ No newline at end of file
+diff --git a/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraUtils_3.4.h b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraUtils_3.4.h
+new file mode 100644
+index 000000000..a2eff0581
+--- /dev/null
++++ b/camera/device/3.4/default/include/ext_device_v3_4_impl/ExternalCameraUtils_3.4.h
+@@ -0,0 +1,306 @@
++/*
++ * Copyright (C) 2018 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef ANDROID_HARDWARE_CAMERA_DEVICE_V3_4_EXTCAMUTIL_H
++#define ANDROID_HARDWARE_CAMERA_DEVICE_V3_4_EXTCAMUTIL_H
++
++#include <android/hardware/camera/common/1.0/types.h>
++#include <android/hardware/camera/device/3.2/types.h>
++#include <android/hardware/graphics/common/1.0/types.h>
++#include <android/hardware/graphics/mapper/2.0/IMapper.h>
++#include <inttypes.h>
++#include <mutex>
++#include <unordered_map>
++#include <unordered_set>
++#include <vector>
++#include "tinyxml2.h"  // XML parsing
++#include "utils/LightRefBase.h"
++#include "utils/Timers.h"
++#include <CameraMetadata.h>
++#include <HandleImporter.h>
++
++
++using ::android::hardware::graphics::mapper::V2_0::IMapper;
++using ::android::hardware::graphics::mapper::V2_0::YCbCrLayout;
++using ::android::hardware::camera::common::V1_0::helper::HandleImporter;
++using ::android::hardware::camera::common::V1_0::Status;
++using ::android::hardware::camera::device::V3_2::ErrorCode;
++
++namespace android {
++namespace hardware {
++namespace camera {
++
++namespace external {
++namespace common {
++
++struct Size {
++    uint32_t width;
++    uint32_t height;
++
++    bool operator==(const Size& other) const {
++        return (width == other.width && height == other.height);
++    }
++};
++
++struct SizeHasher {
++    size_t operator()(const Size& sz) const {
++        size_t result = 1;
++        result = 31 * result + sz.width;
++        result = 31 * result + sz.height;
++        return result;
++    }
++};
++
++struct ExternalCameraConfig {
++    static const char* kDefaultCfgPath;
++    static ExternalCameraConfig loadFromCfg(const char* cfgPath = kDefaultCfgPath);
++
++    // CameraId base offset for numerical representation
++    uint32_t cameraIdOffset;
++
++    // List of internal V4L2 video nodes external camera HAL must ignore.
++    std::unordered_set<std::string> mInternalDevices;
++
++    // Maximal size of a JPEG buffer, in bytes
++    uint32_t maxJpegBufSize;
++
++    // Maximum Size that can sustain 30fps streaming
++    Size maxVideoSize;
++
++    // Size of v4l2 buffer queue when streaming <= kMaxVideoSize
++    uint32_t numVideoBuffers;
++
++    // Size of v4l2 buffer queue when streaming > kMaxVideoSize
++    uint32_t numStillBuffers;
++
++    // Indication that the device connected supports depth output
++    bool depthEnabled;
++
++    struct FpsLimitation {
++        Size size;
++        double fpsUpperBound;
++    };
++    std::vector<FpsLimitation> fpsLimits;
++    std::vector<FpsLimitation> depthFpsLimits;
++
++    // Minimum output stream size
++    Size minStreamSize;
++
++    // The value of android.sensor.orientation
++    int32_t orientation;
++
++private:
++    ExternalCameraConfig();
++    static bool updateFpsList(tinyxml2::XMLElement* fpsList, std::vector<FpsLimitation>& fpsLimits);
++};
++
++} // common
++} // external
++
++namespace device {
++namespace V3_4 {
++namespace implementation {
++
++struct SupportedV4L2Format {
++    uint32_t width;
++    uint32_t height;
++    uint32_t fourcc;
++    // All supported frame rate for this w/h/fourcc combination
++    struct FrameRate {
++        uint32_t durationNumerator;   // frame duration numerator.   Ex: 1
++        uint32_t durationDenominator; // frame duration denominator. Ex: 30
++        double getDouble() const;     // FrameRate in double.        Ex: 30.0
++    };
++    std::vector<FrameRate> frameRates;
++};
++
++// A Base class with basic information about a frame
++struct Frame : public VirtualLightRefBase {
++public:
++    Frame(uint32_t width, uint32_t height, uint32_t fourcc);
++    const uint32_t mWidth;
++    const uint32_t mHeight;
++    const uint32_t mFourcc;
++
++    // getData might involve map/allocation
++    virtual int getData(uint8_t** outData, size_t* dataSize) = 0;
++};
++
++// A class provide access to a dequeued V4L2 frame buffer (mostly in MJPG format)
++// Also contains necessary information to enqueue the buffer back to V4L2 buffer queue
++class V4L2Frame : public Frame {
++public:
++    V4L2Frame(uint32_t w, uint32_t h, uint32_t fourcc, int bufIdx, int fd,
++              uint32_t dataSize, uint64_t offset);
++    ~V4L2Frame() override;
++
++    virtual int getData(uint8_t** outData, size_t* dataSize) override;
++
++    const int mBufferIndex; // for later enqueue
++    int map(uint8_t** data, size_t* dataSize);
++    int unmap();
++private:
++    std::mutex mLock;
++    const int mFd; // used for mmap but doesn't claim ownership
++    const size_t mDataSize;
++    const uint64_t mOffset; // used for mmap
++    uint8_t* mData = nullptr;
++    bool  mMapped = false;
++};
++
++// A RAII class representing a CPU allocated YUV frame used as intermeidate buffers
++// when generating output images.
++class AllocatedFrame : public Frame {
++public:
++    AllocatedFrame(uint32_t w, uint32_t h); // only support V4L2_PIX_FMT_YUV420 for now
++    ~AllocatedFrame() override;
++
++    virtual int getData(uint8_t** outData, size_t* dataSize) override;
++
++    int allocate(YCbCrLayout* out = nullptr);
++    int getLayout(YCbCrLayout* out);
++    int getCroppedLayout(const IMapper::Rect&, YCbCrLayout* out); // return non-zero for bad input
++private:
++    std::mutex mLock;
++    std::vector<uint8_t> mData;
++};
++
++enum CroppingType {
++    HORIZONTAL = 0,
++    VERTICAL = 1
++};
++
++// Aspect ratio is defined as width/height here and ExternalCameraDevice
++// will guarantee all supported sizes has width >= height (so aspect ratio >= 1.0)
++#define ASPECT_RATIO(sz) (static_cast<float>((sz).width) / (sz).height)
++const float kMaxAspectRatio = std::numeric_limits<float>::max();
++const float kMinAspectRatio = 1.f;
++
++bool isAspectRatioClose(float ar1, float ar2);
++
++struct HalStreamBuffer {
++    int32_t streamId;
++    uint64_t bufferId;
++    uint32_t width;
++    uint32_t height;
++    ::android::hardware::graphics::common::V1_0::PixelFormat format;
++    ::android::hardware::camera::device::V3_2::BufferUsageFlags usage;
++    buffer_handle_t* bufPtr;
++    int acquireFence;
++    bool fenceTimeout;
++};
++
++struct HalRequest {
++    uint32_t frameNumber;
++    common::V1_0::helper::CameraMetadata setting;
++    sp<V4L2Frame> frameIn;
++    nsecs_t shutterTs;
++    std::vector<HalStreamBuffer> buffers;
++    unsigned long mShareFd;
++    uint8_t* inData;
++    size_t inDataSize;
++};
++
++static const uint64_t BUFFER_ID_NO_BUFFER = 0;
++
++// buffers currently circulating between HAL and camera service
++// key: bufferId sent via HIDL interface
++// value: imported buffer_handle_t
++// Buffer will be imported during processCaptureRequest (or requestStreamBuffer
++// in the case of HAL buffer manager is enabled) and will be freed
++// when the stream is deleted or camera device session is closed
++typedef std::unordered_map<uint64_t, buffer_handle_t> CirculatingBuffers;
++
++::android::hardware::camera::common::V1_0::Status importBufferImpl(
++        /*inout*/std::map<int, CirculatingBuffers>& circulatingBuffers,
++        /*inout*/HandleImporter& handleImporter,
++        int32_t streamId,
++        uint64_t bufId, buffer_handle_t buf,
++        /*out*/buffer_handle_t** outBufPtr,
++        bool allowEmptyBuf);
++
++static const uint32_t FLEX_YUV_GENERIC = static_cast<uint32_t>('F') |
++        static_cast<uint32_t>('L') << 8 | static_cast<uint32_t>('E') << 16 |
++        static_cast<uint32_t>('X') << 24;
++
++// returns FLEX_YUV_GENERIC for formats other than YV12/YU12/NV12/NV21
++uint32_t getFourCcFromLayout(const YCbCrLayout&);
++
++using ::android::hardware::camera::external::common::Size;
++int getCropRect(CroppingType ct, const Size& inSize,
++        const Size& outSize, IMapper::Rect* out);
++
++int formatConvert(const YCbCrLayout& in, const YCbCrLayout& out, Size sz, uint32_t format);
++
++int encodeJpegYU12(const Size &inSz,
++        const YCbCrLayout& inLayout, int jpegQuality,
++        const void *app1Buffer, size_t app1Size,
++        void *out, size_t maxOutSize,
++        size_t &actualCodeSize);
++
++Size getMaxThumbnailResolution(const common::V1_0::helper::CameraMetadata&);
++
++void freeReleaseFences(hidl_vec<V3_2::CaptureResult>&);
++
++status_t fillCaptureResultCommon(common::V1_0::helper::CameraMetadata& md, nsecs_t timestamp,
++        camera_metadata_ro_entry& activeArraySize);
++
++// Interface for OutputThread calling back to parent
++struct OutputThreadInterface : public virtual RefBase {
++    virtual ::android::hardware::camera::common::V1_0::Status importBuffer(
++            int32_t streamId, uint64_t bufId, buffer_handle_t buf,
++            /*out*/buffer_handle_t** outBufPtr, bool allowEmptyBuf) = 0;
++
++    virtual void notifyError(uint32_t frameNumber, int32_t streamId, ErrorCode ec) = 0;
++
++    // Callbacks are fired within the method if msgs/results are nullptr.
++    // Otherwise the callbacks will be returned and caller is responsible to
++    // fire the callback later
++    virtual ::android::hardware::camera::common::V1_0::Status processCaptureRequestError(
++            const std::shared_ptr<HalRequest>&,
++            /*out*/std::vector<V3_2::NotifyMsg>* msgs = nullptr,
++            /*out*/std::vector<V3_2::CaptureResult>* results = nullptr) = 0;
++
++    virtual ::android::hardware::camera::common::V1_0::Status processCaptureResult(
++            std::shared_ptr<HalRequest>&) = 0;
++
++    virtual ssize_t getJpegBufferSize(uint32_t width, uint32_t height) const = 0;
++};
++
++}  // namespace implementation
++}  // namespace V3_4
++
++namespace V3_6 {
++namespace implementation {
++
++// A CPU copy of a mapped V4L2Frame. Will map the input V4L2 frame.
++class AllocatedV4L2Frame : public V3_4::implementation::Frame {
++public:
++    AllocatedV4L2Frame(sp<V3_4::implementation::V4L2Frame> frameIn);
++    ~AllocatedV4L2Frame() override;
++    virtual int getData(uint8_t** outData, size_t* dataSize) override;
++private:
++    std::vector<uint8_t> mData;
++};
++
++} // namespace implementation
++} // namespace V3_6
++}  // namespace device
++}  // namespace camera
++}  // namespace hardware
++}  // namespace android
++
++#endif  // ANDROID_HARDWARE_CAMERA_DEVICE_V3_4_EXTCAMUTIL_H
+diff --git a/camera/device/3.4/default/include/ext_device_v3_4_impl/RgaCropScale.h b/camera/device/3.4/default/include/ext_device_v3_4_impl/RgaCropScale.h
+new file mode 100644
+index 000000000..d76063f07
+--- /dev/null
++++ b/camera/device/3.4/default/include/ext_device_v3_4_impl/RgaCropScale.h
+@@ -0,0 +1,53 @@
++/*
++ * Copyright (c) 2018, Fuzhou Rockchip Electronics Co., Ltd
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#ifndef HAL_ROCKCHIP_PSL_RKISP1_RGACROPSCALE_H_
++namespace android {
++namespace camera2 {
++
++class RgaCropScale {
++ public:
++    struct Params {
++        /* use share fd if it's valid */
++        int fd;
++        /* if fd == -1, use virtual address */
++        char *vir_addr;
++        int offset_x;
++        int offset_y;
++        int width_stride;
++        int height_stride;
++        int width;
++        int height;
++        /* only support NV12,NV21 now */
++        int fmt;
++        /* just for src params */
++        bool mirror;
++    };
++
++    static int CropScaleNV12Or21(struct Params* in, struct Params* out);
++    static int rga_nv12_scale_crop(
++		int src_width, int src_height,
++		unsigned long src_fd, unsigned long dst_fd,
++		int dst_width, int dst_height,
++		int zoom_val, bool mirror, bool isNeedCrop,
++		bool isDstNV21, bool is16Align, bool isYuyvFormat);
++
++};
++
++} /* namespace camera2 */
++} /* namespace android */
++
++#endif  // HAL_ROCKCHIP_PSL_RKISP1_RGACROPSCALE_H_
+diff --git a/camera/provider/2.4/default/ExternalCameraProviderImpl_2_4.h b/camera/provider/2.4/default/ExternalCameraProviderImpl_2_4.h
+index 8c79f68f1..b6bf9f5a5 100644
+--- a/camera/provider/2.4/default/ExternalCameraProviderImpl_2_4.h
++++ b/camera/provider/2.4/default/ExternalCameraProviderImpl_2_4.h
+@@ -24,7 +24,7 @@
+ #include <utils/Thread.h>
+ #include <hidl/Status.h>
+ #include <hidl/MQDescriptor.h>
+-#include "ExternalCameraUtils.h"
++#include "ExternalCameraUtils_3.4.h"
+ 
+ #include "CameraProvider_2_4.h"
+ 
+-- 
+2.35.1
+

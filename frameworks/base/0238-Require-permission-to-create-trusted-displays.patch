@@ -1,0 +1,199 @@
+From 62ed7ec64a56b628cda7b2e15315e5549a45d576 Mon Sep 17 00:00:00 2001
+From: Andrii Kulian <akulian@google.com>
+Date: Fri, 31 Jul 2020 18:46:28 -0700
+Subject: [PATCH 238/297] Require permission to create trusted displays
+
+Bug: 162627132
+Test: atest VirtualDisplayTest#testTrustedVirtualDisplay
+Test: atest
+frameworks/base/packages/SystemUI/tests/src/com/android/systemui/bubbles
+Test: atest DisplayTest
+Test: atest VirtualDisplayTest#testTrustedVirtualDisplay
+Test: atest VirtualDisplayTest#testUntrustedSysDecorVirtualDisplay
+Test: adb logcat -b events
+
+Change-Id: Id06b2013ef5fdeadf321f14f8b611c733031d54d
+Merged-In: Id06b2013ef5fdeadf321f14f8b611c733031d54d
+(cherry picked from commit f21c885ca7e86f77c808ab17fe1de650474de487)
+---
+ core/java/android/app/ActivityView.java       | 15 +++++++++++++--
+ .../window/VirtualDisplayTaskEmbedder.java    |  9 ++++++++-
+ core/tests/coretests/AndroidManifest.xml      |  1 +
+ .../hardware/display/VirtualDisplayTest.java  | 19 +++++++++++++++++++
+ .../systemui/bubbles/BubbleExpandedView.java  |  2 +-
+ .../server/display/DisplayManagerService.java | 15 +++++++++++----
+ 6 files changed, 53 insertions(+), 8 deletions(-)
+
+diff --git a/core/java/android/app/ActivityView.java b/core/java/android/app/ActivityView.java
+index 98a23f2b007..3cb6293f070 100644
+--- a/core/java/android/app/ActivityView.java
++++ b/core/java/android/app/ActivityView.java
+@@ -105,7 +105,8 @@ public class ActivityView extends ViewGroup implements android.window.TaskEmbedd
+     public ActivityView(
+             @NonNull Context context, @NonNull AttributeSet attrs, int defStyle,
+             boolean singleTaskInstance, boolean usePublicVirtualDisplay) {
+-        this(context, attrs, defStyle, singleTaskInstance, usePublicVirtualDisplay, false);
++        this(context, attrs, defStyle, singleTaskInstance, usePublicVirtualDisplay,
++                false /* disableSurfaceViewBackgroundLayer */);
+     }
+ 
+     /** @hide */
+@@ -113,12 +114,22 @@ public class ActivityView extends ViewGroup implements android.window.TaskEmbedd
+             @NonNull Context context, @NonNull AttributeSet attrs, int defStyle,
+             boolean singleTaskInstance, boolean usePublicVirtualDisplay,
+             boolean disableSurfaceViewBackgroundLayer) {
++        this(context, attrs, defStyle, singleTaskInstance, usePublicVirtualDisplay,
++                disableSurfaceViewBackgroundLayer, false /* useTrustedDisplay */);
++    }
++
++    // TODO(b/162901735): Refactor ActivityView with Builder
++    /** @hide */
++    public ActivityView(
++            @NonNull Context context, @NonNull AttributeSet attrs, int defStyle,
++            boolean singleTaskInstance, boolean usePublicVirtualDisplay,
++            boolean disableSurfaceViewBackgroundLayer, boolean useTrustedDisplay) {
+         super(context, attrs, defStyle);
+         if (useTaskOrganizer()) {
+             mTaskEmbedder = new TaskOrganizerTaskEmbedder(context, this);
+         } else {
+             mTaskEmbedder = new VirtualDisplayTaskEmbedder(context, this, singleTaskInstance,
+-                    usePublicVirtualDisplay);
++                    usePublicVirtualDisplay, useTrustedDisplay);
+         }
+         mSurfaceView = new SurfaceView(context, null, 0, 0, disableSurfaceViewBackgroundLayer);
+         // Since ActivityView#getAlpha has been overridden, we should use parent class's alpha
+diff --git a/core/java/android/window/VirtualDisplayTaskEmbedder.java b/core/java/android/window/VirtualDisplayTaskEmbedder.java
+index 9ccb4c17215..9013da36007 100644
+--- a/core/java/android/window/VirtualDisplayTaskEmbedder.java
++++ b/core/java/android/window/VirtualDisplayTaskEmbedder.java
+@@ -19,6 +19,7 @@ package android.window;
+ import static android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_DESTROY_CONTENT_ON_REMOVAL;
+ import static android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY;
+ import static android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC;
++import static android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_TRUSTED;
+ import static android.view.Display.INVALID_DISPLAY;
+ 
+ import android.app.ActivityManager;
+@@ -63,6 +64,7 @@ public class VirtualDisplayTaskEmbedder extends TaskEmbedder {
+     private int mDisplayDensityDpi;
+     private final boolean mSingleTaskInstance;
+     private final boolean mUsePublicVirtualDisplay;
++    private final boolean mUseTrustedDisplay;
+     private VirtualDisplay mVirtualDisplay;
+     private Insets mForwardedInsets;
+     private DisplayMetrics mTmpDisplayMetrics;
+@@ -77,10 +79,12 @@ public class VirtualDisplayTaskEmbedder extends TaskEmbedder {
+      *                           only applicable if virtual displays are used
+      */
+     public VirtualDisplayTaskEmbedder(Context context, VirtualDisplayTaskEmbedder.Host host,
+-            boolean singleTaskInstance, boolean usePublicVirtualDisplay) {
++            boolean singleTaskInstance, boolean usePublicVirtualDisplay,
++            boolean useTrustedDisplay) {
+         super(context, host);
+         mSingleTaskInstance = singleTaskInstance;
+         mUsePublicVirtualDisplay = usePublicVirtualDisplay;
++        mUseTrustedDisplay = useTrustedDisplay;
+     }
+ 
+     /**
+@@ -103,6 +107,9 @@ public class VirtualDisplayTaskEmbedder extends TaskEmbedder {
+         if (mUsePublicVirtualDisplay) {
+             virtualDisplayFlags |= VIRTUAL_DISPLAY_FLAG_PUBLIC;
+         }
++        if (mUseTrustedDisplay) {
++            virtualDisplayFlags |= VIRTUAL_DISPLAY_FLAG_TRUSTED;
++        }
+ 
+         mVirtualDisplay = displayManager.createVirtualDisplay(
+                 DISPLAY_NAME + "@" + System.identityHashCode(this), mHost.getWidth(),
+diff --git a/core/tests/coretests/AndroidManifest.xml b/core/tests/coretests/AndroidManifest.xml
+index 5c2841aff1d..7597e873215 100644
+--- a/core/tests/coretests/AndroidManifest.xml
++++ b/core/tests/coretests/AndroidManifest.xml
+@@ -129,6 +129,7 @@
+     <!-- virtual display test permissions -->
+     <uses-permission android:name="android.permission.CAPTURE_VIDEO_OUTPUT" />
+     <uses-permission android:name="android.permission.CAPTURE_SECURE_VIDEO_OUTPUT" />
++    <uses-permission android:name="android.permission.ADD_TRUSTED_DISPLAY" />
+ 
+     <!-- color extraction test permissions -->
+     <uses-permission android:name="android.permission.READ_FRAME_BUFFER" />
+diff --git a/core/tests/coretests/src/android/hardware/display/VirtualDisplayTest.java b/core/tests/coretests/src/android/hardware/display/VirtualDisplayTest.java
+index daf61397635..0f6284d22d1 100644
+--- a/core/tests/coretests/src/android/hardware/display/VirtualDisplayTest.java
++++ b/core/tests/coretests/src/android/hardware/display/VirtualDisplayTest.java
+@@ -247,6 +247,25 @@ public class VirtualDisplayTest extends AndroidTestCase {
+         assertDisplayUnregistered(display);
+     }
+ 
++    /**
++     * Ensures that an application can create a trusted virtual display with the permission
++     * {@code ADD_TRUSTED_DISPLAY}.
++     */
++    public void testTrustedVirtualDisplay() throws Exception {
++        VirtualDisplay virtualDisplay = mDisplayManager.createVirtualDisplay(NAME,
++                WIDTH, HEIGHT, DENSITY, mSurface,
++                DisplayManager.VIRTUAL_DISPLAY_FLAG_TRUSTED);
++        assertNotNull("virtual display must not be null", virtualDisplay);
++
++        Display display = virtualDisplay.getDisplay();
++        try {
++            assertDisplayRegistered(display, Display.FLAG_PRIVATE | Display.FLAG_TRUSTED);
++        } finally {
++            virtualDisplay.release();
++        }
++        assertDisplayUnregistered(display);
++    }
++
+     private void assertDisplayRegistered(Display display, int flags) {
+         assertNotNull("display object must not be null", display);
+         assertTrue("display must be valid", display.isValid());
+diff --git a/packages/SystemUI/src/com/android/systemui/bubbles/BubbleExpandedView.java b/packages/SystemUI/src/com/android/systemui/bubbles/BubbleExpandedView.java
+index 3d3171208b1..110a5ab67f0 100644
+--- a/packages/SystemUI/src/com/android/systemui/bubbles/BubbleExpandedView.java
++++ b/packages/SystemUI/src/com/android/systemui/bubbles/BubbleExpandedView.java
+@@ -301,7 +301,7 @@ public class BubbleExpandedView extends LinearLayout {
+ 
+         mActivityView = new ActivityView(mContext, null /* attrs */, 0 /* defStyle */,
+                 true /* singleTaskInstance */, false /* usePublicVirtualDisplay*/,
+-                true /* disableSurfaceViewBackgroundLayer */);
++                true /* disableSurfaceViewBackgroundLayer */, true /* useTrustedDisplay */);
+ 
+         // Set ActivityView's alpha value as zero, since there is no view content to be shown.
+         setContentVisibility(false);
+diff --git a/services/core/java/com/android/server/display/DisplayManagerService.java b/services/core/java/com/android/server/display/DisplayManagerService.java
+index 1058000e0b6..9a8be287690 100644
+--- a/services/core/java/com/android/server/display/DisplayManagerService.java
++++ b/services/core/java/com/android/server/display/DisplayManagerService.java
+@@ -86,6 +86,7 @@ import android.os.UserHandle;
+ import android.os.UserManager;
+ import android.provider.Settings;
+ import android.text.TextUtils;
++import android.util.EventLog;
+ import android.util.IntArray;
+ import android.util.Pair;
+ import android.util.Slog;
+@@ -2191,10 +2192,16 @@ public final class DisplayManagerService extends SystemService {
+                 }
+             }
+ 
+-            if (callingUid == Process.SYSTEM_UID
+-                    || checkCallingPermission(ADD_TRUSTED_DISPLAY, "createVirtualDisplay()")) {
+-                flags |= VIRTUAL_DISPLAY_FLAG_TRUSTED;
+-            } else {
++            if (callingUid != Process.SYSTEM_UID && (flags & VIRTUAL_DISPLAY_FLAG_TRUSTED) != 0) {
++                if (!checkCallingPermission(ADD_TRUSTED_DISPLAY, "createVirtualDisplay()")) {
++                    EventLog.writeEvent(0x534e4554, "162627132", callingUid,
++                            "Attempt to create a trusted display without holding permission!");
++                    throw new SecurityException("Requires ADD_TRUSTED_DISPLAY permission to "
++                            + "create a trusted virtual display.");
++                }
++            }
++
++            if ((flags & VIRTUAL_DISPLAY_FLAG_TRUSTED) == 0) {
+                 flags &= ~VIRTUAL_DISPLAY_FLAG_SHOULD_SHOW_SYSTEM_DECORATIONS;
+             }
+ 
+-- 
+2.35.1
+

@@ -1,0 +1,33 @@
+From 35d6c551f4c74a30d22060fdc3e2ff4d3e911a76 Mon Sep 17 00:00:00 2001
+From: TF Huang <tf.huang@mediatek.com>
+Date: Wed, 1 Jul 2020 10:43:31 +0800
+Subject: [PATCH 08/24] wlan: add supported interfaces in rc file
+
+Service vendor.wifi_hal_legacy should add all supported interface
+into relevant .rc files.
+
+Bug: 160377428
+Test: Wifi presubmit tests
+Change-Id: I68e8d3e7ddb1470a92c5ccd30f6d4d5f90ad9e37
+Merged-In: I68e8d3e7ddb1470a92c5ccd30f6d4d5f90ad9e37
+---
+ wifi/1.4/default/android.hardware.wifi@1.0-service-lazy.rc | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/wifi/1.4/default/android.hardware.wifi@1.0-service-lazy.rc b/wifi/1.4/default/android.hardware.wifi@1.0-service-lazy.rc
+index cf917b545..061689dbe 100644
+--- a/wifi/1.4/default/android.hardware.wifi@1.0-service-lazy.rc
++++ b/wifi/1.4/default/android.hardware.wifi@1.0-service-lazy.rc
+@@ -1,5 +1,9 @@
+ service vendor.wifi_hal_legacy /vendor/bin/hw/android.hardware.wifi@1.0-service-lazy
+     interface android.hardware.wifi@1.0::IWifi default
++    interface android.hardware.wifi@1.1::IWifi default
++    interface android.hardware.wifi@1.2::IWifi default
++    interface android.hardware.wifi@1.3::IWifi default
++    interface android.hardware.wifi@1.4::IWifi default
+     oneshot
+     disabled
+     class hal
+-- 
+2.35.1
+

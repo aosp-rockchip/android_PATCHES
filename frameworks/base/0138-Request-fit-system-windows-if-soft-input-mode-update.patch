@@ -1,0 +1,41 @@
+From 7e661a2ba37e2c2f6b168b4a3e0a93e4e1981151 Mon Sep 17 00:00:00 2001
+From: Jorim Jaggi <jjaggi@google.com>
+Date: Wed, 1 Apr 2020 15:48:17 +0200
+Subject: [PATCH 138/297] Request fit system windows if soft input mode updates
+
+To make sure legacy insets are correct always.
+
+Test: Open Message, go to attachments, reopen IME
+Bug: 152851108
+Change-Id: I9ae0930645ca4331d362af7db9ab77bf49d74edc
+(cherry picked from commit c5c829f675edd91fe1fbf591be5eadbf1b3f9b33)
+---
+ core/java/android/view/ViewRootImpl.java | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/core/java/android/view/ViewRootImpl.java b/core/java/android/view/ViewRootImpl.java
+index 51304dcfe8c..35f955f7e78 100644
+--- a/core/java/android/view/ViewRootImpl.java
++++ b/core/java/android/view/ViewRootImpl.java
+@@ -130,6 +130,7 @@ import android.view.View.MeasureSpec;
+ import android.view.Window.OnContentApplyWindowInsetsListener;
+ import android.view.WindowInsets.Type;
+ import android.view.WindowInsets.Type.InsetsType;
++import android.view.WindowManager.LayoutParams;
+ import android.view.WindowManager.LayoutParams.SoftInputModeFlags;
+ import android.view.accessibility.AccessibilityEvent;
+ import android.view.accessibility.AccessibilityManager;
+@@ -1412,6 +1413,10 @@ public final class ViewRootImpl implements ViewParent,
+                         | (oldSoftInputMode & WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST);
+             }
+ 
++            if ((changes & LayoutParams.SOFT_INPUT_MODE_CHANGED) != 0) {
++                requestFitSystemWindows();
++            }
++
+             mWindowAttributesChanged = true;
+             scheduleTraversals();
+         }
+-- 
+2.35.1
+

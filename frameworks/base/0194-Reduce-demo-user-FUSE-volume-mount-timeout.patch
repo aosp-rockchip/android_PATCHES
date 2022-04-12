@@ -1,0 +1,71 @@
+From d58101e2b2410f686b69de5d5a2dbbada198053a Mon Sep 17 00:00:00 2001
+From: Zim <zezeozue@google.com>
+Date: Fri, 24 Jul 2020 11:16:22 +0100
+Subject: [PATCH 194/297] Reduce demo user FUSE volume mount timeout
+
+A long timeout seems to break demo users when calling
+DevicePolicyManagerService#enableSystemApp.
+
+We soft-revert Ia8f6f121448f6b5e484fd3e8cca845fdd89afc23 just for demo
+users while investigating the root cause.
+
+Test: Manual
+Bug: 161702661
+Change-Id: I8ff153f2649e3a1d05f2e3e6e382bbba8c79630c
+(cherry picked from commit 1d6554f0e1c7882070d10a7dff6f9d6aae6fb252)
+---
+ .../server/storage/StorageUserConnection.java        | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/services/core/java/com/android/server/storage/StorageUserConnection.java b/services/core/java/com/android/server/storage/StorageUserConnection.java
+index ed5706752cb..361a5067b9b 100644
+--- a/services/core/java/com/android/server/storage/StorageUserConnection.java
++++ b/services/core/java/com/android/server/storage/StorageUserConnection.java
+@@ -34,6 +34,7 @@ import android.os.ParcelFileDescriptor;
+ import android.os.ParcelableException;
+ import android.os.RemoteCallback;
+ import android.os.UserHandle;
++import android.os.UserManagerInternal;
+ import android.os.storage.StorageManagerInternal;
+ import android.os.storage.StorageVolume;
+ import android.service.storage.ExternalStorageService;
+@@ -62,19 +63,25 @@ import java.util.concurrent.TimeoutException;
+ public final class StorageUserConnection {
+     private static final String TAG = "StorageUserConnection";
+ 
+-    public static final int REMOTE_TIMEOUT_SECONDS = 20;
++    private static final int DEFAULT_REMOTE_TIMEOUT_SECONDS = 20;
++    // TODO(b/161702661): Workaround for demo user to have shorter timeout.
++    // This allows the DevicePolicyManagerService#enableSystemApp call to succeed without ANR.
++    private static final int DEMO_USER_REMOTE_TIMEOUT_SECONDS = 5;
+ 
+     private final Object mLock = new Object();
+     private final Context mContext;
+     private final int mUserId;
+     private final StorageSessionController mSessionController;
+     private final ActiveConnection mActiveConnection = new ActiveConnection();
++    private final boolean mIsDemoUser;
+     @GuardedBy("mLock") private final Map<String, Session> mSessions = new HashMap<>();
+ 
+     public StorageUserConnection(Context context, int userId, StorageSessionController controller) {
+         mContext = Objects.requireNonNull(context);
+         mUserId = Preconditions.checkArgumentNonnegative(userId);
+         mSessionController = controller;
++        mIsDemoUser = LocalServices.getService(UserManagerInternal.class)
++                .getUserInfo(userId).isDemo();
+     }
+ 
+     /**
+@@ -200,7 +207,8 @@ public final class StorageUserConnection {
+ 
+     private void waitForLatch(CountDownLatch latch, String reason) throws TimeoutException {
+         try {
+-            if (!latch.await(REMOTE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
++            if (!latch.await(mIsDemoUser ? DEMO_USER_REMOTE_TIMEOUT_SECONDS
++                            : DEFAULT_REMOTE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                 // TODO(b/140025078): Call ActivityManager ANR API?
+                 Slog.wtf(TAG, "Failed to bind to the ExternalStorageService for user " + mUserId);
+                 throw new TimeoutException("Latch wait for " + reason + " elapsed");
+-- 
+2.35.1
+

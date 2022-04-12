@@ -1,0 +1,753 @@
+From 784fc78084b1c4efff4b6eae2a906493d9b28c4d Mon Sep 17 00:00:00 2001
+From: wengtao <tao.weng@rock-chips.com>
+Date: Thu, 21 Nov 2019 16:49:53 +0800
+Subject: [PATCH 267/297] Feat: Add AudioSettings Server
+
+Change-Id: I61bed00313e30a99ce92e4acbe00541b7c9b8435
+Signed-off-by: wengtao <tao.weng@rock-chips.com>
+---
+ api/current.txt                               |  15 ++
+ .../os/audio/IRkAudioSettingService.aidl      |  13 ++
+ .../os/audio/RkAudioSettingManager.java       | 125 ++++++++++++
+ media/java/android/media/AudioSystem.java     |   3 +
+ non-updatable-api/current.txt                 |  15 ++
+ .../android/server/audio/AudioService.java    |  40 +++-
+ .../android/server/audio/RkAudioSetting.java  |  46 +++++
+ .../server/audio/RkAudioSettingService.java   | 101 +++++++++
+ services/core/jni/Android.bp                  |   3 +
+ ...om_android_server_audio_RkAudioSetting.cpp | 192 ++++++++++++++++++
+ services/core/jni/onload.cpp                  |   4 +
+ .../java/com/android/server/SystemServer.java |   9 +-
+ 12 files changed, 564 insertions(+), 2 deletions(-)
+ create mode 100644 core/java/android/os/audio/IRkAudioSettingService.aidl
+ create mode 100644 core/java/android/os/audio/RkAudioSettingManager.java
+ mode change 100755 => 100644 media/java/android/media/AudioSystem.java
+ create mode 100644 services/core/java/com/android/server/audio/RkAudioSetting.java
+ create mode 100644 services/core/java/com/android/server/audio/RkAudioSettingService.java
+ mode change 100755 => 100644 services/core/jni/Android.bp
+ create mode 100644 services/core/jni/com_android_server_audio_RkAudioSetting.cpp
+
+diff --git a/api/current.txt b/api/current.txt
+index dd6895eb4fb..92ffe1dbb0b 100644
+--- a/api/current.txt
++++ b/api/current.txt
+@@ -37230,6 +37230,21 @@ package android.os {
+ 
+ }
+ 
++package android.os.audio {
++
++  public class RkAudioSettingManager {
++    method public int getFormat(int, @NonNull String);
++    method public int getMode(int);
++    method public int getSelect(int);
++    method public void setFormat(int, int, @NonNull String);
++    method public void setMode(int, int);
++    method public void setSelect(int);
++    field public static final int CODE_FAILED = -1; // 0xffffffff
++    field public static final String TAG = "RkAudioSetting";
++  }
++
++}
++
+ package android.os.health {
+ 
+   public class HealthStats {
+diff --git a/core/java/android/os/audio/IRkAudioSettingService.aidl b/core/java/android/os/audio/IRkAudioSettingService.aidl
+new file mode 100644
+index 00000000000..fa394b87eb1
+--- /dev/null
++++ b/core/java/android/os/audio/IRkAudioSettingService.aidl
+@@ -0,0 +1,13 @@
++package android.os.audio;
++
++/**
++ * @hide
++ */
++interface IRkAudioSettingService {
++    int getSelect(int device);
++    void setSelect(int device);
++    int getMode(int device);
++    void setMode(int device, int mode);
++    int getFormat(int device, String format);
++    void setFormat(int device, int close, String format);
++}
+diff --git a/core/java/android/os/audio/RkAudioSettingManager.java b/core/java/android/os/audio/RkAudioSettingManager.java
+new file mode 100644
+index 00000000000..7d7a56ccbee
+--- /dev/null
++++ b/core/java/android/os/audio/RkAudioSettingManager.java
+@@ -0,0 +1,125 @@
++package android.os.audio;
++
++import android.annotation.NonNull;
++import android.os.IBinder;
++import android.os.ServiceManager;
++import android.os.RemoteException;
++import android.os.ServiceManager;
++import android.util.Log;
++
++import com.android.internal.util.Preconditions;
++
++public class RkAudioSettingManager {
++    private IRkAudioSettingService mService;
++    public static final String TAG = "RkAudioSetting";
++
++    public static final int CODE_FAILED = -1;
++
++    /**
++    * @throws RemoteException
++    * @hide
++    */
++    public RkAudioSettingManager() {
++        Log.i(TAG, "RkAudioSettingManager: ");
++        IBinder binder = ServiceManager.getService("rockchip_audio_setting");
++        if (binder == null) {
++            Log.i(TAG, "Unable to connect to rockchip audio setting service! - is it running yet?");
++            return;
++        }
++        mService = IRkAudioSettingService.Stub.asInterface(binder);
++    }
++// apk interface
++/* query  0: decode, 1: hdmi bitstream, 2: spdif passthrough
++  * return 1 : support, 0: unsupport
++  */
++    public int getSelect(int device) {
++        try {
++            if (mService != null) {
++                return mService.getSelect(device);
++            }
++        } catch (RemoteException e) {
++            e.printStackTrace();
++        }
++        return CODE_FAILED;
++    }
++
++/*
++ * 0->decode
++ * 1->hdmi bitstream
++ * 2->spdif passthrough
++ */
++    public void setSelect(int device) {
++        try {
++            if (mService != null) {
++                mService.setSelect(device);
++            }
++        } catch (RemoteException e) {
++            e.printStackTrace();
++        }
++    }
++
++/*
++ * param : device  : 0 ->decode, 1->hdmi bitstream
++ *             mode : mode
++ * return : 1 : manual, multi_pcm, 0: decode_pcm, auto
++ */
++    public int getMode(int device) {
++        try {
++            if (mService != null) {
++                return mService.getMode(device);
++            }
++        } catch (RemoteException e) {
++            e.printStackTrace();
++        }
++        return CODE_FAILED;
++    }
++
++/*
++ * param : device : 0 ->decode, 1->hdmi bitstream
++ *             mode  : 1 : manual, multi_pcm, 0: decode_pcm, auto
++ * return void
++ */
++    public void setMode(int device, int mode) {
++        try {
++            if (mService != null) {
++                mService.setMode(device, mode);
++            }
++        } catch (RemoteException e) {
++            e.printStackTrace();
++        }
++    }
++
++/*
++ * param : device  : 0 ->decode, 1->hdmi bitstream, 2->spdif passthrough
++ *             format :   codec format
++ * return : 1 : support, 0: unsupport
++ */
++    public int getFormat(int device, @NonNull String format) {
++        format = Preconditions.checkNotNull(format, "format cannot be null");
++        try {
++            if (mService != null) {
++                return mService.getFormat(device, format);
++            }
++        } catch (RemoteException e) {
++            e.printStackTrace();
++        }
++        return CODE_FAILED;
++    }
++
++/*
++ * param : device : 0 ->decode, 1->hdmi bitstream, 2->spdif passthrough
++ *             close: 0-> add, 1-> delect
++ *             format : codec format
++ * return void
++ */
++    public void setFormat(int device, int close, @NonNull String format) {
++        format = Preconditions.checkNotNull(format, "format cannot be null");
++        try {
++            if (mService != null) {
++                mService.setFormat(device, close, format);
++            }
++        } catch (RemoteException e) {
++            e.printStackTrace();
++        }
++    }
++}
+diff --git a/media/java/android/media/AudioSystem.java b/media/java/android/media/AudioSystem.java
+old mode 100755
+new mode 100644
+index 6bba17f0c38..26a1ef84189
+--- a/media/java/android/media/AudioSystem.java
++++ b/media/java/android/media/AudioSystem.java
+@@ -212,6 +212,9 @@ public class AudioSystem
+     @Retention(RetentionPolicy.SOURCE)
+     public @interface AudioFormatNativeEnumForBtCodec {}
+ 
++    // add AUDIO_FORMAT_IEC61937 define
++    /** @hide */
++    public static final int AUDIO_FORMAT_IEC61937       = 0x0D000000;
+     /**
+      * @hide
+      * Convert audio format enum values to Bluetooth codec values
+diff --git a/non-updatable-api/current.txt b/non-updatable-api/current.txt
+index 51244bad0b6..15f34a1fea7 100644
+--- a/non-updatable-api/current.txt
++++ b/non-updatable-api/current.txt
+@@ -35797,6 +35797,21 @@ package android.os {
+ 
+ }
+ 
++package android.os.audio {
++
++  public class RkAudioSettingManager {
++    method public int getFormat(int, @NonNull String);
++    method public int getMode(int);
++    method public int getSelect(int);
++    method public void setFormat(int, int, @NonNull String);
++    method public void setMode(int, int);
++    method public void setSelect(int);
++    field public static final int CODE_FAILED = -1; // 0xffffffff
++    field public static final String TAG = "RkAudioSetting";
++  }
++
++}
++
+ package android.os.health {
+ 
+   public class HealthStats {
+diff --git a/services/core/java/com/android/server/audio/AudioService.java b/services/core/java/com/android/server/audio/AudioService.java
+index c4eca605206..4424fd23c30 100755
+--- a/services/core/java/com/android/server/audio/AudioService.java
++++ b/services/core/java/com/android/server/audio/AudioService.java
+@@ -533,7 +533,7 @@ public class AudioService extends IAudioService.Stub
+     private ForceControlStreamClient mForceControlStreamClient = null;
+     // Used to play ringtones outside system_server
+     private volatile IRingtonePlayer mRingtonePlayer;
+-
++    private RkAudioSetting mRkAudioSetting = new RkAudioSetting();
+     // Devices for which the volume is fixed (volume is either max or muted)
+     Set<Integer> mFixedVolumeDevices = new HashSet<>(Arrays.asList(
+             AudioSystem.DEVICE_OUT_DGTL_DOCK_HEADSET,
+@@ -3035,6 +3035,28 @@ public class AudioService extends IAudioService.Stub
+         }
+     }
+ 
++    /**
++     * @hide
++     */
++    private boolean isBox() {
++        String product = SystemProperties.get("ro.target.product","");
++        if(product.equals("box") /*|| product.equals("atv")*/){
++            return true;
++        }
++        return false;
++    }
++
++     /**
++      * @hide
++      */
++     private boolean isTablet() {
++         String product = SystemProperties.get("ro.target.product","");
++         if(product.equals("tablet")){
++             return true;
++         }
++         return false;
++     }
++
+     private class RmtSbmxFullVolDeathHandler implements IBinder.DeathRecipient {
+         private IBinder mICallback; // To be notified of client's death
+ 
+@@ -5057,9 +5079,25 @@ public class AudioService extends IAudioService.Stub
+                 .set(MediaMetrics.Property.STATE,
+                         state == CONNECTION_STATE_CONNECTED ? "connected" : "disconnected")
+                 .record();
++
++        if (isBox() && (type == AudioSystem.DEVICE_OUT_AUX_DIGITAL) && (state == CONNECTION_STATE_CONNECTED)) {
++            updataFormatForEdid();
++        }
++
+         mDeviceBroker.setWiredDeviceConnectionState(type, state, address, name, caller);
+     }
+ 
++    public void updataFormatForEdid() {
++        try {
++            if(mRkAudioSetting == null){
++                return;
++            }
++            mRkAudioSetting.updataFormatForEdid();
++        } catch (RemoteException e) {
++            e.printStackTrace();
++        }
++    }
++
+     /**
+      * @hide
+      * The states that can be used with AudioService.setBluetoothHearingAidDeviceConnectionState()
+diff --git a/services/core/java/com/android/server/audio/RkAudioSetting.java b/services/core/java/com/android/server/audio/RkAudioSetting.java
+new file mode 100644
+index 00000000000..b39c497a70d
+--- /dev/null
++++ b/services/core/java/com/android/server/audio/RkAudioSetting.java
+@@ -0,0 +1,46 @@
++package com.android.server.audio;
++
++import android.os.RemoteException;
++
++public class RkAudioSetting {
++    private static native int nativeGetSelect(int device);
++    private static native int nativeGetMode(int device);
++    private static native int nativeGetFormat(int device, String format);
++
++    private static native void nativeSetSelect(int device);
++    private static native void nativeSetMode(int device, int mode);
++    private static native void nativeSetFormat(int device, int close, String format);
++    private static native void nativeupdataFormatForEdid();
++
++    public RkAudioSetting() {
++
++    }
++
++    public int getSelect(int device) throws RemoteException {
++        return nativeGetSelect(device);
++    }
++
++    public void setSelect(int device) throws RemoteException {
++        nativeSetSelect(device);
++    }
++
++    public void updataFormatForEdid() throws RemoteException {
++        nativeupdataFormatForEdid();
++    }
++
++    public int getMode(int device) throws RemoteException {
++        return nativeGetMode(device);
++    }
++
++    public void setMode(int device, int mode) throws RemoteException {
++        nativeSetMode(device, mode);
++    }
++
++    public int getFormat(int device, String format) throws RemoteException {
++        return nativeGetFormat(device, format);
++    }
++
++    public void setFormat(int device, int close, String format) throws RemoteException {
++        nativeSetFormat(device, close, format);
++    }
++}
+diff --git a/services/core/java/com/android/server/audio/RkAudioSettingService.java b/services/core/java/com/android/server/audio/RkAudioSettingService.java
+new file mode 100644
+index 00000000000..a16d1d5790a
+--- /dev/null
++++ b/services/core/java/com/android/server/audio/RkAudioSettingService.java
+@@ -0,0 +1,101 @@
++package com.android.server.audio;
++
++import android.content.Context;
++import android.os.audio.IRkAudioSettingService;
++import android.os.RemoteException;
++import android.util.Log;
++import android.media.IAudioService;
++import android.media.AudioSystem;
++import android.media.AudioManager;
++import android.os.ServiceManager;
++
++// import rockchip.hardware.rkaudiosetting.V1_0.IRkAudioSetting;
++
++/**
++ * @hide
++ */
++public class RkAudioSettingService extends IRkAudioSettingService.Stub {
++    public static final String TAG = "RkAudioSettingService";
++
++    private Context mContext;
++
++    private RkAudioSetting mAudioSetting;
++    public static String DEVICE_HDMI = "hdmi";
++    public static String DEVICE_SPDIF = "spdif";
++
++    public int DEVICE_DECODE = 0;
++    public int DEVICE_HDMI_BITSTREAM = 1;
++    public int DEVICE_SPDIF_PASSTHROUGH = 2;
++
++    private int AUTO_MODE = 0;
++
++    private int STATE_CONNECTED = 1;
++    private int STATE_DISCONNECTED = 0;
++
++    public RkAudioSettingService(Context context) throws RemoteException {
++        mContext = context;
++        mAudioSetting = new RkAudioSetting();
++        parseSetting();
++    }
++
++    public void parseSetting() throws RemoteException {
++        int hdmi_select = mAudioSetting.getSelect(DEVICE_HDMI_BITSTREAM);
++        int spdif_select = mAudioSetting.getSelect(DEVICE_SPDIF_PASSTHROUGH);
++        if (hdmi_select == STATE_CONNECTED) {
++            setDeviceConnect(AudioSystem.DEVICE_OUT_AUX_DIGITAL, STATE_CONNECTED);
++        }
++
++        if (spdif_select == STATE_CONNECTED) {
++            setDeviceConnect(AudioSystem.DEVICE_OUT_SPDIF, STATE_CONNECTED);
++        }
++    }
++
++    public void setDeviceConnect(int device, int state) throws RemoteException {
++       String deviceAddress = "RK_BITSTREAM_DEVICE_ADDRESS";
++       String deviceName = "RK_BITSTREAM_DEVICE_NAME";
++
++       AudioSystem.setDeviceConnectionState(device, state, deviceAddress, deviceName,
++                      AudioSystem.AUDIO_FORMAT_IEC61937);
++    }
++
++    @Override
++    public int getSelect(int device) throws RemoteException {
++        return mAudioSetting.getSelect(device);
++    }
++
++    @Override
++    public void setSelect(int device) throws RemoteException {
++        if (device == DEVICE_HDMI_BITSTREAM) {
++            setDeviceConnect(AudioSystem.DEVICE_OUT_AUX_DIGITAL, STATE_CONNECTED);
++        }
++
++        if (device == DEVICE_SPDIF_PASSTHROUGH) {
++            setDeviceConnect(AudioSystem.DEVICE_OUT_SPDIF, STATE_CONNECTED);
++        }
++        mAudioSetting.setSelect(device);
++    }
++
++    @Override
++    public int getMode(int device) throws RemoteException {
++        return mAudioSetting.getMode(device);
++    }
++
++    @Override
++    public void setMode(int device, int mode) throws RemoteException {
++        if ((device == DEVICE_HDMI_BITSTREAM) && (mode == AUTO_MODE)) {
++            mAudioSetting.updataFormatForEdid();
++        }
++        mAudioSetting.setMode(device, mode);
++    }
++
++    @Override
++    public int getFormat(int device, String format) throws RemoteException {
++        return mAudioSetting.getFormat(device, format);
++    }
++
++    @Override
++    public void setFormat(int device, int close, String format) throws RemoteException {
++        mAudioSetting.setFormat(device, close, format);
++    }
++
++}
+diff --git a/services/core/jni/Android.bp b/services/core/jni/Android.bp
+old mode 100755
+new mode 100644
+index 35d801d8c81..979148cd834
+--- a/services/core/jni/Android.bp
++++ b/services/core/jni/Android.bp
+@@ -70,6 +70,7 @@ cc_library_static {
+         "com_android_server_pm_PackageManagerShellCommandDataLoader.cpp",
+         "com_android_server_eink_EinkService.cpp",
+         "com_android_server_rkdisplay_RkDisplayModes.cpp",
++        "com_android_server_audio_RkAudioSetting.cpp",
+         "onload.cpp",
+         ":lib_networkStatsFactory_native",
+     ],
+@@ -78,6 +79,7 @@ cc_library_static {
+         "frameworks/base/libs",
+         "frameworks/native/services",
+         "system/gatekeeper/include",
++        "vendor/rockchip/hardware/interfaces",
+     ],
+ 
+     header_libs: [
+@@ -179,6 +181,7 @@ cc_defaults {
+         "service.incremental",
+         "suspend_control_aidl_interface-cpp",
+         "liblogwrap",
++        "librksoundsetting",
+     ],
+ 
+     static_libs: [
+diff --git a/services/core/jni/com_android_server_audio_RkAudioSetting.cpp b/services/core/jni/com_android_server_audio_RkAudioSetting.cpp
+new file mode 100644
+index 00000000000..c4693a9317c
+--- /dev/null
++++ b/services/core/jni/com_android_server_audio_RkAudioSetting.cpp
+@@ -0,0 +1,192 @@
++/*
++ * Copyright 2018 Rockchip Electronics Co. LTD
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ *
++ */
++
++#define LOG_TAG "RkNativeAudioSetting"
++#include "android/graphics/Bitmap.h"
++
++#include <nativehelper/JNIHelp.h>
++#include <nativehelper/ScopedUtfChars.h>
++#include <jni.h>
++#include <memory>
++#include <stdio.h>
++#include <errno.h>
++#include <fcntl.h>
++#include <stdint.h>
++
++#include <cutils/log.h>
++#include <cutils/properties.h>
++#include <string>
++#include <map>
++#include <vector>
++#include <iostream>
++#include <inttypes.h>
++#include <sstream>
++
++#include <linux/netlink.h>
++#include <sys/socket.h>
++
++
++#include <rksoundsetting/RkAudioSetting.h>
++
++#include <unordered_map>
++
++namespace android {
++
++
++static RkAudioSetting *mAudioSetting = nullptr;
++
++///////////////////////////////////////////////////////////////////////////////////////////////
++
++RkAudioSetting* getAudioSetting() {
++    if (mAudioSetting == nullptr) {
++        mAudioSetting = new RkAudioSetting();
++        if (mAudioSetting != nullptr) {
++        } else {
++            ALOGD("get mAudioSetting is NULL");
++        }
++    }
++    return mAudioSetting;
++}
++
++static void nativeSetSelect(JNIEnv* env, jobject obj, jint device) {
++    RkAudioSetting *setting = getAudioSetting();
++
++    if (setting != nullptr) {
++        setting->setSelect(device);
++    } else {
++        ALOGD("get mAudioSetting is NULL");
++    }
++}
++
++static void nativeupdataFormatForEdid(JNIEnv* env, jobject obj) {
++    RkAudioSetting *setting = getAudioSetting();
++
++    if (setting != nullptr) {
++        setting->updataFormatForEdid();
++    } else {
++        ALOGD("get mAudioSetting is NULL");
++    }
++}
++
++static void nativeSetFormat(JNIEnv* env, jobject obj, jint device, jint close, jstring format) {
++    const char* mformat = env->GetStringUTFChars(format, NULL);
++    RkAudioSetting *setting = getAudioSetting();
++
++    if (setting != nullptr) {
++        setting->setFormat(device, close, mformat);
++    } else {
++        ALOGD("get mAudioSetting is NULL");
++    }
++    env->ReleaseStringUTFChars(format, mformat);
++}
++
++static void nativeSetMode(JNIEnv* env, jobject obj, jint device, jint mode) {
++    RkAudioSetting *setting = getAudioSetting();
++
++    if (setting != nullptr){
++        setting->setMode(device, mode);
++    } else {
++        ALOGD("get mAudioSetting is NULL");
++    }
++}
++
++static jint nativeGetSelect(JNIEnv* env, jobject obj, jint device) {
++    int value = 0;
++    RkAudioSetting *setting = getAudioSetting();
++
++    if (setting != nullptr) {
++        value = setting->getSelect(device);
++    } else {
++         ALOGD("get mAudioSetting is NULL");
++    }
++
++    return static_cast<jint>(value);
++}
++
++static jint nativeGetFormat(JNIEnv* env, jobject obj, jint device, jstring format) {
++    int value = 0;
++    const char* mformat = env->GetStringUTFChars(format, NULL);
++    RkAudioSetting *setting = getAudioSetting();
++
++    if (setting != nullptr) {
++        value = setting->getFormat(device, mformat);
++    } else {
++        ALOGD("get mAudioSetting is NULL");
++    }
++
++    env->ReleaseStringUTFChars(format, mformat);
++    return static_cast<jint>(value);
++}
++
++static jint nativeGetMode(JNIEnv* env, jobject obj, jint device) {
++    int value = 0;
++    RkAudioSetting *setting = getAudioSetting();
++
++    if (setting != nullptr) {
++        value = setting->getMode(device);
++    } else {
++        ALOGD("get mAudioSetting is NULL");
++    }
++
++    return static_cast<jint>(value);
++}
++
++// ----------------------------------------------------------------------------
++//com.android.server.AudioSetting
++static const JNINativeMethod sRkAudioSettingMethods[] = {
++    {"nativeGetSelect", "(I)I",
++        (void*)nativeGetSelect},
++    {"nativeGetMode", "(I)I",
++        (void*) nativeGetMode},
++    {"nativeGetFormat", "(ILjava/lang/String;)I",
++        (void*) nativeGetFormat},
++
++    {"nativeSetFormat", "(IILjava/lang/String;)V",
++        (void*)nativeSetFormat},
++    {"nativeSetMode", "(II)V",
++        (void*)nativeSetMode},
++    {"nativeSetSelect", "(I)V",
++        (void*)nativeSetSelect},
++    {"nativeupdataFormatForEdid", "()V",
++        (void*)nativeupdataFormatForEdid},
++};
++
++#define FIND_CLASS(var, className) \
++    var = env->FindClass(className); \
++    LOG_FATAL_IF(! var, "Unable to find class " className);
++
++#define GET_METHOD_ID(var, clazz, methodName, methodDescriptor) \
++    var = env->GetMethodID(clazz, methodName, methodDescriptor); \
++    LOG_FATAL_IF(! var, "Unable to find method " methodName);
++
++#define GET_FIELD_ID(var, clazz, fieldName, fieldDescriptor) \
++    var = env->GetFieldID(clazz, fieldName, fieldDescriptor); \
++    LOG_FATAL_IF(! var, "Unable to find field " fieldName);
++
++int register_com_android_server_audio_RkAudioSetting(JNIEnv* env)
++{
++    int res = jniRegisterNativeMethods(env, "com/android/server/audio/RkAudioSetting",
++            sRkAudioSettingMethods, NELEM(sRkAudioSettingMethods));
++    LOG_FATAL_IF(res < 0, "Unable to register native methods register_com_android_server_audio_RkAudioSetting");
++    (void)res; // Don't complain about unused variable in the LOG_NDEBUG case
++
++    jclass clazz;
++    FIND_CLASS(clazz, "com/android/server/audio/RkAudioSetting");
++
++    return 0;
++}
++}
+diff --git a/services/core/jni/onload.cpp b/services/core/jni/onload.cpp
+index bc748737074..f7f93dc5a51 100755
+--- a/services/core/jni/onload.cpp
++++ b/services/core/jni/onload.cpp
+@@ -66,6 +66,7 @@ int register_android_server_stats_pull_StatsPullAtomService(JNIEnv* env);
+ int register_android_server_AdbDebuggingManager(JNIEnv* env);
+ int register_android_server_GpuService(JNIEnv* env);
+ int register_com_android_server_rkdisplay_RkDisplayModes(JNIEnv* env);
++int register_com_android_server_audio_RkAudioSetting(JNIEnv* env);
+ };
+ 
+ using namespace android;
+@@ -125,5 +126,8 @@ extern "C" jint JNI_OnLoad(JavaVM* vm, void* /* reserved */)
+     register_android_server_AdbDebuggingManager(env);
+     register_com_android_server_rkdisplay_RkDisplayModes(env);
+     register_android_server_GpuService(env);
++    register_com_android_server_rkdisplay_RkDisplayModes(env);
++    register_com_android_server_audio_RkAudioSetting(env);
++
+     return JNI_VERSION_1_4;
+ }
+diff --git a/services/java/com/android/server/SystemServer.java b/services/java/com/android/server/SystemServer.java
+index f4f5e21ae16..2489d8a10bc 100755
+--- a/services/java/com/android/server/SystemServer.java
++++ b/services/java/com/android/server/SystemServer.java
+@@ -93,6 +93,7 @@ import com.android.server.appbinding.AppBindingService;
+ import com.android.server.attention.AttentionManagerService;
+ import com.android.server.audio.AudioService;
+ import com.android.server.biometrics.AuthService;
++import com.android.server.audio.RkAudioSettingService;
+ import com.android.server.biometrics.BiometricService;
+ import com.android.server.biometrics.face.FaceService;
+ import com.android.server.biometrics.fingerprint.FingerprintService;
+@@ -1582,7 +1583,13 @@ public final class SystemServer {
+                 Slog.e(TAG, "Failure starting kDisplayDeviceManagement Service", e);
+             }
+ 
+-            t.traceBegin("StartNotificationManager");
++            Slog.i(TAG, "addService rockchip_audio_setting");
++            try {
++                ServiceManager.addService("rockchip_audio_setting", new RkAudioSettingService(context));
++            } catch (Throwable e) {
++                Slog.e(TAG, "Failure starting RkAudioSettingManager Service", e);
++            }
++
+             mSystemServiceManager.startService(NotificationManagerService.class);
+             SystemNotificationChannels.removeDeprecated(context);
+             SystemNotificationChannels.createAll(context);
+-- 
+2.35.1
+

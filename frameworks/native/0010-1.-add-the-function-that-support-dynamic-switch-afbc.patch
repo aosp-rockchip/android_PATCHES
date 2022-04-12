@@ -1,0 +1,790 @@
+From 13ff60d751faf1ac5960ba2a853237e739ef85e7 Mon Sep 17 00:00:00 2001
+From: huangds <hds@rock-chips.com>
+Date: Tue, 22 Sep 2020 09:57:14 +0800
+Subject: [PATCH 10/33] 1. add the function that support dynamic switch afbc or
+ no afbc fb target 2. use BOARD_HS_DYNAMIC_AFBC_TARGET := true in the file
+ BoardConfig.mk
+
+Change-Id: Id9c2079cf39e8c6b7c81eade283ec9381d5e9230
+---
+ libs/gui/Android.bp                           | 22 +++++-
+ libs/gui/Android.go                           | 44 +++++++++++
+ libs/gui/BufferQueueProducer.cpp              | 77 ++++++++++++++++---
+ libs/gui/include/gui/BufferQueueProducer.h    |  3 +-
+ libs/gui/include/gui/BufferSlot.h             |  1 +
+ services/surfaceflinger/Android.bp            | 24 +++++-
+ services/surfaceflinger/Android.go            | 44 +++++++++++
+ .../CompositionEngine/Android.bp              | 22 +++++-
+ .../CompositionEngine/Android.go              | 44 +++++++++++
+ .../CompositionRefreshArgs.h                  |  3 +
+ .../include/compositionengine/RenderSurface.h |  2 +
+ .../compositionengine/impl/RenderSurface.h    |  1 +
+ .../compositionengine/mock/RenderSurface.h    |  1 +
+ .../CompositionEngine/src/Output.cpp          | 17 +++-
+ .../CompositionEngine/src/RenderSurface.cpp   |  8 ++
+ .../CompositionEngine/tests/MockHWComposer.h  |  1 +
+ .../DisplayHardware/HWComposer.cpp            | 17 +++-
+ .../DisplayHardware/HWComposer.h              |  3 +
+ services/surfaceflinger/SurfaceFlinger.cpp    | 12 ++-
+ 19 files changed, 329 insertions(+), 17 deletions(-)
+ mode change 100644 => 100755 libs/gui/Android.bp
+ create mode 100755 libs/gui/Android.go
+ mode change 100644 => 100755 libs/gui/BufferQueueProducer.cpp
+ mode change 100644 => 100755 libs/gui/include/gui/BufferQueueProducer.h
+ mode change 100644 => 100755 libs/gui/include/gui/BufferSlot.h
+ mode change 100644 => 100755 services/surfaceflinger/Android.bp
+ create mode 100755 services/surfaceflinger/Android.go
+ mode change 100644 => 100755 services/surfaceflinger/CompositionEngine/Android.bp
+ create mode 100755 services/surfaceflinger/CompositionEngine/Android.go
+ mode change 100644 => 100755 services/surfaceflinger/CompositionEngine/include/compositionengine/CompositionRefreshArgs.h
+ mode change 100644 => 100755 services/surfaceflinger/CompositionEngine/include/compositionengine/RenderSurface.h
+ mode change 100644 => 100755 services/surfaceflinger/CompositionEngine/include/compositionengine/impl/RenderSurface.h
+ mode change 100644 => 100755 services/surfaceflinger/CompositionEngine/include/compositionengine/mock/RenderSurface.h
+ mode change 100644 => 100755 services/surfaceflinger/CompositionEngine/src/Output.cpp
+ mode change 100644 => 100755 services/surfaceflinger/CompositionEngine/src/RenderSurface.cpp
+ mode change 100644 => 100755 services/surfaceflinger/CompositionEngine/tests/MockHWComposer.h
+ mode change 100644 => 100755 services/surfaceflinger/DisplayHardware/HWComposer.cpp
+ mode change 100644 => 100755 services/surfaceflinger/DisplayHardware/HWComposer.h
+ mode change 100644 => 100755 services/surfaceflinger/SurfaceFlinger.cpp
+
+diff --git a/libs/gui/Android.bp b/libs/gui/Android.bp
+old mode 100644
+new mode 100755
+index 4a4510e04..2f2daa9ab
+--- a/libs/gui/Android.bp
++++ b/libs/gui/Android.bp
+@@ -38,7 +38,7 @@ cc_library_shared {
+     },
+     double_loadable: true,
+ 
+-    defaults: ["libgui_bufferqueue-defaults"],
++    defaults: ["libgui_bufferqueue-defaults","cc_libgui_defaults"],
+ 
+     srcs: [
+         ":framework_native_aidl",
+@@ -247,6 +247,26 @@ cc_defaults {
+     ],
+ }
+ 
++bootstrap_go_package {
++    name: "soong-libgui",
++    pkgPath: "android/soong/libgui",
++    deps: [
++        "blueprint",
++        "blueprint-pathtools",
++        "soong",
++        "soong-android",
++        "soong-cc",
++        "soong-genrule",
++    ],
++    srcs: [
++          "Android.go",
++    ],
++    pluginFor: ["soong_build"],
++}
++cc_libgui {
++    name: "cc_libgui_defaults"
++}
++
+ // GMocks for use by external code
+ cc_library_static {
+     name: "libgui_mocks",
+diff --git a/libs/gui/Android.go b/libs/gui/Android.go
+new file mode 100755
+index 000000000..ed38b2c54
+--- /dev/null
++++ b/libs/gui/Android.go
+@@ -0,0 +1,44 @@
++package libgui
++
++import (
++        "android/soong/android"
++        "android/soong/cc"
++        "fmt"
++        "strings"
++)
++
++func init() {
++	//该打印会在执行mm命令时，打印在屏幕上
++    //fmt.Println("libgui want to conditional Compile")
++
++	android.RegisterModuleType("cc_libgui", DefaultsFactory)
++}
++
++func DefaultsFactory() (android.Module) {
++    module := cc.DefaultsFactory()
++    android.AddLoadHook(module, Defaults)
++    return module
++}
++
++func Defaults(ctx android.LoadHookContext) {
++    type props struct {
++        Cflags []string
++    }
++    p := &props{}
++    p.Cflags = globalDefaults(ctx)
++    ctx.AppendProperties(p)
++}
++
++//条件编译主要修改函数
++func globalDefaults(ctx android.BaseContext) ([]string) {
++	var cppflags []string
++	fmt.Println("BOARD_HS_DYNAMIC_AFBC_TARGET:",ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET")) 
++	
++	
++    if (strings.EqualFold(ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET"),"true")) {
++        cppflags = append(cppflags,"-DDYNAMIC_AFBC_TARGET=1")
++    } 
++   
++	//将需要区分的环境变量在此区域添加 //....
++	return cppflags
++}
+diff --git a/libs/gui/BufferQueueProducer.cpp b/libs/gui/BufferQueueProducer.cpp
+old mode 100644
+new mode 100755
+index a7cf39add..6ae14f905
+--- a/libs/gui/BufferQueueProducer.cpp
++++ b/libs/gui/BufferQueueProducer.cpp
+@@ -252,6 +252,33 @@ status_t BufferQueueProducer::setAsyncMode(bool async) {
+     return NO_ERROR;
+ }
+ 
++int BufferQueueProducer::getFreeFBBufferLocked( bool isafbc) const {
++    if (mCore->mFreeBuffers.empty()) {
++        return BufferQueueCore::INVALID_BUFFER_SLOT;
++    }
++    int slot = mCore->mFreeBuffers.front();
++    mCore->mFreeBuffers.pop_front();
++    ALOGD("rk-debug-gui found first =%d, isafbc=%d,input_isafbc=%d",slot,mSlots[slot].mIsafbc,isafbc);
++    
++    for(int i = 0; i < 4;i++)
++    {
++        if(mSlots[slot].mIsafbc == isafbc)
++        {
++            break;
++        }
++        else
++        {
++            mCore->mFreeBuffers.push_back(slot);
++            slot = mCore->mFreeBuffers.front(); 
++            mCore->mFreeBuffers.pop_front();
++            ALOGD("rk-debug-gui found [%d] =%d, isafbc=%d,input_isafbc=%d",i,slot,mSlots[slot].mIsafbc,isafbc);
++           
++        }
++    }    
++    ALOGD("rk-debug-gui fininal found=%d, isafbc=%d,input_isafbc=%d",slot,mSlots[slot].mIsafbc,isafbc);
++    return slot;
++}
++
+ int BufferQueueProducer::getFreeBufferLocked() const {
+     if (mCore->mFreeBuffers.empty()) {
+         return BufferQueueCore::INVALID_BUFFER_SLOT;
+@@ -271,7 +298,7 @@ int BufferQueueProducer::getFreeSlotLocked() const {
+ }
+ 
+ status_t BufferQueueProducer::waitForFreeSlotThenRelock(FreeSlotCaller caller,
+-        std::unique_lock<std::mutex>& lock, int* found) const {
++        std::unique_lock<std::mutex>& lock, int* found,bool isafbc,bool isfb) const {
+     auto callerString = (caller == FreeSlotCaller::Dequeue) ?
+             "dequeueBuffer" : "attachBuffer";
+     bool tryAgain = true;
+@@ -326,8 +353,16 @@ status_t BufferQueueProducer::waitForFreeSlotThenRelock(FreeSlotCaller caller,
+                 *found = mCore->mSharedBufferSlot;
+             } else {
+                 if (caller == FreeSlotCaller::Dequeue) {
++                    int slot;
+                     // If we're calling this from dequeue, prefer free buffers
+-                    int slot = getFreeBufferLocked();
++                    if(isfb)
++                    {
++                        slot = getFreeFBBufferLocked(isafbc);                    
++                    }
++                    else
++                    {
++                        slot = getFreeBufferLocked();
++                    } 
+                     if (slot != BufferQueueCore::INVALID_BUFFER_SLOT) {
+                         *found = slot;
+                     } else if (mCore->mAllowAllocation) {
+@@ -380,6 +415,9 @@ status_t BufferQueueProducer::dequeueBuffer(int* outSlot, sp<android::Fence>* ou
+                                             uint32_t width, uint32_t height, PixelFormat format,
+                                             uint64_t usage, uint64_t* outBufferAge,
+                                             FrameEventHistoryDelta* outTimestamps) {
++    bool need_afbc = 0;   
++    bool isfb = 0;                                            
++    
+     ATRACE_CALL();
+     { // Autolock scope
+         std::lock_guard<std::mutex> lock(mCore->mMutex);
+@@ -426,7 +464,22 @@ status_t BufferQueueProducer::dequeueBuffer(int* outSlot, sp<android::Fence>* ou
+ 
+         // Enable the usage bits the consumer requested
+         usage |= mCore->mConsumerUsageBits;
+-
++        #if DYNAMIC_AFBC_TARGET
++        if((usage & GRALLOC_USAGE_HW_FB) )
++        {
++            isfb = 1;
++            if(usage & GRALLOC_USAGE_PRIVATE_0)
++            {
++                usage &= ~GRALLOC_USAGE_PRIVATE_0;
++                need_afbc = 1;   
++                ALOGD("rk-debug-gui need afbc fb-target");                
++            }
++            else  
++            {
++                ALOGD("rk-debug-gui no need afbc fb-target");                                
++            }
++        }
++        #endif
+         const bool useDefaultSize = !width && !height;
+         if (useDefaultSize) {
+             width = mCore->mDefaultWidth;
+@@ -439,7 +492,7 @@ status_t BufferQueueProducer::dequeueBuffer(int* outSlot, sp<android::Fence>* ou
+ 
+         int found = BufferItem::INVALID_BUFFER_SLOT;
+         while (found == BufferItem::INVALID_BUFFER_SLOT) {
+-            status_t status = waitForFreeSlotThenRelock(FreeSlotCaller::Dequeue, lock, &found);
++            status_t status = waitForFreeSlotThenRelock(FreeSlotCaller::Dequeue, lock, &found,need_afbc,isfb);
+             if (status != NO_ERROR) {
+                 return status;
+             }
+@@ -603,10 +656,10 @@ status_t BufferQueueProducer::dequeueBuffer(int* outSlot, sp<android::Fence>* ou
+         eglDestroySyncKHR(eglDisplay, eglFence);
+     }
+ 
+-    BQ_LOGV("dequeueBuffer: returning slot=%d/%" PRIu64 " buf=%p flags=%#x",
++    BQ_LOGV("dequeueBuffer: returning slot=%d/%" PRIu64 " buf=%p flags=%#x,afbc=%d",
+             *outSlot,
+             mSlots[*outSlot].mFrameNumber,
+-            mSlots[*outSlot].mGraphicBuffer->handle, returnFlags);
++            mSlots[*outSlot].mGraphicBuffer->handle, returnFlags,mSlots[*outSlot].mIsafbc);
+ 
+     if (outBufferAge) {
+         *outBufferAge = mCore->mBufferAge;
+@@ -772,7 +825,7 @@ status_t BufferQueueProducer::attachBuffer(int* outSlot,
+ 
+     status_t returnFlags = NO_ERROR;
+     int found;
+-    status_t status = waitForFreeSlotThenRelock(FreeSlotCaller::Attach, lock, &found);
++    status_t status = waitForFreeSlotThenRelock(FreeSlotCaller::Attach, lock, &found,0,0);
+     if (status != NO_ERROR) {
+         return status;
+     }
+@@ -1398,7 +1451,7 @@ status_t BufferQueueProducer::setSidebandStream(const sp<NativeHandle>& stream)
+ void BufferQueueProducer::allocateBuffers(uint32_t width, uint32_t height,
+         PixelFormat format, uint64_t usage) {
+     ATRACE_CALL();
+-
++    int static fb_cnt = 0;
+     const bool useDefaultSize = !width && !height;
+     while (true) {
+         size_t newBufferCount = 0;
+@@ -1455,6 +1508,8 @@ void BufferQueueProducer::allocateBuffers(uint32_t width, uint32_t height,
+                 return;
+             }
+             buffers.push_back(graphicBuffer);
++            if(allocUsage & GRALLOC_USAGE_HW_FB)
++                fb_cnt ++;
+         }
+ 
+         { // Autolock scope
+@@ -1488,7 +1543,11 @@ void BufferQueueProducer::allocateBuffers(uint32_t width, uint32_t height,
+                 mCore->clearBufferSlotLocked(*slot); // Clean up the slot first
+                 mSlots[*slot].mGraphicBuffer = buffers[i];
+                 mSlots[*slot].mFence = Fence::NO_FENCE;
+-
++                mSlots[*slot].mIsafbc = false;
++                if(fb_cnt <= 3)
++                {
++                    mSlots[*slot].mIsafbc = true;
++                }
+                 // freeBufferLocked puts this slot on the free slots list. Since
+                 // we then attached a buffer, move the slot to free buffer list.
+                 mCore->mFreeBuffers.push_front(*slot);
+diff --git a/libs/gui/include/gui/BufferQueueProducer.h b/libs/gui/include/gui/BufferQueueProducer.h
+old mode 100644
+new mode 100755
+index a7f7d1def..727d82e3f
+--- a/libs/gui/include/gui/BufferQueueProducer.h
++++ b/libs/gui/include/gui/BufferQueueProducer.h
+@@ -204,6 +204,7 @@ private:
+ 
+     // Returns the slot of the next free buffer if one is available or
+     // BufferQueueCore::INVALID_BUFFER_SLOT otherwise
++    int getFreeFBBufferLocked( bool isafbc) const ;
+     int getFreeBufferLocked() const;
+ 
+     // Returns the next free slot if one is available or
+@@ -223,7 +224,7 @@ private:
+         Attach,
+     };
+     status_t waitForFreeSlotThenRelock(FreeSlotCaller caller, std::unique_lock<std::mutex>& lock,
+-            int* found) const;
++            int* found,bool isafbc,bool isfb) const;
+ 
+     sp<BufferQueueCore> mCore;
+ 
+diff --git a/libs/gui/include/gui/BufferSlot.h b/libs/gui/include/gui/BufferSlot.h
+old mode 100644
+new mode 100755
+index 57704b1d0..5803034ba
+--- a/libs/gui/include/gui/BufferSlot.h
++++ b/libs/gui/include/gui/BufferSlot.h
+@@ -230,6 +230,7 @@ struct BufferSlot {
+     // producer. If so, it needs to set the BUFFER_NEEDS_REALLOCATION flag when
+     // dequeued to prevent the producer from using a stale cached buffer.
+     bool mNeedsReallocation;
++    bool mIsafbc;
+ };
+ 
+ } // namespace android
+diff --git a/services/surfaceflinger/Android.bp b/services/surfaceflinger/Android.bp
+old mode 100644
+new mode 100755
+index a790d0b74..d2bb99125
+--- a/services/surfaceflinger/Android.bp
++++ b/services/surfaceflinger/Android.bp
+@@ -13,7 +13,7 @@ cc_defaults {
+ 
+ cc_defaults {
+     name: "libsurfaceflinger_defaults",
+-    defaults: ["surfaceflinger_defaults"],
++    defaults: ["surfaceflinger_defaults","cc_libsurfaceflinger_defaults"],
+     cflags: [
+         "-DLOG_TAG=\"SurfaceFlinger\"",
+         "-DGL_GLEXT_PROTOTYPES",
+@@ -119,6 +119,27 @@ cc_defaults {
+     },
+ }
+ 
++
++bootstrap_go_package {
++    name: "soong-libsurfaceflinger",
++    pkgPath: "android/soong/libsurfaceflinger",
++    deps: [
++        "blueprint",
++        "blueprint-pathtools",
++        "soong",
++        "soong-android",
++        "soong-cc",
++        "soong-genrule",
++    ],
++    srcs: [
++          "Android.go",
++    ],
++    pluginFor: ["soong_build"],
++}
++cc_libsurfaceflinger {
++    name: "cc_libsurfaceflinger_defaults"
++}
++
+ cc_library_headers {
+     name: "libsurfaceflinger_headers",
+     export_include_dirs: ["."],
+@@ -263,6 +284,7 @@ subdirs = [
+     "tests",
+ ]
+ 
++
+ cc_library_shared {
+     name: "libSurfaceFlingerProp",
+     srcs: [
+diff --git a/services/surfaceflinger/Android.go b/services/surfaceflinger/Android.go
+new file mode 100755
+index 000000000..a7a6eb960
+--- /dev/null
++++ b/services/surfaceflinger/Android.go
+@@ -0,0 +1,44 @@
++package libsurfaceflinger
++
++import (
++        "android/soong/android"
++        "android/soong/cc"
++        "fmt"
++        "strings"
++)
++
++func init() {
++	//该打印会在执行mm命令时，打印在屏幕上
++    //fmt.Println("libgui want to conditional Compile")
++
++	android.RegisterModuleType("cc_libsurfaceflinger", DefaultsFactory)
++}
++
++func DefaultsFactory() (android.Module) {
++    module := cc.DefaultsFactory()
++    android.AddLoadHook(module, Defaults)
++    return module
++}
++
++func Defaults(ctx android.LoadHookContext) {
++    type props struct {
++        Cflags []string
++    }
++    p := &props{}
++    p.Cflags = globalDefaults(ctx)
++    ctx.AppendProperties(p)
++}
++
++//条件编译主要修改函数
++func globalDefaults(ctx android.BaseContext) ([]string) {
++	var cflags []string
++	fmt.Println("BOARD_HS_DYNAMIC_AFBC_TARGET_SF:",ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET")) 
++	
++	
++    if (strings.EqualFold(ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET"),"true")) {
++        cflags = append(cflags,"-DDYNAMIC_AFBC_TARGET=1")
++    } 
++   
++	//将需要区分的环境变量在此区域添加 //....
++	return cflags
++}
+diff --git a/services/surfaceflinger/CompositionEngine/Android.bp b/services/surfaceflinger/CompositionEngine/Android.bp
+old mode 100644
+new mode 100755
+index b3b9fe598..6d3fcd82f
+--- a/services/surfaceflinger/CompositionEngine/Android.bp
++++ b/services/surfaceflinger/CompositionEngine/Android.bp
+@@ -41,7 +41,7 @@ cc_defaults {
+ 
+ cc_library {
+     name: "libcompositionengine",
+-    defaults: ["libcompositionengine_defaults"],
++    defaults: ["libcompositionengine_defaults","cc_libcompositionengine_defaults"],
+     srcs: [
+         "src/ClientCompositionRequestCache.cpp",
+         "src/CompositionEngine.cpp",
+@@ -84,6 +84,26 @@ cc_library {
+     export_include_dirs: ["include"],
+ }
+ 
++bootstrap_go_package {
++    name: "soong-libcompositionengine",
++    pkgPath: "android/soong/libcompositionengine",
++    deps: [
++        "blueprint",
++        "blueprint-pathtools",
++        "soong",
++        "soong-android",
++        "soong-cc",
++        "soong-genrule",
++    ],
++    srcs: [
++          "Android.go",
++    ],
++    pluginFor: ["soong_build"],
++}
++cc_libcompositionengine {
++    name: "cc_libcompositionengine_defaults"
++}
++
+ cc_test {
+     name: "libcompositionengine_test",
+     test_suites: ["device-tests"],
+diff --git a/services/surfaceflinger/CompositionEngine/Android.go b/services/surfaceflinger/CompositionEngine/Android.go
+new file mode 100755
+index 000000000..ee72d8ace
+--- /dev/null
++++ b/services/surfaceflinger/CompositionEngine/Android.go
+@@ -0,0 +1,44 @@
++package  libcompositionengine
++
++import (
++        "android/soong/android"
++        "android/soong/cc"
++        "fmt"
++        "strings"
++)
++
++func init() {
++	//该打印会在执行mm命令时，打印在屏幕上
++    //fmt.Println("libgui want to conditional Compile")
++
++	android.RegisterModuleType("cc_libcompositionengine", DefaultsFactory)
++}
++
++func DefaultsFactory() (android.Module) {
++    module := cc.DefaultsFactory()
++    android.AddLoadHook(module, Defaults)
++    return module
++}
++
++func Defaults(ctx android.LoadHookContext) {
++    type props struct {
++        Cflags []string
++    }
++    p := &props{}
++    p.Cflags = globalDefaults(ctx)
++    ctx.AppendProperties(p)
++}
++
++//条件编译主要修改函数
++func globalDefaults(ctx android.BaseContext) ([]string) {
++	var cflags []string
++	fmt.Println("BOARD_HS_DYNAMIC_AFBC_TARGET_comp:",ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET")) 
++
++	
++    if (strings.EqualFold(ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET"),"true")) {
++        cflags = append(cflags,"-DDYNAMIC_AFBC_TARGET=1")
++    } 
++   
++	//将需要区分的环境变量在此区域添加 //....
++	return cflags
++}
+diff --git a/services/surfaceflinger/CompositionEngine/include/compositionengine/CompositionRefreshArgs.h b/services/surfaceflinger/CompositionEngine/include/compositionengine/CompositionRefreshArgs.h
+old mode 100644
+new mode 100755
+index a0606b48f..6f40c593e
+--- a/services/surfaceflinger/CompositionEngine/include/compositionengine/CompositionRefreshArgs.h
++++ b/services/surfaceflinger/CompositionEngine/include/compositionengine/CompositionRefreshArgs.h
+@@ -77,6 +77,9 @@ struct CompositionRefreshArgs {
+     // If true, client composition is always used.
+     bool devOptForceClientComposition{false};
+ 
++    // If true, afbc Composition
++    bool useAfbcTargetComposition{false};
++
+     // If set, causes the dirty regions to flash with the delay
+     std::optional<std::chrono::microseconds> devOptFlashDirtyRegionsDelay;
+ };
+diff --git a/services/surfaceflinger/CompositionEngine/include/compositionengine/RenderSurface.h b/services/surfaceflinger/CompositionEngine/include/compositionengine/RenderSurface.h
+old mode 100644
+new mode 100755
+index f68046024..41b8de75b
+--- a/services/surfaceflinger/CompositionEngine/include/compositionengine/RenderSurface.h
++++ b/services/surfaceflinger/CompositionEngine/include/compositionengine/RenderSurface.h
+@@ -82,6 +82,8 @@ public:
+     // Allocates a buffer as scratch space for GPU composition
+     virtual sp<GraphicBuffer> dequeueBuffer(base::unique_fd* bufferFence) = 0;
+ 
++    virtual int perform(int operation, uint64_t usage) = 0;
++
+     // Queues the drawn buffer for consumption by HWC. readyFence is the fence
+     // which will fire when the buffer is ready for consumption.
+     virtual void queueBuffer(base::unique_fd readyFence) = 0;
+diff --git a/services/surfaceflinger/CompositionEngine/include/compositionengine/impl/RenderSurface.h b/services/surfaceflinger/CompositionEngine/include/compositionengine/impl/RenderSurface.h
+old mode 100644
+new mode 100755
+index 5127a6f31..61f144036
+--- a/services/surfaceflinger/CompositionEngine/include/compositionengine/impl/RenderSurface.h
++++ b/services/surfaceflinger/CompositionEngine/include/compositionengine/impl/RenderSurface.h
+@@ -55,6 +55,7 @@ public:
+     status_t beginFrame(bool mustRecompose) override;
+     void prepareFrame(bool usesClientComposition, bool usesDeviceComposition) override;
+     sp<GraphicBuffer> dequeueBuffer(base::unique_fd* bufferFence) override;
++	int perform(int operation, uint64_t usage) override;
+     void queueBuffer(base::unique_fd readyFence) override;
+     void onPresentDisplayCompleted() override;
+     void flip() override;
+diff --git a/services/surfaceflinger/CompositionEngine/include/compositionengine/mock/RenderSurface.h b/services/surfaceflinger/CompositionEngine/include/compositionengine/mock/RenderSurface.h
+old mode 100644
+new mode 100755
+index a0cae6fcb..83deb5f72
+--- a/services/surfaceflinger/CompositionEngine/include/compositionengine/mock/RenderSurface.h
++++ b/services/surfaceflinger/CompositionEngine/include/compositionengine/mock/RenderSurface.h
+@@ -40,6 +40,7 @@ public:
+     MOCK_METHOD1(beginFrame, status_t(bool mustRecompose));
+     MOCK_METHOD2(prepareFrame, void(bool, bool));
+     MOCK_METHOD1(dequeueBuffer, sp<GraphicBuffer>(base::unique_fd*));
++	MOCK_METHOD2(perform, int(int,uint64_t));
+     MOCK_METHOD1(queueBuffer, void(base::unique_fd));
+     MOCK_METHOD0(onPresentDisplayCompleted, void());
+     MOCK_METHOD0(flip, void());
+diff --git a/services/surfaceflinger/CompositionEngine/src/Output.cpp b/services/surfaceflinger/CompositionEngine/src/Output.cpp
+old mode 100644
+new mode 100755
+index e8f54f57b..2be60140e
+--- a/services/surfaceflinger/CompositionEngine/src/Output.cpp
++++ b/services/surfaceflinger/CompositionEngine/src/Output.cpp
+@@ -41,7 +41,7 @@
+ #include <ui/DebugUtils.h>
+ #include <ui/HdrCapabilities.h>
+ #include <utils/Trace.h>
+-
++#include <gui/Surface.h>
+ #include "TracedOrdinal.h"
+ 
+ namespace android::compositionengine {
+@@ -811,12 +811,15 @@ std::optional<base::unique_fd> Output::composeSurfaces(
+         const Region& debugRegion, const compositionengine::CompositionRefreshArgs& refreshArgs) {
+     ATRACE_CALL();
+     ALOGV(__FUNCTION__);
+-
++    static int docompcnt = 0;    
+     const auto& outputState = getState();
+     OutputCompositionState& outputCompositionState = editState();
+     const TracedOrdinal<bool> hasClientComposition = {"hasClientComposition",
+                                                       outputState.usesClientComposition};
+ 
++#if DYNAMIC_AFBC_TARGET
++    const bool hasClientAfbc = refreshArgs.useAfbcTargetComposition;
++#endif    
+     auto& renderEngine = getCompositionEngine().getRenderEngine();
+     const bool supportsProtectedContent = renderEngine.supportsProtectedContent();
+ 
+@@ -844,6 +847,16 @@ std::optional<base::unique_fd> Output::composeSurfaces(
+     // flipClientTarget request for this frame on this output, we still need to
+     // dequeue a buffer.
+     if (hasClientComposition || outputState.flipClientTarget) {
++        docompcnt ++;
++        #if DYNAMIC_AFBC_TARGET
++        if(docompcnt > 10)
++        {
++            if(hasClientAfbc)
++                mRenderSurface->perform(NATIVE_WINDOW_SET_USAGE,GRALLOC_USAGE_PRIVATE_0 | GRALLOC_USAGE_HW_FB | GRALLOC_USAGE_HW_COMPOSER | GRALLOC_USAGE_HW_RENDER); 
++            else
++                mRenderSurface->perform(NATIVE_WINDOW_SET_USAGE, GRALLOC_USAGE_HW_FB | GRALLOC_USAGE_HW_COMPOSER | GRALLOC_USAGE_HW_RENDER); 
++        }  
++        #endif
+         buf = mRenderSurface->dequeueBuffer(&fd);
+         if (buf == nullptr) {
+             ALOGW("Dequeuing buffer for display [%s] failed, bailing out of "
+diff --git a/services/surfaceflinger/CompositionEngine/src/RenderSurface.cpp b/services/surfaceflinger/CompositionEngine/src/RenderSurface.cpp
+old mode 100644
+new mode 100755
+index 2773fd3a1..8cd2db680
+--- a/services/surfaceflinger/CompositionEngine/src/RenderSurface.cpp
++++ b/services/surfaceflinger/CompositionEngine/src/RenderSurface.cpp
+@@ -169,6 +169,14 @@ sp<GraphicBuffer> RenderSurface::dequeueBuffer(base::unique_fd* bufferFence) {
+     return mGraphicBuffer;
+ }
+ 
++int RenderSurface::perform(int operation, uint64_t usage) {
++   // va_list args;
++    ALOGD("rk-debug-sf set perform ver1"); 
++   // va_start(args, operation);
++    int result = mNativeWindow->perform(mNativeWindow.get(),operation,usage);  //0x10001a00
++   // va_end(args);
++    return result;
++}
+ void RenderSurface::queueBuffer(base::unique_fd readyFence) {
+     auto& state = mDisplay.getState();
+ 
+diff --git a/services/surfaceflinger/CompositionEngine/tests/MockHWComposer.h b/services/surfaceflinger/CompositionEngine/tests/MockHWComposer.h
+old mode 100644
+new mode 100755
+index 75a4fec8f..7d6a95047
+--- a/services/surfaceflinger/CompositionEngine/tests/MockHWComposer.h
++++ b/services/surfaceflinger/CompositionEngine/tests/MockHWComposer.h
+@@ -61,6 +61,7 @@ public:
+     MOCK_METHOD2(setColorTransform, status_t(DisplayId, const mat4&));
+     MOCK_METHOD1(disconnectDisplay, void(DisplayId));
+     MOCK_CONST_METHOD1(hasDeviceComposition, bool(const std::optional<DisplayId>&));
++    MOCK_CONST_METHOD1(hasClientAFBC, bool(const std::optional<DisplayId>&));
+     MOCK_CONST_METHOD1(getPresentFence, sp<Fence>(DisplayId));
+     MOCK_CONST_METHOD2(getLayerReleaseFence, sp<Fence>(DisplayId, HWC2::Layer*));
+     MOCK_METHOD3(setOutputBuffer, status_t(DisplayId, const sp<Fence>&, const sp<GraphicBuffer>&));
+diff --git a/services/surfaceflinger/DisplayHardware/HWComposer.cpp b/services/surfaceflinger/DisplayHardware/HWComposer.cpp
+old mode 100644
+new mode 100755
+index 7a2f0f34e..83dc0f4b8
+--- a/services/surfaceflinger/DisplayHardware/HWComposer.cpp
++++ b/services/surfaceflinger/DisplayHardware/HWComposer.cpp
+@@ -497,7 +497,7 @@ status_t HWComposer::getDeviceCompositionChanges(
+ 
+     uint32_t numTypes = 0;
+     uint32_t numRequests = 0;
+-
++	static int framecnt = 0;
+     hal::Error error = hal::Error::NONE;
+ 
+     // First try to skip validate altogether when there is no client
+@@ -540,7 +540,13 @@ status_t HWComposer::getDeviceCompositionChanges(
+     layerRequests.reserve(numRequests);
+     error = hwcDisplay->getRequests(&displayRequests, &layerRequests);
+     RETURN_IF_HWC_ERROR_FOR("getRequests", error, displayId, BAD_INDEX);
++	displayData.hasClientafbc = false;
++	framecnt ++;
+ 
++ 	if (0 == framecnt%2)
++    {
++    	displayData.hasClientafbc = true;
++    }
+     DeviceRequestedChanges::ClientTargetProperty clientTargetProperty;
+     error = hwcDisplay->getClientTargetProperty(&clientTargetProperty);
+ 
+@@ -552,7 +558,16 @@ status_t HWComposer::getDeviceCompositionChanges(
+ 
+     return NO_ERROR;
+ }
++bool HWComposer::hasClientAFBC(const std::optional<DisplayId>& displayId) const {
++    if (!displayId) {
++        // Displays without a corresponding HWC display are always composed by
++        // the client
++        return true;
++    }
+ 
++    RETURN_IF_INVALID_DISPLAY(*displayId, true);
++    return mDisplayData.at(*displayId).hasClientafbc;
++}
+ sp<Fence> HWComposer::getPresentFence(DisplayId displayId) const {
+     RETURN_IF_INVALID_DISPLAY(displayId, Fence::NO_FENCE);
+     return mDisplayData.at(displayId).lastPresentFence;
+diff --git a/services/surfaceflinger/DisplayHardware/HWComposer.h b/services/surfaceflinger/DisplayHardware/HWComposer.h
+old mode 100644
+new mode 100755
+index c355ebd4a..aa239ff86
+--- a/services/surfaceflinger/DisplayHardware/HWComposer.h
++++ b/services/surfaceflinger/DisplayHardware/HWComposer.h
+@@ -126,6 +126,7 @@ public:
+ 
+     // reset state when an external, non-virtual display is disconnected
+     virtual void disconnectDisplay(DisplayId displayId) = 0;
++    virtual bool hasClientAFBC(const std::optional<DisplayId>& displayId) const =0;
+ 
+     // get the present fence received from the last call to present.
+     virtual sp<Fence> getPresentFence(DisplayId displayId) const = 0;
+@@ -273,6 +274,7 @@ public:
+ 
+     // reset state when an external, non-virtual display is disconnected
+     void disconnectDisplay(DisplayId displayId) override;
++    bool hasClientAFBC(const std::optional<DisplayId>& displayId) const override;
+ 
+     // get the present fence received from the last call to present.
+     sp<Fence> getPresentFence(DisplayId displayId) const override;
+@@ -382,6 +384,7 @@ private:
+ 
+     struct DisplayData {
+         bool isVirtual = false;
++		bool hasClientafbc = false;
+         std::unique_ptr<HWC2::Display> hwcDisplay;
+         sp<Fence> lastPresentFence = Fence::NO_FENCE; // signals when the last set op retires
+         std::unordered_map<HWC2::Layer*, sp<Fence>> releaseFences;
+diff --git a/services/surfaceflinger/SurfaceFlinger.cpp b/services/surfaceflinger/SurfaceFlinger.cpp
+old mode 100644
+new mode 100755
+index 07690cbf3..1e7923ca5
+--- a/services/surfaceflinger/SurfaceFlinger.cpp
++++ b/services/surfaceflinger/SurfaceFlinger.cpp
+@@ -334,8 +334,11 @@ SurfaceFlinger::SurfaceFlinger(Factory& factory) : SurfaceFlinger(factory, SkipI
+     // Vr flinger is only enabled on Daydream ready devices.
+     useVrFlinger = use_vr_flinger(false);
+ 
++    #if DYNAMIC_AFBC_TARGET
++    maxFrameBufferAcquiredBuffers = max_frame_buffer_acquired_buffers(6);
++    #else
+     maxFrameBufferAcquiredBuffers = max_frame_buffer_acquired_buffers(2);
+-
++    #endif
+     maxGraphicsWidth = std::max(max_graphics_width(0), 0);
+     maxGraphicsHeight = std::max(max_graphics_height(0), 0);
+ 
+@@ -2083,7 +2086,14 @@ void SurfaceFlinger::onMessageRefresh() {
+         refreshArgs.devOptFlashDirtyRegionsDelay =
+                 std::chrono::milliseconds(mDebugRegion > 1 ? mDebugRegion : 0);
+     }
++    const auto* dpy = ON_MAIN_THREAD(getDefaultDisplayDeviceLocked()).get();
++
++    if(dpy)
++        refreshArgs.useAfbcTargetComposition =  getHwComposer().hasClientAFBC(*dpy->getId());
++    else
++        refreshArgs.useAfbcTargetComposition =  false;
+ 
++    ALOGD("rk-debug-sf useAfbcTargetComposition=%d",refreshArgs.useAfbcTargetComposition);    
+     mGeometryInvalid = false;
+ 
+     // Store the present time just before calling to the composition engine so we could notify
+-- 
+2.35.1
+

@@ -1,0 +1,31 @@
+From ae0147eaea925e165a9055c132794ef82c7d18a5 Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Mon, 4 Jan 2021 10:14:22 +0800
+Subject: [PATCH 6/6] vendordefault: Add searchpaths for eink device.
+
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+Change-Id: Ia40f38b65b6f87e01341a8cde6c9f984cc6f0167
+---
+ contents/namespace/vendordefault.cc | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/contents/namespace/vendordefault.cc b/contents/namespace/vendordefault.cc
+index 6d56904..bd60ffd 100644
+--- a/contents/namespace/vendordefault.cc
++++ b/contents/namespace/vendordefault.cc
+@@ -75,6 +75,12 @@ Namespace BuildVendorDefaultNamespace([[maybe_unused]] const Context& ctx) {
+   }
+ 
+   ns.AddSearchPath("/vendor/${LIB}", AsanPath::WITH_DATA_ASAN);
++
++  // Add for libskia.so to reduce hwcomposer size.
++  ns.AddSearchPath("/system/${LIB}", AsanPath::WITH_DATA_ASAN);
++  ns.AddSearchPath("/apex/com.android.art/${LIB}", AsanPath::WITH_DATA_ASAN);
++  // End add.
++
+   // Allow loosen restriction between vndk and private platform libraries
+   if (is_vndklite) {
+     ns.AddSearchPath("/vendor/${LIB}/vndk", AsanPath::WITH_DATA_ASAN);
+-- 
+2.35.1
+

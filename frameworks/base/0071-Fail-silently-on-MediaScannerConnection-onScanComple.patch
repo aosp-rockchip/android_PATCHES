@@ -1,0 +1,78 @@
+From 9dc385b25ad07031bd245bf79ed21c6709069219 Mon Sep 17 00:00:00 2001
+From: Sahana Rao <sahanas@google.com>
+Date: Mon, 10 Feb 2020 13:59:42 +0000
+Subject: [PATCH 071/297] Fail silently on
+ MediaScannerConnection#onScanCompleted
+
+MediaScannerConnection#onScanCompleted callback runs on background
+thread. Exception on the callback kills the process. To avoid this,
+ignore exceptions from callback for apps targeting Q or lower.
+
+This change fixes change in behavior from refactoring
+Ie959daa7576214024150faf84b44cdba00119257 where errors on the callback
+was handled on a binder thread that doesn't cause process crash.
+
+Test: atest frameworks/base/media/ directory
+Test: "in.mohalla.sharechat" app doesn't crash while sharing video.
+Test: "com.vkontakte.android" app doesn't crash while sending a photo.
+Bug: 147998630
+Bug: 148925602
+Change-Id: I5bd5f9fc22ac274da4d09c55dd639a6cca08be9b
+(cherry picked from commit 364d250fb72595fa3b927350cb38da6cac824624)
+---
+ .../android/media/MediaScannerConnection.java | 25 ++++++++++++++-----
+ 1 file changed, 19 insertions(+), 6 deletions(-)
+
+diff --git a/media/java/android/media/MediaScannerConnection.java b/media/java/android/media/MediaScannerConnection.java
+index 05fa511fc81..2bffe8ac064 100644
+--- a/media/java/android/media/MediaScannerConnection.java
++++ b/media/java/android/media/MediaScannerConnection.java
+@@ -156,9 +156,7 @@ public class MediaScannerConnection implements ServiceConnection {
+             }
+             BackgroundThread.getExecutor().execute(() -> {
+                 final Uri uri = scanFileQuietly(mProvider, new File(path));
+-                if (mClient != null) {
+-                    mClient.onScanCompleted(path, uri);
+-                }
++                runCallBack(mContext, mClient, path, uri);
+             });
+         }
+     }
+@@ -187,9 +185,7 @@ public class MediaScannerConnection implements ServiceConnection {
+                     .acquireContentProviderClient(MediaStore.AUTHORITY)) {
+                 for (String path : paths) {
+                     final Uri uri = scanFileQuietly(client, new File(path));
+-                    if (callback != null) {
+-                        callback.onScanCompleted(path, uri);
+-                    }
++                    runCallBack(context, callback, path, uri);
+                 }
+             }
+         });
+@@ -206,6 +202,23 @@ public class MediaScannerConnection implements ServiceConnection {
+         return uri;
+     }
+ 
++    private static void runCallBack(Context context, OnScanCompletedListener callback,
++            String path, Uri uri) {
++        if (callback != null) {
++            // Ignore exceptions from callback to avoid calling app from crashing.
++            // Don't ignore exceptions for apps targeting 'R' or higher.
++            try {
++                callback.onScanCompleted(path, uri);
++            } catch (Throwable e) {
++                if (context.getApplicationInfo().targetSdkVersion >= Build.VERSION_CODES.R) {
++                    throw e;
++                } else {
++                    Log.w(TAG, "Ignoring exception from callback for backward compatibility", e);
++                }
++            }
++        }
++    }
++
+     @Deprecated
+     static class ClientProxy implements MediaScannerConnectionClient {
+         @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.O)
+-- 
+2.35.1
+

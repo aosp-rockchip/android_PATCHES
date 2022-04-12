@@ -1,0 +1,33 @@
+From d1e003be6904a2a7d5701bb7fa0a892922fa0a6d Mon Sep 17 00:00:00 2001
+From: Winson Chung <winsonc@google.com>
+Date: Fri, 25 Oct 2019 10:27:44 -0700
+Subject: [PATCH 03/13] Skip handling input while the user is still locked
+
+- None of the gestures work when the user is locked so
+  we can just skip them.
+
+Bug: 143107728
+Test: Manual
+Change-Id: I2661d58269f7eccbfcd2214792c128b432e0347c
+(cherry picked from commit fc8c975880f2023ff3d0cc5caf284c704a6a37f9)
+---
+ .../src/com/android/quickstep/TouchInteractionService.java     | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/quickstep/recents_ui_overrides/src/com/android/quickstep/TouchInteractionService.java b/quickstep/recents_ui_overrides/src/com/android/quickstep/TouchInteractionService.java
+index 0eafb44a5..5591e40b8 100644
+--- a/quickstep/recents_ui_overrides/src/com/android/quickstep/TouchInteractionService.java
++++ b/quickstep/recents_ui_overrides/src/com/android/quickstep/TouchInteractionService.java
+@@ -416,6 +416,9 @@ public class TouchInteractionService extends Service implements
+             Log.e(TAG, "Unknown event " + ev);
+             return;
+         }
++        if (!mDeviceState.isUserUnlocked()) {
++            return;
++        }
+ 
+         Object traceToken = TraceHelper.INSTANCE.beginFlagsOverride(
+                 TraceHelper.FLAG_ALLOW_BINDER_TRACKING);
+-- 
+2.35.1
+

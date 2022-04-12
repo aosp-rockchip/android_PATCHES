@@ -1,0 +1,79 @@
+From 1bc2bef98d9f044d42a668e148166a5e942e253d Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Fri, 16 Oct 2020 17:18:39 +0800
+Subject: [PATCH 207/297] Revert "PMS: Add vulkan version support."
+
+This reverts commit 68ee576b88a11a13b6584c3f35d66b5a150b365e
+Reason for revert: adjust rockchip vulkan work policy.
+
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+Change-Id: I06d35850231638b69a519d7b022f0e396526ea8c
+---
+ core/java/android/app/ApplicationPackageManager.java  | 11 +++++++++++
+ .../com/android/server/pm/PackageManagerService.java  |  7 -------
+ .../android/server/wm/ActivityTaskManagerService.java |  9 ---------
+ 3 files changed, 11 insertions(+), 16 deletions(-)
+
+diff --git a/core/java/android/app/ApplicationPackageManager.java b/core/java/android/app/ApplicationPackageManager.java
+index ebc5ff21925..bcbf7d87f12 100644
+--- a/core/java/android/app/ApplicationPackageManager.java
++++ b/core/java/android/app/ApplicationPackageManager.java
+@@ -679,6 +679,17 @@ public class ApplicationPackageManager extends PackageManager {
+ 
+     @Override
+     public boolean hasSystemFeature(String name, int version) {
++        // Support vulkan v1.1 when antutu is running in forceground.
++        if (!SystemProperties.getBoolean("cts_gts.status", false) &&
++            name.equals("android.hardware.vulkan.version") &&
++            "true".equals(SystemProperties.get("persist.vendor.rk_vulkan"))) {
++            final String packageName = mContext.getOpPackageName();
++            if (packageName.contains("com.antutu.benchmark.full") ||
++                packageName.contains("com.antutu.ABenchMark")) {
++                Log.w("ATTU", "Support vulkan 1.1.0 now!");
++                return 4198400 >= version;
++            }
++        }
+         return mHasSystemFeatureCache.query(new HasSystemFeatureQuery(name, version));
+     }
+ 
+diff --git a/services/core/java/com/android/server/pm/PackageManagerService.java b/services/core/java/com/android/server/pm/PackageManagerService.java
+index 67c94ffdcab..eea0611ac0e 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -5871,13 +5871,6 @@ public class PackageManagerService extends IPackageManager.Stub
+     public boolean hasSystemFeature(String name, int version) {
+         // allow instant applications
+         synchronized (mAvailableFeatures) {
+-            // Support vulkan v1.1 when antutu is running in forceground.
+-            if (SystemProperties.getBoolean("cts_gts.antutu", false) &&
+-                !SystemProperties.getBoolean("cts_gts.status", false) &&
+-                name.equals("android.hardware.vulkan.version")) {
+-                Slog.w("ATTU", "Support vulkan 1.1.0 now!");
+-                return 4198400 >= version;
+-            }
+             final FeatureInfo feat = mAvailableFeatures.get(name);
+             if (feat == null) {
+                 return false;
+diff --git a/services/core/java/com/android/server/wm/ActivityTaskManagerService.java b/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
+index 2888ef9555f..7f88b33705f 100644
+--- a/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
++++ b/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
+@@ -3271,15 +3271,6 @@ public class ActivityTaskManagerService extends IActivityTaskManager.Stub {
+                 Log.v(TAG,"getPackageFerformanceMode--"+r.mActivityComponent.toString()+"----"+r.packageName);
+                 mode = AppGlobals.getPackageManager().getPackagePerformanceMode(
+                         r.mActivityComponent.toString());
+-                // Only set cts_gts.antutu to true when starting antutu
+-                if ("true".equals(SystemProperties.get("persist.vendor.rk_vulkan"))) {
+-                    if (r.packageName.contains("com.antutu.ABenchMark") ||
+-                        r.packageName.contains("com.antutu.benchmark.full")) {
+-                        SystemProperties.set("cts_gts.antutu", "true");
+-                    } else if (SystemProperties.getBoolean("cts_gts.antutu", false)) {
+-                        SystemProperties.set("cts_gts.antutu", "false");
+-                    }
+-                }
+             } catch (RemoteException e) {
+             }
+         }
+-- 
+2.35.1
+

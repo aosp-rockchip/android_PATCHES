@@ -1,0 +1,66 @@
+From a038a212302304f4dfeb77a5399a308b136dfb2c Mon Sep 17 00:00:00 2001
+From: Yiwei Zhang <zzyiwei@google.com>
+Date: Tue, 28 Jul 2020 23:11:21 -0700
+Subject: [PATCH 24/33] GpuService: secure setUpdatableDriverPath
+
+setUpdatableDriverPath should only be called by system_server and
+developer driver path needs to be protected by a lock.
+
+Bug: 162383705
+Bug: 159240322
+Test: ./gapit validate_gpu_profiling --os android
+Change-Id: I48896325598acab89079dbc658ddf9b92d303244
+Merged-In: I48896325598acab89079dbc658ddf9b92d303244
+(cherry picked from commit 2b65d6ca48773901c396344c5fdc851ec14a4bdf)
+---
+ services/gpuservice/GpuService.cpp | 16 ++++++++++++++--
+ services/gpuservice/GpuService.h   |  3 ++-
+ 2 files changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/services/gpuservice/GpuService.cpp b/services/gpuservice/GpuService.cpp
+index 304f1d059..81b0a46e0 100644
+--- a/services/gpuservice/GpuService.cpp
++++ b/services/gpuservice/GpuService.cpp
+@@ -63,11 +63,23 @@ void GpuService::setTargetStats(const std::string& appPackageName, const uint64_
+ }
+ 
+ void GpuService::setUpdatableDriverPath(const std::string& driverPath) {
+-    developerDriverPath = driverPath;
++    IPCThreadState* ipc = IPCThreadState::self();
++    const int pid = ipc->getCallingPid();
++    const int uid = ipc->getCallingUid();
++
++    // only system_server is allowed to set updatable driver path
++    if (uid != AID_SYSTEM) {
++        ALOGE("Permission Denial: can't set updatable driver path from pid=%d, uid=%d\n", pid, uid);
++        return;
++    }
++
++    std::lock_guard<std::mutex> lock(mLock);
++    mDeveloperDriverPath = driverPath;
+ }
+ 
+ std::string GpuService::getUpdatableDriverPath() {
+-    return developerDriverPath;
++    std::lock_guard<std::mutex> lock(mLock);
++    return mDeveloperDriverPath;
+ }
+ 
+ status_t GpuService::shellCommand(int /*in*/, int out, int err, std::vector<String16>& args) {
+diff --git a/services/gpuservice/GpuService.h b/services/gpuservice/GpuService.h
+index ba44fe04d..d1c3aabcc 100644
+--- a/services/gpuservice/GpuService.h
++++ b/services/gpuservice/GpuService.h
+@@ -75,7 +75,8 @@ private:
+      * Attributes
+      */
+     std::unique_ptr<GpuStats> mGpuStats;
+-    std::string developerDriverPath;
++    std::mutex mLock;
++    std::string mDeveloperDriverPath;
+ };
+ 
+ } // namespace android
+-- 
+2.35.1
+

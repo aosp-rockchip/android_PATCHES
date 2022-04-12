@@ -1,0 +1,52 @@
+From fa2a37235183ce393060431aefdd9bb858149db7 Mon Sep 17 00:00:00 2001
+From: Zhixiong Lin <zhixiong.lin@rock-chips.com>
+Date: Thu, 26 Nov 2020 14:10:27 +0800
+Subject: [PATCH 23/33] SurfaceFlinger: fix 'screencap\sleep\rotation' abnormal
+ when prerotation
+
+Change-Id: I779e7e5b9dbaae83f81b74af523680c65259e91e
+Signed-off-by: Zhixiong Lin <zhixiong.lin@rock-chips.com>
+---
+ services/surfaceflinger/SurfaceFlinger.cpp | 26 +++++++++++++++++++++-
+ 1 file changed, 25 insertions(+), 1 deletion(-)
+
+diff --git a/services/surfaceflinger/SurfaceFlinger.cpp b/services/surfaceflinger/SurfaceFlinger.cpp
+index c339c3a6e..3c4190e10 100755
+--- a/services/surfaceflinger/SurfaceFlinger.cpp
++++ b/services/surfaceflinger/SurfaceFlinger.cpp
+@@ -5885,7 +5885,31 @@ void SurfaceFlinger::renderScreenImplLocked(const RenderArea& renderArea,
+     // buffer bounds.
+     clientCompositionDisplay.physicalDisplay = Rect(reqWidth, reqHeight);
+     clientCompositionDisplay.clip = sourceCrop;
+-    clientCompositionDisplay.orientation = rotation;
++
++    //we need consider internalDisplayOrientation when renderScreenImpl
++    //clientCompositionDisplay.orientation = rotation;
++    android::ui::Rotation r = android::ui::ROTATION_0;
++
++    switch (rotation) {
++        case ui::Transform::ROT_0:
++            r =  android::ui::ROTATION_0;
++            break;
++        case ui::Transform::ROT_90:
++            r =  android::ui::ROTATION_90;
++            break;
++        case ui::Transform::ROT_180:
++            r =  android::ui::ROTATION_180;
++            break;
++        case ui::Transform::ROT_270:
++            r =  android::ui::ROTATION_270;
++            break;
++        default:
++            r = android::ui::ROTATION_0;
++            break;
++    }
++
++    android::ui::Rotation new_orientation = (android::ui::Rotation)(((int)r + (int)internalDisplayOrientation) % 4);
++    clientCompositionDisplay.orientation = ui::Transform::toRotationFlags(new_orientation);
+ 
+     clientCompositionDisplay.outputDataspace = renderArea.getReqDataSpace();
+     clientCompositionDisplay.maxLuminance = DisplayDevice::sDefaultMaxLumiance;
+-- 
+2.35.1
+

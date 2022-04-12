@@ -1,0 +1,28 @@
+From 6c92083eea11c4c34ae0953bd92e04b4d48741da Mon Sep 17 00:00:00 2001
+From: Weiguo Hu <hwg@rock-chips.com>
+Date: Fri, 20 Nov 2020 16:13:52 +0800
+Subject: [PATCH 228/297] IpConfigStore: fix system boot fail when
+ /etherne/ipconfig.tx broken
+
+Signed-off-by: Weiguo Hu <hwg@rock-chips.com>
+Change-Id: I2f17459a2bcb14ea42395fc0554ae308654314fb
+---
+ services/core/java/com/android/server/net/IpConfigStore.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/net/IpConfigStore.java b/services/core/java/com/android/server/net/IpConfigStore.java
+index e3e02e32ad5..b869cdb690e 100644
+--- a/services/core/java/com/android/server/net/IpConfigStore.java
++++ b/services/core/java/com/android/server/net/IpConfigStore.java
+@@ -255,7 +255,7 @@ public class IpConfigStore {
+             int version = in.readInt();
+             if (version != 3 && version != 2 && version != 1) {
+                 loge("Bad version on IP configuration file, ignore read");
+-                return null;
++                return new ArrayMap<>(0);
+             }
+ 
+             while (true) {
+-- 
+2.35.1
+

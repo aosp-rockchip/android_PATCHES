@@ -1,0 +1,73 @@
+From 62f03186aabed7aaf76df3d5c9cea171c017da57 Mon Sep 17 00:00:00 2001
+From: wh <wanghang@rock-chips.com>
+Date: Wed, 25 Nov 2020 17:49:53 +0800
+Subject: [PATCH 24/26] Revert "MediaProvider: modify to support soundrecorder
+ app"
+
+This reverts commit b8a305b2a7af3d5151463f8edaa36aca0875e8de.
+
+The mediaprovider is replace with vendor/partner_modules/MediaProviderPrebuilt for GMS.
+Already modify the SoundRecorder code to adapt GoogleMediaProvider,
+so the old mediaprovider commit is unnecessary.
+
+Change-Id: Ic24068ace1569058fbc3d7bc0e99ed654402bae7
+Signed-off-by: wh <wanghang@rock-chips.com>
+---
+ src/com/android/providers/media/MediaProvider.java       | 6 +-----
+ .../android/providers/media/scan/ModernMediaScanner.java | 9 +--------
+ 2 files changed, 2 insertions(+), 13 deletions(-)
+
+diff --git a/src/com/android/providers/media/MediaProvider.java b/src/com/android/providers/media/MediaProvider.java
+index f69f3f2d..57a8d6ef 100644
+--- a/src/com/android/providers/media/MediaProvider.java
++++ b/src/com/android/providers/media/MediaProvider.java
+@@ -3287,9 +3287,6 @@ public class MediaProvider extends ContentProvider {
+                 if (isCallingPackageSelf() || isCallingPackageLegacyWrite()) {
+                     // Mutation allowed
+                 } else {
+-                    if ("com.android.soundrecorder".equals(getCallingPackageOrSelf())) {
+-                        continue;
+-                    }
+                     Log.w(TAG, "Ignoring mutation of  " + column + " from "
+                             + getCallingPackageOrSelf());
+                     initialValues.remove(column);
+@@ -7666,8 +7663,7 @@ public class MediaProvider extends ContentProvider {
+     @Deprecated
+     @VisibleForTesting
+     public int getCallingPackageTargetSdkVersion() {
+-        if ("com.android.music".equals(getCallingPackageOrSelf())
+-            || "com.android.soundrecorder".equals(getCallingPackageOrSelf())) {
++        if ("com.android.music".equals(getCallingPackageOrSelf())) {
+             return 26;
+         }
+         return mCallingIdentity.get().getTargetSdkVersion();
+diff --git a/src/com/android/providers/media/scan/ModernMediaScanner.java b/src/com/android/providers/media/scan/ModernMediaScanner.java
+index 09513db3..58e63cd1 100644
+--- a/src/com/android/providers/media/scan/ModernMediaScanner.java
++++ b/src/com/android/providers/media/scan/ModernMediaScanner.java
+@@ -585,7 +585,7 @@ public class ModernMediaScanner implements MediaScanner {
+             queryArgs.putInt(MediaStore.QUERY_ARG_MATCH_FAVORITE, MediaStore.MATCH_INCLUDE);
+             final String[] projection = new String[] {FileColumns._ID, FileColumns.DATE_MODIFIED,
+                     FileColumns.SIZE, FileColumns.MIME_TYPE, FileColumns.MEDIA_TYPE,
+-                    FileColumns.IS_PENDING, MediaStore.MediaColumns.OWNER_PACKAGE_NAME};
++                    FileColumns.IS_PENDING};
+ 
+             final Matcher matcher = FileUtils.PATTERN_EXPIRES_FILE.matcher(realFile.getName());
+             // If IS_PENDING is set by FUSE, we should scan the file and update IS_PENDING to zero.
+@@ -600,13 +600,6 @@ public class ModernMediaScanner implements MediaScanner {
+                     final String mimeType = c.getString(3);
+                     final int mediaType = c.getInt(4);
+                     isPendingFromFuse &= c.getInt(5) != 0;
+-                    //make soundrecorder not change media_type
+-                    final String owner_package_name = c.getString(6);
+-                    if ("com.android.soundrecorder".equals(owner_package_name)
+-                        && null != mimeType) {
+-                        actualMimeType = mimeType;
+-                        actualMediaType = mediaType;
+-                    }
+ 
+                     // Remember visiting this existing item, even if we skipped
+                     // due to it being unchanged; this is needed so we don't
+-- 
+2.35.1
+

@@ -1,0 +1,27 @@
+From 9144c5312112907821edee84d447f5c15fe0db3a Mon Sep 17 00:00:00 2001
+From: Weixin Zhou <zwx@rock-chips.com>
+Date: Mon, 25 Jan 2021 20:38:11 +0800
+Subject: [PATCH 289/297] disable eink power manager log
+
+Signed-off-by: Weixin Zhou <zwx@rock-chips.com>
+Change-Id: I45ab329cbccb605dd63a7c75c2657c558ac0143c
+---
+ .../core/java/com/android/server/power/PowerManagerService.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/power/PowerManagerService.java b/services/core/java/com/android/server/power/PowerManagerService.java
+index 5606487c4e6..98eec6b9df7 100755
+--- a/services/core/java/com/android/server/power/PowerManagerService.java
++++ b/services/core/java/com/android/server/power/PowerManagerService.java
+@@ -878,7 +878,7 @@ public final class PowerManagerService extends SystemService
+     //add for Eink bright screen standby
+     private native void nativeIdle();
+     private native void nativeWake();
+-    private boolean mSpew = true;
++    private boolean mSpew = false;
+     private int mIdleDelay;
+     private boolean mMusicPlaying = false;
+     private boolean mUserBootComplete = false;
+-- 
+2.35.1
+

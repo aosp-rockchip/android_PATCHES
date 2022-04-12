@@ -1,0 +1,28 @@
+From e53fd45a05941499eeb1c5c9e4b5f33d998a1a8c Mon Sep 17 00:00:00 2001
+From: Wang Panzhenzhuan <randy.wang@rock-chips.com>
+Date: Tue, 26 Jan 2021 08:55:54 +0800
+Subject: [PATCH 19/24] Camera: drop 4 frames after streamOn to get rid of bad
+ frames
+
+Signed-off-by: Wang Panzhenzhuan <randy.wang@rock-chips.com>
+Change-Id: I801452a4a8e7f992100be97552c9572bf3783c4e
+---
+ camera/device/3.4/default/ExternalCameraDeviceSession.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/camera/device/3.4/default/ExternalCameraDeviceSession.cpp b/camera/device/3.4/default/ExternalCameraDeviceSession.cpp
+index 1d1ef9364..3efed0e41 100755
+--- a/camera/device/3.4/default/ExternalCameraDeviceSession.cpp
++++ b/camera/device/3.4/default/ExternalCameraDeviceSession.cpp
+@@ -50,7 +50,7 @@ namespace {
+ // Size of request/result metadata fast message queue. Change to 0 to always use hwbinder buffer.
+ static constexpr size_t kMetadataMsgQueueSize = 1 << 18 /* 256kB */;
+ 
+-const int kBadFramesAfterStreamOn = 1; // drop x frames after streamOn to get rid of some initial
++const int kBadFramesAfterStreamOn = 4; // drop x frames after streamOn to get rid of some initial
+                                        // bad frames. TODO: develop a better bad frame detection
+                                        // method
+ constexpr int MAX_RETRY = 15; // Allow retry some ioctl failures a few times to account for some
+-- 
+2.35.1
+

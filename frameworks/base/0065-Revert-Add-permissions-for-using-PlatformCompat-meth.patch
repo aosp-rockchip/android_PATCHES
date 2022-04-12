@@ -1,0 +1,265 @@
+From 8995871c1accc6d94dc80d7f69b674ae2a1745a6 Mon Sep 17 00:00:00 2001
+From: Andrei-Valentin Onea <andreionea@google.com>
+Date: Thu, 30 Jan 2020 21:38:35 +0000
+Subject: [PATCH 065/297] Revert "Add permissions for using PlatformCompat
+ methods"
+
+Revert "Make platform_compat discoverable everywhere"
+
+Revert "Add new permissions to test"
+
+Revert submission 1210143-platformcompat-permissions
+
+Reason for revert: http://b/142942524
+Reverted Changes:
+I3601b12d5: Add new permissions to test
+I65d425aac: Make platform_compat discoverable everywhere
+I1c8cbb656: Add permissions for using PlatformCompat methods
+
+Change-Id: Idbb616f918fac40b063c3b4f95f73e12a94d6016
+(cherry picked from commit e222d5a8700d7228e1da2fbdae046dddf3d58a39)
+---
+ core/res/AndroidManifest.xml                  | 13 ------
+ .../android/server/compat/PlatformCompat.java | 40 -------------------
+ .../tests/servicestests/AndroidManifest.xml   |  2 -
+ tests/PlatformCompatGating/Android.bp         |  1 +
+ .../testing/PlatformCompatChangeRule.java     |  7 ----
+ 5 files changed, 1 insertion(+), 62 deletions(-)
+
+diff --git a/core/res/AndroidManifest.xml b/core/res/AndroidManifest.xml
+index 181a32d0623..3a1b63d56b5 100644
+--- a/core/res/AndroidManifest.xml
++++ b/core/res/AndroidManifest.xml
+@@ -4858,19 +4858,6 @@
+     <permission android:name="android.permission.ACCESS_SHARED_LIBRARIES"
+                 android:protectionLevel="signature|installer" />
+ 
+-    <!-- Allows an app to log compat change usage.
+-         @hide  <p>Not for use by third-party applications.</p> -->
+-    <permission android:name="android.permission.LOG_COMPAT_CHANGE"
+-                android:protectionLevel="signature" />
+-    <!-- Allows an app to read compat change config.
+-         @hide  <p>Not for use by third-party applications.</p> -->
+-    <permission android:name="android.permission.READ_COMPAT_CHANGE_CONFIG"
+-                android:protectionLevel="signature" />
+-    <!-- Allows an app to override compat change config.
+-         @hide  <p>Not for use by third-party applications.</p> -->
+-    <permission android:name="android.permission.OVERRIDE_COMPAT_CHANGE_CONFIG"
+-                android:protectionLevel="signature" />
+-
+     <!-- Allows input events to be monitored. Very dangerous!  @hide -->
+     <permission android:name="android.permission.MONITOR_INPUT"
+                 android:protectionLevel="signature" />
+diff --git a/services/core/java/com/android/server/compat/PlatformCompat.java b/services/core/java/com/android/server/compat/PlatformCompat.java
+index 4d5af9ac5d5..bb8b12e86e1 100644
+--- a/services/core/java/com/android/server/compat/PlatformCompat.java
++++ b/services/core/java/com/android/server/compat/PlatformCompat.java
+@@ -16,11 +16,6 @@
+ 
+ package com.android.server.compat;
+ 
+-import static android.Manifest.permission.LOG_COMPAT_CHANGE;
+-import static android.Manifest.permission.OVERRIDE_COMPAT_CHANGE_CONFIG;
+-import static android.Manifest.permission.READ_COMPAT_CHANGE_CONFIG;
+-import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+-
+ import android.app.ActivityManager;
+ import android.app.IActivityManager;
+ import android.content.Context;
+@@ -73,14 +68,12 @@ public class PlatformCompat extends IPlatformCompat.Stub {
+ 
+     @Override
+     public void reportChange(long changeId, ApplicationInfo appInfo) {
+-        checkCompatChangeLogPermission();
+         reportChange(changeId, appInfo.uid,
+                 StatsLog.APP_COMPATIBILITY_CHANGE_REPORTED__STATE__LOGGED);
+     }
+ 
+     @Override
+     public void reportChangeByPackageName(long changeId, String packageName, int userId) {
+-        checkCompatChangeLogPermission();
+         ApplicationInfo appInfo = getApplicationInfo(packageName, userId);
+         if (appInfo == null) {
+             return;
+@@ -90,13 +83,11 @@ public class PlatformCompat extends IPlatformCompat.Stub {
+ 
+     @Override
+     public void reportChangeByUid(long changeId, int uid) {
+-        checkCompatChangeLogPermission();
+         reportChange(changeId, uid, StatsLog.APP_COMPATIBILITY_CHANGE_REPORTED__STATE__LOGGED);
+     }
+ 
+     @Override
+     public boolean isChangeEnabled(long changeId, ApplicationInfo appInfo) {
+-        checkCompatChangeReadPermission();
+         if (mCompatConfig.isChangeEnabled(changeId, appInfo)) {
+             reportChange(changeId, appInfo.uid,
+                     StatsLog.APP_COMPATIBILITY_CHANGE_REPORTED__STATE__ENABLED);
+@@ -109,7 +100,6 @@ public class PlatformCompat extends IPlatformCompat.Stub {
+ 
+     @Override
+     public boolean isChangeEnabledByPackageName(long changeId, String packageName, int userId) {
+-        checkCompatChangeReadPermission();
+         ApplicationInfo appInfo = getApplicationInfo(packageName, userId);
+         if (appInfo == null) {
+             return true;
+@@ -119,7 +109,6 @@ public class PlatformCompat extends IPlatformCompat.Stub {
+ 
+     @Override
+     public boolean isChangeEnabledByUid(long changeId, int uid) {
+-        checkCompatChangeReadPermission();
+         String[] packages = mContext.getPackageManager().getPackagesForUid(uid);
+         if (packages == null || packages.length == 0) {
+             return true;
+@@ -152,7 +141,6 @@ public class PlatformCompat extends IPlatformCompat.Stub {
+     @Override
+     public void setOverrides(CompatibilityChangeConfig overrides, String packageName)
+             throws RemoteException, SecurityException {
+-        checkCompatChangeOverridePermission();
+         mCompatConfig.addOverrides(overrides, packageName);
+         killPackage(packageName);
+     }
+@@ -160,13 +148,11 @@ public class PlatformCompat extends IPlatformCompat.Stub {
+     @Override
+     public void setOverridesForTest(CompatibilityChangeConfig overrides, String packageName)
+             throws RemoteException, SecurityException {
+-        checkCompatChangeOverridePermission();
+         mCompatConfig.addOverrides(overrides, packageName);
+     }
+ 
+     @Override
+     public void clearOverrides(String packageName) throws RemoteException, SecurityException {
+-        checkCompatChangeOverridePermission();
+         mCompatConfig.removePackageOverrides(packageName);
+         killPackage(packageName);
+     }
+@@ -174,14 +160,12 @@ public class PlatformCompat extends IPlatformCompat.Stub {
+     @Override
+     public void clearOverridesForTest(String packageName)
+             throws RemoteException, SecurityException {
+-        checkCompatChangeOverridePermission();
+         mCompatConfig.removePackageOverrides(packageName);
+     }
+ 
+     @Override
+     public boolean clearOverride(long changeId, String packageName)
+             throws RemoteException, SecurityException {
+-        checkCompatChangeOverridePermission();
+         boolean existed = mCompatConfig.removeOverride(changeId, packageName);
+         killPackage(packageName);
+         return existed;
+@@ -189,13 +173,11 @@ public class PlatformCompat extends IPlatformCompat.Stub {
+ 
+     @Override
+     public CompatibilityChangeConfig getAppConfig(ApplicationInfo appInfo) {
+-        checkCompatChangeReadPermission();
+         return mCompatConfig.getAppConfig(appInfo);
+     }
+ 
+     @Override
+     public CompatibilityChangeInfo[] listAllChanges() {
+-        checkCompatChangeReadPermission();
+         return mCompatConfig.dumpChanges();
+     }
+ 
+@@ -234,7 +216,6 @@ public class PlatformCompat extends IPlatformCompat.Stub {
+ 
+     @Override
+     protected void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+-        checkCompatChangeReadPermission();
+         if (!DumpUtils.checkDumpAndUsageStatsPermission(mContext, "platform_compat", pw)) return;
+         mCompatConfig.dumpConfig(pw);
+     }
+@@ -292,25 +273,4 @@ public class PlatformCompat extends IPlatformCompat.Stub {
+             Binder.restoreCallingIdentity(identity);
+         }
+     }
+-
+-    private void checkCompatChangeLogPermission() throws SecurityException {
+-        if (mContext.checkCallingOrSelfPermission(LOG_COMPAT_CHANGE)
+-                != PERMISSION_GRANTED) {
+-            throw new SecurityException("Cannot log compat change usage");
+-        }
+-    }
+-
+-    private void checkCompatChangeReadPermission() throws SecurityException {
+-        if (mContext.checkCallingOrSelfPermission(READ_COMPAT_CHANGE_CONFIG)
+-                != PERMISSION_GRANTED) {
+-            throw new SecurityException("Cannot read compat change");
+-        }
+-    }
+-
+-    private void checkCompatChangeOverridePermission() throws SecurityException {
+-        if (mContext.checkCallingOrSelfPermission(OVERRIDE_COMPAT_CHANGE_CONFIG)
+-                != PERMISSION_GRANTED) {
+-            throw new SecurityException("Cannot override compat change");
+-        }
+-    }
+ }
+diff --git a/services/tests/servicestests/AndroidManifest.xml b/services/tests/servicestests/AndroidManifest.xml
+index b7c900130e3..d2ddff3627b 100644
+--- a/services/tests/servicestests/AndroidManifest.xml
++++ b/services/tests/servicestests/AndroidManifest.xml
+@@ -66,8 +66,6 @@
+     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+     <uses-permission android:name="android.permission.SUSPEND_APPS"/>
+     <uses-permission android:name="android.permission.CONTROL_KEYGUARD"/>
+-    <uses-permission android:name="android.permission.READ_COMPAT_CHANGE_CONFIG"/>
+-    <uses-permission android:name="android.permission.LOG_COMPAT_CHANGE"/>
+     <uses-permission android:name="android.permission.MANAGE_BIND_INSTANT_SERVICE"/>
+     <uses-permission android:name="android.permission.CONTROL_DISPLAY_COLOR_TRANSFORMS" />
+     <uses-permission android:name="android.permission.READ_DEVICE_CONFIG" />
+diff --git a/tests/PlatformCompatGating/Android.bp b/tests/PlatformCompatGating/Android.bp
+index 609896ea9e9..5e9ef8efc40 100644
+--- a/tests/PlatformCompatGating/Android.bp
++++ b/tests/PlatformCompatGating/Android.bp
+@@ -18,6 +18,7 @@ android_test {
+     name: "PlatformCompatGating",
+     // Only compile source java files in this apk.
+     srcs: ["src/**/*.java"],
++    certificate: "platform",
+     libs: [
+         "android.test.runner",
+         "android.test.base",
+diff --git a/tests/PlatformCompatGating/test-rules/src/android/compat/testing/PlatformCompatChangeRule.java b/tests/PlatformCompatGating/test-rules/src/android/compat/testing/PlatformCompatChangeRule.java
+index c00aa2ac25b..932ec643d47 100644
+--- a/tests/PlatformCompatGating/test-rules/src/android/compat/testing/PlatformCompatChangeRule.java
++++ b/tests/PlatformCompatGating/test-rules/src/android/compat/testing/PlatformCompatChangeRule.java
+@@ -16,9 +16,7 @@
+ 
+ package android.compat.testing;
+ 
+-import android.Manifest;
+ import android.app.Instrumentation;
+-import android.app.UiAutomation;
+ import android.compat.Compatibility;
+ import android.compat.Compatibility.ChangeConfig;
+ import android.content.Context;
+@@ -85,16 +83,12 @@ public class PlatformCompatChangeRule extends CoreCompatChangeRule {
+         @Override
+         public void evaluate() throws Throwable {
+             Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+-            UiAutomation uiAutomation = instrumentation.getUiAutomation();
+             String packageName = instrumentation.getTargetContext().getPackageName();
+             IPlatformCompat platformCompat = IPlatformCompat.Stub
+                     .asInterface(ServiceManager.getService(Context.PLATFORM_COMPAT_SERVICE));
+             if (platformCompat == null) {
+                 throw new IllegalStateException("Could not get IPlatformCompat service!");
+             }
+-            uiAutomation.adoptShellPermissionIdentity(
+-                    Manifest.permission.READ_COMPAT_CHANGE_CONFIG,
+-                    Manifest.permission.OVERRIDE_COMPAT_CHANGE_CONFIG);
+             Compatibility.setOverrides(mConfig);
+             try {
+                 platformCompat.setOverridesForTest(new CompatibilityChangeConfig(mConfig),
+@@ -107,7 +101,6 @@ public class PlatformCompatChangeRule extends CoreCompatChangeRule {
+             } catch (RemoteException e) {
+                 throw new RuntimeException("Could not call IPlatformCompat binder method!", e);
+             } finally {
+-                uiAutomation.dropShellPermissionIdentity();
+                 Compatibility.clearOverrides();
+             }
+         }
+-- 
+2.35.1
+

@@ -1,0 +1,54 @@
+From ed5c1a08d319103897fc52d929fafbe1e8f02543 Mon Sep 17 00:00:00 2001
+From: Robert Carr <racarr@google.com>
+Date: Tue, 24 Sep 2019 12:03:18 -0700
+Subject: [PATCH 019/297] SurfaceView: Release Surfaces where SurfaceControl
+ are released.
+
+Following the same logic as the revision "Destroy SurfaceControl from RenderThread"
+we have a similar race condition with the native object behind the mSurface object.
+In addition that CL introduces a logic error...previously in positionLost we assumed
+if mSurfaceControl != null then mSurface had not been released,
+but now we release the Surface but wait on the RenderThread to release the SurfaceControl
+when it tries to grab the frame number to create the deferred transaction the Surface
+has already been released and we go on to crash. Releasing them all in the same place
+fixes this.
+
+Bug: 141525040
+Test: go/wm-smoke
+Change-Id: I7c938cd498a9260146f34f2d6e18744854d69946
+(cherry picked from commit 172bdbc5026fdafb30905e7e462c5184c8cd840f)
+---
+ core/java/android/view/SurfaceView.java | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/core/java/android/view/SurfaceView.java b/core/java/android/view/SurfaceView.java
+index 262b9e50ad0..db3ef20d585 100644
+--- a/core/java/android/view/SurfaceView.java
++++ b/core/java/android/view/SurfaceView.java
+@@ -675,6 +675,7 @@ public class SurfaceView extends View implements ViewRootImpl.SurfaceChangedCall
+                 mTmpTransaction.remove(mBackgroundControl);
+                 mBackgroundControl = null;
+             }
++            mSurface.release();
+             mTmpTransaction.apply();
+         }
+     }
+@@ -962,7 +963,6 @@ public class SurfaceView extends View implements ViewRootImpl.SurfaceChangedCall
+                 } finally {
+                     mIsCreating = false;
+                     if (mSurfaceControl != null && !mSurfaceCreated) {
+-                        mSurface.release();
+                         releaseSurfaces();
+                     }
+                 }
+@@ -1143,6 +1143,7 @@ public class SurfaceView extends View implements ViewRootImpl.SurfaceChangedCall
+                     mRtTransaction.remove(mBackgroundControl);
+                     mSurfaceControl = null;
+                     mBackgroundControl = null;
++                    mSurface.release();
+                 }
+                 mRtHandlingPositionUpdates = false;
+             }
+-- 
+2.35.1
+

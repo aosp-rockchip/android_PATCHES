@@ -1,0 +1,1532 @@
+From bb86a4bd2398d272ac3a7775e4d8a35046d6d8e3 Mon Sep 17 00:00:00 2001
+From: aisx <aisx@rock-chips.com>
+Date: Thu, 23 Aug 2018 16:49:32 +0800
+Subject: [PATCH 16/36] hw_output: gamma lut save wrong data to baseparameter
+
+Change-Id: I5043eb0b4ddaf0ff5e4f28774f87282b51a0ffb8
+---
+ modules/hw_output/hw_output.cpp | 1305 +++++++++++++++----------------
+ 1 file changed, 652 insertions(+), 653 deletions(-)
+
+diff --git a/modules/hw_output/hw_output.cpp b/modules/hw_output/hw_output.cpp
+index e83793dc..243003c3 100644
+--- a/modules/hw_output/hw_output.cpp
++++ b/modules/hw_output/hw_output.cpp
+@@ -48,10 +48,10 @@ typedef struct hw_output_private {
+ 
+     // Callback related data
+     void* callback_data;
+-	DrmResources *drm_;
+-	DrmConnector* primary;
+-	DrmConnector* extend;
+-	struct lut_info* mlut;
++    DrmResources *drm_;
++    DrmConnector* primary;
++    DrmConnector* extend;
++    struct lut_info* mlut;
+ } hw_output_private_t;
+ 
+ static int hw_output_device_open(const struct hw_module_t* module,
+@@ -70,8 +70,8 @@ hw_output_module_t HAL_MODULE_INFO_SYM = {
+         .name = "Sample hw output module",
+         .author = "The Android Open Source Project",
+         .methods = &hw_output_module_methods,
+-		.dso = NULL,
+-		.reserved = {0},
++        .dso = NULL,
++        .reserved = {0},
+     }
+ };
+ 
+@@ -154,7 +154,7 @@ static bool getBaseParameterInfo(struct file_base_paramer* base_paramer)
+     return false;
+ }
+ 
+-static int findSuitableInfoSlot(struct disp_info* info, int type) 
++static int findSuitableInfoSlot(struct disp_info* info, int type)
+ {
+     int found=0;
+     for (int i=0;i<5;i++) {
+@@ -250,7 +250,7 @@ static bool getResolutionInfo(hw_output_private_t *priv, int dpy, char* resoluti
+                         drm_mode->hsync_end, drm_mode->vdisplay, drm_mode->vsync_start, drm_mode->vsync_end, drm_mode->flags,
+                         vfresh, (float)drm_mode->vrefresh);
+                 sprintf(resolution, "%dx%d@%.2f-%d-%d-%d-%d-%d-%d-%x", drm_mode->hdisplay, drm_mode->vdisplay, vfresh,
+-                        drm_mode->hsync_start, drm_mode->hsync_end, drm_mode->htotal, 
++                        drm_mode->hsync_start, drm_mode->hsync_end, drm_mode->htotal,
+                         drm_mode->vsync_start, drm_mode->vsync_end, drm_mode->vtotal,
+                         drm_mode->flags);
+                 drmModeFreePropertyBlob(blob);
+@@ -372,381 +372,381 @@ static void saveBcshConfig(struct file_base_paramer *base_paramer, int dpy){
+ 
+ /*****************************************************************************/
+ static void hw_output_save_config(struct hw_output_device* dev){
+-	hw_output_private_t* priv = (hw_output_private_t*)dev;
+-	char buf[BUFFER_LENGTH];
+-	bool isMainHdmiConnected=false;
+-	bool isAuxHdmiConnected = false;
+-	int foundMainIdx=-1,foundAuxIdx=-1;
+-	struct file_base_paramer base_paramer;
+-	DrmResources *drm_ = priv->drm_;
+-	DrmConnector* primary = priv->primary;
+-	DrmConnector* extend = priv->extend;
+-
+-	if (primary != NULL) {
+-		std::vector<DrmMode> mModes = primary->modes();
+-		char resolution[PROPERTY_VALUE_MAX];
+-		unsigned int w=0,h=0,hsync_start=0,hsync_end=0,htotal=0;
+-		unsigned int vsync_start=0,vsync_end=0,vtotal=0,flags=0;
+-		float vfresh=0.0000;
+-
+-		property_get("persist.sys.resolution.main", resolution, "0x0@0.00-0-0-0-0-0-0-0");
+-		if (strncmp(resolution, "Auto", 4) != 0 && strncmp(resolution, "0x0p0-0", 7) !=0)
+-			sscanf(resolution,"%dx%d@%f-%d-%d-%d-%d-%d-%d-%x", &w, &h, &vfresh, &hsync_start,&hsync_end,
+-					&htotal,&vsync_start,&vsync_end, &vtotal, &flags);
+-		for (size_t c = 0; c < mModes.size(); ++c){
+-			const DrmMode& info = mModes[c];
+-			char curDrmModeRefresh[16];
+-			char curRefresh[16];
+-			float mModeRefresh;
+-			if (info.flags() & DRM_MODE_FLAG_INTERLACE)
+-				mModeRefresh = info.clock()*2 / (float)(info.v_total()* info.h_total()) * 1000.0f;
+-			else
+-				mModeRefresh = info.clock()/ (float)(info.v_total()* info.h_total()) * 1000.0f;
+-			sprintf(curDrmModeRefresh, "%.2f", mModeRefresh);
+-			sprintf(curRefresh, "%.2f", vfresh);
+-			if (info.h_display() == w &&
+-					info.v_display() == h &&
+-					info.h_sync_start() == hsync_start &&
+-					info.h_sync_end() == hsync_end &&
+-					info.h_total() == htotal &&
+-					info.v_sync_start() == vsync_start &&
+-					info.v_sync_end() == vsync_end &&
+-					info.v_total()==vtotal &&
+-					atof(curDrmModeRefresh)==atof(curRefresh)) {
+-				ALOGD("***********************found main idx %d ****************", (int)c);
+-				foundMainIdx = c;
+-				sprintf(buf, "display=%d,iface=%d,enable=%d,mode=%s\n",
+-						primary->display(), primary->get_type(), primary->state(), resolution);
+-				break;
+-			}
+-		}
+-	}
+-
+-	if (extend != NULL) {
+-		std::vector<DrmMode> mModes = extend->modes();
+-		char resolution[PROPERTY_VALUE_MAX];
+-		unsigned int w=0,h=0,hsync_start=0,hsync_end=0,htotal=0;
+-		unsigned int vsync_start=0,vsync_end=0,vtotal=0,flags;
+-		float vfresh=0;
+-
+-		property_get("persist.sys.resolution.aux", resolution, "0x0@0.00-0-0-0-0-0-0-0");
+-		if (strncmp(resolution, "Auto", 4) != 0 && strncmp(resolution, "0x0p0-0", 7) !=0)
+-			sscanf(resolution,"%dx%d@%f-%d-%d-%d-%d-%d-%d-%x", &w, &h, &vfresh, &hsync_start,&hsync_end,&htotal,&vsync_start,&vsync_end,
+-					&vtotal, &flags);
+-		for (size_t c = 0; c < mModes.size(); ++c){
+-			const DrmMode& info = mModes[c];
+-			char curDrmModeRefresh[16];
+-			char curRefresh[16];
+-			float mModeRefresh;
+-			if (info.flags() & DRM_MODE_FLAG_INTERLACE)
+-				mModeRefresh = info.clock()*2 / (float)(info.v_total()* info.h_total()) * 1000.0f;
+-			else
+-				mModeRefresh = info.clock()/ (float)(info.v_total()* info.h_total()) * 1000.0f;
+-			sprintf(curDrmModeRefresh, "%.2f", mModeRefresh);
+-			sprintf(curRefresh, "%.2f", vfresh);
+-			if (info.h_display() == w &&
+-					info.v_display() == h &&
+-					info.h_sync_start() == hsync_start &&
+-					info.h_sync_end() == hsync_end &&
+-					info.h_total() == htotal &&
+-					info.v_sync_start() == vsync_start &&
+-					info.v_sync_end() == vsync_end &&
+-					info.v_total()==vtotal &&
+-					atof(curDrmModeRefresh)==atoi(curRefresh)) {
+-				ALOGD("***********************found aux idx %d ****************", (int)c);
+-				foundAuxIdx = c;
+-				break;
+-			}
+-		}
+-	}
+-
+-	int file;
+-	const char *baseparameterfile = GetBaseparameterFile();
+-	if (!baseparameterfile) {
+-		sync();
+-		return;
+-	}
+-	file = open(baseparameterfile, O_RDWR);
+-	if (file < 0) {
+-		ALOGW("base paramter file can not be opened");
+-		sync();
+-		return;
+-	}
+-	// caculate file's size and read it
+-	unsigned int length = lseek(file, 0L, SEEK_END);
+-	lseek(file, 0L, SEEK_SET);
+-	if(length < sizeof(base_paramer)) {
+-		ALOGE("BASEPARAME data's length is error\n");
+-		sync();
+-		close(file);
+-		return;
+-	}
+-
+-	read(file, (void*)&(base_paramer.main), sizeof(base_paramer.main));
+-	lseek(file, BASE_OFFSET, SEEK_SET);
+-	read(file, (void*)&(base_paramer.aux), sizeof(base_paramer.aux));
+-
+-	for (auto &conn : drm_->connectors()) {
+-		if (conn->state() == DRM_MODE_CONNECTED 
+-				&& (conn->get_type() == DRM_MODE_CONNECTOR_HDMIA)
+-				&& (conn->possible_displays() & HWC_DISPLAY_PRIMARY_BIT))
+-			isMainHdmiConnected = true;
+-		else if(conn->state() == DRM_MODE_CONNECTED 
+-				&& (conn->get_type() == DRM_MODE_CONNECTOR_HDMIA)
+-				&& (conn->possible_displays() & HWC_DISPLAY_EXTERNAL_BIT))
+-			isAuxHdmiConnected = true;
+-	}
+-	ALOGD("nativeSaveConfig: size=%d isMainHdmiConnected=%d", (int)sizeof(base_paramer.main), isMainHdmiConnected);
+-	for (auto &conn : drm_->connectors()) {
+-		if (conn->state() == DRM_MODE_CONNECTED 
+-				&& (conn->possible_displays() & HWC_DISPLAY_PRIMARY_BIT)) {
+-			char property[PROPERTY_VALUE_MAX];
+-			int w=0,h=0,hsync_start=0,hsync_end=0,htotal=0;
+-			int vsync_start=0,vsync_end=0,vtotal=0,flags=0;
+-			int left=0,top=0,right=0,bottom=0;
+-			float vfresh=0;
+-			int slot = findSuitableInfoSlot(&base_paramer.main, conn->get_type());
+-			if (isMainHdmiConnected && conn->get_type() == DRM_MODE_CONNECTOR_TV)
+-				continue;
+-
+-			base_paramer.main.screen_list[slot].type = conn->get_type();
+-			base_paramer.main.screen_list[slot].feature &= AUTO_BIT_RESET;
+-			property_get("persist.sys.resolution.main", property, "0x0@0.00-0-0-0-0-0-0-0");
+-			if (strncmp(property, "Auto", 4) != 0 && strncmp(property, "0x0p0-0", 7) !=0) {
+-				ALOGD("saveConfig resolution = %s", property);
+-				std::vector<DrmMode> mModes = primary->modes();
+-				sscanf(property,"%dx%d@%f-%d-%d-%d-%d-%d-%d-%x", &w, &h, &vfresh, &hsync_start,&hsync_end,&htotal,&vsync_start,&vsync_end,
+-						&vtotal, &flags);
+-
+-				ALOGD("last base_paramer.main.resolution.hdisplay = %d,  vdisplay=%d(%s@%f)",
+-						base_paramer.main.screen_list[slot].resolution.hdisplay,
+-						base_paramer.main.screen_list[slot].resolution.vdisplay,
+-						base_paramer.main.hwc_info.device,	base_paramer.main.hwc_info.fps);
+-				base_paramer.main.screen_list[slot].resolution.hdisplay = w;
+-				base_paramer.main.screen_list[slot].resolution.vdisplay = h;
+-				base_paramer.main.screen_list[slot].resolution.hsync_start = hsync_start;
+-				base_paramer.main.screen_list[slot].resolution.hsync_end = hsync_end;
+-				if (foundMainIdx != -1)
+-					base_paramer.main.screen_list[slot].resolution.clock = mModes[foundMainIdx].clock();
+-				else if (flags & DRM_MODE_FLAG_INTERLACE)
+-					base_paramer.main.screen_list[slot].resolution.clock = (htotal*vtotal*vfresh/2)/1000.0f;
+-				else
+-					base_paramer.main.screen_list[slot].resolution.clock = (htotal*vtotal*vfresh)/1000.0f;
+-				base_paramer.main.screen_list[slot].resolution.htotal = htotal;
+-				base_paramer.main.screen_list[slot].resolution.vsync_start = vsync_start;
+-				base_paramer.main.screen_list[slot].resolution.vsync_end = vsync_end;
+-				base_paramer.main.screen_list[slot].resolution.vtotal = vtotal;
+-				base_paramer.main.screen_list[slot].resolution.flags = flags;
+-				ALOGD("saveBaseParameter foundMainIdx=%d clock=%d", foundMainIdx, base_paramer.main.screen_list[slot].resolution.clock);
+-			} else {
+-				base_paramer.main.screen_list[slot].feature|= RESOLUTION_AUTO;
+-				memset(&base_paramer.main.screen_list[slot].resolution, 0, sizeof(base_paramer.main.screen_list[slot].resolution));
+-			}
+-
+-			memset(property,0,sizeof(property));
+-			property_get("persist.sys.overscan.main", property, "overscan 100,100,100,100");
+-			sscanf(property, "overscan %d,%d,%d,%d",
+-					&left,
+-					&top,
+-					&right,
+-					&bottom);
+-			base_paramer.main.scan.leftscale = (unsigned short)left;
+-			base_paramer.main.scan.topscale = (unsigned short)top;
+-			base_paramer.main.scan.rightscale = (unsigned short)right;
+-			base_paramer.main.scan.bottomscale = (unsigned short)bottom;
+-
+-			memset(property,0,sizeof(property));
+-			property_get("persist.sys.color.main", property, "Auto");
+-			if (strncmp(property, "Auto", 4) != 0){
+-				if (strstr(property, "RGB") != 0)
+-					base_paramer.main.screen_list[slot].format = output_rgb;
+-				else if (strstr(property, "YCBCR444") != 0)
+-					base_paramer.main.screen_list[slot].format = output_ycbcr444;
+-				else if (strstr(property, "YCBCR422") != 0)
+-					base_paramer.main.screen_list[slot].format = output_ycbcr422;
+-				else if (strstr(property, "YCBCR420") != 0)
+-					base_paramer.main.screen_list[slot].format = output_ycbcr420;
+-				else {
+-					base_paramer.main.screen_list[slot].feature |= COLOR_AUTO;
+-					base_paramer.main.screen_list[slot].format = output_ycbcr_high_subsampling;
+-				}
+-
+-				if (strstr(property, "8bit") != NULL)
+-					base_paramer.main.screen_list[slot].depthc = depth_24bit;
+-				else if (strstr(property, "10bit") != NULL)
+-					base_paramer.main.screen_list[slot].depthc = depth_30bit;
+-				else
+-					base_paramer.main.screen_list[slot].depthc = Automatic;
+-				ALOGD("saveConfig: color=%d-%d", base_paramer.main.screen_list[slot].format, base_paramer.main.screen_list[slot].depthc);
+-			} else {
+-				base_paramer.main.screen_list[slot].depthc = Automatic;
+-				base_paramer.main.screen_list[slot].format = output_ycbcr_high_subsampling;
+-				base_paramer.main.screen_list[slot].feature |= COLOR_AUTO;
+-			}
+-
+-			memset(property,0,sizeof(property));
+-			property_get("persist.sys.hdcp1x.main", property, "0");
+-			if (atoi(property) > 0)
+-				base_paramer.main.screen_list[slot].feature |= HDCP1X_EN;
+-
+-			memset(property,0,sizeof(property));
+-			property_get("persist.sys.resolution_white.main", property, "0");
+-			if (atoi(property) > 0)
+-				base_paramer.main.screen_list[slot].feature |= RESOLUTION_WHITE_EN;
+-			saveBcshConfig(&base_paramer, HWC_DISPLAY_PRIMARY_BIT);
++    hw_output_private_t* priv = (hw_output_private_t*)dev;
++    char buf[BUFFER_LENGTH];
++    bool isMainHdmiConnected=false;
++    bool isAuxHdmiConnected = false;
++    int foundMainIdx=-1,foundAuxIdx=-1;
++    struct file_base_paramer base_paramer;
++    DrmResources *drm_ = priv->drm_;
++    DrmConnector* primary = priv->primary;
++    DrmConnector* extend = priv->extend;
++
++    if (primary != NULL) {
++        std::vector<DrmMode> mModes = primary->modes();
++        char resolution[PROPERTY_VALUE_MAX];
++        unsigned int w=0,h=0,hsync_start=0,hsync_end=0,htotal=0;
++        unsigned int vsync_start=0,vsync_end=0,vtotal=0,flags=0;
++        float vfresh=0.0000;
++
++        property_get("persist.sys.resolution.main", resolution, "0x0@0.00-0-0-0-0-0-0-0");
++        if (strncmp(resolution, "Auto", 4) != 0 && strncmp(resolution, "0x0p0-0", 7) !=0)
++            sscanf(resolution,"%dx%d@%f-%d-%d-%d-%d-%d-%d-%x", &w, &h, &vfresh, &hsync_start,&hsync_end,
++                    &htotal,&vsync_start,&vsync_end, &vtotal, &flags);
++        for (size_t c = 0; c < mModes.size(); ++c){
++            const DrmMode& info = mModes[c];
++            char curDrmModeRefresh[16];
++            char curRefresh[16];
++            float mModeRefresh;
++            if (info.flags() & DRM_MODE_FLAG_INTERLACE)
++                mModeRefresh = info.clock()*2 / (float)(info.v_total()* info.h_total()) * 1000.0f;
++            else
++                mModeRefresh = info.clock()/ (float)(info.v_total()* info.h_total()) * 1000.0f;
++            sprintf(curDrmModeRefresh, "%.2f", mModeRefresh);
++            sprintf(curRefresh, "%.2f", vfresh);
++            if (info.h_display() == w &&
++                    info.v_display() == h &&
++                    info.h_sync_start() == hsync_start &&
++                    info.h_sync_end() == hsync_end &&
++                    info.h_total() == htotal &&
++                    info.v_sync_start() == vsync_start &&
++                    info.v_sync_end() == vsync_end &&
++                    info.v_total()==vtotal &&
++                    atof(curDrmModeRefresh)==atof(curRefresh)) {
++                ALOGD("***********************found main idx %d ****************", (int)c);
++                foundMainIdx = c;
++                sprintf(buf, "display=%d,iface=%d,enable=%d,mode=%s\n",
++                        primary->display(), primary->get_type(), primary->state(), resolution);
++                break;
++            }
++        }
++    }
++
++    if (extend != NULL) {
++        std::vector<DrmMode> mModes = extend->modes();
++        char resolution[PROPERTY_VALUE_MAX];
++        unsigned int w=0,h=0,hsync_start=0,hsync_end=0,htotal=0;
++        unsigned int vsync_start=0,vsync_end=0,vtotal=0,flags;
++        float vfresh=0;
++
++        property_get("persist.sys.resolution.aux", resolution, "0x0@0.00-0-0-0-0-0-0-0");
++        if (strncmp(resolution, "Auto", 4) != 0 && strncmp(resolution, "0x0p0-0", 7) !=0)
++            sscanf(resolution,"%dx%d@%f-%d-%d-%d-%d-%d-%d-%x", &w, &h, &vfresh, &hsync_start,&hsync_end,&htotal,&vsync_start,&vsync_end,
++                    &vtotal, &flags);
++        for (size_t c = 0; c < mModes.size(); ++c){
++            const DrmMode& info = mModes[c];
++            char curDrmModeRefresh[16];
++            char curRefresh[16];
++            float mModeRefresh;
++            if (info.flags() & DRM_MODE_FLAG_INTERLACE)
++                mModeRefresh = info.clock()*2 / (float)(info.v_total()* info.h_total()) * 1000.0f;
++            else
++                mModeRefresh = info.clock()/ (float)(info.v_total()* info.h_total()) * 1000.0f;
++            sprintf(curDrmModeRefresh, "%.2f", mModeRefresh);
++            sprintf(curRefresh, "%.2f", vfresh);
++            if (info.h_display() == w &&
++                    info.v_display() == h &&
++                    info.h_sync_start() == hsync_start &&
++                    info.h_sync_end() == hsync_end &&
++                    info.h_total() == htotal &&
++                    info.v_sync_start() == vsync_start &&
++                    info.v_sync_end() == vsync_end &&
++                    info.v_total()==vtotal &&
++                    atof(curDrmModeRefresh)==atoi(curRefresh)) {
++                ALOGD("***********************found aux idx %d ****************", (int)c);
++                foundAuxIdx = c;
++                break;
++            }
++        }
++    }
++
++    int file;
++    const char *baseparameterfile = GetBaseparameterFile();
++    if (!baseparameterfile) {
++        sync();
++        return;
++    }
++    file = open(baseparameterfile, O_RDWR);
++    if (file < 0) {
++        ALOGW("base paramter file can not be opened");
++        sync();
++        return;
++    }
++    // caculate file's size and read it
++    unsigned int length = lseek(file, 0L, SEEK_END);
++    lseek(file, 0L, SEEK_SET);
++    if(length < sizeof(base_paramer)) {
++        ALOGE("BASEPARAME data's length is error\n");
++        sync();
++        close(file);
++        return;
++    }
++
++    read(file, (void*)&(base_paramer.main), sizeof(base_paramer.main));
++    lseek(file, BASE_OFFSET, SEEK_SET);
++    read(file, (void*)&(base_paramer.aux), sizeof(base_paramer.aux));
++
++    for (auto &conn : drm_->connectors()) {
++        if (conn->state() == DRM_MODE_CONNECTED
++            && (conn->get_type() == DRM_MODE_CONNECTOR_HDMIA)
++            && (conn->possible_displays() & HWC_DISPLAY_PRIMARY_BIT))
++            isMainHdmiConnected = true;
++        else if(conn->state() == DRM_MODE_CONNECTED
++                && (conn->get_type() == DRM_MODE_CONNECTOR_HDMIA)
++                && (conn->possible_displays() & HWC_DISPLAY_EXTERNAL_BIT))
++            isAuxHdmiConnected = true;
++    }
++    ALOGD("nativeSaveConfig: size=%d isMainHdmiConnected=%d", (int)sizeof(base_paramer.main), isMainHdmiConnected);
++    for (auto &conn : drm_->connectors()) {
++        if (conn->state() == DRM_MODE_CONNECTED
++            && (conn->possible_displays() & HWC_DISPLAY_PRIMARY_BIT)) {
++            char property[PROPERTY_VALUE_MAX];
++            int w=0,h=0,hsync_start=0,hsync_end=0,htotal=0;
++            int vsync_start=0,vsync_end=0,vtotal=0,flags=0;
++            int left=0,top=0,right=0,bottom=0;
++            float vfresh=0;
++            int slot = findSuitableInfoSlot(&base_paramer.main, conn->get_type());
++            if (isMainHdmiConnected && conn->get_type() == DRM_MODE_CONNECTOR_TV)
++                continue;
++
++            base_paramer.main.screen_list[slot].type = conn->get_type();
++            base_paramer.main.screen_list[slot].feature &= AUTO_BIT_RESET;
++            property_get("persist.sys.resolution.main", property, "0x0@0.00-0-0-0-0-0-0-0");
++            if (strncmp(property, "Auto", 4) != 0 && strncmp(property, "0x0p0-0", 7) !=0) {
++                ALOGD("saveConfig resolution = %s", property);
++                std::vector<DrmMode> mModes = primary->modes();
++                sscanf(property,"%dx%d@%f-%d-%d-%d-%d-%d-%d-%x", &w, &h, &vfresh, &hsync_start,&hsync_end,&htotal,&vsync_start,&vsync_end,
++                        &vtotal, &flags);
++
++                ALOGD("last base_paramer.main.resolution.hdisplay = %d,  vdisplay=%d(%s@%f)",
++                        base_paramer.main.screen_list[slot].resolution.hdisplay,
++                        base_paramer.main.screen_list[slot].resolution.vdisplay,
++                        base_paramer.main.hwc_info.device,	base_paramer.main.hwc_info.fps);
++                base_paramer.main.screen_list[slot].resolution.hdisplay = w;
++                base_paramer.main.screen_list[slot].resolution.vdisplay = h;
++                base_paramer.main.screen_list[slot].resolution.hsync_start = hsync_start;
++                base_paramer.main.screen_list[slot].resolution.hsync_end = hsync_end;
++                if (foundMainIdx != -1)
++                    base_paramer.main.screen_list[slot].resolution.clock = mModes[foundMainIdx].clock();
++                else if (flags & DRM_MODE_FLAG_INTERLACE)
++                    base_paramer.main.screen_list[slot].resolution.clock = (htotal*vtotal*vfresh/2)/1000.0f;
++                else
++                    base_paramer.main.screen_list[slot].resolution.clock = (htotal*vtotal*vfresh)/1000.0f;
++                base_paramer.main.screen_list[slot].resolution.htotal = htotal;
++                base_paramer.main.screen_list[slot].resolution.vsync_start = vsync_start;
++                base_paramer.main.screen_list[slot].resolution.vsync_end = vsync_end;
++                base_paramer.main.screen_list[slot].resolution.vtotal = vtotal;
++                base_paramer.main.screen_list[slot].resolution.flags = flags;
++                ALOGD("saveBaseParameter foundMainIdx=%d clock=%d", foundMainIdx, base_paramer.main.screen_list[slot].resolution.clock);
++            } else {
++                base_paramer.main.screen_list[slot].feature|= RESOLUTION_AUTO;
++                memset(&base_paramer.main.screen_list[slot].resolution, 0, sizeof(base_paramer.main.screen_list[slot].resolution));
++            }
++
++            memset(property,0,sizeof(property));
++            property_get("persist.sys.overscan.main", property, "overscan 100,100,100,100");
++            sscanf(property, "overscan %d,%d,%d,%d",
++                    &left,
++                    &top,
++                    &right,
++                    &bottom);
++            base_paramer.main.scan.leftscale = (unsigned short)left;
++            base_paramer.main.scan.topscale = (unsigned short)top;
++            base_paramer.main.scan.rightscale = (unsigned short)right;
++            base_paramer.main.scan.bottomscale = (unsigned short)bottom;
++
++            memset(property,0,sizeof(property));
++            property_get("persist.sys.color.main", property, "Auto");
++            if (strncmp(property, "Auto", 4) != 0){
++                if (strstr(property, "RGB") != 0)
++                    base_paramer.main.screen_list[slot].format = output_rgb;
++                else if (strstr(property, "YCBCR444") != 0)
++                    base_paramer.main.screen_list[slot].format = output_ycbcr444;
++                else if (strstr(property, "YCBCR422") != 0)
++                    base_paramer.main.screen_list[slot].format = output_ycbcr422;
++                else if (strstr(property, "YCBCR420") != 0)
++                    base_paramer.main.screen_list[slot].format = output_ycbcr420;
++                else {
++                    base_paramer.main.screen_list[slot].feature |= COLOR_AUTO;
++                    base_paramer.main.screen_list[slot].format = output_ycbcr_high_subsampling;
++                }
++
++                if (strstr(property, "8bit") != NULL)
++                    base_paramer.main.screen_list[slot].depthc = depth_24bit;
++                else if (strstr(property, "10bit") != NULL)
++                    base_paramer.main.screen_list[slot].depthc = depth_30bit;
++                else
++                    base_paramer.main.screen_list[slot].depthc = Automatic;
++                ALOGD("saveConfig: color=%d-%d", base_paramer.main.screen_list[slot].format, base_paramer.main.screen_list[slot].depthc);
++            } else {
++                base_paramer.main.screen_list[slot].depthc = Automatic;
++                base_paramer.main.screen_list[slot].format = output_ycbcr_high_subsampling;
++                base_paramer.main.screen_list[slot].feature |= COLOR_AUTO;
++            }
++
++            memset(property,0,sizeof(property));
++            property_get("persist.sys.hdcp1x.main", property, "0");
++            if (atoi(property) > 0)
++                base_paramer.main.screen_list[slot].feature |= HDCP1X_EN;
++
++            memset(property,0,sizeof(property));
++            property_get("persist.sys.resolution_white.main", property, "0");
++            if (atoi(property) > 0)
++                base_paramer.main.screen_list[slot].feature |= RESOLUTION_WHITE_EN;
++            saveBcshConfig(&base_paramer, HWC_DISPLAY_PRIMARY_BIT);
+ #ifdef TEST_BASE_PARMARTER
+-			/*save aux fb & device*/
+-			saveHwcInitalInfo(&base_paramer, HWC_DISPLAY_PRIMARY_BIT);
++            /*save aux fb & device*/
++            saveHwcInitalInfo(&base_paramer, HWC_DISPLAY_PRIMARY_BIT);
+ #endif
+-		} else if(conn->state() == DRM_MODE_CONNECTED 
+-				&& (conn->possible_displays() & HWC_DISPLAY_EXTERNAL_BIT) 
+-				&& (conn->encoder() != NULL)) {
+-			char property[PROPERTY_VALUE_MAX];
+-			int w=0,h=0,hsync_start=0,hsync_end=0,htotal=0;
+-			int vsync_start=0,vsync_end=0,vtotal=0,flags=0;
+-			float vfresh=0;
+-			int left=0,top=0,right=0,bottom=0;
+-			int slot = findSuitableInfoSlot(&base_paramer.aux, conn->get_type());
+-
+-			if (isAuxHdmiConnected && conn->get_type() == DRM_MODE_CONNECTOR_TV)
+-				continue;
+-
+-			base_paramer.aux.screen_list[slot].type = conn->get_type();
+-			base_paramer.aux.screen_list[slot].feature &= AUTO_BIT_RESET;
+-			property_get("persist.sys.resolution.aux", property, "0x0p0-0");
+-			if (strncmp(property, "Auto", 4) != 0 && strncmp(property, "0x0p0-0", 7) !=0) {
+-				std::vector<DrmMode> mModes = extend->modes();
+-				sscanf(property,"%dx%d@%f-%d-%d-%d-%d-%d-%d-%x", &w, &h, &vfresh, &hsync_start,&hsync_end,&htotal,&vsync_start,&vsync_end,
+-						&vtotal, &flags);
+-				base_paramer.aux.screen_list[slot].resolution.hdisplay = w;
+-				base_paramer.aux.screen_list[slot].resolution.vdisplay = h;
+-				if (foundMainIdx != -1)
+-					base_paramer.aux.screen_list[slot].resolution.clock = mModes[foundMainIdx].clock();
+-				else if (flags & DRM_MODE_FLAG_INTERLACE)
+-					base_paramer.aux.screen_list[slot].resolution.clock = (htotal*vtotal*vfresh/2) / 1000.0f;
+-				else
+-					base_paramer.aux.screen_list[slot].resolution.clock = (htotal*vtotal*vfresh) / 1000.0f;
+-				base_paramer.aux.screen_list[slot].resolution.hsync_start = hsync_start;
+-				base_paramer.aux.screen_list[slot].resolution.hsync_end = hsync_end;
+-				base_paramer.aux.screen_list[slot].resolution.htotal = htotal;
+-				base_paramer.aux.screen_list[slot].resolution.vsync_start = vsync_start;
+-				base_paramer.aux.screen_list[slot].resolution.vsync_end = vsync_end;
+-				base_paramer.aux.screen_list[slot].resolution.vtotal = vtotal;
+-				base_paramer.aux.screen_list[slot].resolution.flags = flags;
+-			} else {
+-				base_paramer.aux.screen_list[slot].feature |= RESOLUTION_AUTO;
+-				memset(&base_paramer.aux.screen_list[slot].resolution, 0, sizeof(base_paramer.aux.screen_list[slot].resolution));
+-			}
+-
+-			memset(property,0,sizeof(property));
+-			property_get("persist.sys.overscan.aux", property, "overscan 100,100,100,100");
+-			sscanf(property, "overscan %d,%d,%d,%d",
+-					&left,
+-					&top,
+-					&right,
+-					&bottom);
+-			base_paramer.aux.scan.leftscale = (unsigned short)left;
+-			base_paramer.aux.scan.topscale = (unsigned short)top;
+-			base_paramer.aux.scan.rightscale = (unsigned short)right;
+-			base_paramer.aux.scan.bottomscale = (unsigned short)bottom;
+-
+-			memset(property,0,sizeof(property));
+-			property_get("persist.sys.color.aux", property, "Auto");
+-			if (strncmp(property, "Auto", 4) != 0){
+-				char color[16];
+-				char depth[16];
+-
+-				sscanf(property, "%s-%s", color, depth);
+-				if (strncmp(color, "RGB", 3) == 0)
+-					base_paramer.aux.screen_list[slot].format = output_rgb;
+-				else if (strncmp(color, "YCBCR444", 8) == 0)
+-					base_paramer.aux.screen_list[slot].format = output_ycbcr444;
+-				else if (strncmp(color, "YCBCR422", 8) == 0)
+-					base_paramer.aux.screen_list[slot].format = output_ycbcr422;
+-				else if (strncmp(color, "YCBCR420", 8) == 0)
+-					base_paramer.aux.screen_list[slot].format = output_ycbcr420;
+-				else {
+-					base_paramer.aux.screen_list[slot].feature |= COLOR_AUTO;
+-					base_paramer.aux.screen_list[slot].format = output_ycbcr_high_subsampling;
+-				}
+-
+-				if (strncmp(depth, "8bit", 4) == 0)
+-					base_paramer.aux.screen_list[slot].depthc = depth_24bit;
+-				else if (strncmp(depth, "10bit", 5) == 0)
+-					base_paramer.aux.screen_list[slot].depthc = depth_30bit;
+-				else
+-					base_paramer.aux.screen_list[slot].depthc = Automatic;
+-			} else {
+-				base_paramer.aux.screen_list[slot].feature |= COLOR_AUTO;
+-				base_paramer.aux.screen_list[slot].depthc = Automatic;
+-				base_paramer.aux.screen_list[slot].format = output_ycbcr_high_subsampling;
+-			}
+-
+-			memset(property,0,sizeof(property));
+-			property_get("persist.sys.hdcp1x.aux", property, "0");
+-			if (atoi(property) > 0)
+-				base_paramer.aux.screen_list[slot].feature |= HDCP1X_EN;
+-
+-			memset(property,0,sizeof(property));
+-			property_get("persist.sys.resolution_white.aux", property, "0");
+-			if (atoi(property) > 0)
+-				base_paramer.aux.screen_list[slot].feature |= RESOLUTION_WHITE_EN;
+-			/*add for BCSH*/
+-			saveBcshConfig(&base_paramer, HWC_DISPLAY_EXTERNAL_BIT);
++        } else if(conn->state() == DRM_MODE_CONNECTED
++                && (conn->possible_displays() & HWC_DISPLAY_EXTERNAL_BIT)
++                && (conn->encoder() != NULL)) {
++            char property[PROPERTY_VALUE_MAX];
++            int w=0,h=0,hsync_start=0,hsync_end=0,htotal=0;
++            int vsync_start=0,vsync_end=0,vtotal=0,flags=0;
++            float vfresh=0;
++            int left=0,top=0,right=0,bottom=0;
++            int slot = findSuitableInfoSlot(&base_paramer.aux, conn->get_type());
++
++            if (isAuxHdmiConnected && conn->get_type() == DRM_MODE_CONNECTOR_TV)
++                continue;
++
++            base_paramer.aux.screen_list[slot].type = conn->get_type();
++            base_paramer.aux.screen_list[slot].feature &= AUTO_BIT_RESET;
++            property_get("persist.sys.resolution.aux", property, "0x0p0-0");
++            if (strncmp(property, "Auto", 4) != 0 && strncmp(property, "0x0p0-0", 7) !=0) {
++                std::vector<DrmMode> mModes = extend->modes();
++                sscanf(property,"%dx%d@%f-%d-%d-%d-%d-%d-%d-%x", &w, &h, &vfresh, &hsync_start,&hsync_end,&htotal,&vsync_start,&vsync_end,
++                        &vtotal, &flags);
++                base_paramer.aux.screen_list[slot].resolution.hdisplay = w;
++                base_paramer.aux.screen_list[slot].resolution.vdisplay = h;
++                if (foundMainIdx != -1)
++                    base_paramer.aux.screen_list[slot].resolution.clock = mModes[foundMainIdx].clock();
++                else if (flags & DRM_MODE_FLAG_INTERLACE)
++                    base_paramer.aux.screen_list[slot].resolution.clock = (htotal*vtotal*vfresh/2) / 1000.0f;
++                else
++                    base_paramer.aux.screen_list[slot].resolution.clock = (htotal*vtotal*vfresh) / 1000.0f;
++                base_paramer.aux.screen_list[slot].resolution.hsync_start = hsync_start;
++                base_paramer.aux.screen_list[slot].resolution.hsync_end = hsync_end;
++                base_paramer.aux.screen_list[slot].resolution.htotal = htotal;
++                base_paramer.aux.screen_list[slot].resolution.vsync_start = vsync_start;
++                base_paramer.aux.screen_list[slot].resolution.vsync_end = vsync_end;
++                base_paramer.aux.screen_list[slot].resolution.vtotal = vtotal;
++                base_paramer.aux.screen_list[slot].resolution.flags = flags;
++            } else {
++                base_paramer.aux.screen_list[slot].feature |= RESOLUTION_AUTO;
++                memset(&base_paramer.aux.screen_list[slot].resolution, 0, sizeof(base_paramer.aux.screen_list[slot].resolution));
++            }
++
++            memset(property,0,sizeof(property));
++            property_get("persist.sys.overscan.aux", property, "overscan 100,100,100,100");
++            sscanf(property, "overscan %d,%d,%d,%d",
++                    &left,
++                    &top,
++                    &right,
++                    &bottom);
++            base_paramer.aux.scan.leftscale = (unsigned short)left;
++            base_paramer.aux.scan.topscale = (unsigned short)top;
++            base_paramer.aux.scan.rightscale = (unsigned short)right;
++            base_paramer.aux.scan.bottomscale = (unsigned short)bottom;
++
++            memset(property,0,sizeof(property));
++            property_get("persist.sys.color.aux", property, "Auto");
++            if (strncmp(property, "Auto", 4) != 0){
++                char color[16];
++                char depth[16];
++
++                sscanf(property, "%s-%s", color, depth);
++                if (strncmp(color, "RGB", 3) == 0)
++                    base_paramer.aux.screen_list[slot].format = output_rgb;
++                else if (strncmp(color, "YCBCR444", 8) == 0)
++                    base_paramer.aux.screen_list[slot].format = output_ycbcr444;
++                else if (strncmp(color, "YCBCR422", 8) == 0)
++                    base_paramer.aux.screen_list[slot].format = output_ycbcr422;
++                else if (strncmp(color, "YCBCR420", 8) == 0)
++                    base_paramer.aux.screen_list[slot].format = output_ycbcr420;
++                else {
++                    base_paramer.aux.screen_list[slot].feature |= COLOR_AUTO;
++                    base_paramer.aux.screen_list[slot].format = output_ycbcr_high_subsampling;
++                }
++
++                if (strncmp(depth, "8bit", 4) == 0)
++                    base_paramer.aux.screen_list[slot].depthc = depth_24bit;
++                else if (strncmp(depth, "10bit", 5) == 0)
++                    base_paramer.aux.screen_list[slot].depthc = depth_30bit;
++                else
++                    base_paramer.aux.screen_list[slot].depthc = Automatic;
++            } else {
++                base_paramer.aux.screen_list[slot].feature |= COLOR_AUTO;
++                base_paramer.aux.screen_list[slot].depthc = Automatic;
++                base_paramer.aux.screen_list[slot].format = output_ycbcr_high_subsampling;
++            }
++
++            memset(property,0,sizeof(property));
++            property_get("persist.sys.hdcp1x.aux", property, "0");
++            if (atoi(property) > 0)
++                base_paramer.aux.screen_list[slot].feature |= HDCP1X_EN;
++
++            memset(property,0,sizeof(property));
++            property_get("persist.sys.resolution_white.aux", property, "0");
++            if (atoi(property) > 0)
++                base_paramer.aux.screen_list[slot].feature |= RESOLUTION_WHITE_EN;
++            /*add for BCSH*/
++            saveBcshConfig(&base_paramer, HWC_DISPLAY_EXTERNAL_BIT);
+ #ifdef TEST_BASE_PARMARTER
+-			/*save aux fb & device*/
+-			saveHwcInitalInfo(&base_paramer, HWC_DISPLAY_EXTERNAL_BIT);
++            /*save aux fb & device*/
++            saveHwcInitalInfo(&base_paramer, HWC_DISPLAY_EXTERNAL_BIT);
+ #endif
+-		}
+-	}
+-
+-	if (priv->mlut != NULL) {
+-		int mainLutSize = priv->mlut->main.size*sizeof(uint16_t);
+-		int auxLutSize = priv->mlut->aux.size*sizeof(uint16_t);
+-		if (mainLutSize) {
+-			base_paramer.main.mlutdata.size = priv->mlut->main.size;
+-			memcpy(base_paramer.main.mlutdata.lred, priv->mlut->main.lred, mainLutSize);
+-			memcpy(base_paramer.main.mlutdata.lgreen, priv->mlut->main.lred, mainLutSize);
+-			memcpy(base_paramer.main.mlutdata.lblue, priv->mlut->main.lred, mainLutSize);
+-		}
+-
+-		if (auxLutSize) {
+-			base_paramer.aux.mlutdata.size = priv->mlut->aux.size;
+-			memcpy(base_paramer.aux.mlutdata.lred, priv->mlut->aux.lred, mainLutSize);
+-			memcpy(base_paramer.aux.mlutdata.lgreen, priv->mlut->aux.lred, mainLutSize);
+-			memcpy(base_paramer.aux.mlutdata.lblue, priv->mlut->aux.lred, mainLutSize);
+-		}
+-	}
+-	freeLutInfo(priv->mlut);
+-	lseek(file, 0L, SEEK_SET);
+-	write(file, (char*)(&base_paramer.main), sizeof(base_paramer.main));
+-	lseek(file, BASE_OFFSET, SEEK_SET);
+-	write(file, (char*)(&base_paramer.aux), sizeof(base_paramer.aux));
+-	close(file);
+-	sync();
+-	/*
+-	   ALOGD("[%s] hdmi:%d,%d,%d,%d,%d,%d foundMainIdx %d\n", __FUNCTION__,
+-	   base_paramer.main.resolution.hdisplay,
+-	   base_paramer.main.resolution.vdisplay,
+-	   base_paramer.main.resolution.hsync_start,
+-	   base_paramer.main.resolution.hsync_end,
+-	   base_paramer.main.resolution.htotal,
+-	   base_paramer.main.resolution.flags,
+-	   foundMainIdx);
+-
+-	   ALOGD("[%s] tve:%d,%d,%d,%d,%d,%d foundAuxIdx %d\n", __FUNCTION__,
+-	   base_paramer.aux.resolution.hdisplay,
+-	   base_paramer.aux.resolution.vdisplay,
+-	   base_paramer.aux.resolution.hsync_start,
+-	   base_paramer.aux.resolution.hsync_end,
+-	   base_paramer.aux.resolution.htotal,
+-	   base_paramer.aux.resolution.flags,
+-	   foundAuxIdx);
+-	 */
++        }
++    }
++
++    if (priv->mlut != NULL) {
++        int mainLutSize = priv->mlut->main.size*sizeof(uint16_t);
++        int auxLutSize = priv->mlut->aux.size*sizeof(uint16_t);
++        if (mainLutSize) {
++            base_paramer.main.mlutdata.size = priv->mlut->main.size;
++            memcpy(base_paramer.main.mlutdata.lred, priv->mlut->main.lred, mainLutSize);
++            memcpy(base_paramer.main.mlutdata.lgreen, priv->mlut->main.lgreen, mainLutSize);
++            memcpy(base_paramer.main.mlutdata.lblue, priv->mlut->main.lblue, mainLutSize);
++        }
++
++        if (auxLutSize) {
++            base_paramer.aux.mlutdata.size = priv->mlut->aux.size;
++            memcpy(base_paramer.aux.mlutdata.lred, priv->mlut->aux.lred, mainLutSize);
++            memcpy(base_paramer.aux.mlutdata.lgreen, priv->mlut->aux.lgreen, mainLutSize);
++            memcpy(base_paramer.aux.mlutdata.lblue, priv->mlut->aux.lblue, mainLutSize);
++        }
++    }
++    freeLutInfo(priv->mlut);
++    lseek(file, 0L, SEEK_SET);
++    write(file, (char*)(&base_paramer.main), sizeof(base_paramer.main));
++    lseek(file, BASE_OFFSET, SEEK_SET);
++    write(file, (char*)(&base_paramer.aux), sizeof(base_paramer.aux));
++    close(file);
++    sync();
++    /*
++       ALOGD("[%s] hdmi:%d,%d,%d,%d,%d,%d foundMainIdx %d\n", __FUNCTION__,
++       base_paramer.main.resolution.hdisplay,
++       base_paramer.main.resolution.vdisplay,
++       base_paramer.main.resolution.hsync_start,
++       base_paramer.main.resolution.hsync_end,
++       base_paramer.main.resolution.htotal,
++       base_paramer.main.resolution.flags,
++       foundMainIdx);
++
++       ALOGD("[%s] tve:%d,%d,%d,%d,%d,%d foundAuxIdx %d\n", __FUNCTION__,
++       base_paramer.aux.resolution.hdisplay,
++       base_paramer.aux.resolution.vdisplay,
++       base_paramer.aux.resolution.hsync_start,
++       base_paramer.aux.resolution.hsync_end,
++       base_paramer.aux.resolution.htotal,
++       base_paramer.aux.resolution.flags,
++       foundAuxIdx);
++     */
+ }
+ 
+ static void hw_output_hotplug_update(struct hw_output_device* dev){
+-	hw_output_private_t* priv = (hw_output_private_t*)dev;
++    hw_output_private_t* priv = (hw_output_private_t*)dev;
+ 
+     DrmConnector *mextend = NULL;
+     DrmConnector *mprimary = NULL;
+@@ -825,32 +825,32 @@ static void hw_output_hotplug_update(struct hw_output_device* dev){
+ static int hw_output_initialize(struct hw_output_device* dev, void* data)
+ {
+     hw_output_private_t* priv = (hw_output_private_t*)dev;
+-	
+-	priv->drm_ = NULL;
+-	priv->primary = NULL;
+-	priv->extend = NULL;
+-	priv->mlut = NULL;
++
++    priv->drm_ = NULL;
++    priv->primary = NULL;
++    priv->extend = NULL;
++    priv->mlut = NULL;
+     priv->callback_data = data;
+ 
+-	if (priv->drm_ == NULL) {
+-		priv->drm_ = new DrmResources();
+-		priv->drm_->Init();
+-		ALOGD("nativeInit: ");
+-		hw_output_hotplug_update(dev);
+-		if (priv->primary == NULL) {
+-			for (auto &conn : priv->drm_->connectors()) {
+-				if ((conn->possible_displays() & HWC_DISPLAY_PRIMARY_BIT)) {
+-					priv->drm_->SetPrimaryDisplay(conn.get());
+-					priv->primary = conn.get();
+-				}
+-				if ((conn->possible_displays() & HWC_DISPLAY_EXTERNAL_BIT) && conn->state() == DRM_MODE_CONNECTED) {
+-					priv->drm_->SetExtendDisplay(conn.get());
+-					priv->extend = conn.get();
+-				}
+-			}
+-		}
+-			ALOGD("primary: %p extend: %p ", priv->primary, priv->extend);
+-		}
++    if (priv->drm_ == NULL) {
++        priv->drm_ = new DrmResources();
++        priv->drm_->Init();
++        ALOGD("nativeInit: ");
++        hw_output_hotplug_update(dev);
++        if (priv->primary == NULL) {
++            for (auto &conn : priv->drm_->connectors()) {
++                if ((conn->possible_displays() & HWC_DISPLAY_PRIMARY_BIT)) {
++                    priv->drm_->SetPrimaryDisplay(conn.get());
++                    priv->primary = conn.get();
++                }
++                if ((conn->possible_displays() & HWC_DISPLAY_EXTERNAL_BIT) && conn->state() == DRM_MODE_CONNECTED) {
++                    priv->drm_->SetExtendDisplay(conn.get());
++                    priv->extend = conn.get();
++                }
++            }
++        }
++        ALOGD("primary: %p extend: %p ", priv->primary, priv->extend);
++    }
+     return 0;
+ }
+ 
+@@ -859,24 +859,24 @@ static int hw_output_initialize(struct hw_output_device* dev, void* data)
+ 
+ static int hw_output_set_mode(struct hw_output_device*, int dpy, const char* mode)
+ {
+-	char property[PROPERTY_VALUE_MAX];
++    char property[PROPERTY_VALUE_MAX];
+ 
+     if (dpy == HWC_DISPLAY_PRIMARY){
+-		property_get("persist.sys.resolution.main", property, NULL);
+-        property_set("persist.sys.resolution.main", mode);	
+-	} else {
+-		property_get("persist.sys.resolution.main", property, NULL);
++        property_get("persist.sys.resolution.main", property, NULL);
++        property_set("persist.sys.resolution.main", mode);
++    } else {
++        property_get("persist.sys.resolution.main", property, NULL);
+         property_set("persist.sys.resolution.aux", mode);
+-	}
++    }
+     ALOGD("nativeSetMode %s display %d ", mode, dpy);
+ 
+-	if (strcmp(mode, property) !=0) {
+-		char tmp[128];
+-		timeline++;
+-		sprintf(tmp, "%d", timeline);
+-		property_set("sys.display.timeline", tmp);
+-	}
+-	return 0;
++    if (strcmp(mode, property) !=0) {
++        char tmp[128];
++        timeline++;
++        sprintf(tmp, "%d", timeline);
++        property_set("sys.display.timeline", tmp);
++    }
++    return 0;
+ }
+ 
+ static int hw_output_set_gamma(struct hw_output_device* dev, int dpy, uint32_t size, uint16_t* r, uint16_t* g, uint16_t* b)
+@@ -885,190 +885,190 @@ static int hw_output_set_gamma(struct hw_output_device* dev, int dpy, uint32_t s
+     int ret = -1;
+     int crtc_id = 0;
+ 
+-	if (dpy == HWC_DISPLAY_PRIMARY && priv->primary)
+-    	crtc_id = priv->drm_->GetCrtcFromConnector(priv->primary)->id();
+-	else if (priv->extend)
+-		crtc_id = priv->drm_->GetCrtcFromConnector(priv->extend)->id();
+-	ret = drmModeCrtcSetGamma(priv->drm_->fd(), crtc_id, size, r, g, b);
++    if (dpy == HWC_DISPLAY_PRIMARY && priv->primary)
++        crtc_id = priv->drm_->GetCrtcFromConnector(priv->primary)->id();
++    else if (priv->extend)
++        crtc_id = priv->drm_->GetCrtcFromConnector(priv->extend)->id();
++    ret = drmModeCrtcSetGamma(priv->drm_->fd(), crtc_id, size, r, g, b);
+     if (ret < 0)
+-	    ALOGE("fail to SetGamma %d(%s)", ret, strerror(errno));
++        ALOGE("fail to SetGamma %d(%s)", ret, strerror(errno));
+     return ret;
+ }
+ 
+ static int hw_output_set_brightness(struct hw_output_device*, int dpy, int brightness)
+ {
+-	char property[PROPERTY_VALUE_MAX];
+-	char tmp[128];
+-
+-	sprintf(tmp, "%d", brightness);
+-	if (dpy == HWC_DISPLAY_PRIMARY){
+-		property_get("persist.sys.brightness.main", property, "50");
+-		property_set("persist.sys.brightness.main", tmp);
+-	} else {
+-		property_get("persist.sys.brightness.aux", property, "50");
+-		property_set("persist.sys.brightness.aux", tmp);
+-	}
+-
+-	if (atoi(property) != brightness) {
+-		timeline++;
+-		memset(tmp, 0, sizeof(tmp));
+-		sprintf(tmp, "%d", timeline);
+-		property_set("sys.display.timeline", tmp);
+-	}
+-	return 0;
++    char property[PROPERTY_VALUE_MAX];
++    char tmp[128];
++
++    sprintf(tmp, "%d", brightness);
++    if (dpy == HWC_DISPLAY_PRIMARY){
++        property_get("persist.sys.brightness.main", property, "50");
++        property_set("persist.sys.brightness.main", tmp);
++    } else {
++        property_get("persist.sys.brightness.aux", property, "50");
++        property_set("persist.sys.brightness.aux", tmp);
++    }
++
++    if (atoi(property) != brightness) {
++        timeline++;
++        memset(tmp, 0, sizeof(tmp));
++        sprintf(tmp, "%d", timeline);
++        property_set("sys.display.timeline", tmp);
++    }
++    return 0;
+ }
+ 
+ static int hw_output_set_contrast(struct hw_output_device*, int dpy, int contrast)
+ {
+-	char property[PROPERTY_VALUE_MAX];
+-	char tmp[128];
+-
+-	sprintf(tmp, "%d", contrast);
+-	if (dpy == HWC_DISPLAY_PRIMARY){
+-		property_get("persist.sys.contrast.main", property, "50");
+-		property_set("persist.sys.contrast.main", tmp);
+-	} else {
+-		property_get("persist.sys.contrast.aux", property, "50");
+-		property_set("persist.sys.contrast.aux", tmp);
+-	}
+-
+-	if (atoi(property) != contrast) {
+-		timeline++;
+-		memset(tmp, 0, sizeof(tmp));
+-		sprintf(tmp, "%d", timeline);
+-		property_set("sys.display.timeline", tmp);
+-	}
+-	return 0;
++    char property[PROPERTY_VALUE_MAX];
++    char tmp[128];
++
++    sprintf(tmp, "%d", contrast);
++    if (dpy == HWC_DISPLAY_PRIMARY){
++        property_get("persist.sys.contrast.main", property, "50");
++        property_set("persist.sys.contrast.main", tmp);
++    } else {
++        property_get("persist.sys.contrast.aux", property, "50");
++        property_set("persist.sys.contrast.aux", tmp);
++    }
++
++    if (atoi(property) != contrast) {
++        timeline++;
++        memset(tmp, 0, sizeof(tmp));
++        sprintf(tmp, "%d", timeline);
++        property_set("sys.display.timeline", tmp);
++    }
++    return 0;
+ }
+ 
+ static int hw_output_set_sat(struct hw_output_device*, int dpy, int sat)
+ {
+-	char property[PROPERTY_VALUE_MAX];
+-	char tmp[128];
+-
+-	sprintf(tmp, "%d", sat);
+-	if (dpy == HWC_DISPLAY_PRIMARY){
+-		property_get("persist.sys.saturation.main", property, "50");
+-		property_set("persist.sys.saturation.main", tmp);
+-	} else {
+-		property_get("persist.sys.saturation.aux", property, "50");
+-		property_set("persist.sys.saturation.aux", tmp);
+-	}
+-
+-	if (atoi(property) != sat) {
+-		timeline++;
+-		memset(tmp, 0, sizeof(tmp));
+-		sprintf(tmp, "%d", timeline);
+-		property_set("sys.display.timeline", tmp);
+-	}
+-	return 0;
++    char property[PROPERTY_VALUE_MAX];
++    char tmp[128];
++
++    sprintf(tmp, "%d", sat);
++    if (dpy == HWC_DISPLAY_PRIMARY){
++        property_get("persist.sys.saturation.main", property, "50");
++        property_set("persist.sys.saturation.main", tmp);
++    } else {
++        property_get("persist.sys.saturation.aux", property, "50");
++        property_set("persist.sys.saturation.aux", tmp);
++    }
++
++    if (atoi(property) != sat) {
++        timeline++;
++        memset(tmp, 0, sizeof(tmp));
++        sprintf(tmp, "%d", timeline);
++        property_set("sys.display.timeline", tmp);
++    }
++    return 0;
+ }
+ 
+ static int hw_output_set_hue(struct hw_output_device*, int dpy, int hue)
+ {
+-	char property[PROPERTY_VALUE_MAX];
+-	char tmp[128];
+-
+-	sprintf(tmp, "%d", hue);
+-	if (dpy == HWC_DISPLAY_PRIMARY){
+-		property_get("persist.sys.hue.main", property, "50");
+-		property_set("persist.sys.hue.main", tmp);
+-	} else {
+-		property_get("persist.sys.hue.aux", property, "50");
+-		property_set("persist.sys.hue.aux", tmp);
+-	}
+-
+-	if (atoi(property) != hue) {
+-		timeline++;
+-		memset(tmp, 0, sizeof(tmp));
+-		sprintf(tmp, "%d", timeline);
+-		property_set("sys.display.timeline", tmp);
+-	}
+-	return 0;
++    char property[PROPERTY_VALUE_MAX];
++    char tmp[128];
++
++    sprintf(tmp, "%d", hue);
++    if (dpy == HWC_DISPLAY_PRIMARY){
++        property_get("persist.sys.hue.main", property, "50");
++        property_set("persist.sys.hue.main", tmp);
++    } else {
++        property_get("persist.sys.hue.aux", property, "50");
++        property_set("persist.sys.hue.aux", tmp);
++    }
++
++    if (atoi(property) != hue) {
++        timeline++;
++        memset(tmp, 0, sizeof(tmp));
++        sprintf(tmp, "%d", timeline);
++        property_set("sys.display.timeline", tmp);
++    }
++    return 0;
+ }
+ 
+ static int hw_output_set_screen_scale(struct hw_output_device*, int dpy, int direction, int value)
+ {
+-	char property[PROPERTY_VALUE_MAX];
+-	char overscan[128];
+-	int left,top,right,bottom;
+-
+-	if(dpy == HWC_DISPLAY_PRIMARY)
+-		property_get("persist.sys.overscan.main", property, "overscan 100,100,100,100");
+-	else
+-		property_get("persist.sys.overscan.aux", property, "overscan 100,100,100,100");
+-
+-	sscanf(property, "overscan %d,%d,%d,%d", &left, &top, &right, &bottom);
+-
+-	if (direction == OVERSCAN_LEFT)
+-		left = value;
+-	else if (direction == OVERSCAN_TOP)
+-		top = value;
+-	else if (direction == OVERSCAN_RIGHT)
+-		right = value;
+-	else if (direction == OVERSCAN_BOTTOM)
+-		bottom = value;
+-
+-	sprintf(overscan, "overscan %d,%d,%d,%d", left, top, right, bottom);
+-	
+-	if(dpy == HWC_DISPLAY_PRIMARY)
+-		property_set("persist.sys.overscan.main", overscan);
+-	else
+-		property_set("persist.sys.overscan.aux", overscan);
+-
+-	if (strcmp(property, overscan) != 0) {
+-		char tmp[128];
+-		timeline++;
+-		sprintf(tmp, "%d", timeline);
+-		property_set("sys.display.timeline", tmp);
+-	}
+-
+-	return 0;
++    char property[PROPERTY_VALUE_MAX];
++    char overscan[128];
++    int left,top,right,bottom;
++
++    if(dpy == HWC_DISPLAY_PRIMARY)
++        property_get("persist.sys.overscan.main", property, "overscan 100,100,100,100");
++    else
++        property_get("persist.sys.overscan.aux", property, "overscan 100,100,100,100");
++
++    sscanf(property, "overscan %d,%d,%d,%d", &left, &top, &right, &bottom);
++
++    if (direction == OVERSCAN_LEFT)
++        left = value;
++    else if (direction == OVERSCAN_TOP)
++        top = value;
++    else if (direction == OVERSCAN_RIGHT)
++        right = value;
++    else if (direction == OVERSCAN_BOTTOM)
++        bottom = value;
++
++    sprintf(overscan, "overscan %d,%d,%d,%d", left, top, right, bottom);
++
++    if(dpy == HWC_DISPLAY_PRIMARY)
++        property_set("persist.sys.overscan.main", overscan);
++    else
++        property_set("persist.sys.overscan.aux", overscan);
++
++    if (strcmp(property, overscan) != 0) {
++        char tmp[128];
++        timeline++;
++        sprintf(tmp, "%d", timeline);
++        property_set("sys.display.timeline", tmp);
++    }
++
++    return 0;
+ }
+ 
+ static int hw_output_set_hdr_mode(struct hw_output_device*, int dpy, int hdr_mode)
+ {
+-	char property[PROPERTY_VALUE_MAX];
+-	char tmp[128];
+-
+-	sprintf(tmp, "%d", hdr_mode);
+-	if (dpy == HWC_DISPLAY_PRIMARY){
+-		property_get("persist.sys.hdr_mode.main", property, "50");
+-		property_set("persist.sys.hdr_mode.main", tmp);
+-	} else {
+-		property_get("persist.sys.hdr_mode.aux", property, "50");
+-		property_set("persist.sys.hdr_mode.aux", tmp);
+-	}
+-
+-	if (atoi(property) != hdr_mode) {
+-		timeline++;
+-		memset(tmp, 0, sizeof(tmp));
+-		sprintf(tmp, "%d", timeline);
+-		property_set("sys.display.timeline", tmp);
+-	}
+-	return 0;
++    char property[PROPERTY_VALUE_MAX];
++    char tmp[128];
++
++    sprintf(tmp, "%d", hdr_mode);
++    if (dpy == HWC_DISPLAY_PRIMARY){
++        property_get("persist.sys.hdr_mode.main", property, "50");
++        property_set("persist.sys.hdr_mode.main", tmp);
++    } else {
++        property_get("persist.sys.hdr_mode.aux", property, "50");
++        property_set("persist.sys.hdr_mode.aux", tmp);
++    }
++
++    if (atoi(property) != hdr_mode) {
++        timeline++;
++        memset(tmp, 0, sizeof(tmp));
++        sprintf(tmp, "%d", timeline);
++        property_set("sys.display.timeline", tmp);
++    }
++    return 0;
+ }
+ 
+ static int hw_output_set_color_mode(struct hw_output_device*, int dpy, const char* color_mode)
+ {
+-	char property[PROPERTY_VALUE_MAX];
++    char property[PROPERTY_VALUE_MAX];
+ 
+     if (dpy == HWC_DISPLAY_PRIMARY){
+-		property_get("persist.sys.color.main", property, NULL);
++        property_get("persist.sys.color.main", property, NULL);
+         property_set("persist.sys.color.main", color_mode);
+-	} else {
+-		property_get("persist.sys.color.aux", property, NULL);
++    } else {
++        property_get("persist.sys.color.aux", property, NULL);
+         property_set("persist.sys.color.aux", color_mode);
+-	}
++    }
+     ALOGD("hw_output_set_color_mode %s display %d ", color_mode, dpy);
+ 
+-	if (strcmp(color_mode, property) !=0) {
+-		char tmp[128];
+-		timeline++;
+-		sprintf(tmp, "%d", timeline);
+-		property_set("sys.display.timeline", tmp);
+-	}
+-	return 0;
++    if (strcmp(color_mode, property) !=0) {
++        char tmp[128];
++        timeline++;
++        sprintf(tmp, "%d", timeline);
++        property_set("sys.display.timeline", tmp);
++    }
++    return 0;
+ }
+ 
+ static int hw_output_get_cur_mode(struct hw_output_device* dev, int dpy, char* curMode)
+@@ -1076,16 +1076,16 @@ static int hw_output_get_cur_mode(struct hw_output_device* dev, int dpy, char* c
+     hw_output_private_t* priv = (hw_output_private_t*)dev;
+     bool found=false;
+ 
+-	if (curMode != NULL)
+-    	found = getResolutionInfo(priv, dpy, curMode);
+-	else
+-		return -1;
++    if (curMode != NULL)
++        found = getResolutionInfo(priv, dpy, curMode);
++    else
++        return -1;
+ 
+     if (!found) {
+         sprintf(curMode, "%s", "Auto");
+     }
+ 
+-	return 0;
++    return 0;
+ }
+ 
+ static int hw_output_get_cur_color_mode(struct hw_output_device* dev, int dpy, char* curColorMode)
+@@ -1125,42 +1125,39 @@ static int hw_output_get_cur_color_mode(struct hw_output_device* dev, int dpy, c
+                         base_paramer.aux.screen_list[slot].format == output_ycbcr_high_subsampling)
+                     sprintf(colorMode, "%s", "Auto");
+             }
+-            ALOGD("nativeGetCurCorlorMode:  %d-%d", 
+-                    base_paramer.main.screen_list[slot].format, base_paramer.main.screen_list[slot].depthc);
+         }
+     }
+-	sprintf(curColorMode, "%s", colorMode);
++    sprintf(curColorMode, "%s", colorMode);
+     ALOGD("nativeGetCurCorlorMode: colorMode=%s", colorMode);
+-	
+-	return 0;
++    return 0;
+ }
+ 
+ static int hw_output_get_num_connectors(struct hw_output_device* dev, int, int* numConnectors)
+ {
+-	hw_output_private_t* priv = (hw_output_private_t*)dev;
+-	
+-	*numConnectors = priv->drm_->connectors().size();
+-	return 0;
++    hw_output_private_t* priv = (hw_output_private_t*)dev;
++
++    *numConnectors = priv->drm_->connectors().size();
++    return 0;
+ }
+ 
+ static int hw_output_get_connector_state(struct hw_output_device* dev, int dpy, int* state)
+ {
+-	hw_output_private_t* priv = (hw_output_private_t*)dev;
+-	int ret = 0;
++    hw_output_private_t* priv = (hw_output_private_t*)dev;
++    int ret = 0;
+ 
+     if (dpy == HWC_DISPLAY_PRIMARY && priv->primary)
+         *state = priv->primary->state();
+     else if (dpy == HWC_DISPLAY_EXTERNAL && priv->extend)
+         *state = priv->extend->state();
+-	else
+-		ret = -1;
++    else
++        ret = -1;
+ 
+-	return ret;
++    return ret;
+ }
+ 
+ static int hw_output_get_color_configs(struct hw_output_device* dev, int dpy, int* configs)
+ {
+-	hw_output_private_t* priv = (hw_output_private_t*)dev;
++    hw_output_private_t* priv = (hw_output_private_t*)dev;
+     DrmConnector* mCurConnector;
+     uint64_t color_capacity=0;
+     uint64_t depth_capacity=0;
+@@ -1181,29 +1178,29 @@ static int hw_output_get_color_configs(struct hw_output_device* dev, int dpy, in
+         if (mCurConnector->hdmi_output_depth_capacity_property().id())
+             mCurConnector->hdmi_output_depth_capacity_property().value(&depth_capacity);
+ 
+-		configs[0] = (int)color_capacity;
+-		configs[1] = (int)depth_capacity;
++        configs[0] = (int)color_capacity;
++        configs[1] = (int)depth_capacity;
+         ALOGD("nativeGetCorlorModeConfigs: corlor=%d depth=%d configs:%d %d",(int)color_capacity,(int)depth_capacity, configs[0], configs[1]);
+     }
+-	return 0;
++    return 0;
+ }
+ 
+ static int hw_output_get_overscan(struct hw_output_device*, int dpy, uint32_t* overscans)
+ {
+-	char property[PROPERTY_VALUE_MAX];
+-	int left,top,right,bottom;
+-
+-	if(dpy == HWC_DISPLAY_PRIMARY)
+-		property_get("persist.sys.overscan.main", property, "overscan 100,100,100,100");
+-	else
+-		property_get("persist.sys.overscan.aux", property, "overscan 100,100,100,100");
+-
+-	sscanf(property, "overscan %d,%d,%d,%d", &left, &top, &right, &bottom);
+-	overscans[0] = left;
+-	overscans[1] = top;
+-	overscans[2] = right;
+-	overscans[3] = bottom;
+-	return 0;
++    char property[PROPERTY_VALUE_MAX];
++    int left,top,right,bottom;
++
++    if(dpy == HWC_DISPLAY_PRIMARY)
++        property_get("persist.sys.overscan.main", property, "overscan 100,100,100,100");
++    else
++        property_get("persist.sys.overscan.aux", property, "overscan 100,100,100,100");
++
++    sscanf(property, "overscan %d,%d,%d,%d", &left, &top, &right, &bottom);
++    overscans[0] = left;
++    overscans[1] = top;
++    overscans[2] = right;
++    overscans[3] = bottom;
++    return 0;
+ }
+ 
+ static int hw_output_get_bcsh(struct hw_output_device*, int dpy, uint32_t* bcshs)
+@@ -1279,12 +1276,12 @@ static int hw_output_get_bcsh(struct hw_output_device*, int dpy, uint32_t* bcshs
+     checkBcshInfo(bcshs);
+     ALOGD("Bcsh: %d %d %d %d main.bcsh: %d %d %d %d", bcshs[0], bcshs[1], bcshs[2], bcshs[3],
+             base_paramer.main.bcsh.brightness, base_paramer.main.bcsh.contrast, base_paramer.main.bcsh.saturation, base_paramer.main.bcsh.hue);
+-	return 0;
++    return 0;
+ }
+ 
+ static int hw_output_get_builtin(struct hw_output_device* dev, int dpy, int* builtin)
+ {
+-	hw_output_private_t* priv = (hw_output_private_t*)dev;
++    hw_output_private_t* priv = (hw_output_private_t*)dev;
+ 
+     if (dpy == HWC_DISPLAY_PRIMARY && priv->primary)
+         *builtin = priv->primary->get_type();
+@@ -1293,18 +1290,18 @@ static int hw_output_get_builtin(struct hw_output_device* dev, int dpy, int* bui
+     else
+         *builtin = 0;
+ 
+-	return 0;
++    return 0;
+ }
+ 
+ static drm_mode_t* hw_output_get_display_modes(struct hw_output_device* dev, int dpy, uint32_t* size)
+ {
+-	hw_output_private_t* priv = (hw_output_private_t*)dev;
++    hw_output_private_t* priv = (hw_output_private_t*)dev;
+     std::vector<DrmMode> mModes;
+     DrmConnector* mCurConnector;
+-	drm_mode_t* drm_modes = NULL;
++    drm_mode_t* drm_modes = NULL;
+     int idx=0;
+ 
+-	*size = 0;
++    *size = 0;
+     if (dpy == HWC_DISPLAY_PRIMARY) {
+         mCurConnector = priv->primary;
+         if (priv->primary != NULL)
+@@ -1324,7 +1321,7 @@ static drm_mode_t* hw_output_get_display_modes(struct hw_output_device* dev, int
+     if (mModes.size() == 0)
+         return NULL;
+ 
+-	drm_modes = (drm_mode_t*)malloc(sizeof(drm_mode_t) * mModes.size());
++    drm_modes = (drm_mode_t*)malloc(sizeof(drm_mode_t) * mModes.size());
+ 
+     for (size_t c = 0; c < mModes.size(); ++c) {
+         const DrmMode& info = mModes[c];
+@@ -1334,33 +1331,35 @@ static drm_mode_t* hw_output_get_display_modes(struct hw_output_device* dev, int
+             vfresh = info.clock()*2 / (float)(info.v_total()* info.h_total()) * 1000.0f;
+         else
+             vfresh = info.clock()/ (float)(info.v_total()* info.h_total()) * 1000.0f;
+-		drm_modes[c].width = info.h_display();
+-		drm_modes[c].height = info.v_display();
+-		drm_modes[c].refreshRate = vfresh;
+-		drm_modes[c].clock = info.clock();
+-		drm_modes[c].flags = info.flags();
+-		drm_modes[c].interlaceFlag = info.flags()&(1<<4);
+-		drm_modes[c].yuvFlag = (info.flags()&(1<<24) || info.flags()&(1<<23));
+-		drm_modes[c].connectorId = mCurConnector->id();
+-		drm_modes[c].mode_type = info.type();
+-		drm_modes[c].idx = idx;
+-		drm_modes[c].hsync_start = info.h_sync_start();	
+-		drm_modes[c].hsync_end = info.h_sync_end();
+-		drm_modes[c].htotal = info.h_total();
+-		drm_modes[c].hskew = info.h_skew();
+-		drm_modes[c].vsync_start = info.v_sync_start();
+-		drm_modes[c].vsync_end = info.v_sync_end();
+-		drm_modes[c].vtotal = info.v_total();
+-		drm_modes[c].vscan = info.v_scan();
+-		idx++;
+-        ALOGV("display%d. mode[%d]  %dx%d info.fps %f clock %d   hsync_start %d hsync_enc %d htotal %d hskew %d", 
+-                dpy,(int)c, info.h_display(), info.v_display(), info.v_refresh(), info.clock(),  info.h_sync_start(),info.h_sync_end(),
++        drm_modes[c].width = info.h_display();
++        drm_modes[c].height = info.v_display();
++        drm_modes[c].refreshRate = vfresh;
++        drm_modes[c].clock = info.clock();
++        drm_modes[c].flags = info.flags();
++        drm_modes[c].interlaceFlag = info.flags()&(1<<4);
++        drm_modes[c].yuvFlag = (info.flags()&(1<<24) || info.flags()&(1<<23));
++        drm_modes[c].connectorId = mCurConnector->id();
++        drm_modes[c].mode_type = info.type();
++        drm_modes[c].idx = idx;
++        drm_modes[c].hsync_start = info.h_sync_start();
++        drm_modes[c].hsync_end = info.h_sync_end();
++        drm_modes[c].htotal = info.h_total();
++        drm_modes[c].hskew = info.h_skew();
++        drm_modes[c].vsync_start = info.v_sync_start();
++        drm_modes[c].vsync_end = info.v_sync_end();
++        drm_modes[c].vtotal = info.v_total();
++        drm_modes[c].vscan = info.v_scan();
++        idx++;
++        ALOGV("display%d mode[%d]  %dx%d fps %f clk %d  h_start %d h_enc %d htotal %d hskew %d",
++                dpy,(int)c, info.h_display(), info.v_display(), info.v_refresh(),
++                info.clock(),  info.h_sync_start(),info.h_sync_end(),
+                 info.h_total(), info.h_skew());
+-        ALOGV("vsync_start %d vsync_end %d vtotal %d vscan %d flags 0x%x", info.v_sync_start(), info.v_sync_end(),
+-                info.v_total(), info.v_scan(), info.flags());
++        ALOGV("vsync_start %d vsync_end %d vtotal %d vscan %d flags 0x%x",
++                info.v_sync_start(), info.v_sync_end(), info.v_total(), info.v_scan(),
++                info.flags());
+     }
+-	*size = idx;
+-	return drm_modes;
++    *size = idx;
++    return drm_modes;
+ }
+ 
+ /*****************************************************************************/
+@@ -1387,31 +1386,31 @@ static int hw_output_device_open(const struct hw_module_t* module,
+         dev->device.common.tag = HARDWARE_DEVICE_TAG;
+         dev->device.common.version = HW_OUTPUT_DEVICE_API_VERSION_0_1;
+         dev->device.common.module = const_cast<hw_module_t*>(module);
+-		dev->device.common.close = hw_output_device_close;
++        dev->device.common.close = hw_output_device_close;
+ 
+         dev->device.initialize = hw_output_initialize;
+-		dev->device.setMode = hw_output_set_mode;
+-		dev->device.setBrightness = hw_output_set_brightness;
+-		dev->device.setContrast = hw_output_set_contrast;
+-		dev->device.setSat = hw_output_set_sat;
+-		dev->device.setHue = hw_output_set_hue;
+-		dev->device.setColorMode = hw_output_set_color_mode;
+-		dev->device.setHdrMode = hw_output_set_hdr_mode;
+-		dev->device.setGamma = hw_output_set_gamma;
+-		dev->device.setScreenScale = hw_output_set_screen_scale;
+-
+-		dev->device.getCurColorMode = hw_output_get_cur_color_mode;
+-		dev->device.getBcsh = hw_output_get_bcsh;
+-		dev->device.getBuiltIn = hw_output_get_builtin;
+-		dev->device.getColorConfigs = hw_output_get_color_configs;
+-		dev->device.getConnectorState = hw_output_get_connector_state;
+-		dev->device.getCurMode = hw_output_get_cur_mode;
+-		dev->device.getDisplayModes = hw_output_get_display_modes;
+-		dev->device.getNumConnectors = hw_output_get_num_connectors;
+-		dev->device.getOverscan = hw_output_get_overscan;
+-		
+-		dev->device.hotplug = hw_output_hotplug_update;
+-		dev->device.saveConfig = hw_output_save_config;
++        dev->device.setMode = hw_output_set_mode;
++        dev->device.setBrightness = hw_output_set_brightness;
++        dev->device.setContrast = hw_output_set_contrast;
++        dev->device.setSat = hw_output_set_sat;
++        dev->device.setHue = hw_output_set_hue;
++        dev->device.setColorMode = hw_output_set_color_mode;
++        dev->device.setHdrMode = hw_output_set_hdr_mode;
++        dev->device.setGamma = hw_output_set_gamma;
++        dev->device.setScreenScale = hw_output_set_screen_scale;
++
++        dev->device.getCurColorMode = hw_output_get_cur_color_mode;
++        dev->device.getBcsh = hw_output_get_bcsh;
++        dev->device.getBuiltIn = hw_output_get_builtin;
++        dev->device.getColorConfigs = hw_output_get_color_configs;
++        dev->device.getConnectorState = hw_output_get_connector_state;
++        dev->device.getCurMode = hw_output_get_cur_mode;
++        dev->device.getDisplayModes = hw_output_get_display_modes;
++        dev->device.getNumConnectors = hw_output_get_num_connectors;
++        dev->device.getOverscan = hw_output_get_overscan;
++
++        dev->device.hotplug = hw_output_hotplug_update;
++        dev->device.saveConfig = hw_output_save_config;
+         *device = &dev->device.common;
+         status = 0;
+     }
+-- 
+2.35.1
+

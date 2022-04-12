@@ -1,0 +1,55 @@
+From b52bcbc3866534dd8e019a042120da5c45b655a3 Mon Sep 17 00:00:00 2001
+From: Alex Zhao <zzc@rock-chips.com>
+Date: Thu, 28 Jan 2021 16:32:42 +0800
+Subject: [PATCH 294/297] Solve the problem of automatically turning on wifi
+ after reboot.
+
+Signed-off-by: Alex Zhao <zzc@rock-chips.com>
+Change-Id: Iadef03568589822f5498b8c482def5fda6440c79
+---
+ .../android/server/connectivity/WifiSleepController.java   | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/services/core/java/com/android/server/connectivity/WifiSleepController.java b/services/core/java/com/android/server/connectivity/WifiSleepController.java
+index 2b74b8b2c1d..856809dac14 100644
+--- a/services/core/java/com/android/server/connectivity/WifiSleepController.java
++++ b/services/core/java/com/android/server/connectivity/WifiSleepController.java
+@@ -91,6 +91,7 @@ public class WifiSleepController {
+             } else if (action.equals(Intent.ACTION_SCREEN_ON)) {
+                 mIsScreenON = true;
+                 exitSleepState();
++		SystemProperties.set(PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG, "false");
+             } else if (action.equals(Intent.ACTION_SCREEN_OFF)) {
+                 mIsScreenON = false;
+                 log("isScanAlwaysAvailable = " + mWifiManager.isScanAlwaysAvailable());
+@@ -101,7 +102,6 @@ public class WifiSleepController {
+                 mBtIsOpened = getBtIsEnabled();
+                 mWifiIsOpened = getWifiIsEnabled();
+                 if (shouldStartWifiSleep()) {
+-                    SystemProperties.set(PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG, "true");
+                     setWifiSleepAlarm();
+                     if(mBtIsOpened)
+                         SystemProperties.set(PERSISTENT_PROPERTY_BT_SLEEP_FLAG, "true");
+@@ -113,8 +113,10 @@ public class WifiSleepController {
+                 //Sometimes we receive this action after SCREEN_ON.
+                 //Turn off wifi should only happen when SCREEN_OFF.
+                 if(!mIsScreenON) {
+-                    if(mWifiIsOpened)
++                    if(mWifiIsOpened) {
+                         setWifiEnabled(false);
++			SystemProperties.set(PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG, "true");
++		    }
+                     if(mBtIsOpened && mBtPowerDownSetting)
+                         setBtEnabled(false);
+                 }
+@@ -204,7 +206,6 @@ public class WifiSleepController {
+         if (mWifiSleepIntent != null) {
+             if(mWifiIsOpened && !getWifiIsEnabled()){
+                 setWifiEnabled(true);
+-                SystemProperties.set(PERSISTENT_PROPERTY_WIFI_SLEEP_FLAG, "false");
+             }
+             if(mBtIsOpened && !getBtIsEnabled()){
+                 setBtEnabled(true);
+-- 
+2.35.1
+

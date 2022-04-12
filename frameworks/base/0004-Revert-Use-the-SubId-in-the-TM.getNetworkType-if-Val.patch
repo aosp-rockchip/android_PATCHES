@@ -1,0 +1,74 @@
+From 2aedb72bde815a6ef9d65246232294c26ea3b567 Mon Sep 17 00:00:00 2001
+From: Nathan Harold <nharold@google.com>
+Date: Mon, 20 May 2019 23:21:48 +0000
+Subject: [PATCH 004/297] Revert "Use the SubId in the TM.getNetworkType if
+ Valid"
+
+This reverts commit f36fee3cf764838aa8b1f59142e82049e4cbacb1.
+
+Reason for revert: 133129040
+
+Bug: 133129040
+Merged-In: I9a974018d4155426b1050a4b80b82f4bf4a9d996
+Change-Id: Ib6f9a4e461a7e1cfa6c4648bd289a8f92475423e
+(cherry picked from commit af62adcb6c328ef682237ec027793fc8e27782d5)
+---
+ .../android/telephony/TelephonyManager.java   | 34 +++++++++++++++++--
+ 1 file changed, 31 insertions(+), 3 deletions(-)
+
+diff --git a/telephony/java/android/telephony/TelephonyManager.java b/telephony/java/android/telephony/TelephonyManager.java
+index a628babc113..3536561f0d8 100644
+--- a/telephony/java/android/telephony/TelephonyManager.java
++++ b/telephony/java/android/telephony/TelephonyManager.java
+@@ -2449,7 +2449,21 @@ public class TelephonyManager {
+      * @return the NETWORK_TYPE_xxxx for current data connection.
+      */
+     public @NetworkType int getNetworkType() {
+-        return getDataNetworkType();
++       try {
++           ITelephony telephony = getITelephony();
++           if (telephony != null) {
++               return telephony.getNetworkType();
++            } else {
++                // This can happen when the ITelephony interface is not up yet.
++                return NETWORK_TYPE_UNKNOWN;
++            }
++        } catch(RemoteException ex) {
++            // This shouldn't happen in the normal case
++            return NETWORK_TYPE_UNKNOWN;
++        } catch (NullPointerException ex) {
++            // This could happen before phone restarts due to crashing
++            return NETWORK_TYPE_UNKNOWN;
++        }
+     }
+ 
+     /**
+@@ -2480,9 +2494,23 @@ public class TelephonyManager {
+      * @hide
+      */
+     @RequiresPermission(android.Manifest.permission.READ_PHONE_STATE)
+-    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.P)
++    @UnsupportedAppUsage
+     public int getNetworkType(int subId) {
+-        return getDataNetworkType(subId);
++        try {
++            ITelephony telephony = getITelephony();
++            if (telephony != null) {
++                return telephony.getNetworkTypeForSubscriber(subId, getOpPackageName());
++            } else {
++                // This can happen when the ITelephony interface is not up yet.
++                return NETWORK_TYPE_UNKNOWN;
++            }
++        } catch (RemoteException ex) {
++            // This shouldn't happen in the normal case
++            return NETWORK_TYPE_UNKNOWN;
++        } catch (NullPointerException ex) {
++            // This could happen before phone restarts due to crashing
++            return NETWORK_TYPE_UNKNOWN;
++        }
+     }
+ 
+     /**
+-- 
+2.35.1
+

@@ -1,0 +1,41 @@
+From ad5d0844a6d74358f0a7f0173610634ac655cc00 Mon Sep 17 00:00:00 2001
+From: Abhijeet Kaur <abkaur@google.com>
+Date: Wed, 28 Aug 2019 10:17:45 +0100
+Subject: [PATCH 008/297] Clear calling identity as broadcast needs permission
+
+The intent BUGREPORT_REQUESTED is permission protected by the permission
+"android.permission.TRIGGER_SHELL_BUGREPORT"
+
+Test: manually trigger interactive bugreport from power button and
+Settings
+Bug: 140158937
+
+Change-Id: Ic82d4a63359c8c2f252fe631d3eb91648c23768e
+(cherry picked from commit f598710a1af3b7cfea3d3163351d6ff2a94e510f)
+---
+ .../com/android/server/am/ActivityManagerService.java    | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/services/core/java/com/android/server/am/ActivityManagerService.java b/services/core/java/com/android/server/am/ActivityManagerService.java
+index 775a7dd44f6..39d6aca3857 100644
+--- a/services/core/java/com/android/server/am/ActivityManagerService.java
++++ b/services/core/java/com/android/server/am/ActivityManagerService.java
+@@ -8285,8 +8285,13 @@ public class ActivityManagerService extends IActivityManager.Stub
+             if (shareDescription != null) {
+                 triggerShellBugreport.putExtra(EXTRA_DESCRIPTION, shareDescription);
+             }
+-            // Send broadcast to shell to trigger bugreport using Bugreport API
+-            mContext.sendBroadcast(triggerShellBugreport);
++            final long identity = Binder.clearCallingIdentity();
++            try {
++                // Send broadcast to shell to trigger bugreport using Bugreport API
++                mContext.sendBroadcast(triggerShellBugreport);
++            } finally {
++                Binder.restoreCallingIdentity(identity);
++            }
+         } else {
+             SystemProperties.set("dumpstate.options", type);
+             SystemProperties.set("ctl.start", "bugreport");
+-- 
+2.35.1
+

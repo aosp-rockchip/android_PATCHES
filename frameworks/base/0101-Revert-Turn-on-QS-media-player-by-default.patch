@@ -1,0 +1,56 @@
+From 9b5c2954cb2ec0631634018a4ce22c5287f7b81f Mon Sep 17 00:00:00 2001
+From: Daniel Chapin <chapin@google.com>
+Date: Wed, 4 Mar 2020 21:18:27 +0000
+Subject: [PATCH 101/297] Revert "Turn on QS media player by default"
+
+This reverts commit 679609721c4a7422ac3612dde69c9e2639ea6883.
+
+Reason for revert: b/150437753.
+Change-Id: Id42659d33bbd5ccc188d977f6af320cc8b3b6478
+(cherry picked from commit 8d5eea4e61597ad66a37588bfa49badeabbd0438)
+---
+ packages/SystemUI/src/com/android/systemui/util/Utils.java    | 3 +--
+ .../row/wrapper/NotificationMediaTemplateViewWrapperTest.java | 4 ----
+ 2 files changed, 1 insertion(+), 6 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/util/Utils.java b/packages/SystemUI/src/com/android/systemui/util/Utils.java
+index 5f821187e30..cfa2947eb86 100644
+--- a/packages/SystemUI/src/com/android/systemui/util/Utils.java
++++ b/packages/SystemUI/src/com/android/systemui/util/Utils.java
+@@ -126,10 +126,9 @@ public class Utils {
+ 
+     /**
+      * Allow the media player to be shown in the QS area, controlled by 2 flags.
+-     * On by default, but can be disabled by setting to 0
+      */
+     public static boolean useQsMediaPlayer(Context context) {
+-        int flag = Settings.System.getInt(context.getContentResolver(), "qs_media_player", 1);
++        int flag = Settings.System.getInt(context.getContentResolver(), "qs_media_player", 0);
+         return flag > 0;
+     }
+ }
+diff --git a/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/row/wrapper/NotificationMediaTemplateViewWrapperTest.java b/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/row/wrapper/NotificationMediaTemplateViewWrapperTest.java
+index 18ea774e56f..69e4f2205c3 100644
+--- a/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/row/wrapper/NotificationMediaTemplateViewWrapperTest.java
++++ b/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/row/wrapper/NotificationMediaTemplateViewWrapperTest.java
+@@ -25,7 +25,6 @@ import android.app.Notification;
+ import android.media.MediaMetadata;
+ import android.media.session.MediaSession;
+ import android.media.session.PlaybackState;
+-import android.provider.Settings;
+ import android.testing.AndroidTestingRunner;
+ import android.testing.TestableLooper.RunWithLooper;
+ import android.view.View;
+@@ -67,9 +66,6 @@ public class NotificationMediaTemplateViewWrapperTest extends SysuiTestCase {
+         allowTestableLooperAsMainThread();
+ 
+         mDependency.injectTestDependency(MetricsLogger.class, mMetricsLogger);
+-
+-        // These tests are for regular media style notifications, not controls in quick settings
+-        Settings.System.putInt(mContext.getContentResolver(), "qs_media_player", 0);
+     }
+ 
+     private void makeTestNotification(long duration, boolean allowSeeking) throws Exception {
+-- 
+2.35.1
+

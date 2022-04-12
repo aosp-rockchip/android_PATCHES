@@ -1,0 +1,108 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Music (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Music (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 329173ca3e12939156c582ca8ed8c9a18bac82bb
+Author: wh <wanghang@rock-chips.com>
+Date:   Tue Oct 13 19:16:39 2020 +0800
+
+    Music: Merge Pie into R
+    
+    merge almost Pie code into R, but notes:
+    1. not to show the ArtistAlbum page in R
+    2. need special commit in MediaProvider due to the targetSdkVersion
+    
+    Signed-off-by: wh <wanghang@rock-chips.com>
+    Change-Id: I27028424f1046b184c1a41f390c9f7a57184f801
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Music (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Music (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 329173ca3e12939156c582ca8ed8c9a18bac82bb
+Author: wh <wanghang@rock-chips.com>
+Date:   Tue Oct 13 19:16:39 2020 +0800
+
+    Music: Merge Pie into R
+    
+    merge almost Pie code into R, but notes:
+    1. not to show the ArtistAlbum page in R
+    2. need special commit in MediaProvider due to the targetSdkVersion
+    
+    Signed-off-by: wh <wanghang@rock-chips.com>
+    Change-Id: I27028424f1046b184c1a41f390c9f7a57184f801
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Music (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Music (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 329173ca3e12939156c582ca8ed8c9a18bac82bb
+Author: wh <wanghang@rock-chips.com>
+Date:   Tue Oct 13 19:16:39 2020 +0800
+
+    Music: Merge Pie into R
+    
+    merge almost Pie code into R, but notes:
+    1. not to show the ArtistAlbum page in R
+    2. need special commit in MediaProvider due to the targetSdkVersion
+    
+    Signed-off-by: wh <wanghang@rock-chips.com>
+    Change-Id: I27028424f1046b184c1a41f390c9f7a57184f801
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Music (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Music (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 329173ca3e12939156c582ca8ed8c9a18bac82bb
+Author: wh <wanghang@rock-chips.com>
+Date:   Tue Oct 13 19:16:39 2020 +0800
+
+    Music: Merge Pie into R
+    
+    merge almost Pie code into R, but notes:
+    1. not to show the ArtistAlbum page in R
+    2. need special commit in MediaProvider due to the targetSdkVersion
+    
+    Signed-off-by: wh <wanghang@rock-chips.com>
+    Change-Id: I27028424f1046b184c1a41f390c9f7a57184f801
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Music (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Music (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 329173ca3e12939156c582ca8ed8c9a18bac82bb
+Author: wh <wanghang@rock-chips.com>
+Date:   Tue Oct 13 19:16:39 2020 +0800
+
+    Music: Merge Pie into R
+    
+    merge almost Pie code into R, but notes:
+    1. not to show the ArtistAlbum page in R
+    2. need special commit in MediaProvider due to the targetSdkVersion
+    
+    Signed-off-by: wh <wanghang@rock-chips.com>
+    Change-Id: I27028424f1046b184c1a41f390c9f7a57184f801
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Music (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Music (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 329173ca3e12939156c582ca8ed8c9a18bac82bb
+Author: wh <wanghang@rock-chips.com>
+Date:   Tue Oct 13 19:16:39 2020 +0800
+
+    Music: Merge Pie into R
+    
+    merge almost Pie code into R, but notes:
+    1. not to show the ArtistAlbum page in R
+    2. need special commit in MediaProvider due to the targetSdkVersion
+    
+    Signed-off-by: wh <wanghang@rock-chips.com>
+    Change-Id: I27028424f1046b184c1a41f390c9f7a57184f801

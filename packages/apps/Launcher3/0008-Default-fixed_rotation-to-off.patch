@@ -1,0 +1,43 @@
+From 916a7f681d13733ccabcde731f0f2b2b98f76971 Mon Sep 17 00:00:00 2001
+From: Vinit Nayak <peanutbutter@google.com>
+Date: Tue, 17 Mar 2020 14:15:32 -0700
+Subject: [PATCH 08/13] Default fixed_rotation to off
+
+Bug: 151727009
+Test: N/A
+Change-Id: I83f9f58acb1718ee4fc19530a3e8b25badefda0e
+(cherry picked from commit c0b289c93eee2ecf126acf561d6e72fabc7b354f)
+---
+ src/com/android/launcher3/config/FeatureFlags.java   | 2 +-
+ src/com/android/launcher3/states/RotationHelper.java | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/com/android/launcher3/config/FeatureFlags.java b/src/com/android/launcher3/config/FeatureFlags.java
+index 471a743ab..650b20a7f 100644
+--- a/src/com/android/launcher3/config/FeatureFlags.java
++++ b/src/com/android/launcher3/config/FeatureFlags.java
+@@ -156,7 +156,7 @@ public final class FeatureFlags {
+             "Always use hardware optimization for folder animations.");
+ 
+     public static final BooleanFlag ENABLE_FIXED_ROTATION_TRANSFORM = getDebugFlag(
+-            FLAG_ENABLE_FIXED_ROTATION_TRANSFORM, true,
++            FLAG_ENABLE_FIXED_ROTATION_TRANSFORM, false,
+             "Launch/close apps without rotation animation. Fix Launcher to portrait");
+ 
+     public static void initialize(Context context) {
+diff --git a/src/com/android/launcher3/states/RotationHelper.java b/src/com/android/launcher3/states/RotationHelper.java
+index fae0fe2d8..8c8aa9b8e 100644
+--- a/src/com/android/launcher3/states/RotationHelper.java
++++ b/src/com/android/launcher3/states/RotationHelper.java
+@@ -134,7 +134,7 @@ public class RotationHelper implements OnSharedPreferenceChangeListener {
+      */
+     private void updateForcedRotation(boolean setValueFromPrefs) {
+         boolean isForcedRotation = mFeatureFlagsPrefs
+-                .getBoolean(FLAG_ENABLE_FIXED_ROTATION_TRANSFORM, true)
++                .getBoolean(FLAG_ENABLE_FIXED_ROTATION_TRANSFORM, false)
+                 && !getAllowRotationDefaultValue();
+         if (mForcedRotation == isForcedRotation) {
+             return;
+-- 
+2.35.1
+

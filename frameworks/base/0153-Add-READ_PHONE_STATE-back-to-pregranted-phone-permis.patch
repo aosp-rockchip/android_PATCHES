@@ -1,0 +1,36 @@
+From d6b2b8c66317e800db7f3fb6134602e4c6cb23b7 Mon Sep 17 00:00:00 2001
+From: Michael Groover <mpgroover@google.com>
+Date: Wed, 22 Apr 2020 09:32:47 -0700
+Subject: [PATCH 153/297] Add READ_PHONE_STATE back to pregranted phone
+ permissions
+
+When READ_PHONE_STATE was moved from a runtime permission to an install
+permission it was removed from the default phone permissions grant. Now
+that READ_PHONE_STATE has been reverted back to a runtime permission it
+needs to be added back to the list of phone permissions that are
+pregranted.
+
+Bug: 154572075
+Bug: 154567729
+Test: Verified com.google.shared.uid was granted READ_PHONE_STATE
+Change-Id: I0e0727ed92cbf881d89d56de4e509fb1a9073556
+(cherry picked from commit 140e55b469483d110aad3f664ee08727a924e026)
+---
+ .../server/pm/permission/DefaultPermissionGrantPolicy.java       | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/services/core/java/com/android/server/pm/permission/DefaultPermissionGrantPolicy.java b/services/core/java/com/android/server/pm/permission/DefaultPermissionGrantPolicy.java
+index e3faffa0699..a635f982d37 100644
+--- a/services/core/java/com/android/server/pm/permission/DefaultPermissionGrantPolicy.java
++++ b/services/core/java/com/android/server/pm/permission/DefaultPermissionGrantPolicy.java
+@@ -125,6 +125,7 @@ public final class DefaultPermissionGrantPolicy {
+ 
+ 
+     static {
++        PHONE_PERMISSIONS.add(Manifest.permission.READ_PHONE_STATE);
+         PHONE_PERMISSIONS.add(Manifest.permission.CALL_PHONE);
+         PHONE_PERMISSIONS.add(Manifest.permission.READ_CALL_LOG);
+         PHONE_PERMISSIONS.add(Manifest.permission.WRITE_CALL_LOG);
+-- 
+2.35.1
+

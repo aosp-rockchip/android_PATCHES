@@ -1,0 +1,25 @@
+From 61f7968e28eab141ec6601e2430c8969e77fef09 Mon Sep 17 00:00:00 2001
+From: Alex Wang <alex.wang@rock-chips.com>
+Date: Wed, 30 Dec 2020 11:10:34 +0800
+Subject: [PATCH 36/36] add new baseparameter partition position for 3568-box
+
+Change-Id: I2671ad370878dfdc17490ef92dffd572ce1ea0ed
+---
+ modules/hw_output/hw_output.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/modules/hw_output/hw_output.cpp b/modules/hw_output/hw_output.cpp
+index 9cc19307..a2898f19 100755
+--- a/modules/hw_output/hw_output.cpp
++++ b/modules/hw_output/hw_output.cpp
+@@ -76,6 +76,7 @@ hw_output_module_t HAL_MODULE_INFO_SYM = {
+ 
+ static char const *const device_template[] =
+ {
++    "/dev/block/by-name/baseparameter",
+     "/dev/block/platform/1021c000.dwmmc/by-name/baseparameter",
+     "/dev/block/platform/30020000.dwmmc/by-name/baseparameter",
+     "/dev/block/platform/fe330000.sdhci/by-name/baseparameter",
+-- 
+2.35.1
+

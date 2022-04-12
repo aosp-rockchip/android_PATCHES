@@ -1,0 +1,52 @@
+From 3869666da7e0d93bf7c3cb2b6c4f485a39e601bb Mon Sep 17 00:00:00 2001
+From: Julia Reynolds <juliacr@google.com>
+Date: Wed, 26 Aug 2020 17:07:53 -0400
+Subject: [PATCH 240/297] Sanitize more of the notification text fields
+
+Test: manual; monitor SystemUI performance when an app tries to
+post a messaging style notification with messages with long text
+Bug: 158304295
+Bug: 147358092
+
+Merged-In: c953fdf6bc498ca791aed49df04e5a07c935b63a
+Change-Id: I0e2ea12fc3351b1a56645b556720ea2306f5422a
+(cherry picked from commit c953fdf6bc498ca791aed49df04e5a07c935b63a)
+(cherry picked from commit a19f9ed2b1c04fe7e73bab1a8ca51400dbf8a07a)
+---
+ core/java/android/app/Notification.java | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/core/java/android/app/Notification.java b/core/java/android/app/Notification.java
+index 79d2a810235..609083e719b 100644
+--- a/core/java/android/app/Notification.java
++++ b/core/java/android/app/Notification.java
+@@ -207,7 +207,7 @@ public class Notification implements Parcelable
+      * <p>
+      * Avoids spamming the system with overly large strings such as full e-mails.
+      */
+-    private static final int MAX_CHARSEQUENCE_LENGTH = 5 * 1024;
++    private static final int MAX_CHARSEQUENCE_LENGTH = 1024;
+ 
+     /**
+      * Maximum entries of reply text that are accepted by Builder and friends.
+@@ -7830,7 +7830,7 @@ public class Notification implements Parcelable
+              */
+             public Message(@NonNull CharSequence text, long timestamp, @Nullable Person sender,
+                     boolean remoteInputHistory) {
+-                mText = text;
++                mText = safeCharSequence(text);
+                 mTimestamp = timestamp;
+                 mSender = sender;
+                 mRemoteInputHistory = remoteInputHistory;
+@@ -7944,7 +7944,7 @@ public class Notification implements Parcelable
+                 bundle.putLong(KEY_TIMESTAMP, mTimestamp);
+                 if (mSender != null) {
+                     // Legacy listeners need this
+-                    bundle.putCharSequence(KEY_SENDER, mSender.getName());
++                    bundle.putCharSequence(KEY_SENDER, safeCharSequence(mSender.getName()));
+                     bundle.putParcelable(KEY_SENDER_PERSON, mSender);
+                 }
+                 if (mDataMimeType != null) {
+-- 
+2.35.1
+

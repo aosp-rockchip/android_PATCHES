@@ -1,0 +1,58 @@
+From 226aeaf02ae57f4b8a74bc8642f7a0b769e3f509 Mon Sep 17 00:00:00 2001
+From: Alex Wang <alex.wang@rock-chips.com>
+Date: Wed, 6 Jan 2021 14:47:22 +0800
+Subject: [PATCH 6/7] append config for showing color option
+
+Change-Id: If7e2cb463f3dbf1fc3e41969457e3dd607112c44
+---
+ .../tv/settings/display/DeviceFragment.java     | 17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
+
+diff --git a/Settings/src/com/android/tv/settings/display/DeviceFragment.java b/Settings/src/com/android/tv/settings/display/DeviceFragment.java
+index 933e15eb..40427446 100755
+--- a/Settings/src/com/android/tv/settings/display/DeviceFragment.java
++++ b/Settings/src/com/android/tv/settings/display/DeviceFragment.java
+@@ -126,6 +126,11 @@ public class DeviceFragment extends LeanbackPreferenceFragment implements Prefer
+         mResolutionPreference = (ListPreference) findPreference(KEY_RESOLUTION);
+         mColorPreference = (ListPreference) findPreference(KEY_COLOR);
+ 
++        if ("false".equals(SystemProperties.get("persist.sys.show_color_option", "false"))) {
++	    getPreferenceScreen().removePreference(mColorPreference);
++            mColorPreference = null;
++        }
++
+         mZoomPreference = findPreference(KEY_ZOOM);
+         mTextTitle = (TextView) getActivity().findViewById(androidx.preference.R.id.decor_title);
+         if (!mIsUseDisplayd) {
+@@ -142,20 +147,24 @@ public class DeviceFragment extends LeanbackPreferenceFragment implements Prefer
+             return;
+         mResolutionPreference.setEntries(mDisplayInfo.getModes());
+         mResolutionPreference.setEntryValues(mDisplayInfo.getModes());
+-        mColorPreference.setEntries(mDisplayInfo.getColors());
+-        mColorPreference.setEntryValues(mDisplayInfo.getColors());
++        if (mColorPreference != null) {
++            mColorPreference.setEntries(mDisplayInfo.getColors());
++            mColorPreference.setEntryValues(mDisplayInfo.getColors());
++        }
+         mTextTitle.setText(mDisplayInfo.getDescription());
+     }
+ 
+ 
+     protected void initEvent() {
+         mResolutionPreference.setOnPreferenceChangeListener(this);
+-        mColorPreference.setOnPreferenceChangeListener(this);
++        if (mColorPreference != null)
++            mColorPreference.setOnPreferenceChangeListener(this);
++
+         mZoomPreference.setOnPreferenceClickListener(this);
+         mAdvancedSettingsPreference.setOnPreferenceClickListener(this);
+     }
+     public void updateColorValue() {
+-        if (mDisplayInfo == null)
++        if (mDisplayInfo == null || mColorPreference == null)
+             return;
+         String curColorMode = DrmDisplaySetting.getColorMode();
+         Log.i(TAG, "curColorMode:" + curColorMode);
+-- 
+2.35.1
+

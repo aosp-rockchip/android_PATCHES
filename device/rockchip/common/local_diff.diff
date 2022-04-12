@@ -1,3 +1,35 @@
+diff --git a/gen_patches_body.sh b/gen_patches_body.sh
+index 3a1103f..129c9e2 100755
+--- a/gen_patches_body.sh
++++ b/gen_patches_body.sh
+@@ -1,6 +1,9 @@
+ #!/bin/bash
+ if [[ $REPO_REMOTE == rk* ]] || [[ $REPO_RREV == rk33* ]]; then
+-    REMOTE_DIFF=`git log $REPO_LREV..HEAD`
++	LOCAL_PATH=$(pwd | cut -f7- -d/)
++	echo $LOCAL_PATH
++	git fetch https://android.googlesource.com/platform/$LOCAL_PATH refs/tags/android-11.0.0_r28
++    REMOTE_DIFF=`git log FETCH_HEAD..HEAD`
+     LOCAL_DIFF=`git diff`
+     if [ -n "$REMOTE_DIFF" -o  -n "$LOCAL_DIFF" ]; then
+         mkdir -p $STUB_PATCH_PATH/$REPO_PATH/
+@@ -13,13 +16,10 @@ if [[ $REPO_REMOTE == rk* ]] || [[ $REPO_RREV == rk33* ]]; then
+         git merge-base HEAD $REPO_LREV | xargs git show -s >> $STUB_PATCH_PATH/$REPO_PATH/git-merge-base.txt
+     fi
+ 
+-    if [ -n "$REMOTE_DIFF" ]; then
+-        git format-patch $REPO_LREV..HEAD -o $STUB_PATCH_PATH/$REPO_PATH
+-    fi
++    git format-patch FETCH_HEAD..HEAD -o $STUB_PATCH_PATH/$REPO_PATH
++
++    git diff --binary > $STUB_PATCH_PATH/$REPO_PATH/local_diff.diff
+ 
+-    if [ -n "$LOCAL_DIFF" ]; then
+-        git diff --binary > $STUB_PATCH_PATH/$REPO_PATH/local_diff.diff
+-    fi
+     if [ -n "$REMOTE_DIFF" -o -n "$LOCAL_DIFF" ]; then
+         echo Generate patch for "$REPO_PATH" done
+     fi
 diff --git a/gen_patches_skeleton.sh b/gen_patches_skeleton.sh
 index 6b75e43..2621095 100755
 --- a/gen_patches_skeleton.sh

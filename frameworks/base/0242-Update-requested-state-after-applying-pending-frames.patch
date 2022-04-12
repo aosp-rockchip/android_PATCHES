@@ -1,0 +1,92 @@
+From a7a6f0b3244be4e71fd10d20d04681be2bb1fdd1 Mon Sep 17 00:00:00 2001
+From: Tiger Huang <tigerhuang@google.com>
+Date: Thu, 13 Aug 2020 22:43:52 +0800
+Subject: [PATCH 242/297] Update requested state after applying pending frames
+
+When there is an insets animation, we will stop updating insets source
+frames until the animation is done. The previous logic didn't update the
+frames within the requested state while the animation is done. And the
+frames was relied by InsetsPolicy while playing transient bar animation.
+If the frames don't match the display, the insets would be wrong, and
+the animation wouldn't be played correctly.
+
+Fix: 161134197
+Test: atest InsetsControllerTest
+Merged-In: Id8f3c1956fbfe3ad16f167ff76297dde6c634e81
+Change-Id: Id8f3c1956fbfe3ad16f167ff76297dde6c634e81
+(cherry picked from commit 23c75281ef0de8fb2b44fb93d8cf36ecf86454c7)
+(cherry picked from commit dfc8abb1ffc7bf6c7d7b47cf2e9e14bf6422f95c)
+---
+ core/java/android/view/InsetsController.java      |  9 ++++++---
+ .../src/android/view/InsetsControllerTest.java    | 15 +++++++++++++++
+ 2 files changed, 21 insertions(+), 3 deletions(-)
+
+diff --git a/core/java/android/view/InsetsController.java b/core/java/android/view/InsetsController.java
+index c383bc7a4d7..985829f6c88 100644
+--- a/core/java/android/view/InsetsController.java
++++ b/core/java/android/view/InsetsController.java
+@@ -1134,15 +1134,14 @@ public class InsetsController implements WindowInsetsController, InsetsAnimation
+         if (invokeCallback) {
+             control.cancel();
+         }
++        boolean stateChanged = false;
+         for (int i = mRunningAnimations.size() - 1; i >= 0; i--) {
+             RunningAnimation runningAnimation = mRunningAnimations.get(i);
+             if (runningAnimation.runner == control) {
+                 mRunningAnimations.remove(i);
+                 ArraySet<Integer> types = toInternalType(control.getTypes());
+                 for (int j = types.size() - 1; j >= 0; j--) {
+-                    if (getSourceConsumer(types.valueAt(j)).notifyAnimationFinished()) {
+-                        mHost.notifyInsetsChanged();
+-                    }
++                    stateChanged |= getSourceConsumer(types.valueAt(j)).notifyAnimationFinished();
+                 }
+                 if (invokeCallback && runningAnimation.startDispatched) {
+                     dispatchAnimationEnd(runningAnimation.runner.getAnimation());
+@@ -1150,6 +1149,10 @@ public class InsetsController implements WindowInsetsController, InsetsAnimation
+                 break;
+             }
+         }
++        if (stateChanged) {
++            mHost.notifyInsetsChanged();
++            updateRequestedState();
++        }
+     }
+ 
+     private void applyLocalVisibilityOverride() {
+diff --git a/core/tests/coretests/src/android/view/InsetsControllerTest.java b/core/tests/coretests/src/android/view/InsetsControllerTest.java
+index 801cd4ddb94..48695aa5a32 100644
+--- a/core/tests/coretests/src/android/view/InsetsControllerTest.java
++++ b/core/tests/coretests/src/android/view/InsetsControllerTest.java
+@@ -27,6 +27,7 @@ import static android.view.InsetsState.ITYPE_NAVIGATION_BAR;
+ import static android.view.InsetsState.ITYPE_STATUS_BAR;
+ import static android.view.ViewRootImpl.NEW_INSETS_MODE_FULL;
+ import static android.view.WindowInsets.Type.ime;
++import static android.view.WindowInsets.Type.navigationBars;
+ import static android.view.WindowInsets.Type.statusBars;
+ import static android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE;
+ 
+@@ -742,6 +743,20 @@ public class InsetsControllerTest {
+             mController.onControlsChanged(createSingletonControl(ITYPE_IME));
+             assertEquals(newState.getSource(ITYPE_IME),
+                     mTestHost.getModifiedState().peekSource(ITYPE_IME));
++
++            // The modified frames cannot be updated if there is an animation.
++            mController.onControlsChanged(createSingletonControl(ITYPE_NAVIGATION_BAR));
++            mController.hide(navigationBars());
++            newState = new InsetsState(mController.getState(), true /* copySource */);
++            newState.getSource(ITYPE_NAVIGATION_BAR).getFrame().top--;
++            mController.onStateChanged(newState);
++            assertNotEquals(newState.getSource(ITYPE_NAVIGATION_BAR),
++                    mTestHost.getModifiedState().peekSource(ITYPE_NAVIGATION_BAR));
++
++            // The modified frames can be updated while the animation is done.
++            mController.cancelExistingAnimations();
++            assertEquals(newState.getSource(ITYPE_NAVIGATION_BAR),
++                    mTestHost.getModifiedState().peekSource(ITYPE_NAVIGATION_BAR));
+         });
+     }
+ 
+-- 
+2.35.1
+

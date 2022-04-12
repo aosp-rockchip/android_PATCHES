@@ -1,0 +1,229 @@
+From a53edbeba950361aa5888b3d6ed13d0b65c03d58 Mon Sep 17 00:00:00 2001
+From: "zj@rock-chips.com" <zj@rock-chips.com>
+Date: Mon, 7 Dec 2020 16:15:04 +0800
+Subject: [PATCH 266/297] EINK: add standby interface
+
+Signed-off-by: zj <zj@rock-chips.com>
+Change-Id: I83f53b140cd6044b4f56e5f99f9af61e4e22d546
+---
+ api/current.txt                               |  2 ++
+ core/java/android/os/EinkManager.java         | 19 +++++++++++
+ core/java/android/os/IEinkManager.aidl        |  2 ++
+ non-updatable-api/current.txt                 |  2 ++
+ .../com/android/server/eink/EinkService.java  | 13 ++++++++
+ .../server/power/PowerManagerService.java     | 33 +++++++++++++++----
+ .../com_android_server_eink_EinkService.cpp   | 20 +++++++++++
+ 7 files changed, 85 insertions(+), 6 deletions(-)
+ mode change 100644 => 100755 core/java/android/os/IEinkManager.aidl
+ mode change 100644 => 100755 services/core/java/com/android/server/power/PowerManagerService.java
+
+diff --git a/api/current.txt b/api/current.txt
+index 9cd23ac2f26..dd6895eb4fb 100644
+--- a/api/current.txt
++++ b/api/current.txt
+@@ -36135,8 +36135,10 @@ package android.os {
+     method @Nullable public String getMode();
+     method public int init();
+     method public int kill();
++    method public int quitStandby();
+     method public void sendOneFullFrame();
+     method public void setMode(@Nullable String);
++    method public int standby();
+     field public static final boolean EINK = false;
+   }
+ 
+diff --git a/core/java/android/os/EinkManager.java b/core/java/android/os/EinkManager.java
+index 405c2a953fe..0bbfb0d7f3b 100644
+--- a/core/java/android/os/EinkManager.java
++++ b/core/java/android/os/EinkManager.java
+@@ -170,4 +170,23 @@ public class EinkMode {
+             return -1;
+         }
+     }
++
++        public int standby(){
++        try {
++            LOG("EinkManager.standby()");
++            return mService.standby();
++        } catch (RemoteException e) {
++            e.rethrowFromSystemServer();
++            return -1;
++        }
++    }
++        public int quitStandby(){
++        try {
++            LOG("EinkManager.quitStandby()");
++            return mService.quitStandby();
++        } catch (RemoteException e) {
++            e.rethrowFromSystemServer();
++            return -1;
++        }
++    }
+ }
+diff --git a/core/java/android/os/IEinkManager.aidl b/core/java/android/os/IEinkManager.aidl
+old mode 100644
+new mode 100755
+index a13d30c21c2..2489a754f94
+--- a/core/java/android/os/IEinkManager.aidl
++++ b/core/java/android/os/IEinkManager.aidl
+@@ -22,6 +22,8 @@ interface IEinkManager
+ {
+     int init();
+     int kill();
++    int standby();
++    int quitStandby();
+     void setProperty(String key, String value);
+ }
+ 
+diff --git a/non-updatable-api/current.txt b/non-updatable-api/current.txt
+index 39f95663091..51244bad0b6 100644
+--- a/non-updatable-api/current.txt
++++ b/non-updatable-api/current.txt
+@@ -34702,8 +34702,10 @@ package android.os {
+     method @Nullable public String getMode();
+     method public int init();
+     method public int kill();
++    method public int quitStandby();
+     method public void sendOneFullFrame();
+     method public void setMode(@Nullable String);
++    method public int standby();
+     field public static final boolean EINK = false;
+   }
+ 
+diff --git a/services/core/java/com/android/server/eink/EinkService.java b/services/core/java/com/android/server/eink/EinkService.java
+index 9944e982cdc..b5a532dafc3 100644
+--- a/services/core/java/com/android/server/eink/EinkService.java
++++ b/services/core/java/com/android/server/eink/EinkService.java
+@@ -132,10 +132,23 @@ public class EinkService extends IEinkManager.Stub {
+         return 0;
+     }
+ 
++    public int standby() {
++           standby_native();
++           return 0;
++       }
++
++    public int quitStandby() {
++           quitStandby_native();
++           return 0;
++       }
++
+ 
+ /*jni interface*/
+     public native int init_native();
+     public native int kill_native();
++    public native int standby_native();
++    
++    public native int quitStandby_native();
+ }
+ 
+ 
+diff --git a/services/core/java/com/android/server/power/PowerManagerService.java b/services/core/java/com/android/server/power/PowerManagerService.java
+old mode 100644
+new mode 100755
+index 839cebf62a3..578b4e28dca
+--- a/services/core/java/com/android/server/power/PowerManagerService.java
++++ b/services/core/java/com/android/server/power/PowerManagerService.java
+@@ -117,6 +117,8 @@ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.List;
+ import java.util.Objects;
++import android.os.EinkManager;
++
+ 
+ /**
+  * The power manager service is responsible for coordinating power management
+@@ -230,6 +232,7 @@ public final class PowerManagerService extends SystemService
+ 
+     /** If turning screen on takes more than this long, we show a warning on logcat. */
+     private static final int SCREEN_ON_LATENCY_WARNING_MS = 200;
++    private static EinkManager mEinkManager;
+ 
+     /** Constants for {@link #shutdownOrRebootInternal} */
+     @Retention(RetentionPolicy.SOURCE)
+@@ -1679,12 +1682,18 @@ public final class PowerManagerService extends SystemService
+         if (DEBUG_SPEW) {
+             Slog.d(TAG, "wakeUpNoUpdateLocked: eventTime=" + eventTime + ", uid=" + reasonUid);
+         }
+-
+-        if (eventTime < mLastSleepTime || getWakefulnessLocked() == WAKEFULNESS_AWAKE
+-                || mForceSuspendActive || !mSystemReady) {
+-            return false;
++        if (mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)) {
++            if(mEinkManager == null){
++                mEinkManager = (EinkManager) mContext.getSystemService(Context.EINK_SERVICE);
++            }
++            if(mEinkManager != null){
++                mEinkManager.quitStandby();
++            }
++            if (eventTime < mLastSleepTime || getWakefulnessLocked() == WAKEFULNESS_AWAKE
++                    || mForceSuspendActive || !mSystemReady) {
++                return false;
++            }
+         }
+-
+         Trace.asyncTraceBegin(Trace.TRACE_TAG_POWER, TRACE_SCREEN_ON, 0);
+ 
+         Trace.traceBegin(Trace.TRACE_TAG_POWER, "wakeUp");
+@@ -1734,7 +1743,19 @@ public final class PowerManagerService extends SystemService
+             Slog.d(TAG, "goToSleepNoUpdateLocked: eventTime=" + eventTime
+                     + ", reason=" + reason + ", flags=" + flags + ", uid=" + uid);
+         }
+-
++        if (mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_EINK)) {
++            if(mEinkManager == null){
++                mEinkManager = (EinkManager) mContext.getSystemService(Context.EINK_SERVICE);
++            }
++            if(mEinkManager != null){
++                mEinkManager.standby();
++            }
++            try {
++                Thread.sleep(1 * 1000L);
++            } catch (InterruptedException e) {
++                Thread.currentThread().interrupt();
++            }
++        }
+         if (eventTime < mLastWakeTime
+                 || getWakefulnessLocked() == WAKEFULNESS_ASLEEP
+                 || getWakefulnessLocked() == WAKEFULNESS_DOZING
+diff --git a/services/core/jni/com_android_server_eink_EinkService.cpp b/services/core/jni/com_android_server_eink_EinkService.cpp
+index d069f5127ee..f6b6798b782 100644
+--- a/services/core/jni/com_android_server_eink_EinkService.cpp
++++ b/services/core/jni/com_android_server_eink_EinkService.cpp
+@@ -143,6 +143,23 @@ jint com_android_server_eink_EinkService_init(JNIEnv *env, jclass clazz)
+     return result;
+ }
+ 
++jint com_android_server_eink_EinkService_standby(JNIEnv *env, jclass clazz)
++{
++    int result=0;
++    ALOGV("com_android_server_eink_EinkService_standby");
++    property_set("ctl.start","standby");
++    return result;
++}
++
++jint com_android_server_eink_EinkService_quitStandby(JNIEnv *env, jclass clazz)
++{
++    int result=0;
++    ALOGV("com_android_server_eink_EinkService_quitStandby");
++    property_set("ctl.stop","standby");
++    return result;
++}
++
++
+ jint com_android_server_eink_EinkService_kill(JNIEnv *env, jclass clazz)
+ {
+     int result=0;
+@@ -240,6 +257,9 @@ static const JNINativeMethod gMethods[] = {
+     /* name,                        signature,      funcPtr */
+     { "init_native","()I",(void *)com_android_server_eink_EinkService_init  },
+     { "kill_native","()I",(void *)com_android_server_eink_EinkService_kill  },
++    { "standby_native","()I",(void *)com_android_server_eink_EinkService_standby  },
++    { "quitStandby_native","()I",(void *)com_android_server_eink_EinkService_quitStandby  },
++    
+ };
+ 
+ /*
+-- 
+2.35.1
+

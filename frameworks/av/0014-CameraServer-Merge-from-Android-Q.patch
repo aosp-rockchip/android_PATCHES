@@ -1,0 +1,93 @@
+From c6f41e12fa2628aa16039c5701f1dffa9825813c Mon Sep 17 00:00:00 2001
+From: chenxiao <cx@rock-chips.com>
+Date: Fri, 9 Oct 2020 18:28:31 +0800
+Subject: [PATCH 14/25] CameraServer: Merge from Android Q.
+
+    - add control for camera play sound.
+    - delete limit for recording takepicture.
+
+Signed-off-by: chenxiao <cx@rock-chips.com>
+Change-Id: Idb96f0af59c2a7ce79cdd0140d21760a51addfe3
+---
+ camera/cameraserver/cameraserver.rc                         | 2 +-
+ services/camera/libcameraservice/CameraService.cpp          | 1 +
+ services/camera/libcameraservice/api1/CameraClient.cpp      | 6 ++++--
+ .../camera/libcameraservice/api1/client2/Parameters.cpp     | 6 +++---
+ 4 files changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/camera/cameraserver/cameraserver.rc b/camera/cameraserver/cameraserver.rc
+index 8f51458d7f..0ab7e5eb72 100644
+--- a/camera/cameraserver/cameraserver.rc
++++ b/camera/cameraserver/cameraserver.rc
+@@ -1,7 +1,7 @@
+ service cameraserver /system/bin/cameraserver
+     class main
+     user cameraserver
+-    group audio camera input drmrpc
++    group audio camera input drmrpc readproc
+     ioprio rt 4
+     task_profiles CameraServiceCapacity MaxPerformance
+     rlimit rtprio 10 10
+diff --git a/services/camera/libcameraservice/CameraService.cpp b/services/camera/libcameraservice/CameraService.cpp
+index af1e01d8e1..e377f472f0 100644
+--- a/services/camera/libcameraservice/CameraService.cpp
++++ b/services/camera/libcameraservice/CameraService.cpp
+@@ -1618,6 +1618,7 @@ Status CameraService::connectHelper(const sp<CALLBACK>& cameraCb, const String8&
+     binder::Status ret = binder::Status::ok();
+ 
+     String8 clientName8(clientPackageName);
++    property_set("vendor.sys.camera.callprocess", clientName8.string());
+ 
+     int originalClientPid = 0;
+ 
+diff --git a/services/camera/libcameraservice/api1/CameraClient.cpp b/services/camera/libcameraservice/api1/CameraClient.cpp
+index 892996c3af..13019973a1 100644
+--- a/services/camera/libcameraservice/api1/CameraClient.cpp
++++ b/services/camera/libcameraservice/api1/CameraClient.cpp
+@@ -448,7 +448,8 @@ status_t CameraClient::startRecordingMode() {
+ 
+     // start recording mode
+     enableMsgType(CAMERA_MSG_VIDEO_FRAME);
+-    sCameraService->playSound(CameraService::SOUND_RECORDING_START);
++    if (mPlayShutterSound)
++        sCameraService->playSound(CameraService::SOUND_RECORDING_START);
+     result = mHardware->startRecording();
+     if (result != NO_ERROR) {
+         ALOGE("mHardware->startRecording() failed with status %d", result);
+@@ -481,7 +482,8 @@ void CameraClient::stopRecording() {
+ 
+         disableMsgType(CAMERA_MSG_VIDEO_FRAME);
+         mHardware->stopRecording();
+-        sCameraService->playSound(CameraService::SOUND_RECORDING_STOP);
++        if (mPlayShutterSound)
++            sCameraService->playSound(CameraService::SOUND_RECORDING_STOP);
+ 
+         mPreviewBuffer.clear();
+     }
+diff --git a/services/camera/libcameraservice/api1/client2/Parameters.cpp b/services/camera/libcameraservice/api1/client2/Parameters.cpp
+index dbc863b3ad..a3c55b0aec 100644
+--- a/services/camera/libcameraservice/api1/client2/Parameters.cpp
++++ b/services/camera/libcameraservice/api1/client2/Parameters.cpp
+@@ -953,8 +953,8 @@ status_t Parameters::initialize(CameraDeviceBase *device, int deviceVersion) {
+         // Slow jpeg devices does not support video snapshot without
+         // slowing down preview.
+         // TODO: support video size video snapshot only?
+-        params.set(CameraParameters::KEY_VIDEO_SNAPSHOT_SUPPORTED,
+-            CameraParameters::FALSE);
++        //params.set(CameraParameters::KEY_VIDEO_SNAPSHOT_SUPPORTED,
++        //    CameraParameters::FALSE);
+     }
+ 
+     isZslReprocessPresent = false;
+@@ -2980,7 +2980,7 @@ status_t Parameters::getFilteredSizes(Size limit, Vector<Size> *sizes) {
+                     {sc.width, sc.height}, HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED);
+             if (minFrameDuration > MAX_PREVIEW_RECORD_DURATION_NS) {
+                 // Filter slow sizes from preview/record
+-                continue;
++                //continue;
+             }
+             sizes->push({sc.width, sc.height});
+         }
+-- 
+2.35.1
+

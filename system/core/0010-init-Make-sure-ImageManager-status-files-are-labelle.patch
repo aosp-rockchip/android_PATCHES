@@ -1,0 +1,35 @@
+From 4eb98033a604898cbc96406d1e76b579568abae4 Mon Sep 17 00:00:00 2001
+From: David Anderson <dvander@google.com>
+Date: Fri, 21 Feb 2020 17:11:07 -0800
+Subject: [PATCH 10/21] init: Make sure ImageManager status files are labelled.
+
+adb remount and snapshot-based updates use ImageManager in first-stage
+init. This creates status files, which need to be labelled.
+
+Bug: 148834619
+Test: manual test
+Change-Id: I72949fca2889f9e5612049844a78bf9355b48797
+Merged-In: I72949fca2889f9e5612049844a78bf9355b48797
+(cherry picked from commit 960a81f4a1055ea72e53ac361a45e93dfa903447)
+---
+ init/selinux.cpp | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/init/selinux.cpp b/init/selinux.cpp
+index c5b7576c9..2faa16720 100644
+--- a/init/selinux.cpp
++++ b/init/selinux.cpp
+@@ -535,7 +535,9 @@ void SelinuxRestoreContext() {
+ 
+     selinux_android_restorecon("/linkerconfig", 0);
+ 
+-    selinux_android_restorecon(gsi::kDsuAvbKeyDir, SELINUX_ANDROID_RESTORECON_RECURSE);
++    // adb remount, snapshot-based updates, and DSUs all create files during
++    // first-stage init.
++    selinux_android_restorecon("/metadata", SELINUX_ANDROID_RESTORECON_RECURSE);
+ }
+ 
+ int SelinuxKlogCallback(int type, const char* fmt, ...) {
+-- 
+2.35.1
+

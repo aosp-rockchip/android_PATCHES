@@ -1,0 +1,81 @@
+From 78ccb4046a43d11551be3c1fa438905cfaf52db1 Mon Sep 17 00:00:00 2001
+From: Winson Chung <winsonc@google.com>
+Date: Thu, 29 Aug 2019 15:16:27 -0700
+Subject: [PATCH 012/297] Fix regression in updating gesture exclusion rects
+
+- Use the precalculated aggregate visibility instead of traversing
+  hierarchy again in isShown()
+
+Bug: 140157754
+Test: atest SystemGestureExclusionRectsTest
+Change-Id: Ica58de4ff43da75cfcdac3f359fc915f65608e78
+(cherry picked from commit 05a36465b4dec80a656f0659536d5fc6187f9b0b)
+---
+ .../java/android/view/GestureExclusionTracker.java |  4 ++--
+ core/java/android/view/View.java                   | 14 ++++++++++++--
+ 2 files changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/core/java/android/view/GestureExclusionTracker.java b/core/java/android/view/GestureExclusionTracker.java
+index fcc14c19673..fffb323e6d5 100644
+--- a/core/java/android/view/GestureExclusionTracker.java
++++ b/core/java/android/view/GestureExclusionTracker.java
+@@ -44,7 +44,7 @@ class GestureExclusionTracker {
+         while (i.hasNext()) {
+             final GestureExclusionViewInfo info = i.next();
+             final View v = info.getView();
+-            if (v == null || !v.isAttachedToWindow() || !v.isShown()) {
++            if (v == null || !v.isAttachedToWindow() || !v.isAggregatedVisible()) {
+                 mGestureExclusionViewsChanged = true;
+                 i.remove();
+                 continue;
+@@ -123,7 +123,7 @@ class GestureExclusionTracker {
+         public int update() {
+             final View excludedView = getView();
+             if (excludedView == null || !excludedView.isAttachedToWindow()
+-                    || !excludedView.isShown()) return GONE;
++                    || !excludedView.isAggregatedVisible()) return GONE;
+             final List<Rect> localRects = excludedView.getSystemGestureExclusionRects();
+             final List<Rect> newRects = new ArrayList<>(localRects.size());
+             for (Rect src : localRects) {
+diff --git a/core/java/android/view/View.java b/core/java/android/view/View.java
+index 6ce712061db..8c8b9d34f87 100644
+--- a/core/java/android/view/View.java
++++ b/core/java/android/view/View.java
+@@ -14323,6 +14323,14 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
+         }
+     }
+ 
++    /**
++     * @return true if this view and all ancestors are visible as of the last
++     * {@link #onVisibilityAggregated(boolean)} call.
++     */
++    boolean isAggregatedVisible() {
++        return (mPrivateFlags3 & PFLAG3_AGGREGATED_VISIBLE) != 0;
++    }
++
+     /**
+      * Internal dispatching method for {@link #onVisibilityAggregated}. Overridden by
+      * ViewGroup. Intended to only be called when {@link #isAttachedToWindow()},
+@@ -14351,7 +14359,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
+     @CallSuper
+     public void onVisibilityAggregated(boolean isVisible) {
+         // Update our internal visibility tracking so we can detect changes
+-        boolean oldVisible = (mPrivateFlags3 & PFLAG3_AGGREGATED_VISIBLE) != 0;
++        boolean oldVisible = isAggregatedVisible();
+         mPrivateFlags3 = isVisible ? (mPrivateFlags3 | PFLAG3_AGGREGATED_VISIBLE)
+                 : (mPrivateFlags3 & ~PFLAG3_AGGREGATED_VISIBLE);
+         if (isVisible && mAttachInfo != null) {
+@@ -14403,7 +14411,9 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
+         }
+ 
+         notifyAppearedOrDisappearedForContentCaptureIfNeeded(isVisible);
+-        updateSystemGestureExclusionRects();
++        if (isVisible != oldVisible) {
++            updateSystemGestureExclusionRects();
++        }
+     }
+ 
+     /**
+-- 
+2.35.1
+

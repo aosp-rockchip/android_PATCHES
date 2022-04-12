@@ -1,0 +1,61 @@
+From c64d796253808bc3b14fd7733f0c479912529058 Mon Sep 17 00:00:00 2001
+From: Tarandeep Singh <tarandeep@google.com>
+Date: Wed, 13 Nov 2019 14:53:38 -0800
+Subject: [PATCH 046/297] Freeup lock when IME is set inactive and unbound
+
+Any pending windowGainedFocus future should be cancelled when IME is
+switched/unbound.
+Additinally, startInputInner() inside synchronized block blocked
+WINDOW_FOCUS_GAIN from executing. Its fine to remove synchronization
+here since startInputInner() already has relevant synchronized blocks.
+
+Change-Id: I98cb044d8cbfb80480312a3923f168aefa9b7e7d
+Fix: 144103599
+Bug: 139806621
+Test: Manually using the steps in bug.
+(cherry picked from commit 322ee9bf9ec74460d98c13e91ce4749141bf79e7)
+---
+ .../view/inputmethod/InputMethodManager.java  | 20 +++++++++++--------
+ 1 file changed, 12 insertions(+), 8 deletions(-)
+
+diff --git a/core/java/android/view/inputmethod/InputMethodManager.java b/core/java/android/view/inputmethod/InputMethodManager.java
+index e81db16f074..2650a67652a 100644
+--- a/core/java/android/view/inputmethod/InputMethodManager.java
++++ b/core/java/android/view/inputmethod/InputMethodManager.java
+@@ -655,14 +655,14 @@ public final class InputMethodManager {
+                             } catch (RemoteException e) {
+                             }
+                         }
+-                        // Check focus again in case that "onWindowFocus" is called before
+-                        // handling this message.
+-                        if (mServedView != null && canStartInput(mServedView)) {
+-                            if (checkFocusNoStartInput(mRestartOnNextWindowFocus)) {
+-                                final int reason = active ? StartInputReason.ACTIVATED_BY_IMMS
+-                                        : StartInputReason.DEACTIVATED_BY_IMMS;
+-                                startInputInner(reason, null, 0, 0, 0);
+-                            }
++                    }
++                    // Check focus again in case that "onWindowFocus" is called before
++                    // handling this message.
++                    if (mServedView != null && canStartInput(mServedView)) {
++                        if (checkFocusNoStartInput(mRestartOnNextWindowFocus)) {
++                            final int reason = active ? StartInputReason.ACTIVATED_BY_IMMS
++                                    : StartInputReason.DEACTIVATED_BY_IMMS;
++                            startInputInner(reason, null, 0, 0, 0);
+                         }
+                     }
+                     return;
+@@ -1225,6 +1225,10 @@ public final class InputMethodManager {
+      */
+     void clearBindingLocked() {
+         if (DEBUG) Log.v(TAG, "Clearing binding!");
++        if (mWindowFocusGainFuture != null) {
++            mWindowFocusGainFuture.cancel(false /* mayInterruptIfRunning */);
++            mWindowFocusGainFuture = null;
++        }
+         clearConnectionLocked();
+         setInputChannelLocked(null);
+         mBindSequence = -1;
+-- 
+2.35.1
+

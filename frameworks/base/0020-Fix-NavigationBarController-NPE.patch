@@ -1,0 +1,57 @@
+From 600c10c26a49889878777cdfc0b794363b8b3785 Mon Sep 17 00:00:00 2001
+From: Lucas Dupin <dupin@google.com>
+Date: Tue, 1 Oct 2019 12:59:39 -0700
+Subject: [PATCH 020/297] Fix NavigationBarController NPE
+
+SystemUI would crash if NavigationBarFragment wasn't available
+yet.
+
+Test: mp sysuig # boots
+Test: atest NavigationBarControllerTest
+Fixes: 139609145
+Change-Id: I1e099c5cc3c23c05140d550dd870722f57055013
+(cherry picked from commit 6c1b804105599a98ca03fe32c05f36b1089fbbf3)
+---
+ .../systemui/statusbar/NavigationBarController.java        | 3 ++-
+ .../systemui/statusbar/NavigationBarControllerTest.java    | 7 +++++++
+ 2 files changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/NavigationBarController.java b/packages/SystemUI/src/com/android/systemui/statusbar/NavigationBarController.java
+index 09f80455a1b..16cdfaa18a5 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/NavigationBarController.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/NavigationBarController.java
+@@ -237,6 +237,7 @@ public class NavigationBarController implements Callbacks {
+ 
+     /** @return {@link AssistHandleViewController} (only on the default display). */
+     public AssistHandleViewController getAssistHandlerViewController() {
+-        return getDefaultNavigationBarFragment().getAssistHandlerViewController();
++        NavigationBarFragment navBar = getDefaultNavigationBarFragment();
++        return navBar == null ? null : navBar.getAssistHandlerViewController();
+     }
+ }
+diff --git a/packages/SystemUI/tests/src/com/android/systemui/statusbar/NavigationBarControllerTest.java b/packages/SystemUI/tests/src/com/android/systemui/statusbar/NavigationBarControllerTest.java
+index 7d2ccdc8f0a..618272cbcab 100644
+--- a/packages/SystemUI/tests/src/com/android/systemui/statusbar/NavigationBarControllerTest.java
++++ b/packages/SystemUI/tests/src/com/android/systemui/statusbar/NavigationBarControllerTest.java
+@@ -28,6 +28,7 @@ import static org.mockito.Mockito.doNothing;
+ import static org.mockito.Mockito.doReturn;
+ import static org.mockito.Mockito.mock;
+ import static org.mockito.Mockito.never;
++import static org.mockito.Mockito.reset;
+ import static org.mockito.Mockito.spy;
+ import static org.mockito.Mockito.verify;
+ import static org.mockito.Mockito.when;
+@@ -240,4 +241,10 @@ public class NavigationBarControllerTest extends SysuiTestCase {
+ 
+         verify(mSecondaryNavBar).disableAnimationsDuringHide(eq(500L));
+     }
++
++    @Test
++    public void testGetAssistHandlerViewController_noCrash() {
++        reset(mNavigationBarController.mNavigationBars);
++        mNavigationBarController.getAssistHandlerViewController();
++    }
+ }
+-- 
+2.35.1
+

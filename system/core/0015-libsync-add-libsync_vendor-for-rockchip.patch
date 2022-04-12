@@ -1,0 +1,31 @@
+From 432d123946c69772b009ea7be75c3e683987fa77 Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Thu, 30 Apr 2020 09:11:47 +0800
+Subject: [PATCH 15/21] libsync: add libsync_vendor for rockchip.
+
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+Change-Id: Ib899c91bb89ce92f8253af5b18b6585081f69475
+---
+ libsync/Android.bp | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/libsync/Android.bp b/libsync/Android.bp
+index c996e1bf7..07798bf0d 100644
+--- a/libsync/Android.bp
++++ b/libsync/Android.bp
+@@ -27,6 +27,12 @@ cc_library {
+     defaults: ["libsync_defaults"],
+ }
+ 
++cc_library {
++    name: "libsync_vendor",
++    vendor_available: true,
++    defaults: ["libsync_defaults"],
++}
++
+ llndk_library {
+     name: "libsync",
+     symbol_file: "libsync.map.txt",
+-- 
+2.35.1
+

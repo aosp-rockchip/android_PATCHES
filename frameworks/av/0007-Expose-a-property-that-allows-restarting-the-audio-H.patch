@@ -1,0 +1,48 @@
+From ec61fb7b5342d7d802dac8995c68e5ceada0e410 Mon Sep 17 00:00:00 2001
+From: Ytai Ben-Tsvi <ytai@google.com>
+Date: Fri, 10 Apr 2020 11:14:27 -0700
+Subject: [PATCH 07/25] Expose a property that allows restarting the audio HAL
+
+Fixes: 153461865
+Test: See main change in topic
+Change-Id: I1bedf032d4b41ae7ecd7357787b75ed29ed3dcf7
+(cherry picked from commit e734d9dfc40c8c63d2cf9c7f7975c94aea3d1cbe)
+---
+ media/audioserver/audioserver.rc | 16 +++++++++++-----
+ 1 file changed, 11 insertions(+), 5 deletions(-)
+
+diff --git a/media/audioserver/audioserver.rc b/media/audioserver/audioserver.rc
+index 5484613fab..f9bef5fbf9 100644
+--- a/media/audioserver/audioserver.rc
++++ b/media/audioserver/audioserver.rc
+@@ -6,16 +6,22 @@ service audioserver /system/bin/audioserver
+     capabilities BLOCK_SUSPEND
+     ioprio rt 4
+     writepid /dev/cpuset/foreground/tasks /dev/stune/foreground/tasks
+-    onrestart restart vendor.audio-hal
+-    onrestart restart vendor.audio-hal-4-0-msd
+-    # Keep the original service names for backward compatibility
+-    onrestart restart vendor.audio-hal-2-0
+-    onrestart restart audio-hal-2-0
++
++    onrestart setprop sys.audio.restart.hal 1
+ 
+ on property:vts.native_server.on=1
+     stop audioserver
+ on property:vts.native_server.on=0
+     start audioserver
+ 
++on property:sys.audio.restart.hal=1
++    restart vendor.audio-hal
++    restart vendor.audio-hal-4-0-msd
++    # Keep the original service names for backward compatibility
++    restart vendor.audio-hal-2-0
++    restart audio-hal-2-0
++    # reset the property
++    setprop sys.audio.restart.hal 0
++
+ on init
+     mkdir /dev/socket/audioserver 0775 audioserver audioserver
+-- 
+2.35.1
+

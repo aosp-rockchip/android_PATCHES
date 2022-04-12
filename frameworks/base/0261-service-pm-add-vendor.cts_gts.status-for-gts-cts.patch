@@ -1,0 +1,81 @@
+From 13e9fe33e2976da17b8f86efcf1a8e9c57846d4f Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Mon, 21 Oct 2019 14:06:47 +0800
+Subject: [PATCH 261/297] service: pm: add vendor.cts_gts.status for gts & cts.
+
+Change-Id: I2c3c3ab9c36f6e5488558a24188d682092e1f11f
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+---
+ .../server/pm/PackageDexOptimizer.java        | 25 +++++++++++++++++++
+ .../server/pm/PackageManagerService.java      | 12 +++++++++
+ 2 files changed, 37 insertions(+)
+
+diff --git a/services/core/java/com/android/server/pm/PackageDexOptimizer.java b/services/core/java/com/android/server/pm/PackageDexOptimizer.java
+index 0d8ba3e5480..1ee6007a037 100644
+--- a/services/core/java/com/android/server/pm/PackageDexOptimizer.java
++++ b/services/core/java/com/android/server/pm/PackageDexOptimizer.java
+@@ -44,6 +44,7 @@ import android.annotation.NonNull;
+ import android.annotation.Nullable;
+ import android.content.Context;
+ import android.content.pm.ApplicationInfo;
++import android.content.pm.PackageManager;
+ import android.content.pm.SharedLibraryInfo;
+ import android.content.pm.dex.ArtManager;
+ import android.content.pm.dex.DexMetadataHelper;
+@@ -292,6 +293,30 @@ public class PackageDexOptimizer {
+                 + " targetFilter=" + compilerFilter + " oatDir=" + oatDir
+                 + " classLoaderContext=" + classLoaderContext);
+ 
++        if (pkg.getPackageName().contains("com.android.compatibility.common.deviceinfo") ||
++                (pkg.getPackageName().contains("com.google.android") &&
++                 pkg.getPackageName().contains("gts"))
++                ||pkg.getPackageName().contains("android.media.cts")
++                ||pkg.getPackageName().contains("android.cts.verifier")
++                ||pkg.getPackageName().contains("android.mediastress.cts")
++                ||pkg.getPackageName().contains("android.security.cts")) {
++            // maybe  endsWith(".cts") ?
++            SystemProperties.set("cts_gts.status","true");
++        }
++
++        if (pkg.getPackageName().equals("android.security.cts") &&
++                "atv".equals(SystemProperties.get("ro.target.product","unknown")) &&
++                "true".equals(SystemProperties.get("cts_gts.status", "false"))){
++            // disable com.google.android.apps.mediashell
++            try{
++                Log.d("xzj", "----start android.security.cts,disable com.google.android.apps.mediashell---");
++                mInstaller.getContext().getPackageManager().setApplicationEnabledSetting(
++                        "com.google.android.apps.mediashell",
++                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
++                        0);
++            } catch(Exception e){}
++        }
++
+         try {
+             long startTime = System.currentTimeMillis();
+ 
+diff --git a/services/core/java/com/android/server/pm/PackageManagerService.java b/services/core/java/com/android/server/pm/PackageManagerService.java
+index da4a019d5d1..59ce8235f5f 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -17835,6 +17835,18 @@ public class PackageManagerService extends IPackageManager.Stub
+ 
+                 if (DEBUG_INSTALL) Slog.d(TAG, "installNewPackageLI: " + parsedPackage);
+ 
++                // For gts exoplayer & none odex app workaround
++                if (pkgName1.contains("com.google.android.exoplayer.gts")) {
++                    SystemProperties.set("cts_gts.exo.gts", "true");
++                } else if ("true".equals(SystemProperties.get("cts_gts.exo.gts"))) {
++                    SystemProperties.set("cts_gts.exo.gts", "");
++                }
++                if (pkgName1.contains("com.google.android.media.gts")) {
++                    SystemProperties.set("cts_gts.media.gts", "true");
++                } else if ("true".equals(SystemProperties.get("cts_gts.media.gts"))) {
++                    SystemProperties.set("cts_gts.media.gts", "");
++                }
++
+                 // TODO(patb): MOVE TO RECONCILE
+                 synchronized (mLock) {
+                     renamedPackage = mSettings.getRenamedPackageLPr(pkgName1);
+-- 
+2.35.1
+

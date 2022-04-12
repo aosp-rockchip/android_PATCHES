@@ -1,0 +1,41 @@
+From 61aa829886b5641ea673f51c0cfccc3751ed7eb4 Mon Sep 17 00:00:00 2001
+From: "alex.lin" <alex.lin@rock-chips.com>
+Date: Fri, 4 Dec 2020 14:17:58 +0800
+Subject: [PATCH 265/297] SystemUI: fix volume add button,volume sub button and
+ screenshot button is not displayed in some dpi
+
+Signed-off-by: alex.lin <alex.lin@rock-chips.com>
+Change-Id: Iac8004d4ce2f1d38096efc2bb380b024014cba28
+---
+ packages/SystemUI/res/values-sw720dp/config.xml | 3 +++
+ packages/SystemUI/res/values-sw900dp/config.xml | 2 +-
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/res/values-sw720dp/config.xml b/packages/SystemUI/res/values-sw720dp/config.xml
+index 64e2760e777..b850aef289b 100644
+--- a/packages/SystemUI/res/values-sw720dp/config.xml
++++ b/packages/SystemUI/res/values-sw720dp/config.xml
+@@ -25,5 +25,8 @@
+     <!-- The maximum count of notifications on Keyguard. The rest will be collapsed in an overflow
+          card. -->
+     <integer name="keyguard_max_notification_count">5</integer>
++
++    <!-- Nav bar button default ordering/layout -->
++    <string name="config_navBarLayout" translatable="false">left;volume_sub,back,home,recent,volume_add,screenshot;right</string>
+ </resources>
+ 
+diff --git a/packages/SystemUI/res/values-sw900dp/config.xml b/packages/SystemUI/res/values-sw900dp/config.xml
+index 221b0139e71..f957d6e68de 100644
+--- a/packages/SystemUI/res/values-sw900dp/config.xml
++++ b/packages/SystemUI/res/values-sw900dp/config.xml
+@@ -19,6 +19,6 @@
+ <resources>
+ 
+     <!-- Nav bar button default ordering/layout -->
+-    <string name="config_navBarLayout" translatable="false">back,home,left;space;right,recent</string>
++    <string name="config_navBarLayout" translatable="false">left;volume_sub,back,home,recent,volume_add,screenshot;right</string>
+ 
+ </resources>
+-- 
+2.35.1
+

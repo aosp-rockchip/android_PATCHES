@@ -1,0 +1,177 @@
+From d42403f14994ad2331deb7f3f991e77a92cd1a3f Mon Sep 17 00:00:00 2001
+From: Beverly Tai <beverlyt@google.com>
+Date: Mon, 18 May 2020 17:08:20 +0000
+Subject: [PATCH 166/297] Revert "Don't readd pending notifs to NEM's allNotifs
+ list"
+
+This reverts commit cb5e62cc500a5a1b770e2a48b6e5deacd0134db9.
+
+Reason for revert: cause of regression b/156874301
+
+Change-Id: If88f1d508180ae7b2e40f11386d5a6b66b639750
+(cherry picked from commit 11c576145784b8aafb5b808c8c9f11c7b85b7719)
+---
+ .../NotificationEntryManager.java             | 54 ++++++++-----------
+ .../NotificationEntryManagerTest.java         | 22 --------
+ 2 files changed, 21 insertions(+), 55 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/NotificationEntryManager.java b/packages/SystemUI/src/com/android/systemui/statusbar/notification/NotificationEntryManager.java
+index 2be1531850c..d6471243e05 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/NotificationEntryManager.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/NotificationEntryManager.java
+@@ -151,16 +151,6 @@ public class NotificationEntryManager implements
+     @Override
+     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+         pw.println("NotificationEntryManager state:");
+-        pw.println("  mAllNotifications=");
+-        if (mAllNotifications.size() == 0) {
+-            pw.println("null");
+-        } else {
+-            int i = 0;
+-            for (NotificationEntry entry : mAllNotifications) {
+-                dumpEntry(pw, "  ", i, entry);
+-                i++;
+-            }
+-        }
+         pw.print("  mPendingNotifications=");
+         if (mPendingNotifications.size() == 0) {
+             pw.println("null");
+@@ -360,8 +350,8 @@ public class NotificationEntryManager implements
+     private final NotificationHandler mNotifListener = new NotificationHandler() {
+         @Override
+         public void onNotificationPosted(StatusBarNotification sbn, RankingMap rankingMap) {
+-            final boolean isUpdateToInflatedNotif = mActiveNotifications.containsKey(sbn.getKey());
+-            if (isUpdateToInflatedNotif) {
++            final boolean isUpdate = mActiveNotifications.containsKey(sbn.getKey());
++            if (isUpdate) {
+                 updateNotification(sbn, rankingMap);
+             } else {
+                 addNotification(sbn, rankingMap);
+@@ -452,12 +442,16 @@ public class NotificationEntryManager implements
+                 }
+                 if (!lifetimeExtended) {
+                     // At this point, we are guaranteed the notification will be removed
+-                    abortExistingInflation(key, "removeNotification");
+                     mAllNotifications.remove(pendingEntry);
+-                    mLeakDetector.trackGarbage(pendingEntry);
+                 }
+             }
+-        } else {
++        }
++
++        if (!lifetimeExtended) {
++            abortExistingInflation(key, "removeNotification");
++        }
++
++        if (entry != null) {
+             // If a manager needs to keep the notification around for whatever reason, we
+             // keep the notification
+             boolean entryDismissed = entry.isRowDismissed();
+@@ -475,8 +469,6 @@ public class NotificationEntryManager implements
+ 
+             if (!lifetimeExtended) {
+                 // At this point, we are guaranteed the notification will be removed
+-                abortExistingInflation(key, "removeNotification");
+-                mAllNotifications.remove(entry);
+ 
+                 // Ensure any managers keeping the lifetime extended stop managing the entry
+                 cancelLifetimeExtension(entry);
+@@ -485,10 +477,13 @@ public class NotificationEntryManager implements
+                     entry.removeRow();
+                 }
+ 
++                mAllNotifications.remove(entry);
++
+                 // Let's remove the children if this was a summary
+                 handleGroupSummaryRemoved(key);
+                 removeVisibleNotification(key);
+                 updateNotifications("removeNotificationInternal");
++                mLeakDetector.trackGarbage(entry);
+                 removedByUser |= entryDismissed;
+ 
+                 mLogger.logNotifRemoved(entry.getKey(), removedByUser);
+@@ -502,7 +497,6 @@ public class NotificationEntryManager implements
+                 for (NotifCollectionListener listener : mNotifCollectionListeners) {
+                     listener.onEntryCleanUp(entry);
+                 }
+-                mLeakDetector.trackGarbage(entry);
+             }
+         }
+     }
+@@ -562,24 +556,17 @@ public class NotificationEntryManager implements
+         Ranking ranking = new Ranking();
+         rankingMap.getRanking(key, ranking);
+ 
+-        NotificationEntry entry = mPendingNotifications.get(key);
+-        if (entry != null) {
+-            entry.setSbn(notification);
+-        } else {
+-            entry = new NotificationEntry(
+-                    notification,
+-                    ranking,
+-                    mFgsFeatureController.isForegroundServiceDismissalEnabled(),
+-                    SystemClock.uptimeMillis());
+-            mAllNotifications.add(entry);
+-            mLeakDetector.trackInstance(entry);
+-        }
+-
+-        abortExistingInflation(key, "addNotification");
+-
++        NotificationEntry entry = new NotificationEntry(
++                notification,
++                ranking,
++                mFgsFeatureController.isForegroundServiceDismissalEnabled(),
++                SystemClock.uptimeMillis());
+         for (NotifCollectionListener listener : mNotifCollectionListeners) {
+             listener.onEntryBind(entry, notification);
+         }
++        mAllNotifications.add(entry);
++
++        mLeakDetector.trackInstance(entry);
+ 
+         for (NotifCollectionListener listener : mNotifCollectionListeners) {
+             listener.onEntryInit(entry);
+@@ -594,6 +581,7 @@ public class NotificationEntryManager implements
+                             mInflationCallback);
+         }
+ 
++        abortExistingInflation(key, "addNotification");
+         mPendingNotifications.put(key, entry);
+         mLogger.logNotifAdded(entry.getKey());
+         for (NotificationEntryListener listener : mNotificationEntryListeners) {
+diff --git a/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/NotificationEntryManagerTest.java b/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/NotificationEntryManagerTest.java
+index a5a5f81bdff..d583048fbb2 100644
+--- a/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/NotificationEntryManagerTest.java
++++ b/packages/SystemUI/tests/src/com/android/systemui/statusbar/notification/NotificationEntryManagerTest.java
+@@ -209,28 +209,6 @@ public class NotificationEntryManagerTest extends SysuiTestCase {
+         setUserSentiment(mSbn.getKey(), Ranking.USER_SENTIMENT_NEUTRAL);
+     }
+ 
+-    @Test
+-    public void testAddNotification_noDuplicateEntriesCreated() {
+-        // GIVEN a notification has been added
+-        mEntryManager.addNotification(mSbn, mRankingMap);
+-
+-        // WHEN the same notification is added multiple times before the previous entry (with
+-        // the same key) didn't finish inflating
+-        mEntryManager.addNotification(mSbn, mRankingMap);
+-        mEntryManager.addNotification(mSbn, mRankingMap);
+-        mEntryManager.addNotification(mSbn, mRankingMap);
+-
+-        // THEN getAllNotifs() only contains exactly one notification with this key
+-        int count = 0;
+-        for (NotificationEntry entry : mEntryManager.getAllNotifs()) {
+-            if (entry.getKey().equals(mSbn.getKey())) {
+-                count++;
+-            }
+-        }
+-        assertEquals("Should only be one entry with key=" + mSbn.getKey() + " in mAllNotifs. "
+-                        + "Instead there are " + count, 1, count);
+-    }
+-
+     @Test
+     public void testAddNotification_setsUserSentiment() {
+         mEntryManager.addNotification(mSbn, mRankingMap);
+-- 
+2.35.1
+

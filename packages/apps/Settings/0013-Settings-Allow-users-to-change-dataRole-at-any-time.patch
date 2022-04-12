@@ -1,0 +1,32 @@
+From 7c227129ad65534763600ddddf279baa055e12d9 Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Fri, 26 Oct 2018 11:39:52 +0800
+Subject: [PATCH 13/25] Settings: Allow users to change dataRole at any time.
+
+In AOSP, it is not allowed to change the mode
+  if the device doesn't support UsbHAL && UsbGadgetHAL.
+
+redmine: #178099
+
+Change-Id: Id14fc4b780ae2e132d960163138587554d1972a0
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+---
+ .../connecteddevice/usb/UsbDetailsFunctionsController.java      | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/com/android/settings/connecteddevice/usb/UsbDetailsFunctionsController.java b/src/com/android/settings/connecteddevice/usb/UsbDetailsFunctionsController.java
+index 31bca1241e..00f7691762 100644
+--- a/src/com/android/settings/connecteddevice/usb/UsbDetailsFunctionsController.java
++++ b/src/com/android/settings/connecteddevice/usb/UsbDetailsFunctionsController.java
+@@ -88,7 +88,7 @@ public class UsbDetailsFunctionsController extends UsbDetailsController
+ 
+     @Override
+     protected void refresh(boolean connected, long functions, int powerRole, int dataRole) {
+-        if (!connected || dataRole != DATA_ROLE_DEVICE) {
++        if (!connected) {
+             mProfilesContainer.setEnabled(false);
+         } else {
+             // Functions are only available in device mode
+-- 
+2.35.1
+

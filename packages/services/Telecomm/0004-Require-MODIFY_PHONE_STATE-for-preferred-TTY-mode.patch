@@ -1,0 +1,34 @@
+From a62701f4a790e6499a91a45e1767f4dde692bc60 Mon Sep 17 00:00:00 2001
+From: Hall Liu <hallliu@google.com>
+Date: Tue, 22 Sep 2020 19:15:20 -0700
+Subject: [PATCH 4/5] Require MODIFY_PHONE_STATE for preferred TTY mode
+
+Now that ACTION_TTY_PREFERRED_MODE_CHANGED is no longer a protected
+broadcast, require the sender to have MODIFY_PHONE_STATE.
+
+Bug: 169196062
+Test: atest TelecomManagerTest, manual
+Change-Id: I9e16429e25faa326dfa1f93284c34346573320ee
+(cherry picked from commit 7fa20a84e387e3e9ec0c5e5fc5510749d2db0ed6)
+---
+ src/com/android/server/telecom/TtyManager.java | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/com/android/server/telecom/TtyManager.java b/src/com/android/server/telecom/TtyManager.java
+index 2d0423422..dfddb8f0b 100644
+--- a/src/com/android/server/telecom/TtyManager.java
++++ b/src/com/android/server/telecom/TtyManager.java
+@@ -49,7 +49,9 @@ final class TtyManager implements WiredHeadsetManager.Listener {
+ 
+         IntentFilter intentFilter = new IntentFilter(
+                 TelecomManager.ACTION_TTY_PREFERRED_MODE_CHANGED);
+-        mContext.registerReceiver(mReceiver, intentFilter);
++        mContext.registerReceiver(mReceiver, intentFilter,
++                android.Manifest.permission.MODIFY_PHONE_STATE,
++                null);
+ 
+         updateCurrentTtyMode();
+     }
+-- 
+2.35.1
+

@@ -1,0 +1,543 @@
+From 3898f13d5ffe3fa7862a169c01049d57a5af8aa9 Mon Sep 17 00:00:00 2001
+From: "alex.lin" <alex.lin@rock-chips.com>
+Date: Tue, 13 Oct 2020 10:33:46 +0800
+Subject: [PATCH 16/25] Settings: add Screenshot setting
+
+Signed-off-by: alex.lin <alex.lin@rock-chips.com>
+Change-Id: I7c6ae153e04fdf571ffb47975da34cbacc5e75b9
+---
+ AndroidManifest.xml                           |  22 ++++
+ res/drawable/ic_homepage_screenshot.xml       |  33 +++++
+ res/drawable/ic_settings_screenshot.xml       |   6 +
+ res/values-zh-rCN/strings.xml                 |   8 ++
+ res/values/arrays.xml                         |  19 +++
+ res/values/colors.xml                         |   1 +
+ res/values/strings.xml                        |   8 ++
+ res/xml/screenshot.xml                        |  14 +++
+ res/xml/top_level_settings.xml                |   8 ++
+ .../android/settings/ScreenshotSettings.java  | 114 +++++++++++++++++
+ src/com/android/settings/Settings.java        |   1 +
+ .../android/settings/SettingsActivity.java    |   5 +
+ .../android/settings/SettingsApplication.java | 119 ++++++++++++++++++
+ .../core/gateway/SettingsGateway.java         |   3 +
+ 14 files changed, 361 insertions(+)
+ create mode 100644 res/drawable/ic_homepage_screenshot.xml
+ create mode 100644 res/drawable/ic_settings_screenshot.xml
+ create mode 100644 res/xml/screenshot.xml
+ create mode 100644 src/com/android/settings/ScreenshotSettings.java
+ create mode 100644 src/com/android/settings/SettingsApplication.java
+
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 2f53cc1e7c..efbd359878 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -115,6 +115,7 @@
+             android:usesCleartextTraffic="true"
+             android:defaultToDeviceProtectedStorage="true"
+             android:directBootAware="true"
++            android:name=".SettingsApplication"
+             android:appComponentFactory="androidx.core.app.CoreComponentFactory">
+ 
+         <uses-library android:name="org.apache.http.legacy" />
+@@ -3355,6 +3356,27 @@
+                 android:value="com.android.settings.gestures.GlobalActionsPanelSettings" />
+         </activity>
+ 
++        <!-- SCREENSHOT -->
++        <activity
++            android:name="Settings$ScreenshotSettingsActivity"
++            android:label="@string/screenshot_manager"
++            android:icon="@drawable/ic_homepage_screenshot"
++            android:configChanges="orientation|keyboardHidden|screenSize"
++            android:parentActivityName="Settings">
++            <intent-filter android:priority="1">
++                <action android:name="android.settings.SCREENSHOT_SETTINGS" />
++                <category android:name="android.intent.category.DEFAULT" />
++            </intent-filter>
++            <intent-filter android:priority="60">
++                <action android:name="android.intent.action.MAIN" />
++                <category android:name="com.android.settings.SHORTCUT" />
++            </intent-filter>
++            <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
++                android:value="com.android.settings.ScreenshotSettings" />
++            <meta-data android:name="com.android.settings.PRIMARY_PROFILE_CONTROLLED"
++                android:value="true" />
++        </activity>
++
+         <activity android:name="Settings$PowerMenuSettingsActivity"
+                   android:label="@string/power_menu_setting_name">
+             <intent-filter>
+diff --git a/res/drawable/ic_homepage_screenshot.xml b/res/drawable/ic_homepage_screenshot.xml
+new file mode 100644
+index 0000000000..91c5162aaa
+--- /dev/null
++++ b/res/drawable/ic_homepage_screenshot.xml
+@@ -0,0 +1,33 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++  Copyright (C) 2018 The Android Open Source Project
++
++  Licensed under the Apache License, Version 2.0 (the "License");
++  you may not use this file except in compliance with the License.
++  You may obtain a copy of the License at
++
++       http://www.apache.org/licenses/LICENSE-2.0
++
++  Unless required by applicable law or agreed to in writing, software
++  distributed under the License is distributed on an "AS IS" BASIS,
++  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++  See the License for the specific language governing permissions and
++  limitations under the License.
++  -->
++
++<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
++
++     <item>
++        <com.android.settingslib.widget.AdaptiveIconShapeDrawable
++            android:width="@dimen/dashboard_tile_image_size"
++            android:height="@dimen/dashboard_tile_image_size"
++            android:color="@color/homepage_screenshot_background" />
++    </item>
++
++    <item
++        android:width="@dimen/dashboard_tile_foreground_image_size"
++        android:height="@dimen/dashboard_tile_foreground_image_size"
++        android:start="@dimen/dashboard_tile_foreground_image_inset"
++        android:top="@dimen/dashboard_tile_foreground_image_inset"
++        android:drawable="@drawable/ic_settings_screenshot" />
++</layer-list>
+diff --git a/res/drawable/ic_settings_screenshot.xml b/res/drawable/ic_settings_screenshot.xml
+new file mode 100644
+index 0000000000..4046db79b5
+--- /dev/null
++++ b/res/drawable/ic_settings_screenshot.xml
+@@ -0,0 +1,6 @@
++<vector android:height="24dp"
++    android:viewportHeight="24.0" android:viewportWidth="24.0"
++    android:width="24dp" xmlns:android="http://schemas.android.com/apk/res/android">
++    <path android:fillColor="#FFFFFFFF" android:pathData="M12,12m-3.2,0a3.2,3.2 0,1 1,6.4 0a3.2,3.2 0,1 1,-6.4 0"/>
++    <path android:fillColor="#FFFFFFFF" android:pathData="M9,2L7.17,4L4,4c-1.1,0 -2,0.9 -2,2v12c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2L22,6c0,-1.1 -0.9,-2 -2,-2h-3.17L15,2L9,2zM12,17c-2.76,0 -5,-2.24 -5,-5s2.24,-5 5,-5 5,2.24 5,5 -2.24,5 -5,5z"/>
++</vector>
+diff --git a/res/values-zh-rCN/strings.xml b/res/values-zh-rCN/strings.xml
+index 2c5d43269d..2f2eae12e4 100644
+--- a/res/values-zh-rCN/strings.xml
++++ b/res/values-zh-rCN/strings.xml
+@@ -4946,4 +4946,12 @@
+     <string name="media_controls_show_player" msgid="8504571042365814021">"显示播放器"</string>
+     <string name="media_controls_no_players" msgid="3493023121892175946">"没有可用的播放器"</string>
+     <string name="keywords_media_controls" msgid="8345490568291778638">"媒体"</string>
++
++    <!--screen shot-->
++    <string name="app_name">截屏管理器</string>
++    <string name="screenshot_manager">截屏</string>
++    <string name="screenshot_delay_title">延时截屏设置 </string>
++    <string name="screenshot_show">在状态栏上显示截屏按钮</string>
++    <string name="screenshot_version">截屏管理器版本</string>
++    <string name="later">秒以后截屏</string>
+ </resources>
+diff --git a/res/values/arrays.xml b/res/values/arrays.xml
+index 1ad3cc3103..cf6245aa54 100644
+--- a/res/values/arrays.xml
++++ b/res/values/arrays.xml
+@@ -1501,4 +1501,23 @@
+         <item>@string/rtt_settings_always_visible</item>
+     </string-array>
+ 
++    <!-- screenshot setting-->
++    <string-array name="screenshot_delay_values">
++        <item>15</item>
++        <item>30</item>
++        <item>60</item>
++        <item>120</item>
++        <item>180</item>
++        <item>240</item>
++        <item>300</item>
++    </string-array>
++    <string-array name="screenshot_delay_entries">
++        <item>15 seconds later</item>
++        <item>30 seconds later</item>
++        <item>1 minute later</item>
++        <item>2 minute later</item>
++        <item>3 minute later</item>
++        <item>4 minute later</item>
++        <item>5 minute later</item>
++    </string-array>
+ </resources>
+diff --git a/res/values/colors.xml b/res/values/colors.xml
+index 06f135f05c..7104f5a80a 100644
+--- a/res/values/colors.xml
++++ b/res/values/colors.xml
+@@ -92,6 +92,7 @@
+     <color name="homepage_security_background">#0F9D58</color>
+     <color name="homepage_accounts_background">#F15B8D</color>
+     <color name="homepage_accessibility_background">#5011C1</color>
++    <color name="homepage_screenshot_background">#FF7A32</color>
+     <color name="homepage_system_background">#9E9E9E</color>
+     <color name="homepage_support_background">#26459C</color>
+     <color name="homepage_generic_icon_background">#1A73E8</color>
+diff --git a/res/values/strings.xml b/res/values/strings.xml
+index 4acfde3706..bdac1c49ca 100644
+--- a/res/values/strings.xml
++++ b/res/values/strings.xml
+@@ -12147,4 +12147,12 @@
+     <string name="media_controls_no_players">No players available</string>
+     <!-- Keywords for the media controls setting [CHAR LIMIT=NONE]-->
+     <string name="keywords_media_controls">media</string>
++
++    <!--screenshot setting -->
++    <string name="app_name">ScreenshotManager</string>
++    <string name="screenshot_manager">Screenshot</string>
++    <string name="screenshot_delay_title">Select delay time to capture the screen </string>
++    <string name="screenshot_show">Show the screenshot button in the statusbar</string>
++    <string name="screenshot_version">Show the version of screenshot manager.</string>
++    <string name="later">s later capture</string>
+ </resources>
+diff --git a/res/xml/screenshot.xml b/res/xml/screenshot.xml
+new file mode 100644
+index 0000000000..4ee39e1308
+--- /dev/null
++++ b/res/xml/screenshot.xml
+@@ -0,0 +1,14 @@
++<?xml version="1.0" encoding="utf-8"?>
++<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
++
++    <ListPreference
++        android:entries="@array/screenshot_delay_entries"
++        android:entryValues="@array/screenshot_delay_values"
++        android:key="screenshot_delay"
++        android:persistent="true"
++        android:title="@string/screenshot_delay_title" />
++    <SwitchPreference
++        android:key="screenshot_show"
++        android:persistent="true"
++        android:title="@string/screenshot_show" />
++</PreferenceScreen>
+diff --git a/res/xml/top_level_settings.xml b/res/xml/top_level_settings.xml
+index 367f426f5f..a5e4d06243 100644
+--- a/res/xml/top_level_settings.xml
++++ b/res/xml/top_level_settings.xml
+@@ -125,6 +125,14 @@
+         android:fragment="com.android.settings.accessibility.AccessibilitySettings"
+         settings:controller="com.android.settings.accessibility.TopLevelAccessibilityPreferenceController"/>
+ 
++    <Preference
++        android:key="top_level_screenshot"
++        android:title="@string/screenshot_manager"
++        android:summary="@string/screenshot_manager"
++        android:icon="@drawable/ic_homepage_screenshot"
++        android:order="-10"
++        android:fragment="com.android.settings.ScreenshotSettings"/>
++
+     <Preference
+         android:key="top_level_system"
+         android:title="@string/header_category_system"
+diff --git a/src/com/android/settings/ScreenshotSettings.java b/src/com/android/settings/ScreenshotSettings.java
+new file mode 100644
+index 0000000000..743d807016
+--- /dev/null
++++ b/src/com/android/settings/ScreenshotSettings.java
+@@ -0,0 +1,114 @@
++package com.android.settings;
++
++import android.app.Dialog;
++import android.content.Context;
++import android.content.SharedPreferences;
++import android.os.Bundle;
++import android.os.SystemProperties;
++import android.provider.Settings;
++import android.provider.SearchIndexableResource;
++import android.content.res.Resources;
++
++import java.util.ArrayList;
++import java.util.List;
++
++import com.android.internal.logging.nano.MetricsProto.MetricsEvent;
++import com.android.settings.search.BaseSearchIndexProvider;
++
++import androidx.preference.ListPreference;
++import androidx.preference.Preference;
++import androidx.preference.SwitchPreference;
++
++
++public class ScreenshotSettings extends SettingsPreferenceFragment implements Preference.OnPreferenceChangeListener {
++    /**
++     * Called when the activity is first created.
++     */
++    private static final String KEY_SCREENSHOT_DELAY = "screenshot_delay";
++    private static final String KEY_SCREENSHOT_STORAGE_LOCATION = "screenshot_storage";
++    private static final String KEY_SCREENSHOT_SHOW = "screenshot_show";
++    private static final String KEY_SCREENSHOT_VERSION = "screenshot_version";
++
++    private ListPreference mDelay;
++    private SwitchPreference mShow;
++
++    private SharedPreferences mSharedPreference;
++    private SharedPreferences.Editor mEdit;
++    private SettingsApplication mScreenshot;
++
++    private Context mContext;
++    private Dialog dialog;
++    private static final String INTERNAL_STORAGE = "internal_storage";
++    private static final String EXTERNAL_SD_STORAGE = "external_sd_storage";
++    private static final String EXTERNAL_USB_STORAGE = "internal_usb_storage";
++
++    @Override
++    public void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        addPreferencesFromResource(R.xml.screenshot);
++
++        mContext = getActivity();
++        mDelay = (ListPreference) findPreference(KEY_SCREENSHOT_DELAY);
++        mShow = (SwitchPreference) findPreference(KEY_SCREENSHOT_SHOW);
++
++        mShow.setOnPreferenceChangeListener(this);
++        mDelay.setOnPreferenceChangeListener(this);
++
++        mSharedPreference = this.getPreferenceScreen().getSharedPreferences();
++        mEdit = mSharedPreference.edit();
++
++        String summary_delay = mDelay.getSharedPreferences().getString("screenshot_delay", "15");
++        mDelay.setSummary(summary_delay + getString(R.string.later));
++        mDelay.setValue(summary_delay);
++        boolean isShow = Settings.System.getInt(mContext.getContentResolver(), "screenshot_button_show", 1) == 1;
++        mShow.setChecked(isShow);
++        Resources res = mContext.getResources();
++        boolean mHasNavigationBar = res.getBoolean(com.android.internal.R.bool.config_showNavigationBar);
++        if (!mHasNavigationBar) {
++            getPreferenceScreen().removePreference(mShow);
++        }
++
++        mScreenshot = (SettingsApplication) getActivity().getApplication();
++    }
++
++
++    @Override
++    public boolean onPreferenceChange(Preference preference, Object newValue) {
++        // TODO Auto-generated method stub
++        if (preference == mDelay) {
++            int value = Integer.parseInt((String) newValue);
++            mDelay.setSummary((String) newValue + getString(R.string.later));
++            mScreenshot.startScreenshot(value);
++        }
++        return true;
++    }
++
++    @Override
++    public boolean onPreferenceTreeClick(Preference preference) {
++        // TODO Auto-generated method stub
++        if (preference == mShow) {
++            boolean show = mShow.isChecked();
++            Settings.System.putInt(getContentResolver(), "screenshot_button_show", show ? 1 : 0);
++        }
++        return super.onPreferenceTreeClick(preference);
++    }
++
++    @Override
++    public int getMetricsCategory() {
++        // TODO Auto-generated method stub
++        return 5;
++    }
++
++    public static final BaseSearchIndexProvider SEARCH_INDEX_DATA_PROVIDER = new BaseSearchIndexProvider() {
++
++        @Override
++        public List<SearchIndexableResource> getXmlResourcesToIndex(Context context,
++            boolean enabled) {
++            List<SearchIndexableResource> indexables = new ArrayList<>();
++            SearchIndexableResource indexable = new SearchIndexableResource(context);
++            indexable.xmlResId = R.xml.screenshot;
++            indexables.add(indexable);
++            return indexables;
++        }
++    };
++}
+diff --git a/src/com/android/settings/Settings.java b/src/com/android/settings/Settings.java
+index 2f23c84928..eb2e691ca9 100644
+--- a/src/com/android/settings/Settings.java
++++ b/src/com/android/settings/Settings.java
+@@ -239,5 +239,6 @@ public class Settings extends SettingsActivity {
+      * Activity for MediaControlsSettings
+      */
+     public static class MediaControlsSettingsActivity extends SettingsActivity {}
++    public static class ScreenshotSettingsActivity extends SettingsActivity { /* empty */ }
+ 
+ }
+diff --git a/src/com/android/settings/SettingsActivity.java b/src/com/android/settings/SettingsActivity.java
+index 1c2952a3b4..1683499f75 100644
+--- a/src/com/android/settings/SettingsActivity.java
++++ b/src/com/android/settings/SettingsActivity.java
+@@ -33,6 +33,7 @@ import android.content.res.Resources.Theme;
+ import android.graphics.drawable.Icon;
+ import android.os.AsyncTask;
+ import android.os.Bundle;
++import android.os.SystemProperties;
+ import android.os.UserHandle;
+ import android.os.UserManager;
+ import android.text.TextUtils;
+@@ -651,6 +652,10 @@ public class SettingsActivity extends SettingsBaseActivity
+                 WifiDisplaySettings.isAvailable(this), isAdmin)
+                 || somethingChanged;
+ 
++        somethingChanged = setTileEnabled(changedList, new ComponentName(packageName,
++                        Settings.ScreenshotSettingsActivity.class.getName()),
++                SystemProperties.get("ro.build.characteristics","null").equals("tablet"), isAdmin)
++                || somethingChanged;
+         if (UserHandle.MU_ENABLED && !isAdmin) {
+             // When on restricted users, disable all extra categories (but only the settings ones).
+             final List<DashboardCategory> categories = mDashboardFeatureProvider.getAllCategories();
+diff --git a/src/com/android/settings/SettingsApplication.java b/src/com/android/settings/SettingsApplication.java
+new file mode 100644
+index 0000000000..f53e415d83
+--- /dev/null
++++ b/src/com/android/settings/SettingsApplication.java
+@@ -0,0 +1,119 @@
++package com.android.settings;
++
++import java.util.Timer;
++import java.util.TimerTask;
++
++import android.app.Application;
++import android.content.Context;
++import android.content.Intent;
++import android.graphics.Canvas;
++import android.graphics.Color;
++import android.graphics.Paint;
++import android.graphics.PixelFormat;
++import android.graphics.PorterDuff;
++import android.graphics.Typeface;
++import android.os.Handler;
++import android.util.Log;
++import android.view.Gravity;
++import android.view.WindowManager;
++import android.view.ViewGroup.LayoutParams;
++import android.widget.TextView;
++
++public class SettingsApplication extends Application {
++
++
++    private int mDelayTime;
++    private TextView text;
++    private WindowManager mWindowManager;
++    private Context mContext;
++    private Timer timer;
++    private WindowManager.LayoutParams params;
++    private Handler mHandler = new Handler() {
++        public void handleMessage(android.os.Message msg) {
++            //TextView text =new TextView(getApplicationContext());
++            mDelayTime--;
++            Log.d("screenshot", "handleMessage" + "mDelayTime=" + String.valueOf(mDelayTime));
++            if (mDelayTime > 1) {
++                if (text.getParent() == null) {
++                    mWindowManager.addView(text, params);
++                } else {
++                    text.invalidate();
++                }
++            } else {
++                if (text.getParent() != null) {
++                    mWindowManager.removeView(text);
++                }
++                timer.cancel();
++                Intent intent = new Intent();
++                intent.setAction("android.intent.action.SCREENSHOT");
++                mContext.sendBroadcast(intent);
++            }
++        }
++
++        ;
++    };
++
++    @Override
++    public void onCreate() {
++        // TODO Auto-generated method stub
++        super.onCreate();
++        init();
++    }
++
++    private void init() {
++        mContext = this.getApplicationContext();
++        text = new MyView(mContext);
++        text.setLayoutParams(new LayoutParams(40, 40));
++        text.setTextSize(40);
++        params = new WindowManager.LayoutParams();
++        params.type = WindowManager.LayoutParams.TYPE_SYSTEM_ALERT | WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY;
++        params.type = 2006;
++        params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
++        params.width = WindowManager.LayoutParams.WRAP_CONTENT;
++        params.height = WindowManager.LayoutParams.WRAP_CONTENT;
++        params.format = PixelFormat.TRANSLUCENT;
++        params.gravity = Gravity.LEFT | Gravity.BOTTOM;
++        params.width = 50;
++        params.height = 40;
++        mWindowManager = (WindowManager) mContext.getApplicationContext().getSystemService(mContext.WINDOW_SERVICE);
++    }
++
++    public void startScreenshot(int delay) {
++        if (timer != null) {
++            timer.cancel();
++        }
++        timer = new Timer();
++        mDelayTime = delay;
++        timer.schedule(new TimerTask() {
++
++            @Override
++            public void run() {
++                // TODO Auto-generated method stub
++                mHandler.sendEmptyMessage(1);
++
++            }
++        }, 1000, 1000);
++    }
++
++
++    public class MyView extends TextView {
++
++        public MyView(Context context) {
++            super(context);
++            // TODO Auto-generated constructor stub
++        }
++
++        @Override
++        protected void onDraw(Canvas canvas) {
++            // TODO Auto-generated method stub
++            canvas.drawColor(0, PorterDuff.Mode.CLEAR);
++            Paint paint = new Paint();
++            paint.setColor(Color.RED);
++            paint.setTypeface(Typeface.DEFAULT_BOLD);
++            paint.setTextSize(30);
++            canvas.drawText(String.valueOf(mDelayTime), 0, 40, paint);
++            super.onDraw(canvas);
++
++        }
++    }
++}
+diff --git a/src/com/android/settings/core/gateway/SettingsGateway.java b/src/com/android/settings/core/gateway/SettingsGateway.java
+index ad4da08aed..be7be4021e 100644
+--- a/src/com/android/settings/core/gateway/SettingsGateway.java
++++ b/src/com/android/settings/core/gateway/SettingsGateway.java
+@@ -142,6 +142,7 @@ import com.android.settings.sound.MediaControlsSettings;
+ import com.android.settings.support.SupportDashboardActivity;
+ import com.android.settings.system.ResetDashboardFragment;
+ import com.android.settings.system.SystemDashboardFragment;
++import com.android.settings.ScreenshotSettings;
+ import com.android.settings.tts.TextToSpeechSettings;
+ import com.android.settings.users.UserSettings;
+ import com.android.settings.vpn2.VpnSettings;
+@@ -170,6 +171,7 @@ public class SettingsGateway {
+             AdvancedConnectedDeviceDashboardFragment.class.getName(),
+             CreateShortcut.class.getName(),
+             WifiSettings.class.getName(),
++            ScreenshotSettings.class.getName(),
+             WifiSettings2.class.getName(),
+             ConfigureWifiSettings.class.getName(),
+             SavedAccessPointsWifiSettings.class.getName(),
+@@ -314,6 +316,7 @@ public class SettingsGateway {
+             // Home page
+             Settings.NetworkDashboardActivity.class.getName(),
+             Settings.ConnectedDeviceDashboardActivity.class.getName(),
++            Settings.ScreenshotSettingsActivity.class.getName(),
+             Settings.AppAndNotificationDashboardActivity.class.getName(),
+             Settings.DisplaySettingsActivity.class.getName(),
+             Settings.SoundSettingsActivity.class.getName(),
+-- 
+2.35.1
+

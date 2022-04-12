@@ -1,0 +1,34 @@
+From ebf5452230c6a2e502b8c29c5012074089a816cd Mon Sep 17 00:00:00 2001
+From: Daniel Chapin <chapin@google.com>
+Date: Tue, 18 Feb 2020 19:07:02 +0000
+Subject: [PATCH 3/6] Revert "Add com.android.os.statsd to linkerconfig"
+
+Revert submission 10302138-tej_jni
+
+Reason for revert: b/149720256
+Reverted Changes:
+I1fe277bce: Limit metricslogger call into statsdw for events
+Id516e79e1: Add com.android.os.statsd to linkerconfig
+I22c2816c8: Remove libstats_jni from the platform
+
+Change-Id: Ib9ea269491c7c496f58914618510d4efc275f4f6
+(cherry picked from commit 03e755c93787232d9b8f899519a9cad94d67cb55)
+---
+ contents/section/system.cc | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/contents/section/system.cc b/contents/section/system.cc
+index cf190e6..9321abd 100644
+--- a/contents/section/system.cc
++++ b/contents/section/system.cc
+@@ -48,7 +48,6 @@ Section BuildSystemSection(Context& ctx) {
+                           "com.android.cronet",
+                           "com.android.media",
+                           "com.android.conscrypt",
+-                          "com.android.os.statsd",
+                       });
+ }
+ }  // namespace contents
+-- 
+2.35.1
+

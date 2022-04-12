@@ -1,0 +1,214 @@
+From 3c4315bf311b7ee6c4cbf164995f41777fff48ed Mon Sep 17 00:00:00 2001
+From: Orion Hodson <oth@google.com>
+Date: Mon, 15 Apr 2019 16:14:51 +0100
+Subject: [PATCH 001/297] Ensure all fields of AutoBufferPointer are
+ initialized
+
+In the process of revising libnativehelper interface, the
+initialization of the fArray field was dropped. This change fixes
+this and adds regression tests.
+
+In writing the tests, it became apparent that the AutoBufferPointer
+destructor would crash if the underlying buffer was heap array backed
+and the buffer position was non-zero. ReleasePrimitiveArrayCritical
+was called with the element corresponding to the current position
+rather than the first element.
+
+Bug: b/130390512
+Test: atest FrameworksCoreTests:android.graphics.BitmapTest
+Change-Id: I319512aaede7ba8af5d013c9281417695abf9099
+(cherry picked from commit e522c99430ec9ee0b4daa588dbcaea4824bc3f70)
+---
+ core/jni/android_nio_utils.cpp                | 37 ++++++----
+ core/jni/android_nio_utils.h                  |  9 +--
+ .../src/android/graphics/BitmapTest.java      | 72 +++++++++++++++++++
+ 3 files changed, 100 insertions(+), 18 deletions(-)
+
+diff --git a/core/jni/android_nio_utils.cpp b/core/jni/android_nio_utils.cpp
+index 19a1c7212fa..a62dd7c4048 100644
+--- a/core/jni/android_nio_utils.cpp
++++ b/core/jni/android_nio_utils.cpp
+@@ -18,42 +18,51 @@
+ 
+ #include "core_jni_helpers.h"
+ 
+-void* android::nio_getPointer(JNIEnv *_env, jobject buffer, jarray *array) {
+-    assert(array);
++namespace {
+ 
++void* getPointer(JNIEnv *_env, jobject buffer, jarray *array, void** elements) {
++    assert(array);
+     jint position;
+     jint limit;
+     jint elementSizeShift;
+     jlong pointer = jniGetNioBufferFields(_env, buffer, &position, &limit, &elementSizeShift);
+     if (pointer != 0L) {
++        *array = nullptr;
++        *elements = nullptr;
+         pointer += position << elementSizeShift;
+         return reinterpret_cast<void*>(pointer);
+     }
+-
+     jint offset = jniGetNioBufferBaseArrayOffset(_env, buffer);
+     *array = jniGetNioBufferBaseArray(_env, buffer);
+-    void * data = _env->GetPrimitiveArrayCritical(*array, (jboolean *) 0);
+-    return reinterpret_cast<void*>(reinterpret_cast<char*>(data) + offset);
++    *elements = _env->GetPrimitiveArrayCritical(*array, (jboolean *) 0);
++    return reinterpret_cast<void*>(reinterpret_cast<char*>(*elements) + offset);
+ }
+ 
++void releasePointer(JNIEnv *_env, jarray array, void *elements, jboolean commit) {
++    _env->ReleasePrimitiveArrayCritical(array, elements, commit ? 0 : JNI_ABORT);
++}
++
++}  // namespace
++
++void* android::nio_getPointer(JNIEnv *_env, jobject buffer, jarray *array) {
++    void* elements;
++    return getPointer(_env, buffer, array, &elements);
++}
+ 
+-void android::nio_releasePointer(JNIEnv *_env, jarray array, void *data,
+-                                jboolean commit) {
+-    _env->ReleasePrimitiveArrayCritical(array, data,
+-                                        commit ? 0 : JNI_ABORT);
++void android::nio_releasePointer(JNIEnv *_env, jarray array, void *data, jboolean commit) {
++    releasePointer(_env, array, data, commit);
+ }
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ 
+-android::AutoBufferPointer::AutoBufferPointer(JNIEnv* env, jobject nioBuffer,
+-                                              jboolean commit) {
++android::AutoBufferPointer::AutoBufferPointer(JNIEnv* env, jobject nioBuffer, jboolean commit) {
+     fEnv = env;
+     fCommit = commit;
+-    fPointer = android::nio_getPointer(env, nioBuffer, &fArray);
++    fPointer = getPointer(env, nioBuffer, &fArray, &fElements);
+ }
+ 
+ android::AutoBufferPointer::~AutoBufferPointer() {
+-    if (NULL != fArray) {
+-        android::nio_releasePointer(fEnv, fArray, fPointer, fCommit);
++    if (nullptr != fArray) {
++        releasePointer(fEnv, fArray, fElements, fCommit);
+     }
+ }
+diff --git a/core/jni/android_nio_utils.h b/core/jni/android_nio_utils.h
+index c634cb91771..7c9acd2638d 100644
+--- a/core/jni/android_nio_utils.h
++++ b/core/jni/android_nio_utils.h
+@@ -20,7 +20,7 @@
+ #include <android_runtime/AndroidRuntime.h>
+ 
+ namespace android {
+-    
++
+ /**
+  * Given an nio.Buffer, return a pointer to it, beginning at its current
+  * position. The returned pointer is only valid for the current JNI stack-frame.
+@@ -63,9 +63,10 @@ public:
+ 
+ private:
+     JNIEnv* fEnv;
+-    void*   fPointer;
+-    jarray  fArray;
+-    jboolean fCommit;
++    void*   fPointer;   // pointer to current buffer position.
++    void*   fElements;  // pointer to array element 0 (may be directly in fArray or a copy).
++    jarray  fArray;     // pointer to array on managed heap.
++    jboolean fCommit;   // commit data to source if required (when fElements is a copy of fArray).
+ };
+ 
+ }   /* namespace android */
+diff --git a/core/tests/coretests/src/android/graphics/BitmapTest.java b/core/tests/coretests/src/android/graphics/BitmapTest.java
+index d2a1dd9a7b5..4bee24385cc 100644
+--- a/core/tests/coretests/src/android/graphics/BitmapTest.java
++++ b/core/tests/coretests/src/android/graphics/BitmapTest.java
+@@ -22,6 +22,8 @@ import androidx.test.filters.SmallTest;
+ 
+ import junit.framework.TestCase;
+ 
++import java.nio.ByteBuffer;
++
+ public class BitmapTest extends TestCase {
+ 
+     @SmallTest
+@@ -262,4 +264,74 @@ public class BitmapTest extends TestCase {
+         assertFalse(hardwareBitmap.isMutable());
+         assertEquals(ColorSpace.get(ColorSpace.Named.DISPLAY_P3), hardwareBitmap.getColorSpace());
+     }
++
++    @SmallTest
++    public void testCopyWithDirectBuffer() {
++        // Initialize Bitmap
++        final int width = 2;
++        final int height = 2;
++        Bitmap bm1 = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
++        bm1.setPixels(new int[] { 0xff, 0xeeee, 0xdddddd, 0xcccccccc }, 0, 2, 0, 0, 2, 2);
++
++        // Copy bytes to direct buffer, buffer is padded by fixed amount (pad bytes) either side
++        // of bitmap.
++        final int pad = 1;
++        final byte padValue = 0x5a;
++        final int bufferSize = pad + width * height * 2 + pad;
++        ByteBuffer directBuffer = ByteBuffer.allocateDirect(bufferSize);
++
++        // Write padding
++        directBuffer.put(0, padValue);
++        directBuffer.put(directBuffer.limit() - 1, padValue);
++
++        // Copy bitmap
++        directBuffer.position(pad);
++        bm1.copyPixelsToBuffer(directBuffer);
++        assertEquals(directBuffer.position(), pad + width * height * 2);
++
++        // Check padding
++        assertEquals(directBuffer.get(0), padValue);
++        assertEquals(directBuffer.get(directBuffer.limit() - 1), padValue);
++
++        // Create bitmap from direct buffer and check match.
++        directBuffer.position(pad);
++        Bitmap bm2 = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
++        bm2.copyPixelsFromBuffer(directBuffer);
++        assertTrue(bm2.sameAs(bm1));
++    }
++
++    @SmallTest
++    public void testCopyWithHeapBuffer() {
++        // Initialize Bitmap
++        final int width = 2;
++        final int height = 2;
++        Bitmap bm1 = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
++        bm1.setPixels(new int[] { 0xff, 0xeeee, 0xdddddd, 0xcccccccc }, 0, 2, 0, 0, 2, 2);
++
++        // Copy bytes to heap buffer, buffer is padded by fixed amount (pad bytes) either side
++        // of bitmap.
++        final int pad = 1;
++        final byte padValue = 0x5a;
++        final int bufferSize = pad + width * height * 2 + pad;
++        ByteBuffer heapBuffer = ByteBuffer.allocate(bufferSize);
++
++        // Write padding
++        heapBuffer.put(0, padValue);
++        heapBuffer.put(heapBuffer.limit() - 1, padValue);
++
++        // Copy bitmap
++        heapBuffer.position(pad);
++        bm1.copyPixelsToBuffer(heapBuffer);
++        assertEquals(heapBuffer.position(), pad + width * height * 2);
++
++        // Check padding
++        assertEquals(heapBuffer.get(0), padValue);
++        assertEquals(heapBuffer.get(heapBuffer.limit() - 1), padValue);
++
++        // Create bitmap from heap buffer and check match.
++        heapBuffer.position(pad);
++        Bitmap bm2 = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
++        bm2.copyPixelsFromBuffer(heapBuffer);
++        assertTrue(bm2.sameAs(bm1));
++    }
+ }
+-- 
+2.35.1
+

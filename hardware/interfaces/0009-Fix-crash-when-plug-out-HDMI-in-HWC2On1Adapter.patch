@@ -1,0 +1,44 @@
+From 3dcd5a5b204e73ae275a55093862d4ec262fcefe Mon Sep 17 00:00:00 2001
+From: libin <bin.li@rock-chips.com>
+Date: Tue, 1 Dec 2020 14:22:12 +0800
+Subject: [PATCH 09/24] Fix crash when plug out HDMI in HWC2On1Adapter.
+
+Remove extern display context if plug out HDMI.
+
+Signed-off-by: libin <bin.li@rock-chips.com>
+Change-Id: Ic7dd66e485467dfb6c88acec7b214e63a7d603cc
+---
+ .../2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp    | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+ mode change 100644 => 100755 graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+
+diff --git a/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp b/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+old mode 100644
+new mode 100755
+index 37021716c..1a9ed2e48
+--- a/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
++++ b/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+@@ -2616,6 +2616,20 @@ void HWC2On1Adapter::hwc1Hotplug(int hwc1DisplayId, int connected) {
+         displayId = mHwc1DisplayMap[hwc1DisplayId];
+         mHwc1DisplayMap.erase(HWC_DISPLAY_EXTERNAL);
+         mDisplays.erase(displayId);
++        //Remove extern display context if plug out HDMI.
++        //Fix crash when plug out HDMI.
++        /*
++          F DEBUG   : signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr 0x10
++          ...
++          F DEBUG   :     #00 pc 0000000000068790  /system/lib64/libc.so (pthread_mutex_lock)
++          F DEBUG   :     #01 pc 00000000000b8a7c  /system/lib64/vndk-sp/libc++.so (std::__1::recursive_mutex::lock()+8)
++          F DEBUG   :     #02 pc 00000000000116f4  /vendor/lib64/libhwc2on1adapter.so (android::HWC2On1Adapter::setAllDisplays()+740)
++          F DEBUG   :     #03 pc 00000000000112b8  /vendor/lib64/libhwc2on1adapter.so (android::HWC2On1Adapter::Display::present(int*)+72)
++        */
++        if (mHwc1Contents[HWC_DISPLAY_EXTERNAL] != nullptr)
++        {
++           mHwc1Contents.erase(mHwc1Contents.begin()+HWC_DISPLAY_EXTERNAL);
++        }
+     }
+ 
+     // If the HWC2-side callback hasn't been registered yet, buffer this until
+-- 
+2.35.1
+

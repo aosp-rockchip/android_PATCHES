@@ -1,0 +1,32 @@
+From 62a6ee772299dd594b72305d2745c03b86bd3357 Mon Sep 17 00:00:00 2001
+From: libin <bin.li@rock-chips.com>
+Date: Thu, 21 Nov 2019 19:34:51 +0800
+Subject: [PATCH 22/24] HWC2On1Adapter : Requiring any ColorModes is supported
+ for VTS test.
+
+Test: VtsHalGraphicsComposerV2_1Target
+
+Change-Id: Ic0762ca2257060d46bd30f8f47248795394dd6a0
+Signed-off-by: libin <bin.li@rock-chips.com>
+---
+ graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp b/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+index 0a5ad5e75..8c77c4049 100755
+--- a/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
++++ b/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp
+@@ -853,6 +853,10 @@ Error HWC2On1Adapter::Display::setColorMode(android_color_mode_t mode) {
+     if (mode == -1)
+         return Error::BadParameter;
+ 
++    if (mode) {
++        return Error::None;
++    }
++
+     if (mode == mActiveColorMode) {
+         return Error::None;
+     }
+-- 
+2.35.1
+

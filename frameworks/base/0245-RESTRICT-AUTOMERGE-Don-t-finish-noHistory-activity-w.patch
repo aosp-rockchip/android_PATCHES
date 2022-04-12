@@ -1,0 +1,57 @@
+From 76af8880353587be24c17c1b31fb193a95f163db Mon Sep 17 00:00:00 2001
+From: Jeff Chang <chengjeff@google.com>
+Date: Mon, 21 Sep 2020 16:55:15 +0800
+Subject: [PATCH 245/297] [RESTRICT AUTOMERGE]Don't finish noHistory activity
+ while it is on the topmost.
+
+There was no top running activity in the target task result in the
+NPE.
+
+The CL makes sure the top running noHistory activity is not finished
+when launched again and have protection for getTopNonFinishingActivity.
+
+Bug: 159507052
+Test: atest testNoHistoryActivityNotFinished
+Change-Id: Id582f28d79bec052115e07d98c097c7d50c11609
+(cherry picked from commit 59a51c6ba9219835d0419b5e5b2cde80bd695b4b)
+---
+ services/core/java/com/android/server/wm/ActivityStack.java  | 5 +++--
+ .../core/java/com/android/server/wm/ActivityStarter.java     | 5 +++--
+ 2 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/services/core/java/com/android/server/wm/ActivityStack.java b/services/core/java/com/android/server/wm/ActivityStack.java
+index e9768a26f57..2b785c57a61 100644
+--- a/services/core/java/com/android/server/wm/ActivityStack.java
++++ b/services/core/java/com/android/server/wm/ActivityStack.java
+@@ -1704,8 +1704,9 @@ class ActivityStack extends Task {
+         // If the most recent activity was noHistory but was only stopped rather
+         // than stopped+finished because the device went to sleep, we need to make
+         // sure to finish it as we're making a new activity topmost.
+-        if (shouldSleepActivities() && mLastNoHistoryActivity != null &&
+-                !mLastNoHistoryActivity.finishing) {
++        if (shouldSleepActivities() && mLastNoHistoryActivity != null
++                && !mLastNoHistoryActivity.finishing
++                && mLastNoHistoryActivity != next) {
+             if (DEBUG_STATES) Slog.d(TAG_STATES,
+                     "no-history finish of " + mLastNoHistoryActivity + " on new resume");
+             mLastNoHistoryActivity.finishIfPossible("resume-no-history", false /* oomAdj */);
+diff --git a/services/core/java/com/android/server/wm/ActivityStarter.java b/services/core/java/com/android/server/wm/ActivityStarter.java
+index b3786212ea7..35ccc4347e6 100644
+--- a/services/core/java/com/android/server/wm/ActivityStarter.java
++++ b/services/core/java/com/android/server/wm/ActivityStarter.java
+@@ -1481,9 +1481,10 @@ class ActivityStarter {
+             // anyone interested in this piece of information.
+             final ActivityStack homeStack = targetTask.getDisplayArea().getRootHomeTask();
+             final boolean homeTaskVisible = homeStack != null && homeStack.shouldBeVisible(null);
++            final ActivityRecord top = targetTask.getTopNonFinishingActivity();
++            final boolean visible = top != null && top.isVisible();
+             mService.getTaskChangeNotificationController().notifyActivityRestartAttempt(
+-                    targetTask.getTaskInfo(), homeTaskVisible, clearedTask,
+-                    targetTask.getTopNonFinishingActivity().isVisible());
++                    targetTask.getTaskInfo(), homeTaskVisible, clearedTask, visible);
+         }
+     }
+ 
+-- 
+2.35.1
+

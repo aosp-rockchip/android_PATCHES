@@ -1,0 +1,26 @@
+From 43154052197b6e9edb2be46b7449532461334a9b Mon Sep 17 00:00:00 2001
+From: Alex Zhao <zzc@rock-chips.com>
+Date: Tue, 30 Oct 2018 15:39:05 +0800
+Subject: [PATCH 05/10] add wpa_supplicant_bcm.conf
+
+Change-Id: Ic98a191b2c3d51bd430b04b1d5199dd1a1877a14
+Signed-off-by: Alex Zhao <zzc@rock-chips.com>
+---
+ bcmdhd/config/wpa_supplicant_bcm.conf | 4 ++++
+ 1 file changed, 4 insertions(+)
+ create mode 100644 bcmdhd/config/wpa_supplicant_bcm.conf
+
+diff --git a/bcmdhd/config/wpa_supplicant_bcm.conf b/bcmdhd/config/wpa_supplicant_bcm.conf
+new file mode 100644
+index 0000000..ccc5bb8
+--- /dev/null
++++ b/bcmdhd/config/wpa_supplicant_bcm.conf
+@@ -0,0 +1,4 @@
++disable_scan_offload=1
++wowlan_triggers=any
++filter_rssi=-75
++no_ctrl_interface=
+\ No newline at end of file
+-- 
+2.35.1
+

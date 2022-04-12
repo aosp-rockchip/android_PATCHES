@@ -1,0 +1,27 @@
+From 72a61fb6324ab51b37bdb260580252d56c241c47 Mon Sep 17 00:00:00 2001
+From: Shunhua Lan <lsh@rock-chips.com>
+Date: Tue, 22 Oct 2019 11:07:11 +0800
+Subject: [PATCH 211/297] fix extcon status update
+
+Change-Id: I59ff6e0e876fb1a69ab0226b36584b8af5033d3d
+Signed-off-by: Shunhua Lan <lsh@rock-chips.com>
+---
+ .../core/java/com/android/server/WiredAccessoryManager.java     | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/WiredAccessoryManager.java b/services/core/java/com/android/server/WiredAccessoryManager.java
+index 8e5c73bfc02..2c274bcecbe 100644
+--- a/services/core/java/com/android/server/WiredAccessoryManager.java
++++ b/services/core/java/com/android/server/WiredAccessoryManager.java
+@@ -490,7 +490,7 @@ final class WiredAccessoryManager implements WiredAccessoryCallbacks {
+         private final List<ExtconInfo> mExtconInfos;
+ 
+         WiredAccessoryExtconObserver() {
+-            mExtconInfos = ExtconInfo.getExtconInfos(".*audio.*");
++            mExtconInfos = ExtconInfo.getExtconInfos(".*extcon.*");
+ 
+         }
+ 
+-- 
+2.35.1
+

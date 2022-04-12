@@ -1,0 +1,81 @@
+From 8f8d8be6262b588d64050bb8ab9f84e7399435f8 Mon Sep 17 00:00:00 2001
+From: huangds <hds@rock-chips.com>
+Date: Thu, 24 Sep 2020 14:24:08 +0800
+Subject: [PATCH 11/33] rm BOARD_HS_DYNAMIC_AFBC_TARGET log
+
+Change-Id: I6ebc5726418abaa89bfbdb5c0f4f26a5fc1d5646
+---
+ libs/gui/Android.go                                  | 4 ++--
+ services/surfaceflinger/Android.go                   | 4 ++--
+ services/surfaceflinger/CompositionEngine/Android.go | 4 ++--
+ 3 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/libs/gui/Android.go b/libs/gui/Android.go
+index ed38b2c54..bfb53fc3e 100755
+--- a/libs/gui/Android.go
++++ b/libs/gui/Android.go
+@@ -3,7 +3,7 @@ package libgui
+ import (
+         "android/soong/android"
+         "android/soong/cc"
+-        "fmt"
++       // "fmt"
+         "strings"
+ )
+ 
+@@ -32,7 +32,7 @@ func Defaults(ctx android.LoadHookContext) {
+ //条件编译主要修改函数
+ func globalDefaults(ctx android.BaseContext) ([]string) {
+ 	var cppflags []string
+-	fmt.Println("BOARD_HS_DYNAMIC_AFBC_TARGET:",ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET")) 
++	//fmt.Println("BOARD_HS_DYNAMIC_AFBC_TARGET:",ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET")) 
+ 	
+ 	
+     if (strings.EqualFold(ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET"),"true")) {
+diff --git a/services/surfaceflinger/Android.go b/services/surfaceflinger/Android.go
+index a7a6eb960..d7a52d549 100755
+--- a/services/surfaceflinger/Android.go
++++ b/services/surfaceflinger/Android.go
+@@ -3,7 +3,7 @@ package libsurfaceflinger
+ import (
+         "android/soong/android"
+         "android/soong/cc"
+-        "fmt"
++        //"fmt"
+         "strings"
+ )
+ 
+@@ -32,7 +32,7 @@ func Defaults(ctx android.LoadHookContext) {
+ //条件编译主要修改函数
+ func globalDefaults(ctx android.BaseContext) ([]string) {
+ 	var cflags []string
+-	fmt.Println("BOARD_HS_DYNAMIC_AFBC_TARGET_SF:",ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET")) 
++	//fmt.Println("BOARD_HS_DYNAMIC_AFBC_TARGET_SF:",ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET")) 
+ 	
+ 	
+     if (strings.EqualFold(ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET"),"true")) {
+diff --git a/services/surfaceflinger/CompositionEngine/Android.go b/services/surfaceflinger/CompositionEngine/Android.go
+index ee72d8ace..b798ffc2f 100755
+--- a/services/surfaceflinger/CompositionEngine/Android.go
++++ b/services/surfaceflinger/CompositionEngine/Android.go
+@@ -3,7 +3,7 @@ package  libcompositionengine
+ import (
+         "android/soong/android"
+         "android/soong/cc"
+-        "fmt"
++       // "fmt"
+         "strings"
+ )
+ 
+@@ -32,7 +32,7 @@ func Defaults(ctx android.LoadHookContext) {
+ //条件编译主要修改函数
+ func globalDefaults(ctx android.BaseContext) ([]string) {
+ 	var cflags []string
+-	fmt.Println("BOARD_HS_DYNAMIC_AFBC_TARGET_comp:",ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET")) 
++	//fmt.Println("BOARD_HS_DYNAMIC_AFBC_TARGET_comp:",ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET")) 
+ 
+ 	
+     if (strings.EqualFold(ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET"),"true")) {
+-- 
+2.35.1
+

@@ -1,0 +1,41 @@
+From f2b178924f9348995223d373270a1f416be0b8f9 Mon Sep 17 00:00:00 2001
+From: Charles Lin <charleslin@realtek.com>
+Date: Mon, 28 Dec 2020 09:11:27 +0000
+Subject: [PATCH 284/297] mkdir .incomplete in backing storage to fix CTS/GTS
+ failures
+
+Linux kernel included a commit 17efe505a4c3df88d3e13051f421d27d7178d47f
+that creates .incomplete folder on mounting incfs. However .incomplete
+folder is only accessible for root with 0700 permission. So system_server
+has no permission to access it.
+By creating .incomplete folder with 0777 permission in system_server,
+incfs won't have to create incomplete folder implicitly.
+
+Bug: 176400491
+Test: CtsIncrementalInstallHostTestCases
+          CtsContentTestCases android.content.pm.cts.PackageManagerShellCommandIncrementalTest
+          CtsStatsdHostTestCases android.cts.statsd.atom.UidAtomTests#testPackageInstallerV2MetricsReported
+          GtsIncrementalInstallProxyHostTestCases
+
+Change-Id: Icb7babe3b482a089019f981fe149de7d619ce87e
+---
+ services/incremental/IncrementalService.cpp | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/services/incremental/IncrementalService.cpp b/services/incremental/IncrementalService.cpp
+index a5f0d045948..338ede283e1 100644
+--- a/services/incremental/IncrementalService.cpp
++++ b/services/incremental/IncrementalService.cpp
+@@ -476,6 +476,9 @@ StorageId IncrementalService::createStorage(std::string_view mountPoint,
+         if (!mkdirOrLog(path::join(backing, ".index"), 0777)) {
+             return kInvalidStorageId;
+         }
++        if (!mkdirOrLog(path::join(backing, ".incomplete"), 0777)) {
++            return kInvalidStorageId;
++        }
+         auto status = mVold->mountIncFs(backing, mountTarget, 0, &controlParcel);
+         if (!status.isOk()) {
+             LOG(ERROR) << "Vold::mountIncFs() failed: " << status.toString8();
+-- 
+2.35.1
+

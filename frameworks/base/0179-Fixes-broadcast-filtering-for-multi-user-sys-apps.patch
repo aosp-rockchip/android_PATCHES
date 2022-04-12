@@ -1,0 +1,108 @@
+From de5d8f433993b4a956c31a5ccce1694022586c68 Mon Sep 17 00:00:00 2001
+From: Patrick Baumann <patb@google.com>
+Date: Fri, 12 Jun 2020 09:25:10 -0700
+Subject: [PATCH 179/297] Fixes broadcast filtering for multi-user sys apps
+
+This change fixes a bug caused by the assumption that
+FIRST_APPLICATION_UID is just that and that we should not treat UIDs
+with an APP_ID < FIRST_APPLICATION_UID in secondary users as system
+users that can see all packages.
+
+Test: atest AppsFilterTest AppEnumerationTests
+Test: manual; enable/disable apps in work profile
+Fixes: 157690238
+Change-Id: I0aab78954222f0d1cf86a83375a8d0669025144a
+Merged-In: I0aab78954222f0d1cf86a83375a8d0669025144a
+(cherry picked from commit 7ecbe5b576a66b0cfa897261cf14c7bb1dc20f53)
+---
+ .../server/am/ActivityManagerService.java        | 13 +++++++------
+ .../java/com/android/server/pm/AppsFilter.java   |  7 ++++---
+ .../com/android/server/pm/AppsFilterTest.java    | 16 ++++++++++++++++
+ 3 files changed, 27 insertions(+), 9 deletions(-)
+
+diff --git a/services/core/java/com/android/server/am/ActivityManagerService.java b/services/core/java/com/android/server/am/ActivityManagerService.java
+index 133ea8394ba..3e6a17325f5 100644
+--- a/services/core/java/com/android/server/am/ActivityManagerService.java
++++ b/services/core/java/com/android/server/am/ActivityManagerService.java
+@@ -15788,9 +15788,10 @@ public class ActivityManagerService extends IActivityManager.Stub
+         }
+         if (receivers != null && broadcastWhitelist != null) {
+             for (int i = receivers.size() - 1; i >= 0; i--) {
+-                final int uid = receivers.get(i).activityInfo.applicationInfo.uid;
+-                if (uid >= Process.FIRST_APPLICATION_UID
+-                        && Arrays.binarySearch(broadcastWhitelist, UserHandle.getAppId(uid)) < 0) {
++                final int receiverAppId = UserHandle.getAppId(
++                        receivers.get(i).activityInfo.applicationInfo.uid);
++                if (receiverAppId >= Process.FIRST_APPLICATION_UID
++                        && Arrays.binarySearch(broadcastWhitelist, receiverAppId) < 0) {
+                     receivers.remove(i);
+                 }
+             }
+@@ -16436,9 +16437,9 @@ public class ActivityManagerService extends IActivityManager.Stub
+             // if a uid whitelist was provided, remove anything in the application space that wasn't
+             // in it.
+             for (int i = registeredReceivers.size() - 1; i >= 0; i--) {
+-                final int uid = registeredReceivers.get(i).owningUid;
+-                if (uid >= Process.FIRST_APPLICATION_UID
+-                        && Arrays.binarySearch(broadcastWhitelist, UserHandle.getAppId(uid)) < 0) {
++                final int owningAppId = UserHandle.getAppId(registeredReceivers.get(i).owningUid);
++                if (owningAppId >= Process.FIRST_APPLICATION_UID
++                        && Arrays.binarySearch(broadcastWhitelist, owningAppId) < 0) {
+                     registeredReceivers.remove(i);
+                 }
+             }
+diff --git a/services/core/java/com/android/server/pm/AppsFilter.java b/services/core/java/com/android/server/pm/AppsFilter.java
+index 83a1ddc2ce8..01e5a469d29 100644
+--- a/services/core/java/com/android/server/pm/AppsFilter.java
++++ b/services/core/java/com/android/server/pm/AppsFilter.java
+@@ -849,8 +849,9 @@ public class AppsFilter {
+             PackageSetting targetPkgSetting, int userId) {
+         Trace.traceBegin(TRACE_TAG_PACKAGE_MANAGER, "shouldFilterApplication");
+         try {
+-            if (callingUid < Process.FIRST_APPLICATION_UID
+-                    || UserHandle.getAppId(callingUid) == targetPkgSetting.appId) {
++            int callingAppId = UserHandle.getAppId(callingUid);
++            if (callingAppId < Process.FIRST_APPLICATION_UID
++                    || callingAppId == targetPkgSetting.appId) {
+                 return false;
+             }
+             if (mShouldFilterCache != null) { // use cache
+@@ -875,7 +876,7 @@ public class AppsFilter {
+                     return false;
+                 }
+             }
+-            if (DEBUG_LOGGING || mFeatureConfig.isLoggingEnabled(UserHandle.getAppId(callingUid))) {
++            if (DEBUG_LOGGING || mFeatureConfig.isLoggingEnabled(callingAppId)) {
+                 log(callingSetting, targetPkgSetting, "BLOCKED");
+             }
+             return !DEBUG_ALLOW_ALL;
+diff --git a/services/tests/servicestests/src/com/android/server/pm/AppsFilterTest.java b/services/tests/servicestests/src/com/android/server/pm/AppsFilterTest.java
+index 4f21ee13a5e..eb6b043dbfd 100644
+--- a/services/tests/servicestests/src/com/android/server/pm/AppsFilterTest.java
++++ b/services/tests/servicestests/src/com/android/server/pm/AppsFilterTest.java
+@@ -512,6 +512,22 @@ public class AppsFilterTest {
+                 null, target, SYSTEM_USER));
+     }
+ 
++    @Test
++    public void testSystemUidSecondaryUser_DoesntFilter() throws Exception {
++        final AppsFilter appsFilter =
++                new AppsFilter(mStateProvider, mFeatureConfigMock, new String[]{}, false, null);
++        simulateAddBasicAndroid(appsFilter);
++        appsFilter.onSystemReady();
++
++        PackageSetting target = simulateAddPackage(appsFilter,
++                pkg("com.some.package"), DUMMY_TARGET_APPID);
++
++        assertFalse(appsFilter.shouldFilterApplication(0, null, target, SECONDARY_USER));
++        assertFalse(appsFilter.shouldFilterApplication(
++                UserHandle.getUid(SECONDARY_USER, Process.FIRST_APPLICATION_UID - 1),
++                null, target, SECONDARY_USER));
++    }
++
+     @Test
+     public void testNonSystemUid_NoCallingSetting_Filters() throws Exception {
+         final AppsFilter appsFilter =
+-- 
+2.35.1
+

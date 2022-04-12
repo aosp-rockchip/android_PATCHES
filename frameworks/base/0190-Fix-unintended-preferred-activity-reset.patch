@@ -1,0 +1,169 @@
+From 1adf9e656032f1850a7a1d5731cc67469bc26fc9 Mon Sep 17 00:00:00 2001
+From: Patrick Baumann <patb@google.com>
+Date: Thu, 23 Jul 2020 14:15:29 -0700
+Subject: [PATCH 190/297] Fix unintended preferred activity reset
+
+When the preferred handler of an action is saved with "always", the set
+of components displayed as options to the user are saved with it. On
+subsequent queries, if that set of components change, the preference is
+cleared to allow the user to consider the new set. With the introduction
+of app visibility filtering in R (and to a lesser extent, Instant Apps
+in O), the set of apps that an app can see may be less than the set that
+the system can. As a result, if the caller calls resolveIntent and
+cannot see all of the apps the system can, it may reset the user
+preference unexpectedly.
+
+This change ensures that before we clear the user preference that we're
+comparing against the full set of apps. As such, if we encounter a call
+to the method from an app that cannot see all apps, we avoid any
+mutations and instead just return the set of apps that the user can see
+or the preferred app if it's part of the set they can see. If the system
+calls or if the call is part of an activity start, we'll allow reset of
+the preference.
+
+Test: Manual - Install 3 cameras, verify preference only reset on start
+Fixes: 157548344
+Change-Id: Icb50a66500edba26c4c6c3e80a6a9c544d4d63d6
+(cherry picked from commit 312755820a8d5ec76d4d0c26a36a9c354591e248)
+---
+ .../server/pm/PackageManagerService.java      | 62 ++++++++++++-------
+ 1 file changed, 41 insertions(+), 21 deletions(-)
+
+diff --git a/services/core/java/com/android/server/pm/PackageManagerService.java b/services/core/java/com/android/server/pm/PackageManagerService.java
+index b4ab57fa4dc..63c721a5da7 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -6432,9 +6432,14 @@ public class PackageManagerService extends IPackageManager.Stub
+                     true /*allowDynamicSplits*/);
+             Trace.traceEnd(TRACE_TAG_PACKAGE_MANAGER);
+ 
++            final boolean queryMayBeFiltered =
++                    UserHandle.getAppId(filterCallingUid) >= Process.FIRST_APPLICATION_UID
++                            && !resolveForStart;
++
+             final ResolveInfo bestChoice =
+                     chooseBestActivity(
+-                            intent, resolvedType, flags, privateResolveFlags, query, userId);
++                            intent, resolvedType, flags, privateResolveFlags, query, userId,
++                            queryMayBeFiltered);
+             final boolean nonBrowserOnly =
+                     (privateResolveFlags & PackageManagerInternal.RESOLVE_NON_BROWSER_ONLY) != 0;
+             if (nonBrowserOnly && bestChoice != null && bestChoice.handleAllWebDataURI) {
+@@ -6598,7 +6603,8 @@ public class PackageManagerService extends IPackageManager.Stub
+     }
+ 
+     private ResolveInfo chooseBestActivity(Intent intent, String resolvedType,
+-            int flags, int privateResolveFlags, List<ResolveInfo> query, int userId) {
++            int flags, int privateResolveFlags, List<ResolveInfo> query, int userId,
++            boolean queryMayBeFiltered) {
+         if (query != null) {
+             final int N = query.size();
+             if (N == 1) {
+@@ -6623,7 +6629,7 @@ public class PackageManagerService extends IPackageManager.Stub
+                 // If we have saved a preference for a preferred activity for
+                 // this Intent, use that.
+                 ResolveInfo ri = findPreferredActivityNotLocked(intent, resolvedType,
+-                        flags, query, r0.priority, true, false, debug, userId);
++                        flags, query, r0.priority, true, false, debug, userId, queryMayBeFiltered);
+                 if (ri != null) {
+                     return ri;
+                 }
+@@ -6805,11 +6811,19 @@ public class PackageManagerService extends IPackageManager.Stub
+                 && intent.hasCategory(CATEGORY_DEFAULT);
+     }
+ 
++    ResolveInfo findPreferredActivityNotLocked(Intent intent, String resolvedType, int flags,
++            List<ResolveInfo> query, int priority, boolean always,
++            boolean removeMatches, boolean debug, int userId) {
++        return findPreferredActivityNotLocked(
++                intent, resolvedType, flags, query, priority, always, removeMatches, debug, userId,
++                UserHandle.getAppId(Binder.getCallingUid()) >= Process.FIRST_APPLICATION_UID);
++    }
++
+     // TODO: handle preferred activities missing while user has amnesia
+     /** <b>must not hold {@link #mLock}</b> */
+     ResolveInfo findPreferredActivityNotLocked(Intent intent, String resolvedType, int flags,
+             List<ResolveInfo> query, int priority, boolean always,
+-            boolean removeMatches, boolean debug, int userId) {
++            boolean removeMatches, boolean debug, int userId, boolean queryMayBeFiltered) {
+         if (Thread.holdsLock(mLock)) {
+             Slog.wtf(TAG, "Calling thread " + Thread.currentThread().getName()
+                     + " is holding mLock", new Throwable());
+@@ -6903,10 +6917,12 @@ public class PackageManagerService extends IPackageManager.Stub
+                         }
+                         final boolean excludeSetupWizardHomeActivity = isHomeIntent(intent)
+                                 && !isDeviceProvisioned;
++                        final boolean allowSetMutation = !excludeSetupWizardHomeActivity
++                                && !queryMayBeFiltered;
+                         if (ai == null) {
+                             // Do not remove launcher's preferred activity during SetupWizard
+                             // due to it may not install yet
+-                            if (excludeSetupWizardHomeActivity) {
++                            if (!allowSetMutation) {
+                                 continue;
+                             }
+ 
+@@ -6931,7 +6947,7 @@ public class PackageManagerService extends IPackageManager.Stub
+                                 continue;
+                             }
+ 
+-                            if (removeMatches) {
++                            if (removeMatches && allowSetMutation) {
+                                 pir.removeFilter(pa);
+                                 changed = true;
+                                 if (DEBUG_PREFERRED) {
+@@ -6948,7 +6964,7 @@ public class PackageManagerService extends IPackageManager.Stub
+ 
+                             if (always && !pa.mPref.sameSet(query, excludeSetupWizardHomeActivity)) {
+                                 if (pa.mPref.isSuperset(query, excludeSetupWizardHomeActivity)) {
+-                                    if (!excludeSetupWizardHomeActivity) {
++                                    if (allowSetMutation) {
+                                         // some components of the set are no longer present in
+                                         // the query, but the preferred activity can still be reused
+                                         if (DEBUG_PREFERRED) {
+@@ -6969,24 +6985,28 @@ public class PackageManagerService extends IPackageManager.Stub
+                                         changed = true;
+                                     } else {
+                                         if (DEBUG_PREFERRED) {
+-                                            Slog.i(TAG, "Do not remove preferred activity for launcher"
+-                                                    + " during SetupWizard");
++                                            Slog.i(TAG, "Do not remove preferred activity");
+                                         }
+                                     }
+                                 } else {
+-                                    Slog.i(TAG,
+-                                            "Result set changed, dropping preferred activity for "
+-                                                    + intent + " type " + resolvedType);
+-                                    if (DEBUG_PREFERRED) {
+-                                        Slog.v(TAG, "Removing preferred activity since set changed "
+-                                                + pa.mPref.mComponent);
++                                    if (allowSetMutation) {
++                                        Slog.i(TAG,
++                                                "Result set changed, dropping preferred activity "
++                                                        + "for " + intent + " type "
++                                                        + resolvedType);
++                                        if (DEBUG_PREFERRED) {
++                                            Slog.v(TAG,
++                                                    "Removing preferred activity since set changed "
++                                                            + pa.mPref.mComponent);
++                                        }
++                                        pir.removeFilter(pa);
++                                        // Re-add the filter as a "last chosen" entry (!always)
++                                        PreferredActivity lastChosen = new PreferredActivity(
++                                                pa, pa.mPref.mMatch, null, pa.mPref.mComponent,
++                                                false);
++                                        pir.addFilter(lastChosen);
++                                        changed = true;
+                                     }
+-                                    pir.removeFilter(pa);
+-                                    // Re-add the filter as a "last chosen" entry (!always)
+-                                    PreferredActivity lastChosen = new PreferredActivity(
+-                                            pa, pa.mPref.mMatch, null, pa.mPref.mComponent, false);
+-                                    pir.addFilter(lastChosen);
+-                                    changed = true;
+                                     return null;
+                                 }
+                             }
+-- 
+2.35.1
+

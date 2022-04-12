@@ -1,0 +1,175 @@
+From 5a08e3aa5bd10599b8a78b206581803aff605875 Mon Sep 17 00:00:00 2001
+From: Fabian Kozynski <kozynski@google.com>
+Date: Fri, 6 Mar 2020 18:07:43 -0500
+Subject: [PATCH 103/297] Fix instances of ContentObserver#onChange in SystemUI
+
+Fix instances due to change in signature.
+
+Test: atest SystemUITests
+Test: atest TileServiceTest BooleanTileServiceTest
+Bug: 150939131
+Change-Id: Ie5903231eb7dd22553803c6a65994ef3dc957708
+(cherry picked from commit caf76d25e3b15d72e26671902aa8bbebeb729339)
+---
+ .../systemui/car/CarDeviceProvisionedControllerImpl.java | 3 ++-
+ .../controls/controller/ControlsControllerImpl.kt        | 9 +++++++--
+ .../src/com/android/systemui/doze/DozeSensors.java       | 2 +-
+ .../notification/people/PeopleHubViewController.kt       | 4 ++--
+ .../policy/DeviceProvisionedControllerImpl.java          | 2 +-
+ .../android/systemui/theme/ThemeOverlayController.java   | 4 +++-
+ .../src/com/android/systemui/tuner/TunerServiceImpl.java | 7 +++++--
+ .../controls/controller/ControlsControllerImplTest.kt    | 6 +++---
+ 8 files changed, 24 insertions(+), 13 deletions(-)
+
+diff --git a/packages/CarSystemUI/src/com/android/systemui/car/CarDeviceProvisionedControllerImpl.java b/packages/CarSystemUI/src/com/android/systemui/car/CarDeviceProvisionedControllerImpl.java
+index 38d5211bd0d..09e62d240a7 100644
+--- a/packages/CarSystemUI/src/com/android/systemui/car/CarDeviceProvisionedControllerImpl.java
++++ b/packages/CarSystemUI/src/com/android/systemui/car/CarDeviceProvisionedControllerImpl.java
+@@ -44,8 +44,9 @@ public class CarDeviceProvisionedControllerImpl extends DeviceProvisionedControl
+             CarSettings.Secure.KEY_SETUP_WIZARD_IN_PROGRESS);
+     private final ContentObserver mCarSettingsObserver = new ContentObserver(
+             Dependency.get(Dependency.MAIN_HANDLER)) {
++
+         @Override
+-        public void onChange(boolean selfChange, Uri uri, int userId) {
++        public void onChange(boolean selfChange, Uri uri, int flags) {
+             if (USER_SETUP_IN_PROGRESS_URI.equals(uri)) {
+                 notifyUserSetupInProgressChanged();
+             }
+diff --git a/packages/SystemUI/src/com/android/systemui/controls/controller/ControlsControllerImpl.kt b/packages/SystemUI/src/com/android/systemui/controls/controller/ControlsControllerImpl.kt
+index dedd341a46b..c58e790727f 100644
+--- a/packages/SystemUI/src/com/android/systemui/controls/controller/ControlsControllerImpl.kt
++++ b/packages/SystemUI/src/com/android/systemui/controls/controller/ControlsControllerImpl.kt
+@@ -125,14 +125,19 @@ class ControlsControllerImpl @Inject constructor (
+ 
+     @VisibleForTesting
+     internal val settingObserver = object : ContentObserver(null) {
+-        override fun onChange(selfChange: Boolean, uri: Uri, userId: Int) {
++        override fun onChange(
++            selfChange: Boolean,
++            uris: MutableIterable<Uri>,
++            flags: Int,
++            userId: Int
++        ) {
+             // Do not listen to changes in the middle of user change, those will be read by the
+             // user-switch receiver.
+             if (userChanging || userId != currentUserId) {
+                 return
+             }
+             available = Settings.Secure.getIntForUser(contentResolver, CONTROLS_AVAILABLE,
+-                    DEFAULT_ENABLED, currentUserId) != 0
++                DEFAULT_ENABLED, currentUserId) != 0
+             resetFavorites(available)
+         }
+     }
+diff --git a/packages/SystemUI/src/com/android/systemui/doze/DozeSensors.java b/packages/SystemUI/src/com/android/systemui/doze/DozeSensors.java
+index 44e5d3de5ca..c28a719b982 100644
+--- a/packages/SystemUI/src/com/android/systemui/doze/DozeSensors.java
++++ b/packages/SystemUI/src/com/android/systemui/doze/DozeSensors.java
+@@ -261,7 +261,7 @@ public class DozeSensors {
+ 
+     private final ContentObserver mSettingsObserver = new ContentObserver(mHandler) {
+         @Override
+-        public void onChange(boolean selfChange, Uri uri, int userId) {
++        public void onChange(boolean selfChange, Iterable<Uri> uris, int flags, int userId) {
+             if (userId != ActivityManager.getCurrentUser()) {
+                 return;
+             }
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/notification/people/PeopleHubViewController.kt b/packages/SystemUI/src/com/android/systemui/statusbar/notification/people/PeopleHubViewController.kt
+index 62d3612a483..7f42fe0473f 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/notification/people/PeopleHubViewController.kt
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/notification/people/PeopleHubViewController.kt
+@@ -164,8 +164,8 @@ class PeopleHubSettingChangeDataSourceImpl @Inject constructor(
+         // Immediately report current value of setting
+         updateListener(listener)
+         val observer = object : ContentObserver(handler) {
+-            override fun onChange(selfChange: Boolean, uri: Uri?, userId: Int) {
+-                super.onChange(selfChange, uri, userId)
++            override fun onChange(selfChange: Boolean, uri: Uri?, flags: Int) {
++                super.onChange(selfChange, uri, flags)
+                 updateListener(listener)
+             }
+         }
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/policy/DeviceProvisionedControllerImpl.java b/packages/SystemUI/src/com/android/systemui/statusbar/policy/DeviceProvisionedControllerImpl.java
+index a3e2e7619ba..7280a881655 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/policy/DeviceProvisionedControllerImpl.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/policy/DeviceProvisionedControllerImpl.java
+@@ -59,7 +59,7 @@ public class DeviceProvisionedControllerImpl extends CurrentUserTracker implemen
+         mUserSetupUri = Secure.getUriFor(Secure.USER_SETUP_COMPLETE);
+         mSettingsObserver = new ContentObserver(mainHandler) {
+             @Override
+-            public void onChange(boolean selfChange, Uri uri, int userId) {
++            public void onChange(boolean selfChange, Uri uri, int flags) {
+                 Log.d(TAG, "Setting change: " + uri);
+                 if (mUserSetupUri.equals(uri)) {
+                     notifySetupChanged();
+diff --git a/packages/SystemUI/src/com/android/systemui/theme/ThemeOverlayController.java b/packages/SystemUI/src/com/android/systemui/theme/ThemeOverlayController.java
+index 31b9952afe9..30db37c4f12 100644
+--- a/packages/SystemUI/src/com/android/systemui/theme/ThemeOverlayController.java
++++ b/packages/SystemUI/src/com/android/systemui/theme/ThemeOverlayController.java
+@@ -99,8 +99,10 @@ public class ThemeOverlayController extends SystemUI {
+                 Settings.Secure.getUriFor(Settings.Secure.THEME_CUSTOMIZATION_OVERLAY_PACKAGES),
+                 false,
+                 new ContentObserver(mBgHandler) {
++
+                     @Override
+-                    public void onChange(boolean selfChange, Uri uri, int userId) {
++                    public void onChange(boolean selfChange, Iterable<Uri> uris, int flags,
++                            int userId) {
+                         if (DEBUG) Log.d(TAG, "Overlay changed for user: " + userId);
+                         if (ActivityManager.getCurrentUser() == userId) {
+                             updateThemeOverlays();
+diff --git a/packages/SystemUI/src/com/android/systemui/tuner/TunerServiceImpl.java b/packages/SystemUI/src/com/android/systemui/tuner/TunerServiceImpl.java
+index 142fdc21aff..b2a5f5bee54 100644
+--- a/packages/SystemUI/src/com/android/systemui/tuner/TunerServiceImpl.java
++++ b/packages/SystemUI/src/com/android/systemui/tuner/TunerServiceImpl.java
+@@ -262,10 +262,13 @@ public class TunerServiceImpl extends TunerService {
+         }
+ 
+         @Override
+-        public void onChange(boolean selfChange, Uri uri, int userId) {
++        public void onChange(boolean selfChange, Iterable<Uri> uris, int flags, int userId) {
+             if (userId == ActivityManager.getCurrentUser()) {
+-                reloadSetting(uri);
++                for (Uri u : uris) {
++                    reloadSetting(u);
++                }
+             }
+         }
++
+     }
+ }
+diff --git a/packages/SystemUI/tests/src/com/android/systemui/controls/controller/ControlsControllerImplTest.kt b/packages/SystemUI/tests/src/com/android/systemui/controls/controller/ControlsControllerImplTest.kt
+index 45ea3c96b81..183dde87bdf 100644
+--- a/packages/SystemUI/tests/src/com/android/systemui/controls/controller/ControlsControllerImplTest.kt
++++ b/packages/SystemUI/tests/src/com/android/systemui/controls/controller/ControlsControllerImplTest.kt
+@@ -408,7 +408,7 @@ class ControlsControllerImplTest : SysuiTestCase() {
+     fun testDisableFeature_notAvailable() {
+         Settings.Secure.putIntForUser(mContext.contentResolver,
+                 ControlsControllerImpl.CONTROLS_AVAILABLE, 0, user)
+-        controller.settingObserver.onChange(false, ControlsControllerImpl.URI, 0)
++        controller.settingObserver.onChange(false, listOf(ControlsControllerImpl.URI), 0, 0)
+         assertFalse(controller.available)
+     }
+ 
+@@ -421,7 +421,7 @@ class ControlsControllerImplTest : SysuiTestCase() {
+ 
+         Settings.Secure.putIntForUser(mContext.contentResolver,
+                 ControlsControllerImpl.CONTROLS_AVAILABLE, 0, user)
+-        controller.settingObserver.onChange(false, ControlsControllerImpl.URI, user)
++        controller.settingObserver.onChange(false, listOf(ControlsControllerImpl.URI), 0, user)
+         assertTrue(controller.getFavorites().isEmpty())
+     }
+ 
+@@ -432,7 +432,7 @@ class ControlsControllerImplTest : SysuiTestCase() {
+ 
+         Settings.Secure.putIntForUser(mContext.contentResolver,
+                 ControlsControllerImpl.CONTROLS_AVAILABLE, 0, otherUser)
+-        controller.settingObserver.onChange(false, ControlsControllerImpl.URI, otherUser)
++        controller.settingObserver.onChange(false, listOf(ControlsControllerImpl.URI), 0, otherUser)
+ 
+         assertTrue(controller.available)
+         assertFalse(controller.getFavorites().isEmpty())
+-- 
+2.35.1
+
