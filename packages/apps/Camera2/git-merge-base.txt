@@ -1,0 +1,12 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Camera2 (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Camera2 (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 14fafa6252f684c8fa152a729889f4a8611a6edf
+Merge: d2b8ab422 720455e65
+Author: 吴良清 <wlq@rock-chips.com>
+Date:   Sun Feb 21 10:35:35 2021 +0800
+
+    Merge "Video Recoder:      CAMERA KEYEVENT cause two onShutterClick fix it." into rk33/mid/11.0/develop

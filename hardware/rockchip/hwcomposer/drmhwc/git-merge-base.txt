@@ -1,0 +1,14 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/hardware/rk29/hwcomposer_rga (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/hardware/rk29/hwcomposer_rga (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/6.0/develop_drm
+commit 57bfa4f708b4650e698ee80a0b680d3a4380fcb6
+Author: Zhen Chen <chenzhen@rock-chips.com>
+Date:   Sat Jan 30 18:17:58 2021 +0800
+
+    Android.mk: to support Gralloc 4.0 on rk3288
+    
+    Signed-off-by: Zhen Chen <chenzhen@rock-chips.com>
+    Change-Id: I0b3269e13d4acdf75d21c11da12138331880afbb

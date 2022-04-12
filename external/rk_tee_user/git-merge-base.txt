@@ -1,0 +1,21 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/platform/system/rk_tee_user (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/platform/system/rk_tee_user (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/develop-next
+commit fb8d1b867822903291c9a5de9289844df2f8f598
+Author: Hisping Lin <hisping.lin@rock-chips.com>
+Date:   Thu Feb 4 19:19:31 2021 +0800
+
+    Merge master branch code into the develop-next branch
+    
+    put master branch code to v1/ folder, OP-TEE V1 platform
+    should use v1/ to build CA TA.
+    put develop-next branch code to v2/ folder, OP-TEE V2 platform
+    should use v2/ to build CA TA.
+    
+    The master branch is no longer maintained.
+    
+    Signed-off-by: Hisping Lin <hisping.lin@rock-chips.com>
+    Change-Id: I7e440471d3b8f9a528266cd17e530b5eb644e1ff

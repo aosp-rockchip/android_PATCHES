@@ -1,0 +1,25 @@
+remote url:
+rk29	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/rkbin (fetch)
+rk29	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/rkbin (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk29/master
+commit 9188185eb1e12153d61ed37374bd6e90e7f2a217
+Author: Tang Yun ping <typ@rock-chips.com>
+Date:   Fri Feb 26 11:28:59 2021 +0800
+
+    rk3566: ddr: add v1.04 ultra ddr bin
+    
+    build from:
+            d37c17e8ea rk356x: ddr: update ultra ddr bin to v1.05
+    
+    build command:
+            ./make.sh rk3568
+    
+    update feature:
+            de65a7df1b rk356x: ddr: fix some ddr bugs.
+            0aef902e2b rk356x: ddr: update i2c code
+            b6c7ffe70c rk356x: ddr: fix some bugs
+    
+    Signed-off-by: Tang Yun ping <typ@rock-chips.com>
+    Change-Id: Idc42c7de669a7a88b0566b61929ac990821e2e03

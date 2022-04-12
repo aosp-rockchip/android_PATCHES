@@ -1,0 +1,14 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/hardware/libgralloc/bifrost (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/hardware/libgralloc/bifrost (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 10300b8f0b4893a041ad0c3cb6b28172bb7fc60f
+Author: Zhen Chen <chenzhen@rock-chips.com>
+Date:   Wed Feb 24 15:39:37 2021 +0800
+
+    make property "vendor.gralloc.no_afbc_for_sf_client_layer" only affect rgba_8888 buffers
+    
+    Signed-off-by: Zhen Chen <chenzhen@rock-chips.com>
+    Change-Id: I96afb6da38b1348467fbb3531ce52dbb8009a8ce

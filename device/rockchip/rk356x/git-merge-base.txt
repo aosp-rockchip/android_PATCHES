@@ -1,0 +1,13 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/device/rockchip/rk3566 (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/device/rockchip/rk3566 (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit dc4ecc88b7f0a5770d03c98c526dd53a0d09cda4
+Author: Wu Liangqing <wlq@rock-chips.com>
+Date:   Wed Feb 24 20:06:01 2021 +0800
+
+    rk3566: add ro.vendor.hdmirotationlock for hdmi display
+    
+    Change-Id: Ic2eff3671abe97e94c379911e3dffdc0227f0c1a

@@ -1,0 +1,16 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Gallery2 (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Gallery2 (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 00942579f37249c10fb763bac22cbc6bada05c59
+Author: wh <wanghang@rock-chips.com>
+Date:   Mon Feb 22 16:01:50 2021 +0800
+
+    Gallery2: not used dialog theme with xlarge device
+    
+    DialogPicker used dialog theme with xlarge device, and we found it will flash in top after choice to set wallpaper, so replace it. It also effect in AlbumPicker.
+    
+    Signed-off-by: wh <wanghang@rock-chips.com>
+    Change-Id: Ieb02f30322044005f0d78fc42fea7797ceeee32e

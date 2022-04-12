@@ -1,0 +1,14 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/platform/vendor/rockchip/hardware (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/platform/vendor/rockchip/hardware (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 3541803ea8e3fbf62bfc717f0de9423399d9a929
+Author: Chen Jinsen <kevin.chen@rock-chips.com>
+Date:   Sun Feb 21 11:35:40 2021 +0800
+
+    [rockit] getPlaybackRate func should always return normal
+    
+    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
+    Change-Id: Ie6a30f612fd662de7793f1c4bffa4cbc03843615

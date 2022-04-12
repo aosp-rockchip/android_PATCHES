@@ -1,0 +1,14 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/u-boot (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/u-boot (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/next-dev
+commit d2aeaf65343baa292e79fe177101b287b5033207
+Author: Zorro Liu <lyx@rock-chips.com>
+Date:   Fri Feb 26 15:28:39 2021 +0800
+
+    drivers: video: rk_eink: add new waveform version for pvi
+    
+    Signed-off-by: Zorro Liu <lyx@rock-chips.com>
+    Change-Id: Ieaf60e6528a778e531174197393e9193625965bc

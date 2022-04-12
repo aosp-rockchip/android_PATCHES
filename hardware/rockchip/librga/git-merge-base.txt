@@ -1,0 +1,14 @@
+remote url:
+rk29	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/linux/linux-rga (fetch)
+rk29	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/linux/linux-rga (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk29/im2d
+commit 8deceea168c60d0669dd44d7acdae95000194d72
+Author: Yu Qiaowei <cerf.yu@rock-chips.com>
+Date:   Fri Jan 29 20:31:34 2021 +0800
+
+    Fix that GraphicBuffer cannot get wstride in im2d api.
+    
+    Signed-off-by: Yu Qiaowei <cerf.yu@rock-chips.com>
+    Change-Id: If1bca12bfa743abee91be966fb3ebe6c21ecbe7b

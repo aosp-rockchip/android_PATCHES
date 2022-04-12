@@ -1,0 +1,12 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/docs/common (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/docs/common (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/android-8.1
+commit 0e9feaceac92e3e12185d7f4e4c1e358257f5d16
+Merge: 893a419 9f7fb09
+Author: 吴良清 <wlq@rock-chips.com>
+Date:   Tue Feb 23 17:10:31 2021 +0800
+
+    Merge "update docs 20210222" into rk33/mid/android-8.1

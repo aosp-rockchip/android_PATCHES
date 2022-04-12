@@ -1,0 +1,15 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/interfaces (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/interfaces (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 7dd198668c6c71c53e2f255d9b5da959a07e1f58
+Author: chenxiao <cx@rock-chips.com>
+Date:   Sun Feb 7 10:20:44 2021 +0800
+
+    Camera:
+         fix usb camera take picture block.
+    
+    Signed-off-by: chenxiao <cx@rock-chips.com>
+    Change-Id: I922ff1ab9798f7488ba9a85a019acad41716019a

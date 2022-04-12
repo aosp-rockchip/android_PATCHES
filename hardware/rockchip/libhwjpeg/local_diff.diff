@@ -1,0 +1,7 @@
+diff --git a/mpi/version.h b/mpi/version.h
+index 8eaca10..b1a059d 100644
+--- a/mpi/version.h
++++ b/mpi/version.h
+@@ -1 +1 @@
+-#define GIT_INFO "0161028 author: Chen Jinsen [project] add licence declare"
++#define GIT_INFO "23d7f5a author: tug Merge tag '395447cc4dbc0d226396131b221560bfc5485da7' into quartz64"

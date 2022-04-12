@@ -1,0 +1,17 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/ethernet (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/ethernet (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 4cea315effc6d31b9122b19d18a0d6a7b46a8930
+Author: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date:   Fri Jan 29 10:16:04 2021 +0800
+
+    Do not block message while cts is running.
+    
+    Test: CtsNetTestCases
+    android.net.cts.CaptivePortalApiTest#testApiCallbacks
+    
+    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+    Change-Id: If34606726d0f5df1a00714fe5b321bc89eb73de5

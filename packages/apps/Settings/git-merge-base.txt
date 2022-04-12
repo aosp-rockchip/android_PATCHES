@@ -1,0 +1,17 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Settings (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Settings (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 4b548a937620d3786c736b2b2ca60d434c90b4b4
+Author: wh <wanghang@rock-chips.com>
+Date:   Sun Feb 21 11:17:02 2021 +0800
+
+    Settings: update hdmi setting function
+    
+    1. optimize the change resolution ui effect
+    2. switch connect state after change resolution
+    
+    Signed-off-by: wh <wanghang@rock-chips.com>
+    Change-Id: I7394daf03e0386ef319e70ecde09846187d45b23

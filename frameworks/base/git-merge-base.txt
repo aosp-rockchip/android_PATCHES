@@ -1,0 +1,13 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/base (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/base (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+commit aa6077c4a90a5ed89e6859a7d1ac004b6782626a
+Author: Longjian Lin <llj@rock-chips.com>
+Date:   Sun Feb 7 11:13:24 2021 +0800
+
+    Solve the problem of automatically turning on bt after reboot
+    
+    Signed-off-by: Longjian Lin <llj@rock-chips.com>
+    Change-Id: I795ca976cd7f11c9c751d9e95668c47c4980f94b

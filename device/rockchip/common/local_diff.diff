@@ -1,0 +1,11 @@
+diff --git a/gen_patches_skeleton.sh b/gen_patches_skeleton.sh
+index 6b75e43..2621095 100755
+--- a/gen_patches_skeleton.sh
++++ b/gen_patches_skeleton.sh
+@@ -12,5 +12,4 @@ fi
+ mkdir -p $STUB_PATCH_PATH
+ 
+ #Generate patches
+-
+-.repo/repo/repo forall -c "$BASEPATH/device/rockchip/common/gen_patches_body.sh"
++~/.local/bin/repo forall -c "$BASEPATH/device/rockchip/common/gen_patches_body.sh"

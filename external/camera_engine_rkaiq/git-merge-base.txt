@@ -1,0 +1,14 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/external/camera_engine_rkaiq (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/external/camera_engine_rkaiq (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/develop
+commit a80b56240e6d2b6210e96c71fb85a1614f011261
+Author: ZhongYichong <zyc@rock-chips.com>
+Date:   Mon Jan 25 11:19:48 2021 +0800
+
+    hwi: support rockchip-csi2-dphy0 entity
+    
+    Change-Id: I9a61ba8837f906c40e276c798e46c66e7b88d4fb
+    Signed-off-by: ZhongYichong <zyc@rock-chips.com>

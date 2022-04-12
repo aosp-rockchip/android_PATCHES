@@ -1,0 +1,30 @@
+remote url:
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/wpa_supplicant_8 (fetch)
+rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/wpa_supplicant_8 (push)
+remote branch:
+  m/master -> android-11.0-ebook-rkr2
+  rk/rk33/mid/11.0/develop
+commit 181a06cdc82a038d1c102f55ef0c5f72524760e9
+Author: Jimmy Chen <jimmycmchen@google.com>
+Date:   Mon Nov 9 11:43:12 2020 +0200
+
+    P2P: Fix copying of secondary device types for P2P group client
+    
+    Parsing and copying of WPS secondary device types list was verifying
+    that the contents is not too long for the internal maximum in the case
+    of WPS messages, but similar validation was missing from the case of P2P
+    group information which encodes this information in a different
+    attribute. This could result in writing beyond the memory area assigned
+    for these entries and corrupting memory within an instance of struct
+    p2p_device. This could result in invalid operations and unexpected
+    behavior when trying to free pointers from that corrupted memory.
+    
+    Credit to OSS-Fuzz: https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=27269
+    Fixes: e57ae6e19edf ("P2P: Keep track of secondary device types for peers")
+    Signed-off-by: Jouni Malinen <jouni@codeaurora.org>
+    
+    Bug: 172937525
+    Test: add malformed vendor element config in p2p_supplicant.conf
+    Change-Id: I6837931dcd3be01e68dc93d79ec1f874063fcae3
+    Merged-In: I6837931dcd3be01e68dc93d79ec1f874063fcae3
+    (cherry picked from commit 7382285854168509c5e8581ba0dcce830d4c7c82)

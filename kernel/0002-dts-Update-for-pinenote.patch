@@ -1,0 +1,199 @@
+From 700963774cfa2b902dbd79f8eb59d15096c41f84 Mon Sep 17 00:00:00 2001
+From: Joe Maples <joe@maples.dev>
+Date: Wed, 6 Apr 2022 09:52:52 -0400
+Subject: [PATCH 2/2] dts: Update for pinenote
+
+Change-Id: I95cb21e3bc98a0511c83556c635db4b6fc36edf1
+---
+ .../dts/rockchip/rk3566-rk817-eink-w103.dts   | 89 +++++++++++++++----
+ 1 file changed, 72 insertions(+), 17 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3566-rk817-eink-w103.dts b/arch/arm64/boot/dts/rockchip/rk3566-rk817-eink-w103.dts
+index a024be65eb9d..ce39377a6111 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3566-rk817-eink-w103.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3566-rk817-eink-w103.dts
+@@ -21,7 +21,7 @@
+ 
+ 	charge-animation {
+ 		compatible = "rockchip,uboot-charge";
+-		rockchip,uboot-charge-on = <1>;
++		rockchip,uboot-charge-on = <0>;
+ 		rockchip,android-charge-on = <0>;
+ 		rockchip,uboot-low-power-voltage = <3350>;
+ 		rockchip,screen-on-voltage = <3400>;
+@@ -52,7 +52,7 @@
+ 
+ 	backlight: backlight {
+ 		compatible = "pwm-backlight";
+-		pwms = <&pwm0 0 25000 0>;
++		pwms = <&pwm14 0 25000 0>;
+ 		brightness-levels = <
+ 			  0  20  20  21  21  22  22  23
+ 			 23  24  24  25  25  26  26  27
+@@ -173,6 +173,15 @@
+ 		regulator-max-microvolt = <3300000>;
+ 	};
+ 
++    vcc5v0_host: vcc5v0-host-regulator {
++        compatible = "regulator-fixed";
++        enable-active-high;
++        gpio = <&gpio4 RK_PB5 GPIO_ACTIVE_HIGH>;
++        //pinctrl-names = "default";
++        //pinctrl-0 = <&vcc5v0_host_en>;
++        regulator-name = "vcc5v0_host";
++        regulator-always-on;
++    };
+ 	rk817-sound {
+ 		compatible = "simple-audio-card";
+ 		simple-audio-card,format = "i2s";
+@@ -284,7 +293,7 @@
+ 	panel,fbl = <4>;
+ 	panel,fdl = <1404>;
+ 	panel,fel = <12>;
+-	panel,mirror = <0>;
++	panel,mirror = <1>;
+ 	panel,panel_16bit = <1>;
+ 	panel,panel_color = <0>;
+ 	panel,width-mm = <157>;
+@@ -693,7 +702,7 @@
+ &i2c1 {
+ 	status = "okay";
+ 
+-	wacom: wacom@09 {
++	/*wacom: wacom@09 {
+ 		compatible = "wacom,w9013";
+ 		reg = <0x09>;
+ 		pwr-supply = <&vcc_tp>;
+@@ -705,13 +714,13 @@
+ 		revert_x = <0>;
+ 		revert_y = <0>;
+ 		xy_exchange = <0>;
+-	};
++	};*/
+ };
+ 
+-&i2c3 {
++&i2c1 {
+ 	status = "okay";
+ 	pinctrl-names = "default";
+-	pinctrl-0 = <&i2c3m1_xfer>;
++	pinctrl-0 = <&i2c1_xfer>;
+ 
+ 	tps65185: tps65185@68 {
+ 		status = "okay";
+@@ -719,11 +728,11 @@
+ 		reg = <0x68>;
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&tps65185_gpio>;
+-		wakeup-gpios = <&gpio3 RK_PA5 GPIO_ACTIVE_HIGH>;
++		wakeup-gpios = <&gpio4 RK_PC3 GPIO_ACTIVE_HIGH>;
+ 		vcomctl-gpios = <&gpio4 RK_PB2 GPIO_ACTIVE_HIGH>;
+-		int-gpios = <&gpio3 RK_PA6 GPIO_ACTIVE_HIGH>;
+-		powerup-gpios = <&gpio3 RK_PB0 GPIO_ACTIVE_HIGH>;
+-		poweren-gpios = <&gpio3 RK_PB1 GPIO_ACTIVE_HIGH>;
++		int-gpios = <&gpio4 RK_PB0 GPIO_ACTIVE_HIGH>;
++		powerup-gpios = <&gpio4 RK_PC4 GPIO_ACTIVE_HIGH>;
++		poweren-gpios = <&gpio0 RK_PB7 GPIO_ACTIVE_HIGH>;
+ 	};
+ };
+ 
+@@ -887,11 +896,12 @@
+ 	tps_pmic {
+ 		tps65185_gpio: tps65185-gpio {
+ 			rockchip,pins =
++                    <4 RK_PC3 RK_FUNC_GPIO &pcfg_pull_up>,
+ 					<4 RK_PB2 RK_FUNC_GPIO &pcfg_pull_up>,
+-					<3 RK_PA5 RK_FUNC_GPIO &pcfg_pull_up>,
+-					<3 RK_PA6 RK_FUNC_GPIO &pcfg_pull_up>,
+-					<3 RK_PB0 RK_FUNC_GPIO &pcfg_pull_up>,
+-					<3 RK_PB1 RK_FUNC_GPIO &pcfg_pull_up>;
++                    <4 RK_PB0 RK_FUNC_GPIO &pcfg_pull_up>,
++                    <4 RK_PC4 RK_FUNC_GPIO &pcfg_pull_up>,
++                    <0 RK_PB7 RK_FUNC_GPIO &pcfg_pull_up>;
++
+ 		};
+ 	};
+ 
+@@ -967,10 +977,11 @@
+ 	vccio4-supply = <&vcca1v8_pmu>;
+ 	vccio5-supply = <&vcc_3v3>;
+ 	vccio6-supply = <&vcc_3v3>;
+-	vccio7-supply = <&vcc_1v8>;
++	vccio7-supply = <&vcc_3v3>;
+ };
+ 
+-&pwm0 {
++&pwm14 {
++    pinctrl-0 = <&pwm14m1_pins>;
+ 	status = "okay";
+ };
+ 
+@@ -1089,14 +1100,49 @@
+ 	pinctrl-0 = <&uart1m0_xfer &uart1m0_ctsn>;
+ };
+ 
++&u2phy0_host {
++    phy-supply = <&vcc5v0_host>;
++    status = "okay";
++};
++
+ &u2phy0_otg {
+ 	status = "okay";
+ };
+ 
++&u2phy1_host {
++    phy-supply = <&vcc5v0_host>;
++    status = "okay";
++};
++
++&u2phy1_otg {
++    phy-supply = <&vcc5v0_host>;
++    status = "okay";
++};
++
+ &usb2phy0 {
+ 	status = "okay";
+ };
+ 
++&usb2phy1 {
++    status = "okay";
++};
++
++&usb_host0_ehci {
++    status = "okay";
++};
++
++&usb_host0_ohci {
++    status = "okay";
++};
++
++&usb_host1_ehci {
++    status = "okay";
++};
++
++&usb_host1_ohci {
++    status = "okay";
++};
++
+ &usbdrd_dwc3 {
+ 	status = "okay";
+ };
+@@ -1105,6 +1151,15 @@
+ 	status = "okay";
+ };
+ 
++&usbhost_dwc3 {
++    status = "okay";
++};
++
++&usbhost30 {
++    status = "okay";
++};
++
++
+ &vdpu {
+ 	status = "okay";
+ };
+-- 
+2.35.1
+
