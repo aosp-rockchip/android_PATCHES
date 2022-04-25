@@ -269,5 +269,5 @@ index 24ad5c405..699302b2c 100644
      charge_state = get_charge_state();
      wifi_state = get_wifi_state();
 -- 
-2.35.1
+2.36.0
 

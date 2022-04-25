@@ -26,5 +26,5 @@ index b376660f839..f633df2e8a6 100644
      public boolean deleteMessageFromIcc(int messageIndex) {
          boolean success = false;
 -- 
-2.35.1
+2.36.0
 

@@ -94,5 +94,5 @@ index a2667d9a4c7..c3779efcf4b 100644
          mTouchHandler.onMovementBoundsChanged(mTmpInsetBounds, mTmpNormalBounds,
                  outBounds, fromImeAdjustment, fromShelfAdjustment,
 -- 
-2.35.1
+2.36.0
 

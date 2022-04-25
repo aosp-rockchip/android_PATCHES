@@ -51,5 +51,5 @@ index 31c800e88c..1d97ce6d8b 100644
                      if (mSurface != mReleaseSurface->getSurface()) {
                          status_t err = connectToSurface(mReleaseSurface->getSurface());
 -- 
-2.35.1
+2.36.0
 

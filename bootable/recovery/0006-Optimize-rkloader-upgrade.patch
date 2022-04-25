@@ -23,5 +23,5 @@ index 595c7700..b2f821e9 100644
      const char *reallyPath = check_media_package(rkloader_update_package, prksdboot, ui);
      if(reallyPath == NULL){
 -- 
-2.35.1
+2.36.0
 

@@ -29,5 +29,5 @@ index a53112a8..56d27d0b 100755
              for (DisplayInfo displayInfo : displayInfos) {
                  Intent intent = new Intent();
 -- 
-2.35.1
+2.36.0
 

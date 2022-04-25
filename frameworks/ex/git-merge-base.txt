@@ -1,84 +1,20 @@
 remote url:
+aosp	https://android.googlesource.com/platform/frameworks/ex (fetch)
+aosp	https://android.googlesource.com/platform/frameworks/ex (push)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/ex (fetch)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/ex (push)
 remote branch:
   m/master -> android-11.0-ebook-rkr2
   rk/rk33/mid/11.0/develop
-commit ba33983130c448711936d149c649422b03f7af86
-Author: chenxiao <cx@rock-chips.com>
-Date:   Sat Oct 10 11:21:00 2020 +0800
+commit 5050934c425fa1c775d31a1c2ab7bbe6f8fe5bc6
+Author: Emilian Peev <epeev@google.com>
+Date:   Tue Jan 21 10:30:02 2020 -0800
 
-    Camera: Merge from Android Q.
+    Camera2: Add support for offline session callbacks
     
-    Signed-off-by: chenxiao <cx@rock-chips.com>
-    Change-Id: Ica086fbec82d5d333ed266da7913a3539fffe4ab
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/ex (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/ex (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit ba33983130c448711936d149c649422b03f7af86
-Author: chenxiao <cx@rock-chips.com>
-Date:   Sat Oct 10 11:21:00 2020 +0800
-
-    Camera: Merge from Android Q.
+    Add blocking offline session callback support which can
+    track the state transitions.
     
-    Signed-off-by: chenxiao <cx@rock-chips.com>
-    Change-Id: Ica086fbec82d5d333ed266da7913a3539fffe4ab
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/ex (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/ex (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit ba33983130c448711936d149c649422b03f7af86
-Author: chenxiao <cx@rock-chips.com>
-Date:   Sat Oct 10 11:21:00 2020 +0800
-
-    Camera: Merge from Android Q.
-    
-    Signed-off-by: chenxiao <cx@rock-chips.com>
-    Change-Id: Ica086fbec82d5d333ed266da7913a3539fffe4ab
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/ex (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/ex (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit ba33983130c448711936d149c649422b03f7af86
-Author: chenxiao <cx@rock-chips.com>
-Date:   Sat Oct 10 11:21:00 2020 +0800
-
-    Camera: Merge from Android Q.
-    
-    Signed-off-by: chenxiao <cx@rock-chips.com>
-    Change-Id: Ica086fbec82d5d333ed266da7913a3539fffe4ab
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/ex (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/ex (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit ba33983130c448711936d149c649422b03f7af86
-Author: chenxiao <cx@rock-chips.com>
-Date:   Sat Oct 10 11:21:00 2020 +0800
-
-    Camera: Merge from Android Q.
-    
-    Signed-off-by: chenxiao <cx@rock-chips.com>
-    Change-Id: Ica086fbec82d5d333ed266da7913a3539fffe4ab
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/ex (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/ex (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit ba33983130c448711936d149c649422b03f7af86
-Author: chenxiao <cx@rock-chips.com>
-Date:   Sat Oct 10 11:21:00 2020 +0800
-
-    Camera: Merge from Android Q.
-    
-    Signed-off-by: chenxiao <cx@rock-chips.com>
-    Change-Id: Ica086fbec82d5d333ed266da7913a3539fffe4ab
+    Bug: 135142453
+    Test: Camera CTS
+    Change-Id: Ia42d4a96564c433eddfd3e8ba27b0483f6f3c5ac

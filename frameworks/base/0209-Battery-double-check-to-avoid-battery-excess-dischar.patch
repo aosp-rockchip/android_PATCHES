@@ -54,5 +54,5 @@ index 8dd4fa6d8fd..de88211cbd6 100644
                  pw.println("  technology: " + mHealthInfo.batteryTechnology);
              } else {
 -- 
-2.35.1
+2.36.0
 

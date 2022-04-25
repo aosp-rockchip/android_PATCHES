@@ -1,0 +1,23 @@
+From 5b2fdff9701cfbb2b3f4d63c9282da74c4eccc19 Mon Sep 17 00:00:00 2001
+From: android-build-team Robot <android-build-team-robot@google.com>
+Date: Sat, 15 Feb 2020 01:56:29 +0000
+Subject: [PATCH 073/185] Version bump to RP1A.200214.002 [core/build_id.mk]
+
+Change-Id: Ifbb35c6de00fb47bdcd2113649865ed67495dd88
+---
+ core/build_id.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/build_id.mk b/core/build_id.mk
+index f87e90c42..f04580d79 100644
+--- a/core/build_id.mk
++++ b/core/build_id.mk
+@@ -18,4 +18,4 @@
+ # (like "CRB01").  It must be a single word, and is
+ # capitalized by convention.
+ 
+-BUILD_ID=RP1A.200214.001
++BUILD_ID=RP1A.200214.002
+-- 
+2.36.0
+

@@ -77,5 +77,5 @@ index da4a019d5d1..59ce8235f5f 100644
                  synchronized (mLock) {
                      renamedPackage = mSettings.getRenamedPackageLPr(pkgName1);
 -- 
-2.35.1
+2.36.0
 

@@ -1,0 +1,66 @@
+From 86f9377b49b62de653cac8be252940a9ea33f844 Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Wed, 13 Nov 2019 11:59:02 +0800
+Subject: [PATCH 171/185] Allow use BUILD_NUMBER to keep fingerprint.
+
+Test: android.os.cts.BuildVersionTest#testBuildFingerprint
+
+Change-Id: I2c173d548e2d2da749cffbae4d09dc8890253b47
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+---
+ core/Makefile            | 16 +++++++++++++---
+ core/version_defaults.mk |  3 +++
+ 2 files changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/core/Makefile b/core/Makefile
+index ec4831c56..9aa46b351 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -328,6 +328,12 @@ BUILD_KEYS := test-keys
+ else
+ BUILD_KEYS := dev-keys
+ endif
++
++# For user fingerprint
++ifeq ($(TARGET_BUILD_VARIANT),user)
++BUILD_KEYS := release-keys
++endif
++
+ BUILD_VERSION_TAGS += $(BUILD_KEYS)
+ BUILD_VERSION_TAGS := $(subst $(space),$(comma),$(sort $(BUILD_VERSION_TAGS)))
+ 
+@@ -337,10 +343,14 @@ $(intermediate_system_build_prop): PRIVATE_BUILD_DESC := $(build_desc)
+ 
+ # The string used to uniquely identify the combined build and product; used by the OTA server.
+ ifeq (,$(strip $(BUILD_FINGERPRINT)))
+-  ifeq ($(strip $(HAS_BUILD_NUMBER)),false)
+-    BF_BUILD_NUMBER := $(BUILD_USERNAME)$$($(DATE_FROM_FILE) +%m%d%H%M)
++  ifdef ROCKCHIP_BUILD_NUMBER
++    BF_BUILD_NUMBER := $(ROCKCHIP_BUILD_NUMBER)
+   else
+-    BF_BUILD_NUMBER := $(file <$(BUILD_NUMBER_FILE))
++    ifeq ($(strip $(HAS_BUILD_NUMBER)),false)
++      BF_BUILD_NUMBER := $(BUILD_USERNAME)$$($(DATE_FROM_FILE) +%m%d%H%M)
++    else
++      BF_BUILD_NUMBER := $(file <$(BUILD_NUMBER_FILE))
++    endif
+   endif
+   BUILD_FINGERPRINT := $(PRODUCT_BRAND)/$(TARGET_PRODUCT)/$(TARGET_DEVICE):$(PLATFORM_VERSION)/$(BUILD_ID)/$(BF_BUILD_NUMBER):$(TARGET_BUILD_VARIANT)/$(BUILD_VERSION_TAGS)
+ endif
+diff --git a/core/version_defaults.mk b/core/version_defaults.mk
+index 71334d014..04ee50f29 100644
+--- a/core/version_defaults.mk
++++ b/core/version_defaults.mk
+@@ -284,6 +284,9 @@ DATE := date -d @$(BUILD_DATETIME)
+ $(KATI_obsolete_var BUILD_DATETIME,Use BUILD_DATETIME_FROM_FILE)
+ 
+ HAS_BUILD_NUMBER := true
++ifdef ROCKCHIP_BUILD_NUMBER
++  BUILD_NUMBER := $(ROCKCHIP_BUILD_NUMBER)
++endif
+ ifndef BUILD_NUMBER
+   # BUILD_NUMBER should be set to the source control value that
+   # represents the current state of the source code.  E.g., a
+-- 
+2.36.0
+

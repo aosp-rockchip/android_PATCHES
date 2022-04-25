@@ -72,5 +72,5 @@ index 4df4e9d..6120e1e 100644
              if (IsVirtioBlkDevice(majorId)) {
                  // drivers/block/virtio_blk.c has "#define PART_BITS 4", so max is
 -- 
-2.35.1
+2.36.0
 

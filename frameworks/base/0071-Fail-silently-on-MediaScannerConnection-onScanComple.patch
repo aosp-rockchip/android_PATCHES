@@ -74,5 +74,5 @@ index 05fa511fc81..2bffe8ac064 100644
      static class ClientProxy implements MediaScannerConnectionClient {
          @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.O)
 -- 
-2.35.1
+2.36.0
 

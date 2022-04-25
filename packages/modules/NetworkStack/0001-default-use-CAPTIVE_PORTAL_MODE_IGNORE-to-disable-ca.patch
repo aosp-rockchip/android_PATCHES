@@ -24,5 +24,5 @@ index 40de26e0..f205c63a 100755
          return mode != CAPTIVE_PORTAL_MODE_IGNORE;
      }
 -- 
-2.35.1
+2.36.0
 

@@ -130,5 +130,5 @@ index c008d93ca91..e27bf48b6b6 100644
  @DataClass(genSetters = true, genConstructor = false, genBuilder = false)
  public class PackageStateUnserialized {
 -- 
-2.35.1
+2.36.0
 

@@ -539,5 +539,5 @@ index ad4da08aed..be7be4021e 100644
              Settings.DisplaySettingsActivity.class.getName(),
              Settings.SoundSettingsActivity.class.getName(),
 -- 
-2.35.1
+2.36.0
 

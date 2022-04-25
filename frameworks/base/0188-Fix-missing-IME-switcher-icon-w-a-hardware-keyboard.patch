@@ -53,5 +53,5 @@ index 0154fe07a41..254285dfbd4 100644
              // mImeWindowVis should be updated before calling shouldShowImeSwitcherLocked().
              final boolean needsToShowImeSwitcher = shouldShowImeSwitcherLocked(vis);
 -- 
-2.35.1
+2.36.0
 

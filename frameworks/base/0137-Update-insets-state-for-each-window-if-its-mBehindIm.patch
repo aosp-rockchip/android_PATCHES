@@ -132,5 +132,5 @@ index db7bce4c875..17ebe4f6737 100644
      public void testStripForDispatch_childWindow_altFocusable() {
          final WindowState app = createWindow(null, TYPE_APPLICATION, "app");
 -- 
-2.35.1
+2.36.0
 

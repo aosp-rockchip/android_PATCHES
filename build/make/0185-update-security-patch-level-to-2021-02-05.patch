@@ -1,0 +1,27 @@
+From 5f0a230cddcf112ad90231e86a989cf7ff21a681 Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Sun, 21 Feb 2021 15:31:20 +0800
+Subject: [PATCH 185/185] update security patch level to 2021-02-05
+
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+Change-Id: I1e7acd9703ce0a66f256b5b66ca3b34f0f314ca2
+---
+ core/version_defaults.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/version_defaults.mk b/core/version_defaults.mk
+index 6ac90d8d3..e610490f4 100644
+--- a/core/version_defaults.mk
++++ b/core/version_defaults.mk
+@@ -240,7 +240,7 @@ ifndef PLATFORM_SECURITY_PATCH
+     #  It must be of the form "YYYY-MM-DD" on production devices.
+     #  It must match one of the Android Security Patch Level strings of the Public Security Bulletins.
+     #  If there is no $PLATFORM_SECURITY_PATCH set, keep it empty.
+-      PLATFORM_SECURITY_PATCH := 2021-01-05
++      PLATFORM_SECURITY_PATCH := 2021-02-05
+ endif
+ .KATI_READONLY := PLATFORM_SECURITY_PATCH
+ 
+-- 
+2.36.0
+

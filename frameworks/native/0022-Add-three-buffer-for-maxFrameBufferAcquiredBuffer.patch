@@ -23,5 +23,5 @@ index 638591723..c339c3a6e 100755
  
      maxGraphicsWidth = std::max(max_graphics_width(0), 0);
 -- 
-2.35.1
+2.36.0
 

@@ -25,5 +25,5 @@ index e3f7d988..43ac4c24 100644
  
          final Preference securityPatchPref = findPreference(KEY_SECURITY_PATCH);
 -- 
-2.35.1
+2.36.0
 

@@ -506,5 +506,5 @@ index 37ecee8e3db..c0e86838250
              case ActivityInfo.SCREEN_ORIENTATION_PORTRAIT:
                  // Return portrait unless overridden.
 -- 
-2.35.1
+2.36.0
 

@@ -195,5 +195,5 @@ index c11c29b5deb..2e1b907e71b 100644
          // Window was not laid out for this display yet, so make sure mLayoutSeq does not match.
          if (dc != null && mInputWindowHandle.displayId != dc.getDisplayId()) {
 -- 
-2.35.1
+2.36.0
 

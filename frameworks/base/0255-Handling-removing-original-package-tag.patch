@@ -46,5 +46,5 @@ index 7fd39aec1ce..531bd2bf91a 100644
          return mPermissions.canPropagatePermissionToInstantApp(permName);
      }
 -- 
-2.35.1
+2.36.0
 

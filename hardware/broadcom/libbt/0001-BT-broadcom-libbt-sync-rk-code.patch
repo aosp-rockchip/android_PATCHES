@@ -403,5 +403,5 @@ index 810b2ad..264bf7c 100644
  # configuration file does not exist. Use default one
  SRC := $(call my-dir)/include/vnd_generic.txt
 -- 
-2.35.1
+2.36.0
 

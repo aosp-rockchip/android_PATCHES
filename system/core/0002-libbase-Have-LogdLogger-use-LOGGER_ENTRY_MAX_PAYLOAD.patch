@@ -50,5 +50,5 @@ index a8687067a..f42b9966b 100644
      __android_log_buf_print(lg_id, priority, tag, "%s", message);
    }
 -- 
-2.35.1
+2.36.0
 

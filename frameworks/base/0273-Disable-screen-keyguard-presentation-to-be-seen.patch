@@ -25,5 +25,5 @@ index 206560770cb..674c8e578f0 100644
              if ((privateflags & PRIVATE_FLAG_SUSTAINED_PERFORMANCE_MODE) != 0) {
                  mSustainedPerformanceModeCurrent = true;
 -- 
-2.35.1
+2.36.0
 

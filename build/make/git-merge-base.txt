@@ -1,42 +1,15 @@
 remote url:
+aosp	https://android.googlesource.com/platform/build (fetch)
+aosp	https://android.googlesource.com/platform/build (push)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/build (fetch)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/build (push)
 remote branch:
   m/master -> android-11.0-ebook-rkr2
   rk/rk33/mid/11.0/develop
-commit 5f0a230cddcf112ad90231e86a989cf7ff21a681
-Author: Bian Jin chen <kenjc.bian@rock-chips.com>
-Date:   Sun Feb 21 15:31:20 2021 +0800
+commit 66cec8b1a62d2284df534232374b4d3cda18aaf0
+Author: android-build-team Robot <android-build-team-robot@google.com>
+Date:   Tue Dec 1 23:58:33 2020 +0000
 
-    update security patch level to 2021-02-05
+    Version bump to RQ1D.210105.003 [core/build_id.mk]
     
-    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
-    Change-Id: I1e7acd9703ce0a66f256b5b66ca3b34f0f314ca2
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/build (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/build (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 5f0a230cddcf112ad90231e86a989cf7ff21a681
-Author: Bian Jin chen <kenjc.bian@rock-chips.com>
-Date:   Sun Feb 21 15:31:20 2021 +0800
-
-    update security patch level to 2021-02-05
-    
-    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
-    Change-Id: I1e7acd9703ce0a66f256b5b66ca3b34f0f314ca2
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/build (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/build (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 5f0a230cddcf112ad90231e86a989cf7ff21a681
-Author: Bian Jin chen <kenjc.bian@rock-chips.com>
-Date:   Sun Feb 21 15:31:20 2021 +0800
-
-    update security patch level to 2021-02-05
-    
-    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
-    Change-Id: I1e7acd9703ce0a66f256b5b66ca3b34f0f314ca2
+    Change-Id: Ic260f378816ed22f56d8c15755007c34b77c5ca2

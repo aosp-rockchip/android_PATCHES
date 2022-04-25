@@ -27,5 +27,5 @@ index 6b27190a4..ea609d452 100644
  LOCAL_OVERRIDES_PACKAGES := Home Launcher2 Launcher3 Launcher3QuickStep
  endif
 -- 
-2.35.1
+2.36.0
 

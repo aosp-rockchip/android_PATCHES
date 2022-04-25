@@ -1,0 +1,44 @@
+From 09233fade39ba81ce48c19c14d65b960a18f1f66 Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Wed, 23 Sep 2020 14:04:21 +0800
+Subject: [PATCH 178/185] Build required modules from default
+
+Some required modules from host tool (such as imgdiff) are bound to
+required from releasetools_common, but unfortunately required modules
+from python_library_host does not work (b/140144201). To make this work
+we should mark dependency from each host tool.
+
+Bug: 152258157
+Test: Build succeeded without system image
+Change-Id: Iedfda9b48d78687d8f622b818eeb93896d4f119d
+Signed-off-by: Kiyoung Kim <kiyoungkim@google.com>
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+---
+ tools/releasetools/Android.bp | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/tools/releasetools/Android.bp b/tools/releasetools/Android.bp
+index 578568847..029f352e1 100644
+--- a/tools/releasetools/Android.bp
++++ b/tools/releasetools/Android.bp
+@@ -239,6 +239,17 @@ python_defaults {
+             embedded_launcher: false,
+         },
+     },
++    // TODO (b/140144201) Build imgdiff from releasetools_common
++    required: [
++        "aapt2",
++        "boot_signer",
++        "brotli",
++        "bsdiff",
++        "imgdiff",
++        "minigzip",
++        "mkbootfs",
++        "signapk",
++    ],
+ }
+ 
+ python_binary_host {
+-- 
+2.36.0
+

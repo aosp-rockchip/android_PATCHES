@@ -1,84 +1,16 @@
 remote url:
+aosp	https://android.googlesource.com/platform/packages/apps/OnDeviceAppPrediction (fetch)
+aosp	https://android.googlesource.com/platform/packages/apps/OnDeviceAppPrediction (push)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (fetch)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (push)
 remote branch:
   m/master -> android-11.0-ebook-rkr2
   rk/rk33/mid/11.0/develop
-commit 07c9d7a2cb9e52e7c9e9f7793d70c9f4ca820d29
-Merge: f25a08b 8f42548
-Author: Wu Jingchen <oven.wu@rock-chips.com>
-Date:   Tue Jan 19 11:55:54 2021 +0800
+commit 8f425480a2f2ca9f13d00bd0aa312ce9982a857f
+Merge: d51c979 ee2d2f1
+Author: android-build-team Robot <android-build-team-robot@google.com>
+Date:   Thu Aug 13 23:11:52 2020 +0000
 
-    Merge tag 'android-11.0.0_r28' into HEAD
+    Snap for 6761348 from ee2d2f15cb5458756c4a882c5a2cd9a77b8b1034 to rvc-qpr1-release
     
-    Android 11.0.0 release 28
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 07c9d7a2cb9e52e7c9e9f7793d70c9f4ca820d29
-Merge: f25a08b 8f42548
-Author: Wu Jingchen <oven.wu@rock-chips.com>
-Date:   Tue Jan 19 11:55:54 2021 +0800
-
-    Merge tag 'android-11.0.0_r28' into HEAD
-    
-    Android 11.0.0 release 28
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 07c9d7a2cb9e52e7c9e9f7793d70c9f4ca820d29
-Merge: f25a08b 8f42548
-Author: Wu Jingchen <oven.wu@rock-chips.com>
-Date:   Tue Jan 19 11:55:54 2021 +0800
-
-    Merge tag 'android-11.0.0_r28' into HEAD
-    
-    Android 11.0.0 release 28
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 07c9d7a2cb9e52e7c9e9f7793d70c9f4ca820d29
-Merge: f25a08b 8f42548
-Author: Wu Jingchen <oven.wu@rock-chips.com>
-Date:   Tue Jan 19 11:55:54 2021 +0800
-
-    Merge tag 'android-11.0.0_r28' into HEAD
-    
-    Android 11.0.0 release 28
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 07c9d7a2cb9e52e7c9e9f7793d70c9f4ca820d29
-Merge: f25a08b 8f42548
-Author: Wu Jingchen <oven.wu@rock-chips.com>
-Date:   Tue Jan 19 11:55:54 2021 +0800
-
-    Merge tag 'android-11.0.0_r28' into HEAD
-    
-    Android 11.0.0 release 28
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/OnDeviceAppPrediction (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 07c9d7a2cb9e52e7c9e9f7793d70c9f4ca820d29
-Merge: f25a08b 8f42548
-Author: Wu Jingchen <oven.wu@rock-chips.com>
-Date:   Tue Jan 19 11:55:54 2021 +0800
-
-    Merge tag 'android-11.0.0_r28' into HEAD
-    
-    Android 11.0.0 release 28
+    Change-Id: I1b0fe88e68710572a6b7a041078c332dd2c1f921

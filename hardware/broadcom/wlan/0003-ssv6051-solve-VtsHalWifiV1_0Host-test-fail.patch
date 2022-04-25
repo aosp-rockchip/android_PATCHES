@@ -306,5 +306,5 @@ index e95899f..437634b 100644
                  wifi_wake_reason_cnt);
      NULL_CHECK_RETURN(cmd, "memory allocation failure", WIFI_ERROR_OUT_OF_MEMORY);
 -- 
-2.35.1
+2.36.0
 

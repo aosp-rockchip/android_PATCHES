@@ -1,0 +1,59 @@
+From 3b2338b115e7c817d920627a11c1f350c99d8933 Mon Sep 17 00:00:00 2001
+From: Dayao Ji <jdy@rock-chips.com>
+Date: Sat, 10 Oct 2020 16:45:09 +0800
+Subject: [PATCH 180/185] Support pack resource.img according to booot header
+ version
+
+Signed-off-by: Dayao Ji <jdy@rock-chips.com>
+Change-Id: I21c237d2bd3223c98366df9caee3e26a1899bfd8
+---
+ core/Makefile                | 5 +++++
+ tools/releasetools/common.py | 9 ++++++++-
+ 2 files changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/core/Makefile b/core/Makefile
+index 5805ec25f..c2442a579 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -4425,6 +4425,7 @@ endif
+ ifdef DEVICE_MANIFEST_FILE
+ 	$(hide) echo "vintf_include_empty_vendor_sku=true" >> $@
+ endif
++	$(hide) echo "booot_header_version=$(BOARD_BOOT_HEADER_VERSION)" >> $@
+ 
+ .PHONY: misc_info
+ misc_info: $(INSTALLED_MISC_INFO_TARGET)
+@@ -4805,6 +4806,10 @@ ifdef TARGET_PREBUILT_RESOURCE
+ ifneq ($(TARGET_NO_RECOVERY),true)
+ 	$(hide) cp $(TARGET_PREBUILT_RESOURCE) $(zip_root)/RECOVERY/resource.img
+ endif
++ifeq (1,$(strip $(shell expr $(BOARD_BOOT_HEADER_VERSION) \>= 3)))
++	$(hide) mkdir -p $(zip_root)/IMAGES
++	$(hide) cp $(TARGET_PREBUILT_RESOURCE) $(zip_root)/IMAGES/resource.img
++endif
+ endif
+ 
+ ifneq ($(PRODUCT_SYSTEM_BASE_FS_PATH),)
+diff --git a/tools/releasetools/common.py b/tools/releasetools/common.py
+index ae7da2fb6..7ad8321ff 100644
+--- a/tools/releasetools/common.py
++++ b/tools/releasetools/common.py
+@@ -1216,7 +1216,14 @@ def _BuildBootableImage(image_name, sourcedir, fs_config_file, info_dict=None,
+ 
+   cmd = [mkbootimg, "--kernel", os.path.join(sourcedir, kernel)]
+ 
+-  fn = os.path.join(sourcedir, "second")
++  if partition_name == "recovery":
++    fn = os.path.join(sourcedir, "resource.img")
++  else:
++    header_version = info_dict.get("booot_header_version")
++    if header_version < 3:
++      fn = os.path.join(sourcedir, "resource.img")
++    else:
++      fn = os.path.join(sourcedir, "second")
+   if os.access(fn, os.F_OK):
+     cmd.append("--second")
+     cmd.append(fn)
+-- 
+2.36.0
+

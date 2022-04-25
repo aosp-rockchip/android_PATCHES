@@ -253,5 +253,5 @@ index f35ee2d15b..668e569467 100644
                  if (mMainDisplayInfo != null) {
                      DrmDisplaySetting.setDisplayModeTemp(mMainDisplayInfo, index);
 -- 
-2.35.1
+2.36.0
 

@@ -48,5 +48,5 @@ index c339c3a6e..3c4190e10 100755
      clientCompositionDisplay.outputDataspace = renderArea.getReqDataSpace();
      clientCompositionDisplay.maxLuminance = DisplayDevice::sDefaultMaxLumiance;
 -- 
-2.35.1
+2.36.0
 

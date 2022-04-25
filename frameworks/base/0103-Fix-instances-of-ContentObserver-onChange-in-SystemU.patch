@@ -171,5 +171,5 @@ index 45ea3c96b81..183dde87bdf 100644
          assertTrue(controller.available)
          assertFalse(controller.getFavorites().isEmpty())
 -- 
-2.35.1
+2.36.0
 

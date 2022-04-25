@@ -1,84 +1,16 @@
 remote url:
+aosp	https://android.googlesource.com/platform/packages/services/Telecomm (fetch)
+aosp	https://android.googlesource.com/platform/packages/services/Telecomm (push)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/services/Telecomm (fetch)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/services/Telecomm (push)
 remote branch:
   m/master -> android-11.0-ebook-rkr2
   rk/rk33/mid/11.0/develop
-commit e49ed9534701b7e446c495fe0dfb26a050ea716e
-Merge: 5c67b4db3 1d7f0f8ee
-Author: Wu Jingchen <oven.wu@rock-chips.com>
-Date:   Tue Jan 19 11:59:13 2021 +0800
+commit 1d7f0f8eedd7f8679e02cde2357be7148dfcd76b
+Merge: 517ad1b9d a2f647827
+Author: android-build-team Robot <android-build-team-robot@google.com>
+Date:   Thu Sep 24 23:10:23 2020 +0000
 
-    Merge tag 'android-11.0.0_r28' into HEAD
+    Snap for 6862191 from a2f647827c5e43f3cb881a559763c558f8738a9f to rvc-qpr1-release
     
-    Android 11.0.0 release 28
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/services/Telecomm (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/services/Telecomm (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit e49ed9534701b7e446c495fe0dfb26a050ea716e
-Merge: 5c67b4db3 1d7f0f8ee
-Author: Wu Jingchen <oven.wu@rock-chips.com>
-Date:   Tue Jan 19 11:59:13 2021 +0800
-
-    Merge tag 'android-11.0.0_r28' into HEAD
-    
-    Android 11.0.0 release 28
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/services/Telecomm (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/services/Telecomm (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit e49ed9534701b7e446c495fe0dfb26a050ea716e
-Merge: 5c67b4db3 1d7f0f8ee
-Author: Wu Jingchen <oven.wu@rock-chips.com>
-Date:   Tue Jan 19 11:59:13 2021 +0800
-
-    Merge tag 'android-11.0.0_r28' into HEAD
-    
-    Android 11.0.0 release 28
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/services/Telecomm (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/services/Telecomm (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit e49ed9534701b7e446c495fe0dfb26a050ea716e
-Merge: 5c67b4db3 1d7f0f8ee
-Author: Wu Jingchen <oven.wu@rock-chips.com>
-Date:   Tue Jan 19 11:59:13 2021 +0800
-
-    Merge tag 'android-11.0.0_r28' into HEAD
-    
-    Android 11.0.0 release 28
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/services/Telecomm (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/services/Telecomm (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit e49ed9534701b7e446c495fe0dfb26a050ea716e
-Merge: 5c67b4db3 1d7f0f8ee
-Author: Wu Jingchen <oven.wu@rock-chips.com>
-Date:   Tue Jan 19 11:59:13 2021 +0800
-
-    Merge tag 'android-11.0.0_r28' into HEAD
-    
-    Android 11.0.0 release 28
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/services/Telecomm (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/services/Telecomm (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit e49ed9534701b7e446c495fe0dfb26a050ea716e
-Merge: 5c67b4db3 1d7f0f8ee
-Author: Wu Jingchen <oven.wu@rock-chips.com>
-Date:   Tue Jan 19 11:59:13 2021 +0800
-
-    Merge tag 'android-11.0.0_r28' into HEAD
-    
-    Android 11.0.0 release 28
+    Change-Id: I21e11000791395da3de2ace09412ae7148f32b67

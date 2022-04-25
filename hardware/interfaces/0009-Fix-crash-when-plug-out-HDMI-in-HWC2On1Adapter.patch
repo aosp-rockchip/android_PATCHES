@@ -40,5 +40,5 @@ index 37021716c..1a9ed2e48
  
      // If the HWC2-side callback hasn't been registered yet, buffer this until
 -- 
-2.35.1
+2.36.0
 

@@ -42,5 +42,5 @@ index e6978385e0..96384adba2 100644
          assertFalse(verifier.verify("a.\u82b1\u5b50.co.jp", session));
      }
 -- 
-2.35.1
+2.36.0
 

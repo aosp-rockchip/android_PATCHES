@@ -99,5 +99,5 @@ index 594441487..bd0daddbd 100644
  #if HAVE_REALLOCARRAY
    // Values that cause overflow to a result small enough (8 on LP64) that malloc would "succeed".
 -- 
-2.35.1
+2.36.0
 

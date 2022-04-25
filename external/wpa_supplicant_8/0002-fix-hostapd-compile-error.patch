@@ -32,5 +32,5 @@ index 3bde8d52..a536d80b 100644
  ifneq ($(wildcard external/libnl),)
  LOCAL_SHARED_LIBRARIES += libnl
 -- 
-2.35.1
+2.36.0
 

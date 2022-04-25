@@ -1,98 +1,14 @@
 remote url:
+aosp	https://android.googlesource.com/platform/hardware/rockchip/libhwjpeg (fetch)
+aosp	https://android.googlesource.com/platform/hardware/rockchip/libhwjpeg (push)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/hardware/rk29/libhwjpeg (fetch)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/hardware/rk29/libhwjpeg (push)
 remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/master
-commit 3e36718376d36f9689a2fb106b3af02957361139
-Author: Chen Jinsen <kevin.chen@rock-chips.com>
-Date:   Fri Jan 29 16:55:16 2021 +0800
+commit 23d7f5a381bd8821ee0eadeb366ac5eb4f5dac38
+Merge: e462809 3e36718
+Author: tug <tugy@skyth-tek.com>
+Date:   Fri Mar 5 14:45:57 2021 +0800
 
-    [project] add licence declare
+    Merge tag '395447cc4dbc0d226396131b221560bfc5485da7' into quartz64
     
-    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
-    Change-Id: I6bb6ffab4e52dbfb3b5d73af1e3a531903d78292
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/hardware/rk29/libhwjpeg (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/hardware/rk29/libhwjpeg (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/master
-commit 3e36718376d36f9689a2fb106b3af02957361139
-Author: Chen Jinsen <kevin.chen@rock-chips.com>
-Date:   Fri Jan 29 16:55:16 2021 +0800
-
-    [project] add licence declare
-    
-    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
-    Change-Id: I6bb6ffab4e52dbfb3b5d73af1e3a531903d78292
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/hardware/rk29/libhwjpeg (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/hardware/rk29/libhwjpeg (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/master
-commit 3e36718376d36f9689a2fb106b3af02957361139
-Author: Chen Jinsen <kevin.chen@rock-chips.com>
-Date:   Fri Jan 29 16:55:16 2021 +0800
-
-    [project] add licence declare
-    
-    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
-    Change-Id: I6bb6ffab4e52dbfb3b5d73af1e3a531903d78292
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/hardware/rk29/libhwjpeg (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/hardware/rk29/libhwjpeg (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/master
-commit 3e36718376d36f9689a2fb106b3af02957361139
-Author: Chen Jinsen <kevin.chen@rock-chips.com>
-Date:   Fri Jan 29 16:55:16 2021 +0800
-
-    [project] add licence declare
-    
-    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
-    Change-Id: I6bb6ffab4e52dbfb3b5d73af1e3a531903d78292
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/hardware/rk29/libhwjpeg (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/hardware/rk29/libhwjpeg (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/master
-commit 3e36718376d36f9689a2fb106b3af02957361139
-Author: Chen Jinsen <kevin.chen@rock-chips.com>
-Date:   Fri Jan 29 16:55:16 2021 +0800
-
-    [project] add licence declare
-    
-    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
-    Change-Id: I6bb6ffab4e52dbfb3b5d73af1e3a531903d78292
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/hardware/rk29/libhwjpeg (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/hardware/rk29/libhwjpeg (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/master
-commit 3e36718376d36f9689a2fb106b3af02957361139
-Author: Chen Jinsen <kevin.chen@rock-chips.com>
-Date:   Fri Jan 29 16:55:16 2021 +0800
-
-    [project] add licence declare
-    
-    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
-    Change-Id: I6bb6ffab4e52dbfb3b5d73af1e3a531903d78292
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/hardware/rk29/libhwjpeg (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/hardware/rk29/libhwjpeg (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/master
-commit 3e36718376d36f9689a2fb106b3af02957361139
-Author: Chen Jinsen <kevin.chen@rock-chips.com>
-Date:   Fri Jan 29 16:55:16 2021 +0800
-
-    [project] add licence declare
-    
-    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
-    Change-Id: I6bb6ffab4e52dbfb3b5d73af1e3a531903d78292
+    Android 11.0 Ebook release rkr2;aosp:refs/tags/android-11.0.0_r28

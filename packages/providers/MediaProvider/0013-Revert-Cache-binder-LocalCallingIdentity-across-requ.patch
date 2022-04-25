@@ -256,5 +256,5 @@ index 2bbb4b3b..97e39d4e 100644
          for (int i = 0; i < POLLING_TIMEOUT_MILLIS / POLLING_SLEEP_MILLIS; i++) {
              if(Environment.getExternalStorageState(Environment.getExternalStorageDirectory())
 -- 
-2.35.1
+2.36.0
 

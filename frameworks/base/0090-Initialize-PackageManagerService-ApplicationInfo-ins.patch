@@ -69,5 +69,5 @@ index f714af03336..74cb93d7a10 100644
              mResolveActivity.packageName = pkg.getPackageName();
              mResolveActivity.processName = pkg.getProcessName();
 -- 
-2.35.1
+2.36.0
 

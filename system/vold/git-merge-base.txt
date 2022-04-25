@@ -1,84 +1,16 @@
 remote url:
+aosp	https://android.googlesource.com/platform/system/vold (fetch)
+aosp	https://android.googlesource.com/platform/system/vold (push)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/vold (fetch)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/vold (push)
 remote branch:
   m/master -> android-11.0-ebook-rkr2
   rk/rk33/mid/11.0/develop
-commit 153415f2d7d0a09438719257e98d3c17913c5b75
-Merge: 3babbd7 0621a60
-Author: Wu Jingchen <oven.wu@rock-chips.com>
-Date:   Tue Jan 19 12:13:05 2021 +0800
+commit 0621a605cbabc81ec01684d999f7187fd9cf78c5
+Merge: da8b85e 9988536
+Author: android-build-team Robot <android-build-team-robot@google.com>
+Date:   Thu Sep 3 23:11:28 2020 +0000
 
-    Merge tag 'android-11.0.0_r28' into HEAD
+    Snap for 6812348 from 9988536ecd2d5c3f3cf530bffaf055db11e529e0 to rvc-qpr1-release
     
-    Android 11.0.0 release 28
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/vold (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/vold (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 153415f2d7d0a09438719257e98d3c17913c5b75
-Merge: 3babbd7 0621a60
-Author: Wu Jingchen <oven.wu@rock-chips.com>
-Date:   Tue Jan 19 12:13:05 2021 +0800
-
-    Merge tag 'android-11.0.0_r28' into HEAD
-    
-    Android 11.0.0 release 28
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/vold (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/vold (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 153415f2d7d0a09438719257e98d3c17913c5b75
-Merge: 3babbd7 0621a60
-Author: Wu Jingchen <oven.wu@rock-chips.com>
-Date:   Tue Jan 19 12:13:05 2021 +0800
-
-    Merge tag 'android-11.0.0_r28' into HEAD
-    
-    Android 11.0.0 release 28
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/vold (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/vold (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 153415f2d7d0a09438719257e98d3c17913c5b75
-Merge: 3babbd7 0621a60
-Author: Wu Jingchen <oven.wu@rock-chips.com>
-Date:   Tue Jan 19 12:13:05 2021 +0800
-
-    Merge tag 'android-11.0.0_r28' into HEAD
-    
-    Android 11.0.0 release 28
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/vold (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/vold (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 153415f2d7d0a09438719257e98d3c17913c5b75
-Merge: 3babbd7 0621a60
-Author: Wu Jingchen <oven.wu@rock-chips.com>
-Date:   Tue Jan 19 12:13:05 2021 +0800
-
-    Merge tag 'android-11.0.0_r28' into HEAD
-    
-    Android 11.0.0 release 28
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/vold (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/vold (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 153415f2d7d0a09438719257e98d3c17913c5b75
-Merge: 3babbd7 0621a60
-Author: Wu Jingchen <oven.wu@rock-chips.com>
-Date:   Tue Jan 19 12:13:05 2021 +0800
-
-    Merge tag 'android-11.0.0_r28' into HEAD
-    
-    Android 11.0.0 release 28
+    Change-Id: If759fe839b830e3b1db8e6f963abc0f2d3e6fbae

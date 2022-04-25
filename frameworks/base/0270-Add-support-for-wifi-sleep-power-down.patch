@@ -103,5 +103,5 @@ index 77cd5d2ffda..ad23f6f46d3 100644
  
      private static NetworkCapabilities createDefaultNetworkCapabilitiesForUid(int uid) {
 -- 
-2.35.1
+2.36.0
 

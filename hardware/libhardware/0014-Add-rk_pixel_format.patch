@@ -54,5 +54,5 @@ index bf076f6c..308cb736
  #define TO_HW_DEVICE_T_OPEN(x) reinterpret_cast<struct hw_device_t**>(x)
  #else
 -- 
-2.35.1
+2.36.0
 

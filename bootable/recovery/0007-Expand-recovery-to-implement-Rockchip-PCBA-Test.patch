@@ -283,5 +283,5 @@ index 33072177..04ab1260 100644
    switch (state) {
      case ScreensaverState::NORMAL:
 -- 
-2.35.1
+2.36.0
 

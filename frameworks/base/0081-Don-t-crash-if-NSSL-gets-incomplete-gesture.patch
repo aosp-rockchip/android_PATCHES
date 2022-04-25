@@ -52,5 +52,5 @@ index 1bd9bbecc26..3d41ef0adcc 100644
                  final int y = (int) ev.getY(activePointerIndex);
                  final int x = (int) ev.getX(activePointerIndex);
 -- 
-2.35.1
+2.36.0
 

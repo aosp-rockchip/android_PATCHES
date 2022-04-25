@@ -481,5 +481,5 @@ index 64acbd72d..49f624c35 100644
      // VSYNC state of connected display.
      struct VSyncState {
 -- 
-2.35.1
+2.36.0
 

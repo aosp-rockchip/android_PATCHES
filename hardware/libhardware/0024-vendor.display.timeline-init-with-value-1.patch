@@ -102,5 +102,5 @@ index 72d415c9..489fef08 100755
          mCurConnector = priv->primary;
      }else if (dpy == HWC_DISPLAY_EXTERNAL){
 -- 
-2.35.1
+2.36.0
 

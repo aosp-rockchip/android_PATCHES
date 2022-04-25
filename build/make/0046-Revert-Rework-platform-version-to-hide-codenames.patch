@@ -1,0 +1,130 @@
+From 6a5c7834900dd96451841ac3af0ef99eff6e2eb7 Mon Sep 17 00:00:00 2001
+From: Kevin Lau Fang <fangk@google.com>
+Date: Thu, 14 Nov 2019 20:06:09 +0000
+Subject: [PATCH 046/185] Revert "Rework platform version to hide codenames."
+
+Reason for revert: This causes a boot issue on Taimen (b/144480969). It wasn't caught by TreeHugger due to Taimen tests being disabled due to a different lab outage (b/144350336).
+
+Change-Id: Ieff2d974e23c8e163a23eb168f3095c602dfe523
+
+Bug: 144480969
+(cherry picked from commit a83159723bdb028dca467d2faf3c3d3d42371393)
+
+Change-Id: Iec00a75b3e24d69a83750dfd3a1e09b77682aeec
+---
+ core/Makefile            |  1 -
+ core/version_defaults.mk | 59 ++++++++++++++++++----------------------
+ tools/buildinfo.sh       |  3 +-
+ 3 files changed, 28 insertions(+), 35 deletions(-)
+
+diff --git a/core/Makefile b/core/Makefile
+index fe64d2e3f..bec8cfc53 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -423,7 +423,6 @@ endif
+ 	        BUILD_NUMBER="$(BUILD_NUMBER_FROM_FILE)" \
+ 	        BOARD_BUILD_SYSTEM_ROOT_IMAGE="$(BOARD_BUILD_SYSTEM_ROOT_IMAGE)" \
+ 	        PLATFORM_VERSION="$(PLATFORM_VERSION)" \
+-	        PLATFORM_VERSION_LAST_STABLE="$(PLATFORM_VERSION_LAST_STABLE)" \
+ 	        PLATFORM_SECURITY_PATCH="$(PLATFORM_SECURITY_PATCH)" \
+ 	        PLATFORM_BASE_OS="$(PLATFORM_BASE_OS)" \
+ 	        PLATFORM_SDK_VERSION="$(PLATFORM_SDK_VERSION)" \
+diff --git a/core/version_defaults.mk b/core/version_defaults.mk
+index ca759bb50..8095212c3 100644
+--- a/core/version_defaults.mk
++++ b/core/version_defaults.mk
+@@ -84,17 +84,38 @@ MAX_PLATFORM_VERSION :=
+ # generate the range of allowed SDK versions, so it must have an entry for every
+ # unreleased API level targetable by this branch, not just those that are valid
+ # lunch targets for this branch.
+-
+-# The last stable version name of the platform that was released.  During
+-# development, this stays at that previous version, while the codename indicates
+-# further work based on the previous version.
+-PLATFORM_VERSION_LAST_STABLE := 10
+-.KATI_READONLY := PLATFORM_VERSION_LAST_STABLE
++PLATFORM_VERSION.RP1A := R
+ 
+ # These are the current development codenames, if the build is not a final
+ # release build.  If this is a final release build, it is simply "REL".
+ PLATFORM_VERSION_CODENAME.RP1A := R
+ 
++ifndef PLATFORM_VERSION
++  PLATFORM_VERSION := $(PLATFORM_VERSION.$(TARGET_PLATFORM_VERSION))
++  ifndef PLATFORM_VERSION
++    # PLATFORM_VERSION falls back to TARGET_PLATFORM_VERSION
++    PLATFORM_VERSION := $(TARGET_PLATFORM_VERSION)
++  endif
++endif
++.KATI_READONLY := PLATFORM_VERSION
++
++ifndef PLATFORM_SDK_VERSION
++  # This is the canonical definition of the SDK version, which defines
++  # the set of APIs and functionality available in the platform.  It
++  # is a single integer that increases monotonically as updates to
++  # the SDK are released.  It should only be incremented when the APIs for
++  # the new release are frozen (so that developers don't write apps against
++  # intermediate builds).  During development, this number remains at the
++  # SDK version the branch is based on and PLATFORM_VERSION_CODENAME holds
++  # the code-name of the new development work.
++
++  # When you increment the PLATFORM_SDK_VERSION please ensure you also
++  # clear out the following text file of all older PLATFORM_VERSION's:
++  # cts/tests/tests/os/assets/platform_versions.txt
++  PLATFORM_SDK_VERSION := 29
++endif
++.KATI_READONLY := PLATFORM_SDK_VERSION
++
+ ifndef PLATFORM_VERSION_CODENAME
+   PLATFORM_VERSION_CODENAME := $(PLATFORM_VERSION_CODENAME.$(TARGET_PLATFORM_VERSION))
+   ifndef PLATFORM_VERSION_CODENAME
+@@ -144,32 +165,6 @@ endif
+   PLATFORM_VERSION_ALL_CODENAMES \
+   PLATFORM_VERSION_FUTURE_CODENAMES
+ 
+-ifndef PLATFORM_VERSION
+-  ifeq (REL,$(PLATFORM_VERSION_CODENAME))
+-      PLATFORM_VERSION := $(PLATFORM_VERSION_LAST_STABLE)
+-  else
+-      PLATFORM_VERSION := $(PLATFORM_VERSION_CODENAME)
+-  endif
+-endif
+-.KATI_READONLY := PLATFORM_VERSION
+-
+-ifndef PLATFORM_SDK_VERSION
+-  # This is the canonical definition of the SDK version, which defines
+-  # the set of APIs and functionality available in the platform.  It
+-  # is a single integer that increases monotonically as updates to
+-  # the SDK are released.  It should only be incremented when the APIs for
+-  # the new release are frozen (so that developers don't write apps against
+-  # intermediate builds).  During development, this number remains at the
+-  # SDK version the branch is based on and PLATFORM_VERSION_CODENAME holds
+-  # the code-name of the new development work.
+-
+-  # When you increment the PLATFORM_SDK_VERSION please ensure you also
+-  # clear out the following text file of all older PLATFORM_VERSION's:
+-  # cts/tests/tests/os/assets/platform_versions.txt
+-  PLATFORM_SDK_VERSION := 29
+-endif
+-.KATI_READONLY := PLATFORM_SDK_VERSION
+-
+ ifeq (REL,$(PLATFORM_VERSION_CODENAME))
+   PLATFORM_PREVIEW_SDK_VERSION := 0
+ else
+diff --git a/tools/buildinfo.sh b/tools/buildinfo.sh
+index 9bee11548..09d8f70f5 100755
+--- a/tools/buildinfo.sh
++++ b/tools/buildinfo.sh
+@@ -11,8 +11,7 @@ echo "ro.build.version.preview_sdk=$PLATFORM_PREVIEW_SDK_VERSION"
+ echo "ro.build.version.preview_sdk_fingerprint=$PLATFORM_PREVIEW_SDK_FINGERPRINT"
+ echo "ro.build.version.codename=$PLATFORM_VERSION_CODENAME"
+ echo "ro.build.version.all_codenames=$PLATFORM_VERSION_ALL_CODENAMES"
+-echo "ro.build.version.release=$PLATFORM_VERSION_LAST_STABLE"
+-echo "ro.build.version.release_or_codename=$PLATFORM_VERSION"
++echo "ro.build.version.release=$PLATFORM_VERSION"
+ echo "ro.build.version.security_patch=$PLATFORM_SECURITY_PATCH"
+ echo "ro.build.version.base_os=$PLATFORM_BASE_OS"
+ echo "ro.build.version.min_supported_target_sdk=$PLATFORM_MIN_SUPPORTED_TARGET_SDK_VERSION"
+-- 
+2.36.0
+

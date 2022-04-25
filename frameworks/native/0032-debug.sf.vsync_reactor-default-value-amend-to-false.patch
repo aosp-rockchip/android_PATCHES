@@ -23,5 +23,5 @@ index 5c0ba01cd..d6e2a99f9 100644
          static constexpr int defaultRate = 60;
          static constexpr auto initialPeriod =
 -- 
-2.35.1
+2.36.0
 

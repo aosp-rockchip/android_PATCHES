@@ -1,43 +1,64 @@
 diff --git a/gen_patches_body.sh b/gen_patches_body.sh
-index 3a1103f..129c9e2 100755
+index 3a1103f..db7c8bf 100755
 --- a/gen_patches_body.sh
 +++ b/gen_patches_body.sh
-@@ -1,6 +1,9 @@
+@@ -1,7 +1,32 @@
  #!/bin/bash
- if [[ $REPO_REMOTE == rk* ]] || [[ $REPO_RREV == rk33* ]]; then
+-if [[ $REPO_REMOTE == rk* ]] || [[ $REPO_RREV == rk33* ]]; then
 -    REMOTE_DIFF=`git log $REPO_LREV..HEAD`
-+	LOCAL_PATH=$(pwd | cut -f7- -d/)
-+	echo $LOCAL_PATH
-+	git fetch https://android.googlesource.com/platform/$LOCAL_PATH refs/tags/android-11.0.0_r28
+-    LOCAL_DIFF=`git diff`
++
++function aospremote()
++{
++    if ! git rev-parse --git-dir &> /dev/null
++    then
++        echo ".git directory not found. Please run this from the root directory of the Android repository you wish to set up."
++        return 1
++    fi
++    git remote rm aosp 2> /dev/null
++    local PROJECT=$(pwd -P | sed -e "s#$ANDROID_BUILD_TOP\/##; s#-caf.*##; s#\/default##")
++    # Google moved the repo location in Oreo
++    if [ $PROJECT = "build/make" ]
++    then
++        PROJECT="build"
++    fi
++    if (echo $PROJECT | grep -qv "^device")
++    then
++        local PFX="platform/"
++    fi
++    git remote add aosp https://android.googlesource.com/$PFX$PROJECT
++    echo "Remote 'aosp' created"
++}
++
++if [[ $REPO_REMOTE == "rk"* ]] || [[ $REPO_RREV == rk33* ]]; then
++	aospremote
++	git fetch aosp android-11.0.0_r28
 +    REMOTE_DIFF=`git log FETCH_HEAD..HEAD`
-     LOCAL_DIFF=`git diff`
++    LOCAL_DIFF=$(git diff)
      if [ -n "$REMOTE_DIFF" -o  -n "$LOCAL_DIFF" ]; then
          mkdir -p $STUB_PATCH_PATH/$REPO_PATH/
-@@ -13,13 +16,10 @@ if [[ $REPO_REMOTE == rk* ]] || [[ $REPO_RREV == rk33* ]]; then
-         git merge-base HEAD $REPO_LREV | xargs git show -s >> $STUB_PATCH_PATH/$REPO_PATH/git-merge-base.txt
+ 
+@@ -9,18 +34,18 @@ if [[ $REPO_REMOTE == rk* ]] || [[ $REPO_RREV == rk33* ]]; then
+         REMOTE_URL=`git remote -v`
+         echo "$REMOTE_URL" >> $STUB_PATCH_PATH/$REPO_PATH/git-merge-base.txt
+         echo "remote branch:" >> $STUB_PATCH_PATH/$REPO_PATH/git-merge-base.txt
+-        git branch --contains $REPO_LREV -r >> $STUB_PATCH_PATH/$REPO_PATH/git-merge-base.txt
+-        git merge-base HEAD $REPO_LREV | xargs git show -s >> $STUB_PATCH_PATH/$REPO_PATH/git-merge-base.txt
++        git branch --contains FETCH_HEAD -r >> $STUB_PATCH_PATH/$REPO_PATH/git-merge-base.txt
++        git merge-base HEAD FETCH_HEAD | xargs git show -s >> $STUB_PATCH_PATH/$REPO_PATH/git-merge-base.txt
+     fi
+-
+     if [ -n "$REMOTE_DIFF" ]; then
+-        git format-patch $REPO_LREV..HEAD -o $STUB_PATCH_PATH/$REPO_PATH
++        git format-patch FETCH_HEAD..HEAD -o $STUB_PATCH_PATH/$REPO_PATH
      fi
  
--    if [ -n "$REMOTE_DIFF" ]; then
--        git format-patch $REPO_LREV..HEAD -o $STUB_PATCH_PATH/$REPO_PATH
--    fi
-+    git format-patch FETCH_HEAD..HEAD -o $STUB_PATCH_PATH/$REPO_PATH
-+
-+    git diff --binary > $STUB_PATCH_PATH/$REPO_PATH/local_diff.diff
- 
--    if [ -n "$LOCAL_DIFF" ]; then
--        git diff --binary > $STUB_PATCH_PATH/$REPO_PATH/local_diff.diff
--    fi
-     if [ -n "$REMOTE_DIFF" -o -n "$LOCAL_DIFF" ]; then
+     if [ -n "$LOCAL_DIFF" ]; then
+         git diff --binary > $STUB_PATCH_PATH/$REPO_PATH/local_diff.diff
+     fi
+-    if [ -n "$REMOTE_DIFF" -o -n "$LOCAL_DIFF" ]; then
++    
++    if [ -n "$REMOTE_DIFF" -o  -n "$LOCAL_DIFF" ]; then
          echo Generate patch for "$REPO_PATH" done
      fi
-diff --git a/gen_patches_skeleton.sh b/gen_patches_skeleton.sh
-index 6b75e43..2621095 100755
---- a/gen_patches_skeleton.sh
-+++ b/gen_patches_skeleton.sh
-@@ -12,5 +12,4 @@ fi
- mkdir -p $STUB_PATCH_PATH
- 
- #Generate patches
--
--.repo/repo/repo forall -c "$BASEPATH/device/rockchip/common/gen_patches_body.sh"
-+~/.local/bin/repo forall -c "$BASEPATH/device/rockchip/common/gen_patches_body.sh"
+ fi

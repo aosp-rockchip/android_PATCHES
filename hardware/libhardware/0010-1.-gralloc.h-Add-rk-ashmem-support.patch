@@ -695,5 +695,5 @@ index 0829c28e..71e5c55e
 -#endif /* HAL_PUBLIC_H */
 +#endif /* IMG_GRALLOC_COMMON_PUBLIC_H */
 -- 
-2.35.1
+2.36.0
 

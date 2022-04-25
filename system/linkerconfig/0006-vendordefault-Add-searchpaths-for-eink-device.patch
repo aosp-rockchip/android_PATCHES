@@ -27,5 +27,5 @@ index 6d56904..bd60ffd 100644
    if (is_vndklite) {
      ns.AddSearchPath("/vendor/${LIB}/vndk", AsanPath::WITH_DATA_ASAN);
 -- 
-2.35.1
+2.36.0
 

@@ -21,5 +21,5 @@ index 9cc19307..a2898f19 100755
      "/dev/block/platform/30020000.dwmmc/by-name/baseparameter",
      "/dev/block/platform/fe330000.sdhci/by-name/baseparameter",
 -- 
-2.35.1
+2.36.0
 

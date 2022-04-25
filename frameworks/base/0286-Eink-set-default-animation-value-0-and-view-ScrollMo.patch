@@ -41,5 +41,5 @@ index 0a224ea6157..13a6b4641bf 100644
              // --- Previously in 'secure'
              loadBooleanSetting(stmt, Settings.Global.WIFI_ON,
 -- 
-2.35.1
+2.36.0
 

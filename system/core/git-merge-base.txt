@@ -1,102 +1,16 @@
 remote url:
+aosp	https://android.googlesource.com/platform/system/core (fetch)
+aosp	https://android.googlesource.com/platform/system/core (push)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/core (fetch)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/core (push)
 remote branch:
   m/master -> android-11.0-ebook-rkr2
-commit 6cda6c365adff8bc3494f4164ee9ed140dfd8ab9
-Author: Weixin Zhou <zwx@rock-chips.com>
-Date:   Wed Jan 27 14:17:04 2021 +0800
+  rk/rk33/mid/11.0/develop
+commit 69522b36f776a2a8ad7e2ce69cfb58f60165b3d5
+Merge: fc6366c95 f11b01fc8
+Author: android-build-team Robot <android-build-team-robot@google.com>
+Date:   Fri Oct 2 23:05:21 2020 +0000
 
-    libsuspend: add new config of mem_sleep
+    Snap for 6880396 from f11b01fc87dd0c84f1ff460f19fe1caf78097100 to rvc-qpr1-release
     
-    enter idle mode command:
-    echo lite > sys/power/mem_sleep
-    echo mem > sys/power/state
-    
-    Signed-off-by: Weixin Zhou <zwx@rock-chips.com>
-    Change-Id: I5b157d95f6fe32c200205a5dcb841d9deda9d1b1
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/core (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/core (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-commit 6cda6c365adff8bc3494f4164ee9ed140dfd8ab9
-Author: Weixin Zhou <zwx@rock-chips.com>
-Date:   Wed Jan 27 14:17:04 2021 +0800
-
-    libsuspend: add new config of mem_sleep
-    
-    enter idle mode command:
-    echo lite > sys/power/mem_sleep
-    echo mem > sys/power/state
-    
-    Signed-off-by: Weixin Zhou <zwx@rock-chips.com>
-    Change-Id: I5b157d95f6fe32c200205a5dcb841d9deda9d1b1
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/core (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/core (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-commit 6cda6c365adff8bc3494f4164ee9ed140dfd8ab9
-Author: Weixin Zhou <zwx@rock-chips.com>
-Date:   Wed Jan 27 14:17:04 2021 +0800
-
-    libsuspend: add new config of mem_sleep
-    
-    enter idle mode command:
-    echo lite > sys/power/mem_sleep
-    echo mem > sys/power/state
-    
-    Signed-off-by: Weixin Zhou <zwx@rock-chips.com>
-    Change-Id: I5b157d95f6fe32c200205a5dcb841d9deda9d1b1
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/core (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/core (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-commit 6cda6c365adff8bc3494f4164ee9ed140dfd8ab9
-Author: Weixin Zhou <zwx@rock-chips.com>
-Date:   Wed Jan 27 14:17:04 2021 +0800
-
-    libsuspend: add new config of mem_sleep
-    
-    enter idle mode command:
-    echo lite > sys/power/mem_sleep
-    echo mem > sys/power/state
-    
-    Signed-off-by: Weixin Zhou <zwx@rock-chips.com>
-    Change-Id: I5b157d95f6fe32c200205a5dcb841d9deda9d1b1
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/core (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/core (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-commit 6cda6c365adff8bc3494f4164ee9ed140dfd8ab9
-Author: Weixin Zhou <zwx@rock-chips.com>
-Date:   Wed Jan 27 14:17:04 2021 +0800
-
-    libsuspend: add new config of mem_sleep
-    
-    enter idle mode command:
-    echo lite > sys/power/mem_sleep
-    echo mem > sys/power/state
-    
-    Signed-off-by: Weixin Zhou <zwx@rock-chips.com>
-    Change-Id: I5b157d95f6fe32c200205a5dcb841d9deda9d1b1
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/core (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/system/core (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-commit 6cda6c365adff8bc3494f4164ee9ed140dfd8ab9
-Author: Weixin Zhou <zwx@rock-chips.com>
-Date:   Wed Jan 27 14:17:04 2021 +0800
-
-    libsuspend: add new config of mem_sleep
-    
-    enter idle mode command:
-    echo lite > sys/power/mem_sleep
-    echo mem > sys/power/state
-    
-    Signed-off-by: Weixin Zhou <zwx@rock-chips.com>
-    Change-Id: I5b157d95f6fe32c200205a5dcb841d9deda9d1b1
+    Change-Id: Iaeea057cf6e2d5282894e729aca7529302f84d65

@@ -67,5 +67,5 @@ index 683c7934908..f6bd948fe11 100644
          try {
              return ImageDecoder.decodeBitmap(source);
 -- 
-2.35.1
+2.36.0
 

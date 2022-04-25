@@ -74,5 +74,5 @@ index 8c2b49a86..e48f9f3a8 100644
                      (jpegCompressQuality > 0) ? jpegCompressQuality : 1, s);
              s.flush();
 -- 
-2.35.1
+2.36.0
 

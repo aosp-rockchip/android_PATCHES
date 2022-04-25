@@ -1,0 +1,80 @@
+From 931962dbbdbaf8f60b4954d11f19531daa90f732 Mon Sep 17 00:00:00 2001
+From: wangzhou <wangzhou@google.com>
+Date: Wed, 15 Jul 2020 07:49:26 -0700
+Subject: [PATCH 151/185] Build NOTICE txt file into TestSuite zip package.
+
+- the NOTICE file is only taken from out/host.
+- currently only enabled from cts by setting flag "test_suite_notice"
+
+Test: $ make cts && unzip -l \
+        out/host/linux-x86/cts/android-cts.zip \
+        | grep NOTICE
+      $ make pts && \ unzip -l \
+        out/host/linux-x86/cts/android-cts.zip \
+        | grep NOTICE
+Bug: b/141258651
+Change-Id: I696b424e5f2b09d28d53ccbd9198e1f4f301ec01
+(cherry picked from commit 93d2fbbcad752dc0d828b52efeebfc3b74512e72)
+---
+ core/tasks/cts.mk                 |  1 +
+ core/tasks/tools/compatibility.mk | 15 +++++++++++++--
+ 2 files changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/core/tasks/cts.mk b/core/tasks/cts.mk
+index f3b436877..3b91b5e23 100644
+--- a/core/tasks/cts.mk
++++ b/core/tasks/cts.mk
+@@ -16,6 +16,7 @@ test_suite_name := cts
+ test_suite_tradefed := cts-tradefed
+ test_suite_dynamic_config := test/suite_harness/tools/cts-tradefed/DynamicConfig.xml
+ test_suite_readme := test/suite_harness/tools/cts-tradefed/README
++test_suite_notice := $(tools_notice_file_txt)
+ 
+ include $(BUILD_SYSTEM)/tasks/tools/compatibility.mk
+ 
+diff --git a/core/tasks/tools/compatibility.mk b/core/tasks/tools/compatibility.mk
+index 89b0b9b1b..6899dbd78 100644
+--- a/core/tasks/tools/compatibility.mk
++++ b/core/tasks/tools/compatibility.mk
+@@ -46,20 +46,30 @@ test_tools += $(test_suite_tools)
+ # Include host shared libraries
+ host_shared_libs := $(call copy-many-files, $(COMPATIBILITY.$(test_suite_name).HOST_SHARED_LIBRARY.FILES))
+ 
++compatibility_zip_deps := $(test_artifacts) $(test_tools) $(test_suite_prebuilt_tools) $(test_suite_dynamic_config) $(SOONG_ZIP) $(host_shared_libs)
++compatibility_zip_resources := $(out_dir)/tools $(out_dir)/testcases
++ifdef test_suite_notice
++	compatibility_zip_deps += $(test_suite_notice)
++	compatibility_zip_resources += $(out_dir)/$(notdir $(test_suite_notice))
++endif
++
+ compatibility_zip := $(out_dir).zip
+ $(compatibility_zip): PRIVATE_NAME := android-$(test_suite_name)
+ $(compatibility_zip): PRIVATE_OUT_DIR := $(out_dir)
+ $(compatibility_zip): PRIVATE_TOOLS := $(test_tools) $(test_suite_prebuilt_tools)
+ $(compatibility_zip): PRIVATE_SUITE_NAME := $(test_suite_name)
+ $(compatibility_zip): PRIVATE_DYNAMIC_CONFIG := $(test_suite_dynamic_config)
+-$(compatibility_zip): $(test_artifacts) $(test_tools) $(test_suite_prebuilt_tools) $(test_suite_dynamic_config) $(SOONG_ZIP) $(host_shared_libs) | $(ADB) $(ACP)
++$(compatibility_zip): PRIVATE_NOTICE := $(test_suite_notice)
++$(compatibility_zip): PRIVATE_RESOURCES := $(compatibility_zip_resources)
++$(compatibility_zip): $(compatibility_zip_deps) | $(ADB) $(ACP)
+ # Make dir structure
+ 	$(hide) mkdir -p $(PRIVATE_OUT_DIR)/tools $(PRIVATE_OUT_DIR)/testcases
+ 	$(hide) echo $(BUILD_NUMBER_FROM_FILE) > $(PRIVATE_OUT_DIR)/tools/version.txt
+ # Copy tools
+ 	$(hide) cp $(PRIVATE_TOOLS) $(PRIVATE_OUT_DIR)/tools
+ 	$(if $(PRIVATE_DYNAMIC_CONFIG),$(hide) cp $(PRIVATE_DYNAMIC_CONFIG) $(PRIVATE_OUT_DIR)/testcases/$(PRIVATE_SUITE_NAME).dynamic)
+-	$(hide) find $(PRIVATE_OUT_DIR)/tools $(PRIVATE_OUT_DIR)/testcases | sort >$@.list
++	$(if $(PRIVATE_NOTICE),$(hide) cp $(PRIVATE_NOTICE) $(PRIVATE_OUT_DIR))
++	$(hide) find $(PRIVATE_RESOURCES) | sort >$@.list
+ 	$(hide) $(SOONG_ZIP) -d -o $@ -C $(dir $@) -l $@.list
+ 
+ # Reset all input variables
+@@ -69,4 +79,5 @@ test_suite_dynamic_config :=
+ test_suite_readme :=
+ test_suite_prebuilt_tools :=
+ test_suite_tools :=
++test_suite_notice :=
+ host_shared_libs :=
+-- 
+2.36.0
+

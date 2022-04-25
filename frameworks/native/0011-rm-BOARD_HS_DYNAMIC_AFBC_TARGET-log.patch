@@ -77,5 +77,5 @@ index ee72d8ace..b798ffc2f 100755
  	
      if (strings.EqualFold(ctx.AConfig().Getenv("BOARD_HS_DYNAMIC_AFBC_TARGET"),"true")) {
 -- 
-2.35.1
+2.36.0
 

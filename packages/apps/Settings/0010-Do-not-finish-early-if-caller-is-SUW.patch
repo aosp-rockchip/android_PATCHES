@@ -38,5 +38,5 @@ index a0aa6db4c7..4179ea3d96 100644
  
          if (authenticators == BiometricManager.Authenticators.DEVICE_CREDENTIAL) {
 -- 
-2.35.1
+2.36.0
 

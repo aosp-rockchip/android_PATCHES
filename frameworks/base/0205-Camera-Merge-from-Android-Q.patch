@@ -29,5 +29,5 @@ index 25279b31b5d..12f1dc296b4 100644
       * Unlocks the camera to allow another process to access it.
       * Normally, the camera is locked to the process with an active Camera
 -- 
-2.35.1
+2.36.0
 

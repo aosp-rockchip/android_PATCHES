@@ -84,5 +84,5 @@ index d790ada8083..bbc23fec87e 100644
          REG_JNI(register_android_app_admin_SecurityLog),
          REG_JNI(register_android_content_AssetManager),
 -- 
-2.35.1
+2.36.0
 

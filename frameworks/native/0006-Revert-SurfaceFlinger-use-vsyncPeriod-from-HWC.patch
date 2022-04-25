@@ -395,5 +395,5 @@ index a2ae6c9b8..9ca116d73 100644
      MOCK_METHOD1(setPeriod, void(nsecs_t));
      MOCK_METHOD0(getPeriod, nsecs_t());
 -- 
-2.35.1
+2.36.0
 

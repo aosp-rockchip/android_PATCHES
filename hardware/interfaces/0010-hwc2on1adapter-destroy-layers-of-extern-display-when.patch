@@ -71,5 +71,5 @@ index da771dc7a..3ae8f7f6c
              HWC2::Error getAttribute(hwc2_config_t configId,
                      HWC2::Attribute attribute, int32_t* outValue);
 -- 
-2.35.1
+2.36.0
 

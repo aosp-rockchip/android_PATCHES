@@ -103,5 +103,5 @@ index 66aa5e18d0c..775f722b13f 100644
      public void testSetUseLowPriority() {
          // GIVEN a view with all content bound.
 -- 
-2.35.1
+2.36.0
 

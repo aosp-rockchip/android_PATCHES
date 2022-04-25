@@ -137,5 +137,5 @@ index fd30d87c7..aaf36b97a 100644
      sp<IFoo> foo = IFoo::getService(IFoo::kSomeInstanceName);
      ASSERT_NE(foo, nullptr);
 -- 
-2.35.1
+2.36.0
 

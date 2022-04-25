@@ -1,0 +1,45 @@
+From 881724824dc2a9acbc7e09293a5fc71716b567f4 Mon Sep 17 00:00:00 2001
+From: Jooyung Han <jooyung@google.com>
+Date: Wed, 16 Oct 2019 22:37:30 +0000
+Subject: [PATCH 032/185] Revert "install VNDK APEX instead of VNDK libs"
+
+This reverts commit 172c8e6de0b02135bf7755c73b41c096c1a1cbc0.
+
+Reason for revert: some targets are broken
+
+Bug: 142773030
+Change-Id: Ic35b19c7973946658365ecd7de4846f3175054b5
+(cherry picked from commit 376c6130856b8a009fb8bce7917a463ca0f7cdfc)
+---
+ target/product/gsi/Android.mk | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
+
+diff --git a/target/product/gsi/Android.mk b/target/product/gsi/Android.mk
+index 93b0b150a..2b288e6b2 100644
+--- a/target/product/gsi/Android.mk
++++ b/target/product/gsi/Android.mk
+@@ -154,8 +154,7 @@ LOCAL_REQUIRED_MODULES += \
+     vndkprivate.libraries.txt \
+     vndkcorevariant.libraries.txt \
+     $(addsuffix .vendor,$(VNDK_CORE_LIBRARIES)) \
+-    $(addsuffix .vendor,$(VNDK_SAMEPROCESS_LIBRARIES)) \
+-    com.android.vndk.current
++    $(addsuffix .vendor,$(VNDK_SAMEPROCESS_LIBRARIES))
+ endif
+ include $(BUILD_PHONY_PACKAGE)
+ 
+@@ -167,11 +166,8 @@ ifneq ($(TARGET_IS_64_BIT),true)
+ _binder32 := _binder32
+ endif
+ endif
+-# Phony targets are installed for **.libraries.txt files.
+-# TODO(b/141450808): remove following VNDK phony targets when **.libraries.txt files are provided by apexes.
+ LOCAL_REQUIRED_MODULES := \
+     $(foreach vndk_ver,$(PRODUCT_EXTRA_VNDK_VERSIONS),vndk_v$(vndk_ver)_$(TARGET_ARCH)$(_binder32))
+-LOCAL_REQUIRED_MODULES += $(foreach vndk_ver,$(PRODUCT_EXTRA_VNDK_VERSIONS),com.android.vndk.v$(vndk_ver))
+ _binder32 :=
+ include $(BUILD_PHONY_PACKAGE)
+ 
+-- 
+2.36.0
+

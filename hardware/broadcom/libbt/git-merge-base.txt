@@ -1,78 +1,18 @@
 remote url:
+aosp	https://android.googlesource.com/platform/hardware/broadcom/libbt (fetch)
+aosp	https://android.googlesource.com/platform/hardware/broadcom/libbt (push)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/libbt (fetch)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/libbt (push)
 remote branch:
   m/master -> android-11.0-ebook-rkr2
   rk/rk33/mid/11.0/develop
-commit 17fa08c696294c22c1b29855c82297b4a9923d2f
-Author: Longjian Lin <llj@rock-chips.com>
-Date:   Wed Sep 9 11:32:05 2020 +0800
+commit a7191619f320c9c48c0cfc376996ca2836c7a799
+Merge: e4031f2 40c99d7
+Author: Xin Li <delphij@google.com>
+Date:   Wed Oct 30 15:38:17 2019 -0700
 
-    BT:broadcom libbt sync rk code
+    [automerger skipped] DO NOT MERGE - qt-qpr1-dev-plus-aosp-without-vendor@5915889 into stage-aosp-master am: dbe4e03015
+    am: 40c99d7f10 -s ours
+    am skip reason: subject contains skip directive
     
-    Change-Id: Idb969187a8d8aaa4d6b4994bce8846d739b66b5d
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/libbt (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/libbt (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 17fa08c696294c22c1b29855c82297b4a9923d2f
-Author: Longjian Lin <llj@rock-chips.com>
-Date:   Wed Sep 9 11:32:05 2020 +0800
-
-    BT:broadcom libbt sync rk code
-    
-    Change-Id: Idb969187a8d8aaa4d6b4994bce8846d739b66b5d
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/libbt (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/libbt (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 17fa08c696294c22c1b29855c82297b4a9923d2f
-Author: Longjian Lin <llj@rock-chips.com>
-Date:   Wed Sep 9 11:32:05 2020 +0800
-
-    BT:broadcom libbt sync rk code
-    
-    Change-Id: Idb969187a8d8aaa4d6b4994bce8846d739b66b5d
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/libbt (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/libbt (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 17fa08c696294c22c1b29855c82297b4a9923d2f
-Author: Longjian Lin <llj@rock-chips.com>
-Date:   Wed Sep 9 11:32:05 2020 +0800
-
-    BT:broadcom libbt sync rk code
-    
-    Change-Id: Idb969187a8d8aaa4d6b4994bce8846d739b66b5d
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/libbt (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/libbt (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 17fa08c696294c22c1b29855c82297b4a9923d2f
-Author: Longjian Lin <llj@rock-chips.com>
-Date:   Wed Sep 9 11:32:05 2020 +0800
-
-    BT:broadcom libbt sync rk code
-    
-    Change-Id: Idb969187a8d8aaa4d6b4994bce8846d739b66b5d
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/libbt (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/libbt (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 17fa08c696294c22c1b29855c82297b4a9923d2f
-Author: Longjian Lin <llj@rock-chips.com>
-Date:   Wed Sep 9 11:32:05 2020 +0800
-
-    BT:broadcom libbt sync rk code
-    
-    Change-Id: Idb969187a8d8aaa4d6b4994bce8846d739b66b5d
+    Change-Id: I4ef6b2e2907bd467ba863434e49a89d22c480dd0

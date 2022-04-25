@@ -43,5 +43,5 @@ index 38f9bff2a63..e499814aa5b 100644
                  PlaybackState state = mMediaController.getPlaybackState();
                  if (state != null && state.getState() == PlaybackState.STATE_PLAYING
 -- 
-2.35.1
+2.36.0
 

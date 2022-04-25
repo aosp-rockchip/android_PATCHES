@@ -95,5 +95,5 @@ index 60b7e24b85..243164a496 100644
          preference.setSummary(summary);
      }
 -- 
-2.35.1
+2.36.0
 

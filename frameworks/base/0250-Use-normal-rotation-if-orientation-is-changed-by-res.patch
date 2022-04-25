@@ -79,5 +79,5 @@ index 66dfbfdda60..fa7a2e917fd 100644
      public void testRecentsNotRotatingWithFixedRotation() {
          final DisplayRotation displayRotation = mDisplayContent.getDisplayRotation();
 -- 
-2.35.1
+2.36.0
 

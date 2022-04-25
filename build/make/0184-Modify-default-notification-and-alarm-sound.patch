@@ -1,0 +1,30 @@
+From 17d70695843d0b6091f4874f4881e9f26773469b Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Wed, 20 Jan 2021 16:58:51 +0800
+Subject: [PATCH 184/185] Modify default notification and alarm sound.
+
+On Go-Edition, OnTheHunt.ogg and Alarm_Classic.ogg doesn't exist.
+
+(cherry picked from commit c2d9bdbef1e217cf2c4af879f0c5bfe66328c5b4)
+
+Change-Id: I9367ebaaaeaa395df03e8bc3299806e14c87cbc4
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+---
+ target/product/handheld_system.mk | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/target/product/handheld_system.mk b/target/product/handheld_system.mk
+index 77c103d7e..608ad0245 100644
+--- a/target/product/handheld_system.mk
++++ b/target/product/handheld_system.mk
+@@ -85,5 +85,5 @@ PRODUCT_COPY_FILES += \
+ 
+ PRODUCT_PROPERTY_OVERRIDES += \
+     ro.carrier=unknown \
+-    ro.config.notification_sound=OnTheHunt.ogg \
+-    ro.config.alarm_alert=Alarm_Classic.ogg
++    ro.config.notification_sound=pixiedust.ogg \
++    ro.config.alarm_alert=Oxygen.ogg
+-- 
+2.36.0
+

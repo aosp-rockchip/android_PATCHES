@@ -33,5 +33,5 @@ index 4dd9a4042e..be383dc02b 100644
          String action = i.getAction();
          if (!action.equals(BluetoothDevice.ACTION_CONNECTION_ACCESS_REQUEST)) {
 -- 
-2.35.1
+2.36.0
 

@@ -380,5 +380,5 @@ index f0b0200bc..8787232a2 100644
      layer.source.buffer.useTextureFiltering = useFiltering;
      layer.source.buffer.textureTransform = mat4(static_cast<const float*>(textureMatrix)) * tr;
 -- 
-2.35.1
+2.36.0
 

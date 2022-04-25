@@ -1,98 +1,14 @@
 remote url:
+aosp	https://android.googlesource.com/device/rockchip/common (fetch)
+aosp	https://android.googlesource.com/device/rockchip/common (push)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/device/rockchip/rksdk (fetch)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/device/rockchip/rksdk (push)
 remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 97b44919eddac8ddef49be6a162f4471857226ae
-Author: wh <wanghang@rock-chips.com>
-Date:   Thu Feb 4 19:31:23 2021 +0800
+commit e4058f21f44ac06b89615a0d60faaec26d771cc0
+Merge: c3a0cdc 97b4491
+Author: tug <tugy@skyth-tek.com>
+Date:   Fri Mar 5 14:45:53 2021 +0800
 
-    common: change dp status permission
+    Merge tag '2484665f83988953a9fb5b0e0d0e3fcc0d02badf' into quartz64
     
-    Signed-off-by: wh <wanghang@rock-chips.com>
-    Change-Id: I1a663b958db4dd4921142d95e9281683c356e782
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/device/rockchip/rksdk (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/device/rockchip/rksdk (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 97b44919eddac8ddef49be6a162f4471857226ae
-Author: wh <wanghang@rock-chips.com>
-Date:   Thu Feb 4 19:31:23 2021 +0800
-
-    common: change dp status permission
-    
-    Signed-off-by: wh <wanghang@rock-chips.com>
-    Change-Id: I1a663b958db4dd4921142d95e9281683c356e782
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/device/rockchip/rksdk (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/device/rockchip/rksdk (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 97b44919eddac8ddef49be6a162f4471857226ae
-Author: wh <wanghang@rock-chips.com>
-Date:   Thu Feb 4 19:31:23 2021 +0800
-
-    common: change dp status permission
-    
-    Signed-off-by: wh <wanghang@rock-chips.com>
-    Change-Id: I1a663b958db4dd4921142d95e9281683c356e782
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/device/rockchip/rksdk (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/device/rockchip/rksdk (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 97b44919eddac8ddef49be6a162f4471857226ae
-Author: wh <wanghang@rock-chips.com>
-Date:   Thu Feb 4 19:31:23 2021 +0800
-
-    common: change dp status permission
-    
-    Signed-off-by: wh <wanghang@rock-chips.com>
-    Change-Id: I1a663b958db4dd4921142d95e9281683c356e782
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/device/rockchip/rksdk (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/device/rockchip/rksdk (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 97b44919eddac8ddef49be6a162f4471857226ae
-Author: wh <wanghang@rock-chips.com>
-Date:   Thu Feb 4 19:31:23 2021 +0800
-
-    common: change dp status permission
-    
-    Signed-off-by: wh <wanghang@rock-chips.com>
-    Change-Id: I1a663b958db4dd4921142d95e9281683c356e782
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/device/rockchip/rksdk (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/device/rockchip/rksdk (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 97b44919eddac8ddef49be6a162f4471857226ae
-Author: wh <wanghang@rock-chips.com>
-Date:   Thu Feb 4 19:31:23 2021 +0800
-
-    common: change dp status permission
-    
-    Signed-off-by: wh <wanghang@rock-chips.com>
-    Change-Id: I1a663b958db4dd4921142d95e9281683c356e782
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/device/rockchip/rksdk (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/device/rockchip/rksdk (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 97b44919eddac8ddef49be6a162f4471857226ae
-Author: wh <wanghang@rock-chips.com>
-Date:   Thu Feb 4 19:31:23 2021 +0800
-
-    common: change dp status permission
-    
-    Signed-off-by: wh <wanghang@rock-chips.com>
-    Change-Id: I1a663b958db4dd4921142d95e9281683c356e782
+    Android 11.0 Ebook release rkr2;aosp:refs/tags/android-11.0.0_r28

@@ -1,0 +1,44 @@
+From 934a8cb879989740fe526abf90c243a7e540aee4 Mon Sep 17 00:00:00 2001
+From: Jing Ji <jji@google.com>
+Date: Fri, 17 Jul 2020 21:02:32 -0700
+Subject: [PATCH 149/185] Remove a couple of LMK properties from GSI image
+
+These two properties shouldn't be set in GSI image from R on,
+otherwise they'll force lmkd to use the legacy strategy.
+
+Bug: 136212765
+Test: run cts-on-gsi -m CtsFileSystemTestCases
+Test: run cts-on-gsi -m CtsAppExitTestCases
+Change-Id: Id0001f8c4187a280cffe6c72d7a39be29065ca4e
+Merged-In: Id0001f8c4187a280cffe6c72d7a39be29065ca4e
+(cherry picked from commit 5f97d6d24f9d63a962e9d73a1c9b191ebee9ba46)
+---
+ target/board/gsi_system_ext.prop      | 2 --
+ target/board/gsi_system_ext_user.prop | 2 --
+ 2 files changed, 4 deletions(-)
+
+diff --git a/target/board/gsi_system_ext.prop b/target/board/gsi_system_ext.prop
+index dd3227efb..f085b6140 100644
+--- a/target/board/gsi_system_ext.prop
++++ b/target/board/gsi_system_ext.prop
+@@ -14,6 +14,4 @@ persist.sys.disable_rescue=true
+ ro.control_privapp_permissions=disable
+ 
+ # TODO(b/136212765): the default for LMK
+-ro.lmk.kill_heaviest_task=true
+ ro.lmk.kill_timeout_ms=100
+-ro.lmk.use_minfree_levels=true
+diff --git a/target/board/gsi_system_ext_user.prop b/target/board/gsi_system_ext_user.prop
+index db6d880b7..de8c48741 100644
+--- a/target/board/gsi_system_ext_user.prop
++++ b/target/board/gsi_system_ext_user.prop
+@@ -11,6 +11,4 @@ persist.sys.disable_rescue=true
+ ro.control_privapp_permissions=disable
+ 
+ # TODO(b/136212765): the default for LMK
+-ro.lmk.kill_heaviest_task=true
+ ro.lmk.kill_timeout_ms=100
+-ro.lmk.use_minfree_levels=true
+-- 
+2.36.0
+

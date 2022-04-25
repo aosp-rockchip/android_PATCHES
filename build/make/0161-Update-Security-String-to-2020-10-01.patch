@@ -1,0 +1,28 @@
+From 1e463f60b8d2badb66afa698bcdbec2f2fafc99f Mon Sep 17 00:00:00 2001
+From: Paul Scovanner <pscovanner@google.com>
+Date: Tue, 11 Aug 2020 19:35:09 +0000
+Subject: [PATCH 161/185] Update Security String to 2020-10-01
+
+Bug: 163542576
+Change-Id: I4973247ab66704c16446c47c6fd830a21ea2504f
+(cherry picked from commit da6e4c1964d01e71cd173267fda01bacdd25b5d4)
+---
+ core/version_defaults.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/version_defaults.mk b/core/version_defaults.mk
+index 71334d014..e867ebbb0 100644
+--- a/core/version_defaults.mk
++++ b/core/version_defaults.mk
+@@ -240,7 +240,7 @@ ifndef PLATFORM_SECURITY_PATCH
+     #  It must be of the form "YYYY-MM-DD" on production devices.
+     #  It must match one of the Android Security Patch Level strings of the Public Security Bulletins.
+     #  If there is no $PLATFORM_SECURITY_PATCH set, keep it empty.
+-      PLATFORM_SECURITY_PATCH := 2020-09-05
++      PLATFORM_SECURITY_PATCH := 2020-10-01
+ endif
+ .KATI_READONLY := PLATFORM_SECURITY_PATCH
+ 
+-- 
+2.36.0
+

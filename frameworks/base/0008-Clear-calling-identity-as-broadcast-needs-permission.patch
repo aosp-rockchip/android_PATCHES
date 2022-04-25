@@ -37,5 +37,5 @@ index 775a7dd44f6..39d6aca3857 100644
              SystemProperties.set("dumpstate.options", type);
              SystemProperties.set("ctl.start", "bugreport");
 -- 
-2.35.1
+2.36.0
 

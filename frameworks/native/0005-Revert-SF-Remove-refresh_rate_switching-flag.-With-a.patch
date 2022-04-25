@@ -627,5 +627,5 @@ index 798ba766f..64838cab7 100644
                  scheduler::RefreshRateStats>(*mFlinger->mRefreshRateConfigs, *mFlinger->mTimeStats,
                                               /*currentConfig=*/HwcConfigIndexType(0),
 -- 
-2.35.1
+2.36.0
 

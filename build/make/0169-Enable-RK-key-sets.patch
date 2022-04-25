@@ -1,0 +1,732 @@
+From 525fe56f7e4f4d22134c5af624ef9b2b7c587f8d Mon Sep 17 00:00:00 2001
+From: Dayao Ji <jdy@rock-chips.com>
+Date: Tue, 1 Sep 2020 13:58:50 +0800
+Subject: [PATCH 169/185] Enable RK key sets
+
+Signed-off-by: Dayao Ji <jdy@rock-chips.com>
+Change-Id: I15d37d300a34bd0ef36b7730dfa3e279cca5b574
+---
+ target/product/security/media.pem             |  27 +++++++++
+ target/product/security/media.pk8             | Bin 1216 -> 1217 bytes
+ target/product/security/media.x509.pem        |  45 +++++++--------
+ target/product/security/networkstack.pk8      | Bin 2375 -> 1216 bytes
+ target/product/security/networkstack.x509.pem |  52 +++++++-----------
+ target/product/security/platform.pem          |  27 +++++++++
+ target/product/security/platform.pk8          | Bin 1216 -> 1216 bytes
+ target/product/security/platform.x509.pem     |  45 +++++++--------
+ target/product/security/shared.pem            |  27 +++++++++
+ target/product/security/shared.pk8            | Bin 1218 -> 1218 bytes
+ target/product/security/shared.x509.pem       |  45 +++++++--------
+ target/product/security/testkey.pem           |  27 +++++++++
+ target/product/security/testkey.pk8           | Bin 1217 -> 1216 bytes
+ target/product/security/testkey.x509.pem      |  45 +++++++--------
+ 14 files changed, 213 insertions(+), 127 deletions(-)
+ create mode 100644 target/product/security/media.pem
+ create mode 100644 target/product/security/platform.pem
+ create mode 100644 target/product/security/shared.pem
+ create mode 100644 target/product/security/testkey.pem
+
+diff --git a/target/product/security/media.pem b/target/product/security/media.pem
+new file mode 100644
+index 000000000..d88ad3b16
+--- /dev/null
++++ b/target/product/security/media.pem
+@@ -0,0 +1,27 @@
++-----BEGIN RSA PRIVATE KEY-----
++MIIEowIBAAKCAQEAyTy73v0e1LO5osPV5gTOin+QthPu0d4mXN5VVQS7TtvscuDR
++p7tsfAGig6yXLWYZuiyiK98erKn/tAuBNQ3KUZIq//gdNYWAcPX7NWQeqDJ25f1J
++u8iLLdF4TgGq6wd4bCFwIYU8HB1+59Cidn2YhISq4YOlAW/WLMO41atQW3Mfu6LG
++vcxNaYcdCJZc3r4I2Kv30nW+2EJOey7XxmnUsn3qcmCofFbrMyw6eOZSl1i2nj4/
++eiy1nHTkr8hvgtVBLsoFjtHy8uMgh0GIPG1XMWZUBWZymaQ8oeF8N9ST1psx+MPU
++Ixzbt9ktvgdNWxqQZmC4qxexcAV1hrsSizxpqwIBAwKCAQEAhih9P1Np4yJ7wdfj
++7q3fBv+1zrf0i+lu6JQ441h83z1ITJXhGnzy/VZsV8hkyO670XMWx+oUcxv/zV0A
++zgkxi7bHVVATeQOq9flSI5gUcCGkmVOGfTBcyTZQNAEcnK+lnWugFljSvWj/RTXB
++pFO7AwMcllfDVkqOyIJ7ORzgPPY6vvS1S0IywrnYinJnlqsXlWit4x1NvbqIzoXK
++m6JmieaCmW+UipmOM8UxWF1/So3o8sEGjTSaBvtFr0F0fcC89mougd8M4bpbqfTo
+++xbfVG9PtTSM/AapGeguLfAeClGkGOmfFwwOTNnnHOttKHN8bbZgKMZOB26sYSzQ
+++jfNGwKBgQD3SG+nXjpvuP2yxMcEHLDjW2Zbrn9+YqwRDbLtntbgPd107u/+SEhz
++IdnCs82KZIgQoX8hTiAmr7Y/wsFkdGGt2OPNTcMPJ/IbuahZjQ8g4Xo94fSLGo0A
++Rrv/qSRx11VaTB4nxZiWPYDDmtDmmo6PoHD/v94BcZk91RGeRQI3pwKBgQDQVMQP
++bq6RjHKldCO9YAyCHSiXT0pL2P5wN7M6Ph9apcaxnUlLZCgiw6qtwIyJQvvIkJ2U
++WD2n4kW8ZiTcUdJ35EbyfkBQeFl7TqnRNrvnUUUek6MUBQ0+tEk3Scf078thh0c9
++uvIwBxGPd9VDA97GIV4orhA680Y1H+Y6zuZ+XQKBgQCk2vUaPtGf0Kkh2IStaHXs
++55mSdFT+7HK2CSHzvznq0+j4n0qphYWiFpEsd95cQwVga6oWNBVvH87VLIDtouvJ
++O0KI3oIKGqFn0RrmXgoV66bT6/hcvF4ALyf/xhhL5OORiBQag7sO06stEeCZvF8K
++avX/1T6roRDT42EULgF6bwKBgQCK4y1fnx8LsvcY+BfTlV2sE3Bk34bdO1RKz8zR
++fr+Rw9nLvjDc7XAXLRxz1bMGLKfbCxO4OtPFQYPS7sM9i+GlQtn2/tWK+uZSNHE2
++JH1E4Ni/DRdirgjUeDDPhoVN9TJBBNopJ0wgBLZfpTjXV+nZa5QbHrV8oi7OFUQn
++NJmpkwKBgA5CtR+q53Esi5jdJzfRqH8tR9unG2aLRxV6FXRi76OT7WCMb3Ojmltp
++5RqL/VhNNYObNGlZ/cwKVs+ZzTvCVm13kfXAXUxKp91ksME4wx3JTSYqRB3JkdrA
++rIsVivhkrUeQ+KMeORjCeDWMgI/ArJgBcFKCnkPIyjWaBuJlj++u
++-----END RSA PRIVATE KEY-----
+diff --git a/target/product/security/media.pk8 b/target/product/security/media.pk8
+index a6db9ba176d83a1c22f3b7faa57be4aa33033a2d..5e05bc939afeb77820e3d1f3b9c8b1a3963be376 100644
+GIT binary patch
+literal 1217
+zcmV;y1U~yPf&{$+0RS)!1_>&LNQU<f0RaI800e>rr!ay9qXGc{0)hbn0LeVN-u)ib
+zv$>+f)#e1wihq!{6YkO8CS2ZCRRp_E+w5}S(Wkp?d;y|^td}ij8M-W@E8iZhssFSK
+zfi(@vQIabE_#HKcfN=HuHDn&BGIr(tNxR64Ezx*R0jlc<cx)kXA%#2~9e(G~qIP|l
+zgoLW$gQWp))-1!g)vHijb052+#=Xo<X@?yMmR#Px2-vIl(sjPrLQZ=w*T!kovVH1u
+zV5odn>oY7mc;-@<Shk)%KYA>+oOI-`$ZvwxK`zP#j?wb+;~<AYh&*jqF=kW+W^$RN
+zJfY!yH`J5Xn=$yq)FT|*x7jVe2TfZVkY-@Gs~53w1$BnI5{o=(s{#Q70)hbn0EQ@i
+zKT~PrB74Et<L<5B2LH9rxAcqYZs?Ra<5+y(JxENI;TnAM{Z?#O$YjXwyU}wN$LbVw
+z8~@E+0L}?9i?+vAP!o9rs`dF&BbXF$A*7j8hJ7$x$u>|l0UVsKrJZY_7Fg1~X#Yhu
+z!K72W0|OkESHo6Hj>v+0IUL|T_By`wwM#-W!nxRra%YyS7nNwO;~h=Cx`@t&%A2BQ
+ziROZtZ<LCejx)tESY3Zgjp*{h28}eD2Kz;?L3Dk<y!L7?f!_?_x?8FA==&DmRBunU
+zG>rTPsTt@lE$|)+QKT5@pBD@cOxfog>uo4=d~LR1D8^0)ZmeM}(E2yc8v=oW0QX35
+zr(Qa5xc#!k#{?X(<6CB1u77@FtPu^e?Vi@)J>7Kf@BT<gb0OKnv(1WRh!CNFAx<DB
+zueLwJ!DMt{t=QwuO~Vf-@*BCRS&a`M;d(vc^otse07kq2sU&gNRa#6QC&ieSJ%GcS
+z(B_(skDze>zup0HnLX7Jo<#yTrvib20MJy#4{olJjB=%PBfVe@f*mNAPfAPJ{%|+5
+zIzAs-rN*(HNlRoXBEzb!z>JAP`^b=;lvq8d;zhh>B-~NbcjQL$en3!oS$j^Y(Kfs1
+zQAHk;qZ9=VKD0?UNyqf>%VCE{J-YHR2N92V)k6c`#vxuPt`Iu&Ml~PiI?m>PT>^oD
+z0HoUW8a~mV(5WHVgso_G?B|)1bX5NAa<&N}^S?Rj)9Co0N~wi~q85=Xcivn>1z>Bc
+z7Bm%aAI{Y*fbF8|$vZ-b-hv7mp=Z$==3WXF>!#D|_*}eR052#1#u!WF<B^CI8iTtI
+z)2l5J;F-K%3TpNL)jq4C5Yyvf6fOaJZvugV0E*)+U!NZfviBJH7t@tptP^l#--g{g
+zR7%gx(SE;?!`aKeFx>5M7cCrf)w2dHr`rn?xH{9tL4(rn!##`Pr9#>E{?&^5=2A3q
+zHY9yS;Ml(n7h<jm)Oaw@hJ{V_GC>5|DJM)I1h!wLIM-L{*=v*=9<_X;F3uH1Cp4L<
+zlLCQ&4nnmbs^@Vmi<sRfH_@nnEl1m@8)l0~6?zqPV(+7q?O=>=bEBGDY2_M={a8&k
+zgPSyIS^dlkR?nHuJHl3NcainLT}(=+-DI%AIKv&uO(rTt9m$c}z^scEiuh!$N09iV
+f9yu7ocr}cGkHD;$0dP`+o<qpWHJS$EWsmQ!y~<Ot
+
+literal 1216
+zcmV;x1V8&Qf&{z*0RS)!1_>&LNQU<f0RaI800e>rrZ9p8q5=T`0)hbn0InqrS{Cn@
+z{3vOxWg9XV%r?3XhL%BS)rth4K+c7RaU-MuwD#Fa!#wiZIt9W$tg2Vo1Bja!S-kb0
+zd~YF%3gS?Ox9wJ{Vr&VC@0`sxHY}j%(Yath)YvkIXOe8p2@Ghrb*_K&2{g<$p7MoS
+zCTHIaW`EGf&s~nXWmpDta|63#M<(jJ?fY`@e%GgJv&)(|97}!8fSVKzi5~zVJLCcN
+zjcNv_9<9Tv!tusda)q#(;FCh8Z=@mW`8wZqbD${0G1mqGt2+10gaba#e0M53TZXXP
+z>DPC|q>8D49^CFHfmokJ+2j#9d0+*0sgw}9fe8{>+S!b3X#aRij{*S$0)hbmbQrSc
+zx%ChIa7J?O5+P+W&nC24xq$GFTmux<-vh4p7s9G|q>$U!efK;ju7Q6Y#^pM#1-!aD
+z(@trqN)}sOmf%?>NaS&r^05Y=z1}1w9l)D5dzF9VI?P%{3`mFu2u07M$*Q6TBQnnv
+zp{_g`nv}Bc|KNo*=?T%8<yoRjlYwTWihgfH&kJXVI-*srjKy-E;r3Bcl!CAKW!1HU
+zR|bdn1C`n6ZCOmJ7U-!`>>$5U#0zl=0uP4ahx4+4GFwL~2l*KmV*S@jliyP93JEMC
+zQZBSn3JJwT1Z`Zz?qGL)zJY1NEZ*pvpv|c|dD<&SYSFQ|_guV9f!*Y*0)c@5*^eZ;
+zw`_h<YB3&ei_%?dPc@hj^ubELgbOwzVa{Q(mcabVeT+hX6f1iG|Gf9YFtBzpN3%~h
+zCTSwSoq2a)zwPz>-g>EXcl6bQrQiq~K8UP*4T1`fN?txRb?QEiU+FR!ssRdZjj-;b
+ztqaXjG>j5TGv*eDk3@VnXy6<V0)c@5%<3bRpTL#2+OW38bK#7{DLix?1Iq}<xJ1u$
+zq;W4s%C{`h=NX*B^^!Zn&#Yjx^3MgdrG71|`k{U2QFwAvl(FJ<?3J>XE`~G_e~-!i
+zsgujA{piBr{tDfS4jVRV7j!}_5ZoKd6A|t1!Nn_psJ&-PwDGvSS3K3eQ_EO^0)c@5
+zkqQ`mdPr0@M$2iR2jP>P-+2%VP1Z5gSO<A*K{P=j4=YnKsR%4oxE%beRVbw_Aa$f5
+z+INa18Jlc>zEJu=fAjfMKKyX^rA_0kZk1ZR)LR{>2?1PRhUtFIqw#+T>YH}E900MN
+zUUl?rb6qowcwJ$J%|s6c3N5H4Me4m@0)c@5h@2O>6)O&T=OB65_v^DQaMJh_SKP3L
+zC4)5g!uB78ha||0?`CL$`3xu5H64}BOo{`|!>Mz}{A;O1;QIFAxOSHLNMp=o9|R({
+zRSJfw8@JsZQ}BW7R0lp>31@kn52Dt{3q5DsVhi*1fi4{YaDGJHBTLYIkA36RH{9i`
+z0)c=#9@d+li&80?7Bvxa<%Qi$4YyY(*=my@$s9VYkz9gG)Y~hQI02kNfn3%r8z`r;
+zR$<1KH0T?{#}WAZE1ew>;_JWrQ|tlgeEn9*PSykGDr#|WnB+YoJ~d2vsGC!E+xErt
+eA0Eg=03gvAt$U-(c((LgJvS>Z*m!NYSoH9vs7Pr5
+
+diff --git a/target/product/security/media.x509.pem b/target/product/security/media.x509.pem
+index 98cd443db..dd76b304d 100644
+--- a/target/product/security/media.x509.pem
++++ b/target/product/security/media.x509.pem
+@@ -1,27 +1,24 @@
+ -----BEGIN CERTIFICATE-----
+-MIIEqDCCA5CgAwIBAgIJAPK5jmEjVyxOMA0GCSqGSIb3DQEBBAUAMIGUMQswCQYD
+-VQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4g
+-VmlldzEQMA4GA1UEChMHQW5kcm9pZDEQMA4GA1UECxMHQW5kcm9pZDEQMA4GA1UE
+-AxMHQW5kcm9pZDEiMCAGCSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbTAe
+-Fw0wODA0MTUyMzQwNTdaFw0zNTA5MDEyMzQwNTdaMIGUMQswCQYDVQQGEwJVUzET
+-MBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4gVmlldzEQMA4G
+-A1UEChMHQW5kcm9pZDEQMA4GA1UECxMHQW5kcm9pZDEQMA4GA1UEAxMHQW5kcm9p
++MIID+zCCAuOgAwIBAgIJAOxzTOe1iHc7MA0GCSqGSIb3DQEBCwUAMIGUMQswCQYD
++VQQGEwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4g
++VmlldzEQMA4GA1UECgwHQW5kcm9pZDEQMA4GA1UECwwHQW5kcm9pZDEQMA4GA1UE
++AwwHQW5kcm9pZDEiMCAGCSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbTAe
++Fw0xNDEyMjMwNjQzMzNaFw00MjA1MTAwNjQzMzNaMIGUMQswCQYDVQQGEwJVUzET
++MBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4gVmlldzEQMA4G
++A1UECgwHQW5kcm9pZDEQMA4GA1UECwwHQW5kcm9pZDEQMA4GA1UEAwwHQW5kcm9p
+ ZDEiMCAGCSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbTCCASAwDQYJKoZI
+-hvcNAQEBBQADggENADCCAQgCggEBAK4lDFoW75f8KGmsZRsyF8w2ug6GlkFo1YoE
+-n0DOhYZxI6P/tPbZScM88to6BcI+rKpX2AOImxdZvPWefG8hiQriUIW37VaqYmwJ
+-ie+czTY2LKDo0blgP9TYModnkmzMCQxot3Wuf/MJNMw2nvKFWiZn3wxmf9DHz12O
+-umVYBnNzA7tiRybquu37cvB+16dqs8uaOBxLfc2AmxQNiR8AITvkAfWNagamHq3D
+-qcLxxlZyhbCa4JNCpm+kIer5Ot91c6AowzHXBgGrOvfMhAM+znx3KjpbhrDb6dd3
+-w6SKqYAe3O4ngVifRNnkETl5YAV2qZQQuoEJElna2YxsaP94S48CAQOjgfwwgfkw
+-HQYDVR0OBBYEFMopPKqLwO0+VC7vQgWiv/K1fk11MIHJBgNVHSMEgcEwgb6AFMop
+-PKqLwO0+VC7vQgWiv/K1fk11oYGapIGXMIGUMQswCQYDVQQGEwJVUzETMBEGA1UE
+-CBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4gVmlldzEQMA4GA1UEChMH
+-QW5kcm9pZDEQMA4GA1UECxMHQW5kcm9pZDEQMA4GA1UEAxMHQW5kcm9pZDEiMCAG
+-CSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbYIJAPK5jmEjVyxOMAwGA1Ud
+-EwQFMAMBAf8wDQYJKoZIhvcNAQEEBQADggEBAITelRbV5KhyF6c9qEhwSPUzc6X3
+-M/OQ1hvfPMnlJRYlv8qnwxWcriddFyqa4eh21UWBJ6xUL2gpDdUQwAKdj1Hg7hVr
+-e3tazbOUJBuOx4t05cQsXK+uFWyvW9GZojonUk2gct6743hGSlM2MLDk0P+34I7L
+-cB+ttjecdEZ/bgDG7YiFlTgHkgOHVgB4csjjAHr0I6V6LKs6KChptkxLe9X8GH0K
+-fiQVll1ark4Hpt91G0p16Xk8kYphK4HNC2KK7gFo3ETkexDTWTJghJ1q321yfcJE
+-RMIh0/nsw2jK0HmZ8rgQW8HyDTjUEGbMFBHCV6lupDSfV0ZWVQfk6AIKGoE=
++hvcNAQEBBQADggENADCCAQgCggEBAMk8u979HtSzuaLD1eYEzop/kLYT7tHeJlze
++VVUEu07b7HLg0ae7bHwBooOsly1mGbosoivfHqyp/7QLgTUNylGSKv/4HTWFgHD1
+++zVkHqgyduX9SbvIiy3ReE4BqusHeGwhcCGFPBwdfufQonZ9mISEquGDpQFv1izD
++uNWrUFtzH7uixr3MTWmHHQiWXN6+CNir99J1vthCTnsu18Zp1LJ96nJgqHxW6zMs
++OnjmUpdYtp4+P3ostZx05K/Ib4LVQS7KBY7R8vLjIIdBiDxtVzFmVAVmcpmkPKHh
++fDfUk9abMfjD1CMc27fZLb4HTVsakGZguKsXsXAFdYa7Eos8aasCAQOjUDBOMB0G
++A1UdDgQWBBSwo+AhmGhORpnZkMYUAp8h/uo+cTAfBgNVHSMEGDAWgBSwo+AhmGhO
++RpnZkMYUAp8h/uo+cTAMBgNVHRMEBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQA3
++Zyn2paVLGTsCx/26wKElTI5/dfzrNEqbhDTLzSw4OMoV22mOYctjEC7z++QfefJz
++Lu24udBg2WnruGcNb3E8WN+QwFNPrBH8XdX2lwLXpUfJPbSnaLPUrjfNiLHBn3WH
++o1N7oz1aCuVDOFQmlvciwZY14+J8mBFnZvfiv4Lsr7G4T52hxxAbk5/YJ6z4XAne
++z/LXWRL5n4x9Zyl7SycFp8ygKXgOVqBVUKvjbsyf2A+j09ltqpumaruFZKDB3xK4
++Sz3KIE540PgSLEMeQ5KHvp41JCb6oLLnq+w2ZRujeuS//fZbsdMMmeDf5jk0KFUl
++LA+aV5q+OmuzadP6gCH+
+ -----END CERTIFICATE-----
+diff --git a/target/product/security/networkstack.pk8 b/target/product/security/networkstack.pk8
+index 877f5164ce83b5327d074d9ee6422c539d3c0534..f9f89f66d7c19ab22e746b36715172f36345a25c 100644
+GIT binary patch
+literal 1216
+zcmV;x1V8&Qf&{z*0RS)!1_>&LNQU<f0RaI800e>rrZ9p8q5=T`0)hbn0HN6MS$JKX
+z=_dFGq3qa>8HzslYV<LfRnOP-)DGr_C18L*3NCBT`D4#r%52--{H$&g??*Spv#_{5
+z5Ex*D=_v4=M1!(CTdR*$>Jgp;LNfL9jsBXyzVF2PsfJi8`{p<>fWCesu`S=ArHZtt
+zrMpFJM1s7_9(AG#eH}(+gR|$d+TI`4VzU~AP(dvdpKU@`B;l=59{V$J0NLRZwH&^L
+z0oraqJqj(lDElpwTyS!4P~{)z{xBhzd?e@&-BR$(Q@<V>>QXkJ3i&B1IM(unCLFah
+z=592WF%uX_>O-I|0|}aVRQ?AD^$kXtgXy~iHl-(KfV6d2&{yq6Ndf@_0)hbmYvuKj
+z`sou!8TzlmNRVE;v42mTqRYDD-{no>w3)6L>i{YS$(=N&LW(|y^F2RP9iF#JFM5L_
+zb<ilaWtFY)#r3^|0(R2p$F$={wrN*^cTS>Ssl0#GpV+4xuH|w4L?v~rDXDEB$v?nu
+zTzGH8(k@6XtbN?R`4+JL6NE#o6D}W(x9rrDQ<DSS2>Jjqt%@EPnnrbzp4RMIn}vAg
+zcWOp^7NgwjAkbq0S_L7JBWTRqiV;yPYrv>Ns>Vggr+cc1K5Hyel3H(!GYxRT^A<mQ
+zk(ttn7hH$n<fIXeOu?>+Fl}w+^G9PBQx28zSq7-KS7iTQyjnLPVcEp10)c@5&MI$9
+z8z04mmKg0~dsOJ-@`>3}r|n2=K(%Bb7jw{|4ocHgP#C2GV|hgZV910cov^I4Xo=l0
+zeJ}+2Lv|OP!m52|Qjo^+V`;uzGj4~866}}59vlaj+i}`4+O$6%xZ>_qjyRj>=eL;*
+zA610|Oogpx@&e>UE0*RRfTB)e0)c@5$oLdHFC5VTAEgl^xM3=A_GwS8QdU@4OgpJq
+z*(D6S+f+vN=wHs+^?Tr@lU-chourRcEqoCR5m1&L;Yf~>l?=}y4(ySA6Gb^(c_w&_
+z*JO<;q%v@WZ@2I*;cf4DmzufYvc0#HDP&tk@mn&O7pqvlFbxAPZdV@yM1)W20)c@5
+ziE*EYXKI74WDuS~r;YHJ_Xd#R#Yo!n)y_h|52A|}35Pd~;1F&Bm!>WN>o8aszIDiV
+zn+B70sLHMUEcs;<*Bn!tHw!OImz&f*cb^3Y44t}y6cVqw=b=0yJa{S-(3eS#v?aYo
+z@6WqkYB>W}h*=&)p;toK9S=kks}|nt0)c@5h5EQBbiLrJzr$d{dh2nZq((I!Hsm_x
+zh$qH7J8lSlJmT5;MU^y>PEwV_x091TX&7IPbEpekwl%qFK-&qo4hV`BUr1p74A{`<
+zP{dGO<n6O@7$KlnpU?Gk>z<#bx@RVp%zk=e8<;%VOOheFx^g=ybzTA<^g0x*Ev<^1
+z0)c>4I|vs?QEWQNPi872;rrKijL*QyYbeYK5SJvla#v2?iDgYe%xSCl2x$1F&;*M;
+zmahqOnDMEBKGC(1V={_tE=-fs<E}IUs(4@ke~EBw4%$|7RnEq9Dg1Z4O9%GO?4+Qf
+e1G;W{Xh&pJL|)!GM@JaCL@c2{l8Q`tYJR#3-a489
+
+literal 2375
+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
+
+diff --git a/target/product/security/networkstack.x509.pem b/target/product/security/networkstack.x509.pem
+index c49b95ad3..6da756957 100644
+--- a/target/product/security/networkstack.x509.pem
++++ b/target/product/security/networkstack.x509.pem
+@@ -1,34 +1,24 @@
+ -----BEGIN CERTIFICATE-----
+-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
+-7SaGRU5gtmbRBzi7e6iAAQ==
++VmlldzEQMA4GA1UECgwHQW5kcm9pZDEQMA4GA1UECwwHQW5kcm9pZDEQMA4GA1UE
++AwwHQW5kcm9pZDEiMCAGCSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbTAe
++Fw0xNDEyMjMwNjQzNDFaFw00MjA1MTAwNjQzNDFaMIGUMQswCQYDVQQGEwJVUzET
++MBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4gVmlldzEQMA4G
++A1UECgwHQW5kcm9pZDEQMA4GA1UECwwHQW5kcm9pZDEQMA4GA1UEAwwHQW5kcm9p
++ZDEiMCAGCSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbTCCASAwDQYJKoZI
++hvcNAQEBBQADggENADCCAQgCggEBAKHY8Fl4XZzpJvgHoezYjhmKPvdq9DGYVc/X
++9NQO5oUlYIA/Ci5rzvljz13KbNve/KxuEu9HN8SzsLg9EBhghOko8JxEg7I8W6uP
++VOoRngNCMvXzjf6av77vxPqphlgq++Y4MIC+fiOxLd+gpYq0p6W7RWxEgrzLHnWi
++CX0dRmWDs+ey2t4f1WKzGoRQQS0Tn21CViThrVEe+zNwANnhErUcvoQB2m4/PQot
++uij7LZNccHJvUOUf5/4wIZd8JOgO3VLwzFO/HhrqUjafCvkpKTjW8oQmHLUz5m40
++ljETGEjqQ6AuAwmaeFT+Bwj1DUaYg+m7AzalJ2aAtHVX0FftRUkCAQOjUDBOMB0G
++A1UdDgQWBBQi+LgbyFfWSoWCbQ+NVDF4ZKTPCjAfBgNVHSMEGDAWgBQi+LgbyFfW
++SoWCbQ+NVDF4ZKTPCjAMBgNVHRMEBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBH
++1kIQlSBjXRMuQdaDLytr8ZaJXIN1HApg2QA8azYQXOS/B16gwm6tBfh1dL86LL/7
++w09oM9LZv8WwtQyFNjM97vvQvkaOGW/ubhrKOk3+8HTHkEx4n7H6tYGOLdpmWepD
++fBSEFuLwq6yqG6wZFdd7IKO+sPlCxqUpqg40YAb4WOwzDbiuJnswDftP3wIaaJPh
++li6OIjRKyd3Sgw1MtffHOy+WSwqHLkGNgH6GAgvZlvhPA/yim+rjnE9oKV5G6Pyg
++QK7kJJjS/LdeqxE7M7pNRYPhcLT7qhE7MiuBuyqwAMTTBoU8u3lTdOZwNErbRT5t
++SXkgVMffkfN7wBNqpSSY
+ -----END CERTIFICATE-----
+diff --git a/target/product/security/platform.pem b/target/product/security/platform.pem
+new file mode 100644
+index 000000000..9ef69675a
+--- /dev/null
++++ b/target/product/security/platform.pem
+@@ -0,0 +1,27 @@
++-----BEGIN RSA PRIVATE KEY-----
++MIIEogIBAAKCAQEAodjwWXhdnOkm+Aeh7NiOGYo+92r0MZhVz9f01A7mhSVggD8K
++LmvO+WPPXcps2978rG4S70c3xLOwuD0QGGCE6SjwnESDsjxbq49U6hGeA0Iy9fON
++/pq/vu/E+qmGWCr75jgwgL5+I7Et36ClirSnpbtFbESCvMsedaIJfR1GZYOz57La
++3h/VYrMahFBBLROfbUJWJOGtUR77M3AA2eEStRy+hAHabj89Ci26KPstk1xwcm9Q
++5R/n/jAhl3wk6A7dUvDMU78eGupSNp8K+SkpONbyhCYctTPmbjSWMRMYSOpDoC4D
++CZp4VP4HCPUNRpiD6bsDNqUnZoC0dVfQV+1FSQIBAwKCAQBr5fWQ+ukTRhn6r8FI
++kF67sX9PnKLLuuPf5U3itJmuGOsAKgbJnTSmQoo+hvM9P1MdnrdKL3qDInXQKLVl
++la3wxfW9gwJ20ufHtONGtmlXgXdOol6pvH/Un9inG67lcf1EJXWrKaltIMk/wG5c
++eG/D0i5ILax93L75FrD+E4RDrBMuH4237NSTU5MD3Aj6ADGtih4YmkZ1kZ7W7Fqb
++hXjld2pGexaj3Osg0GMBWgUhkiNozNuKEVEsa8CoQqrGRcine6qIPmssUpJab4wz
++DXDB8xY/e5GZ0ogXXIfg5KQRjUzBrokwbW3l80djF1MOlfBZBqi2V2T/XrxaNyBh
++2cSrAoGBAM4qb0sbH8WFlhjtYntU6OPyidlSp+1IbEC1ZCAXc9ChDkrTU1AYpQJj
++eUUBYMiEI52wrLNoid0wfTAE+kN2F53Cqn1nUpDG8WNpvlwzboeJEuyXwx4cB5bb
++cdox2rQ/Hbji7lSOOJvo57eZDB9VhQNMha1m8gLkRCuW5h2Aok5hAoGBAMj4FDsv
++HNEAH6URI7hhKnD2aU+tUlZYWEw7qVjZJQy721RG9ehfztn1e+Clk11c3Z2kj1Qt
++fBELEVCWHeFIjpKVDM8gDuyRfRNFOVx5JniM12SNKaQycINvt/At4W3veJeaueCy
++vbeTKWRbRfFbMpgXq1i+MA0DLm5XHwJEhE/pAoGBAIlxn4dnaoOuZBCeQaeN8Jf3
++BpDhxUja8tXOQsAPoosWCYc3jOAQbgGXpi4A6zBYF751yHebBpN1qMqt/Cz5ZRPX
++HFOaNwsvS5eb1D13nwUGDJ26ghQSr7nnoTwhPHgqE9CXSY20Jb1F78+7XWo5A1eI
++WR5EoVdC2B0PRBOrFt7rAoGBAIX6uCd0veCqv8NgwnrrcaCkRjUeNuQ65Ygnxjs7
++bgh9POLZ+UWVNJFOUpXDt5OTPmkYX41zqAtctjW5aUDbCbcOCIoVX0hg/gzY0OhQ
++xFBd5O2zcRghoFefz/Vz656fpbpnJpXMfnpiG5g82UuSIbq6cjspdV4CHvQ6FKwt
++rYqbAoGAVTsIF0dRbDrJT2YqIuH713aMz8DJayjMCRCXJLhyV07eiWVNQcxpq/cI
++aPil0ASLPZavCXOY8amBPtG1kGMyimwuTJPS4640Aqp4YAB/iXBrDtpWclXOxnMp
++/He7Swf2zuykoKEDum56aEdkVERe3jlHRxi6RCyhP5KKTHhqfro=
++-----END RSA PRIVATE KEY-----
+diff --git a/target/product/security/platform.pk8 b/target/product/security/platform.pk8
+index e27a3933e82ee93d4faa03ed06467bfecf81bf80..f9f89f66d7c19ab22e746b36715172f36345a25c 100644
+GIT binary patch
+delta 1194
+zcmV;b1XcUM3BU=ECV!#W@L70WoarX`2chiPjv0zR_iFSpm{rf$^wbXKg(YBsKMF2u
+z&iP}{UCM0R-u$d?67NSh#IvxtJrEdRgy|^ooJ51NJX@=eRO%6)141(O^Ns$RzrOFp
+z`l*IkD*NU*Fo3>(Be5;tprwkmr=`0^Y(#>*%N}*234I+#Wq*US=d#+~AJt;B8iY_m
+zEfb$@LRKW<tx+EPGjIUe;S#kRzJvkVZa+N=ExIWCEt6bua&J)OALsrsA(wn4=nmad
+z@XS-c9vbRWHlGUlDJeMC@`NTFwKL{!G?p<F7)a_vpe_Rmns`+H2MF~IMwo-?y8||*
+zCuV@Obyv_=?SDl{0s#X8f&l<)<@J#I=@Uj7`me!AkY2m7e@~pE%ev#=<xS$WnXVY?
+z04fH_oiwIGiav((JwH<&p0`RbdV?Z$&?vQKm96l_^}T}vcGBm^wBts$X;*=FPNH6^
+zynoc6*ryw=<#GK)C3UMQscj(1KfrEWcyGhfE=Vn`eSh4(`4+JL6NE#o6D}W(x9rrD
+zQ<DSS2>Jjqt%@EPnnrbzp4RMIn}vAgcWOp^7NgwjAkbq0S_L7JBWTRqiV;yPYrv>N
+zs>Vggr+cc1K5Hyel3H(!GYxRT^A<mQk(ttn7hH$n<fIXeOu?>+Fl}w+^G9PBQx28z
+zSq7-KSAS&xUc6d2AYs|Ws{(<60M06JOB)}>g_aoYVtZ8R<MN5wQm5@mY(TYSAQyAc
+zp$<yZQ&1SC0%Lha0bt04Bb~6UvuKIkFnurt`a^aXox-YpXHt;H@ndPeTr+Nmi4yFW
+z!yX(5mfLaKG1|009k}A|RE{{C=;ybY3?Eg61Ak0~t!DB9<U}i$<{f~dPGJIpfdI((
+z6gw{*(EuN%5hJ)^Dsc8`Ppwi`SXfLusaV-147=M@M)l}l&e`>Q;H8sYT-}|dk5nyu
+z5epGemL1_pj*^uO&ma!$k$n?IIb3-rc#PL%jVYuuaD#8R@GaqO?|7G*x!|(Bx05Mk
+zTYp9ITQZmzt607;4FfK2S04gIgiq-Lfq?*tai520YJ;w15S~G&jqsQE29V*!NZRt%
+z&O*QsqKg&@hc}Gi5N-jNrY->MFjyD9b;x&{29tHD%B}n?`DGK=98;P%3olETo76pb
+zp9KaCow|Y)60f=Ep*$fxcq$Xnmr0GZC4ap|@6WqkYB>W}h*=&)p;toK9S=kks}|nt
+z0)c@5h5EQBbiLrJzr$d{dh2nZq((I!Hsm_xh$qH7J8lSlJmT5;MU^y>PEwV_x091T
+zX&7IPbEpekwl%qFK-&qo4hV`BUr1p74A{`<P{dGO<n6O@7$KlnpU?Gk>z<#bx_@UT
+zmCSy6VjGw|*-Mfky1H^ZDRo`~9`rgCtSzmIn*xD=RXYe5M^S7#$xmh~BH{bjc8t%!
+z$!jRg2@sbgxN=uc-ic*RLCk5Z_XueCrO*V6J(jNtbC~g|fj-f-kYh56Y%WZb(&Mf)
+z0;+gm0Dp;aYYy60a#ha8b1D3HyCX{n_Rj32prHf0ZhB}(WK=|6-Z@7{7`j9(p+Ay}
+IOn7R3y4>A5AOHXW
+
+delta 1194
+zcmV;b1XcUM3BU=ECV!lG1(K`{T{s-xs%7lRrT}g>NDOUq2eBX#zEFlbtKzj?0Gi)%
+zM%MBmB7n!uO?%rWBs+?LY$mfy6Llk`l4v4H1l$2hK70z#8U@I7_L~EHU@)DKbkahA
+z;cKlbhcq@BQR??9NG%Dn1hI!+60DfPs&_qT0J-Y@<!xBL*njBS7Wt!K37j{mG^XF}
+zx3;uO1fB<?Y5dPDRF?A3Hr7q~3OkLDG^4t!O!YHyt0!@rJEezItqfEA6ye)N)gB{H
+zyXicer0x06R3;Np>{C_;ziFcXN}zqU_v#=G38ulco*_UliR}@Pi8`xVk$~}1=r4t&
+zS5wbl!H{vq?tjQ90s#X8f&l<%Py@FeUOpvglyR9zg~R|!d4*k`Oa&mo3)D5P(Z}p~
+z=&KRxON5V16>L@7h~83?8Et(B07x0k+_$4`7-5>hh66oTFw|19-)63bqfZh7Qa~VS
+z3iymHRqLG|99kmIyNmJq955aRcCE{=lniqafgDeMMSoS%M^o-d<<yXxF*MwTd~5oF
+ztRI(o5O9wL@f70!0jS_o5(yL(omlCPKtiU{duh^VrpjiKJYkKyBAe<4wnR5b`$(q;
+zD&j+%%|jXT>xX;JnQoNPm9p-SYQM4#VRJ*i(v&d>pk0OlG^Hsj``%F~3Mc5Xd{g{k
+z?{<&Lsek$3{@19uS+3T*n*xD>0LUkI!tOA!5HA19wP~{T<Mn(q-hOsh;UpP%AJuSC
+zy9f9q_Ei);DTx|k)9^XJA<tNRf~x!A1e+54{)-a_%#O2qT{~1Tp2O~rQImm)>_&6S
+zdrFpW3E=E6;e=-y4lxeTT}neE`h1@sICw%-W`D8V+Dr9S%3T3+;kLSBiNykefdI%L
+zHyAfI^JMo0c=YRA>PKqn6{?|jRC4VtfwT?5COwd@9b16`s`aP>`Guz66So)nN&1*d
+z*<t7u>QVY`u<Z>a$MXLLgQX-txQATcWRjsQ6ceI{Ox2k!aIu&cM6)!Plp<?+Pg?}8
+zK7VMZ(J}YA*?o&J3b}L|(V8@cN+kONfq?*pZ>21r%OJIMs)r++%%km2Qq4a8`H$;u
+zW>0F4O5rD3rEN~*V$*R35tfZg(JB^-I{mD1{Xhc}45+EH46og^cc$plI3Q`)^j_f&
+z0R{5eqK5q3WJz1=NFVF1nh>-gw2D44f`1qMQxv~?`qtv_AwA~ZPB}4?R!o+8(U%5;
+z0)c@5g=)`bdL*JlPgwg+@;ye{M@9~D!1;}#^K+}sUVy|Y3m(2b0ISDNZ~^<SZ$Dys
+z5Br9v5HaRKMPo+cQJ)~52*QO-sspVU!qp|OlRoXY79C=@!LNvpW*$o+5DwUPcz<OL
+zY)7Uv=U8+pn;MIDr6!R6T*|S~_z~d|cv##Rrvib1J|*L=<zYlNoA@n1yFcjllYDPE
+zpKK&+mqmF!9enI2^g^A^Xi3Z}lJ279c=H>`GBs9U*2D&FR@Pc)4Yj1aBX!!9fCpg=
+zoADvBl>_*4(ttOJ_8qx3IB*PG&LbUs1Q<gBTm{yNPSY1cR@+~cVaMGt6N-hnhN;J*
+I3OZo%M*>_rZU6uP
+
+diff --git a/target/product/security/platform.x509.pem b/target/product/security/platform.x509.pem
+index 087f02e6a..6da756957 100644
+--- a/target/product/security/platform.x509.pem
++++ b/target/product/security/platform.x509.pem
+@@ -1,27 +1,24 @@
+ -----BEGIN CERTIFICATE-----
+-MIIEqDCCA5CgAwIBAgIJALOZgIbQVs/6MA0GCSqGSIb3DQEBBAUAMIGUMQswCQYD
+-VQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4g
+-VmlldzEQMA4GA1UEChMHQW5kcm9pZDEQMA4GA1UECxMHQW5kcm9pZDEQMA4GA1UE
+-AxMHQW5kcm9pZDEiMCAGCSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbTAe
+-Fw0wODA0MTUyMjQwNTBaFw0zNTA5MDEyMjQwNTBaMIGUMQswCQYDVQQGEwJVUzET
+-MBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4gVmlldzEQMA4G
+-A1UEChMHQW5kcm9pZDEQMA4GA1UECxMHQW5kcm9pZDEQMA4GA1UEAxMHQW5kcm9p
++MIID+zCCAuOgAwIBAgIJAP8GQTI8+VUSMA0GCSqGSIb3DQEBCwUAMIGUMQswCQYD
++VQQGEwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4g
++VmlldzEQMA4GA1UECgwHQW5kcm9pZDEQMA4GA1UECwwHQW5kcm9pZDEQMA4GA1UE
++AwwHQW5kcm9pZDEiMCAGCSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbTAe
++Fw0xNDEyMjMwNjQzNDFaFw00MjA1MTAwNjQzNDFaMIGUMQswCQYDVQQGEwJVUzET
++MBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4gVmlldzEQMA4G
++A1UECgwHQW5kcm9pZDEQMA4GA1UECwwHQW5kcm9pZDEQMA4GA1UEAwwHQW5kcm9p
+ ZDEiMCAGCSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbTCCASAwDQYJKoZI
+-hvcNAQEBBQADggENADCCAQgCggEBAJx4BZKsDV04HN6qZezIpgBuNkgMbXIHsSAR
+-vlCGOqvitV0Amt9xRtbyICKAx81Ne9smJDuKgGwms0sTdSOkkmgiSQTcAUk+fArP
+-GgXIdPabA3tgMJ2QdNJCgOFrrSqHNDYZUer3KkgtCbIEsYdeEqyYwap3PWgAuer9
+-5W1Yvtjo2hb5o2AJnDeoNKbf7be2tEoEngeiafzPLFSW8s821k35CjuNjzSjuqtM
+-9TNxqydxmzulh1StDFP8FOHbRdUeI0+76TybpO35zlQmE1DsU1YHv2mi/0qgfbX3
+-6iANCabBtJ4hQC+J7RGQiTqrWpGA8VLoL4WkV1PPX8GQccXuyCcCAQOjgfwwgfkw
+-HQYDVR0OBBYEFE/koLPdnLop9x1yh8Tnw48ghsKZMIHJBgNVHSMEgcEwgb6AFE/k
+-oLPdnLop9x1yh8Tnw48ghsKZoYGapIGXMIGUMQswCQYDVQQGEwJVUzETMBEGA1UE
+-CBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4gVmlldzEQMA4GA1UEChMH
+-QW5kcm9pZDEQMA4GA1UECxMHQW5kcm9pZDEQMA4GA1UEAxMHQW5kcm9pZDEiMCAG
+-CSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbYIJALOZgIbQVs/6MAwGA1Ud
+-EwQFMAMBAf8wDQYJKoZIhvcNAQEEBQADggEBAFclUbjZOh9z3g9tRp+G2tZwFAAp
+-PIigzXzXeLc9r8wZf6t25iEuVsHHYc/EL9cz3lLFCuCIFM78CjtaGkNGBU2Cnx2C
+-tCsgSL+ItdFJKe+F9g7dEtctVWV+IuPoXQTIMdYT0Zk4u4mCJH+jISVroS0dao+S
+-6h2xw3Mxe6DAN/DRr/ZFrvIkl5+6bnoUvAJccbmBOM7z3fwFlhfPJIRc97QNY4L3
+-J17XOElatuWTG5QhdlxJG3L7aOCA29tYwgKdNHyLMozkPvaosVUz7fvpib1qSN1L
+-IC7alMarjdW4OZID2q4u1EYjLk/pvZYTlMYwDlE448/Shebk5INTjLixs1c=
++hvcNAQEBBQADggENADCCAQgCggEBAKHY8Fl4XZzpJvgHoezYjhmKPvdq9DGYVc/X
++9NQO5oUlYIA/Ci5rzvljz13KbNve/KxuEu9HN8SzsLg9EBhghOko8JxEg7I8W6uP
++VOoRngNCMvXzjf6av77vxPqphlgq++Y4MIC+fiOxLd+gpYq0p6W7RWxEgrzLHnWi
++CX0dRmWDs+ey2t4f1WKzGoRQQS0Tn21CViThrVEe+zNwANnhErUcvoQB2m4/PQot
++uij7LZNccHJvUOUf5/4wIZd8JOgO3VLwzFO/HhrqUjafCvkpKTjW8oQmHLUz5m40
++ljETGEjqQ6AuAwmaeFT+Bwj1DUaYg+m7AzalJ2aAtHVX0FftRUkCAQOjUDBOMB0G
++A1UdDgQWBBQi+LgbyFfWSoWCbQ+NVDF4ZKTPCjAfBgNVHSMEGDAWgBQi+LgbyFfW
++SoWCbQ+NVDF4ZKTPCjAMBgNVHRMEBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBH
++1kIQlSBjXRMuQdaDLytr8ZaJXIN1HApg2QA8azYQXOS/B16gwm6tBfh1dL86LL/7
++w09oM9LZv8WwtQyFNjM97vvQvkaOGW/ubhrKOk3+8HTHkEx4n7H6tYGOLdpmWepD
++fBSEFuLwq6yqG6wZFdd7IKO+sPlCxqUpqg40YAb4WOwzDbiuJnswDftP3wIaaJPh
++li6OIjRKyd3Sgw1MtffHOy+WSwqHLkGNgH6GAgvZlvhPA/yim+rjnE9oKV5G6Pyg
++QK7kJJjS/LdeqxE7M7pNRYPhcLT7qhE7MiuBuyqwAMTTBoU8u3lTdOZwNErbRT5t
++SXkgVMffkfN7wBNqpSSY
+ -----END CERTIFICATE-----
+diff --git a/target/product/security/shared.pem b/target/product/security/shared.pem
+new file mode 100644
+index 000000000..f8c66f4ae
+--- /dev/null
++++ b/target/product/security/shared.pem
+@@ -0,0 +1,27 @@
++-----BEGIN RSA PRIVATE KEY-----
++MIIEpAIBAAKCAQEA3wY5kCXfheJecslH2oKf4fv5ERXWCqre8kAxwOPimo1zYzqN
++Tx3necIF22lsvlg4zYS5EuMT7lyuS2On6dbprJg0vcHnySva7cQeSlrqar4OV0LF
++Bk2KscpXfld7djoDqq2Yg1y02KtPTZGNFMkZbqjsoUfFR2FXVxioTST39yQQ/G1k
++pWJIx9chySt/NlsVQxYtAptx2ICFu1t1Ibl9wh+JVrxySQ7bsP93SDxLo4Q/aSbn
++ls4z4D9HVu6d3QsW81nR9NR5bBB9Vt7mWLUoOhfWfdk3j8M9XZmzQLSDM/YNMOo9
++6cJ3/+KrHO6gDK3r/A3iyj0v+iR1fkO4uDAQ2wIBAwKCAQEAlK7RCsPqWUGUTIYv
++5wG/6/1Qtg6Oscc/TCrL1e1BvF5M7NGzihPvpoFZPPDzKZAl3lh7Yey39D3Jh5fF
++Ro9GcxAjKSvv23KR89gUMZHxnH60OiyDWYkHITGPqY+npCatHHO7Aj3N5ceKM7Ze
++DdtmScXzFi/Y2kDk5Lsa3hilT2whik/l2dHdhGcnLaHGdbv7F+OZknrJFQ7CxzBh
++tngDRPO0Fl4c7lMFkc8e/gp+l4ItqZ5cmLOvc2k07qqvARQks5NcnQRY+bXgmCRJ
++E0LWndPgNdoa9HfxtSh/A6GFJRdJ9XFXeZixT3/6bnQMRFkCXauNloRP1iiZqKHa
++OJVGOwKBgQD9D/XjSi/SCQ9oR5g+3Rpu8ur6MAxzEcHnbUhGgnMysSZrb4TXnxvd
++yrgyJwfGhJxZKq8dF2fer8BbjVu72S1uxxIJNyMiVSDtsCghnjm6nXwhtTxzbm1c
++BDpyERNNFfWqtUCQAsIMpxEZyZq/99py++3yHg1HVYCbDIbYRv+9jwKBgQDhnP+o
++lHeqeCz+vSCWqKatrFXMdtbRJyh6I0qcDZJGKYuPxapvRHZ1i5CWpCTHO6ShwAo/
++mljOA2EcY5Lbgj9xHuq90irRoF6+woBXHZcrr93kd9WbsqH2yaKCqi7uZl1zi3+q
++sJthYZGZraXNrk31c56cSmlw42bz9MoZHFBp9QKBgQCotU6XhsqMBgpFhRAp6LxJ
++90dRdV2iC9aaSNrZrEzMdhmc9QM6ahKT3HrMGgUvAxLmHHS+D5qUdSrns5J9O3Of
++L2FbehdsOMCedXAWaXvRvlLBI32iSZ49WCb2tgzeDqPHI4BgAdazGgtmhmcqpTxM
++p/P2vrOE46sSCFnlhKp+XwKBgQCWaKpwYvpxpXNUfhW5xcRzyDky+eSLb3BRbNxo
++CQwuxl0Kg8b02E75B7W5wsMvfRhr1VwqZuXerOtoQmHnrCpLafHT4XHhFZR/LFWP
++aQ9ydT6YT+O9IcFPMRcBxsn0RD5NB6pxyxJA67Zmc8PedDP4978S3EZLQkSiozFm
++EuBGowKBgQDQt7eu/tmTMHTW37PyNhWYQHV3UWef/2BZalEpBJHeFThoKFcKKKi/
++UZqUcyvXQ505dreMr8ee/luJX1hk7XTjgdpB6kqOR+kkRyERR1d97oFk8zdQ2t2r
++fwRu2GJRf55xHNKCUfsHJu/G5X6q6yrVcvSmhgr76sp6dnsUfYwTTw==
++-----END RSA PRIVATE KEY-----
+diff --git a/target/product/security/shared.pk8 b/target/product/security/shared.pk8
+index cf99acd5215ea81649c189155a19ea276435ec4e..5dbbcc20758141b296085efdeee6e82b86aa31cb 100644
+GIT binary patch
+delta 1196
+zcmV;d1XKIM3Bn1GCV$@sIglmah2mav$w%6PpW*xY5f#=7s^0QIF~H;EnvHW~I*m^q
+z=Xt^f+i7gRSUAmuxf0_O?p&@*W2foX>8zMEy}{?nE86YE9!gs3YQ7FvLd6D6im}R9
+zeph>TIs>Y$n1fuj*sD)Xk&P6|8E&ZTp-06>VOLies7)mI_kSc1{B2~VVo1l=A;~L$
+zHd_@#7A*psaoB)`yIXZ3xqZSPiB`OFNe<hv|940{OQVE8X(s2E&NJXYM^^5g-3u1;
+zS<&>=d2A4UR^H}VwJ16l)_vJGkHbA(nX^E&gERIGFzP+&!gv4Ts~qm246W<@4dTi@
+zFZv{PenYspFn<u+0s#X8f&l>ll&;YV!|GW<luU*%=K;U#{ZO_Jj<Lr-Oe)LO?LoX=
+zOzhFKiWBdqfmuB8^C^%e-dKBK?6>qi$%mK4Mvq2w5F;ro@7r>b^Vk$Ik@1{<v^p$<
+zS&0WBF^{Q_r=%vW9CNz@J<a9EiZixe4clf(#q$;~*niqU<m9^=-Wa7%Y$1wI<=N5Q
+zgl8u$p~iK)`xoPxl6uJ%4#LMUVYYY!MDw&3UL5XI1(DAl{tAAVf-R|@T$r=3b7?g0
+zs;>bQB(sxTodj6<wcwZ}NfScWozvho+8XqC@wF&_1EGZ_7fJPTS9zGRPk;JubPPmU
+z0$r<(mVbm#)+m{%q1rf=Mmqw5fdKsv_2Wt}(g_b}N0>g{8gBCH`Y;T05y9teNJfHl
+zGO;FWZ-m#M8{NvdGA9Sdgq&F_uN@a>-mk!0ja$3fEpEpW2{$7mRUqxKC?TFXx}AI>
+zwLEifZCnI8auE|v74@pMK#&5$45twp$(q0S+JAEU?eZQCM^%8E42IZ7|Gkd_fq?+w
+zod2klcdB?S{=FcUsHUx~Rm^tQ(I+T+BTAeNl13?ukHxBQM0RzHkd~w*$2+8<zzRQ_
+zSk41s9AlE(f<JK{>b=q`(V$+w!hlyDmn*N`<agDZvZ40LqJpX}?q*$ci+`%Hn_*#*
+znSZUN&8|)LbDo?^X>j9a^YqFY98hWX0)c@5sI^X)hRTcv3PptwDd@aO_eW86U7`!t
+znn>E&tW3;y8JzV4I%*P=+<MF!1up{<<{Wgs51N#9D(AD3eLHiXFJW7H7i>7do^@~*
+zX?xMWQo$pAqDh`TSSI$i4Bif-$0LAX0e{xB8VhEIXDX#UOsDhqzO#hms}cxV<%Ft!
+zUjl)F0G4Q~aANv#rE^q%6}iR4bI3U|`Q(dla8YdBXbB81#$5`7#`M@u`3JSR!ox3p
+z7;DvBDrV*0tm|k(VdtzWOKI`b;c?*=lz%K$k7*Bbbv~F+<GmrlPcat(#>w<VK7UOI
+zs&UH_K<l<<bHm<rGx+zv65K{hLPVmYF=i6rMxz3OfdJ6Ax32!#lQ4AF-?Q>I6_`ME
+zcTs1b|6o~aQ7HtG-W51#C|3$7sJ~H~lyfWBL!CKxw~VjHp8i{jUsz=AbmM{ALF!75
+zN9iO-ArVJceeQu|^EXi1-K&2DZY9`aQGcFs9MXbO`v)fP#^rvh>nhc9^rnUi`|8Si
+Kc6$_kj1y1oAxs$n
+
+delta 1196
+zcmV;d1XKIM3Bn1GCV$An+x-bjE%aPJ@uM!%7zONd{8-QzmmARbwJatraDkl}8E4^G
+z-_xSU@w4FQ4CO`FohV2m0uk$m@cn}l(|bY;5jRlGlwpeKa`cE~W4**;e5wotgUDo)
+z<55*{7XvuI+{Ddl-O<3J^Iu%@PSfNBIzCw9uwG_N&EYG{XMb~F*549I!)fLvLc9t`
+zDdjmA^}~<)Qqg;J$;UUC-La0;fmsN3RDNc^#oEeDC8q0^4%ulVaGj$9x@2s$ma`@3
+zY+Q>jdNX&jyX42uGbKWi7C&f_QmhDtP{=$`k4yEf@UGRO+@M%Lny{@GWevCPq_RKT
+zMTk{L(Eh7(7=Jj40s#X8f&l>lh1We(TZYL^lGRJXA2zzKouU1Zin?UIHTljRZpihk
+zz7V^bmODS<Y=ukBK$^2dgXI%&Fcz!}@>%u%S7G8(EC>sFHQl&D2SuUyTJ4w9*g>dq
+zU07Gz?YHdU<Dj|%CDlFHi1Fz*fNY{alT0*?Lalr$kbjpTKJMM#mK`!g_GaO#v)gW;
+zVJYk1@%!Xra{}V1=BznKl{o?<2jowPD$1`0qh*6D^5@*8bSq<<rneiS8-l)#w65&e
+zSKzul6bs8;oT1#?;l@jhr@WMPGM9Dwd1Hia=Xd6+tP(__X#{%e-$w)n8zBR7IYiA1
+z<!3a5vwzcPXh8VSlxnjNSYrZ#fdJ>XLJ-O_WGo$`?Q8JXZy+||CI}RHz_gmGEB08N
+zu=-v0nPG1G_9Y)uHT)&$#&8ZsK<*ttf{8k!Vw}<ry;?~RlIXveXobJsZ3LwAa7|wT
+zr@qxugvr=hQEkp@d+eQG;p$r7;`4AaQyW0hn14tGbtWDWAuaIxC*kxJ;uxm_fq?+s
+z%^dT#YZj<Tz5cUYeBx|ez@RPTgC%DJoMyFY$+T2Pgf+456UJ3UsH~smCwBpLA0<)3
+z5=M%_w7$#{aGR}-tGzdT7l9v1Z6wE!VFf8p<e&4Vx`JbQ9d^uSz1{1H*le6#cC<Vl
+z<9{+c?_cAW&S1ur4GBI1*KxiVPoEo40)c@5ntCh?F?Q{8zHFXH_2fzwdFyVl4W@v2
+zXB-_)<-N;Mlli-rN&Qa4YBtWO8AaKk34|+2Xw|G+d~89z;a@1`+h4au)eoBk)jmkA
+z!%X#v>Hu%ljy70^kUNW>iJVfMzCY{nk$>u!O!ao+5-T=kg;@B+6box}_58&_O=Ij3
+zZvugV0F&MmO(aKTa4>$U%;-}=os%mSbL|2c?^nH<&PIlKI4=UucAmG{jxEK=YM8|O
+z0QkRdHi2P;T!AAg-C*^-9$s>OB>iOozlKP|FSP4e#x$5}qHiYwm!=b>h(vyq@_$?9
+zoxPK!cqkL>%qR5fm%53S*|-R>)B)u7e!4Xjyx#(WfdJ8GssWmZZkdSYHR*GgRD@#K
+z!J)dt@oVyF{$u)#m4uRWY-z8k6*-ue-&99bO6=Z9%34BJZi0qeFY)Bk{hjY+!nzs`
+z&uRRgfmXK*2ERU0x;)%Onnm=PJ0+nVINy?uCo;|Zi;qxc^s#PazGQQ~3(M4QA6(fv
+KrHo<z<Zy)0++8IA
+
+diff --git a/target/product/security/shared.x509.pem b/target/product/security/shared.x509.pem
+index 7f886a844..41cf18666 100644
+--- a/target/product/security/shared.x509.pem
++++ b/target/product/security/shared.x509.pem
+@@ -1,27 +1,24 @@
+ -----BEGIN CERTIFICATE-----
+-MIIEqDCCA5CgAwIBAgIJAPKnM5a9OHZ6MA0GCSqGSIb3DQEBBAUAMIGUMQswCQYD
+-VQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4g
+-VmlldzEQMA4GA1UEChMHQW5kcm9pZDEQMA4GA1UECxMHQW5kcm9pZDEQMA4GA1UE
+-AxMHQW5kcm9pZDEiMCAGCSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbTAe
+-Fw0wODA3MjMyMTU3NTlaFw0zNTEyMDkyMTU3NTlaMIGUMQswCQYDVQQGEwJVUzET
+-MBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4gVmlldzEQMA4G
+-A1UEChMHQW5kcm9pZDEQMA4GA1UECxMHQW5kcm9pZDEQMA4GA1UEAxMHQW5kcm9p
++MIID+zCCAuOgAwIBAgIJAI5FGVmx3kMjMA0GCSqGSIb3DQEBCwUAMIGUMQswCQYD
++VQQGEwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4g
++VmlldzEQMA4GA1UECgwHQW5kcm9pZDEQMA4GA1UECwwHQW5kcm9pZDEQMA4GA1UE
++AwwHQW5kcm9pZDEiMCAGCSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbTAe
++Fw0xNDEyMjMwNjQzNTRaFw00MjA1MTAwNjQzNTRaMIGUMQswCQYDVQQGEwJVUzET
++MBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4gVmlldzEQMA4G
++A1UECgwHQW5kcm9pZDEQMA4GA1UECwwHQW5kcm9pZDEQMA4GA1UEAwwHQW5kcm9p
+ ZDEiMCAGCSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbTCCASAwDQYJKoZI
+-hvcNAQEBBQADggENADCCAQgCggEBAMjC2/0JSi30XD/xoy7SGAXscvxY0BeXG9D2
+-tSwmLXCBnRkZZ+FY39Oix/Gz4OgM5UXXnShIIgIR64bw/YMS03tCDBE3UMyUYYro
+-cvSIZGO9xGJ8qgwEg8hkk+NRVXEXAzi/3MTNat3RwKLzX1zyTtPkBDo+WOKwXmZM
+-zeEry2dzX9bfEknDaeYlQrwKRynlORf1w4/6UtF7c8nHN5jdsY7UgVkIdVR+Zr/F
+-2spMJabrlg7ZaSNwnaMCumRstJazJehsXIsuejN3srvkx88zJUKRFj9okVKsCIVQ
+-yDxQj0v1rfCu1aLcoFg/mrCtF2UNt+6ksj/bRYhVR9D+q3IYOIkCAQOjgfwwgfkw
+-HQYDVR0OBBYEFMtMfizbs/CtqY2reZaNFy6dux7RMIHJBgNVHSMEgcEwgb6AFMtM
+-fizbs/CtqY2reZaNFy6dux7RoYGapIGXMIGUMQswCQYDVQQGEwJVUzETMBEGA1UE
+-CBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4gVmlldzEQMA4GA1UEChMH
+-QW5kcm9pZDEQMA4GA1UECxMHQW5kcm9pZDEQMA4GA1UEAxMHQW5kcm9pZDEiMCAG
+-CSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbYIJAPKnM5a9OHZ6MAwGA1Ud
+-EwQFMAMBAf8wDQYJKoZIhvcNAQEEBQADggEBAECo0JaZeVnpF6NsRCRra6wrrgVD
+-fs2JeUEY94NHIDUtHG+KObCGmUL02mWYH6opUdM5cRKewZIdeVZxxSfW4knyUoKf
+-r1tZExAxHi3gllANVorUEUplbcNKjG9hBFOvwep5ktukqns/hUOm41wHKN53/pfu
+-rIN3H9DskPjkRJQ07gtgRXg+cMei5GAkkmDgA892CNw1Kkye9wbe9LJgUOl4ri//
+-16MyN4cBSRXrPMh0/MeprpMId8XIx9HC4qjuhjyJGA0YVc7bpADnukPMyqckPTl+
+-fA6Ojk19T5K2u+rUnAzwGAae3coufi+0Zo2J2715UNDNJUGA+h6q/CpVb4Q=
++hvcNAQEBBQADggENADCCAQgCggEBAN8GOZAl34XiXnLJR9qCn+H7+REV1gqq3vJA
++McDj4pqNc2M6jU8d53nCBdtpbL5YOM2EuRLjE+5crktjp+nW6ayYNL3B58kr2u3E
++Hkpa6mq+DldCxQZNirHKV35Xe3Y6A6qtmINctNirT02RjRTJGW6o7KFHxUdhV1cY
++qE0k9/ckEPxtZKViSMfXIckrfzZbFUMWLQKbcdiAhbtbdSG5fcIfiVa8ckkO27D/
++d0g8S6OEP2km55bOM+A/R1bund0LFvNZ0fTUeWwQfVbe5li1KDoX1n3ZN4/DPV2Z
++s0C0gzP2DTDqPenCd//iqxzuoAyt6/wN4so9L/okdX5DuLgwENsCAQOjUDBOMB0G
++A1UdDgQWBBQNhctzvmr/xYvRJ7pECRXqQhZg+jAfBgNVHSMEGDAWgBQNhctzvmr/
++xYvRJ7pECRXqQhZg+jAMBgNVHRMEBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQAB
++765mO4aaVJSFuYg5SNmas/9VPMRAcKG63VzgaSAmUeGrlxsAPBSModC3vBIQjQNO
++JViq6NLc1PHZ8oFvYNhydDgiT94uZUlhjVEDrj9Yjy7L8taOY3H03SxXl9lYOAga
++yakscSj8rk571nhnfmBBz7MA1B73GM7ldHDIbK7ZqVxvc3JMRtqyDFg/Gzz9j6tZ
++q+Knx5DvliEiKe0DjBOtnxGM7aum60yt/XHzte7mzEGCAAOOFvR45YP/aDKmbVqb
++XZ0Wbq/Lg1q7w6yhlWUBbu56HUszsvuiPqL9WeK/EsI66LimvC67hkv3gdfQxmUp
++JSqhm5Vjv74cbH1a4wGp
+ -----END CERTIFICATE-----
+diff --git a/target/product/security/testkey.pem b/target/product/security/testkey.pem
+new file mode 100644
+index 000000000..6dbf7f469
+--- /dev/null
++++ b/target/product/security/testkey.pem
+@@ -0,0 +1,27 @@
++-----BEGIN RSA PRIVATE KEY-----
++MIIEogIBAAKCAQEAuXvV+MRKugDN2uQEqsCkKsr2qdl8ffxLdTfqOEE5C2vDGeH8
++BpELeE7I7mKGPC/UyVK5MDUPKAYzOfA/ys5Btz14fi6p2d6sTzu/RtzyU8KPbYAC
++16tkFkRKqB9HA0P/blLoDbbAD+SlH8KJcy5YeVB9LpD0IcE7BVDlllSB7YoLVNsf
++wS0OTENpw55NuE3pRDHGbeOBojOTDKsQRxgHWb3cKtMU61VXsnDCjtcTksbCjqdP
++M2J5cmqhjFw0Aym/2x4pb4ZnUQaXvx70HftIyjGrQjse5K3Pm0O1LYSvZiuNCKD7
++VmqCugi898QkATKgSvSvqQruMGHzvy6xY65YHQIBAwKCAQB7p+P7LYcmqzPnQq3H
++Kxgch08b5lL+qDJOJUbQK3tc8oIRQVKvC1z63zCe7Fl9dTiGNyYgI19wBCImoCqH
++NCvPflBUHxvmlHLffSovPfbigbTzqqyPx5gO2DHFai9XgqpJjJqzzyq1Qxi/1wZM
++yZBQ4FN0YKLBK3yuNe5kOFaeWuRpodISLWphCP9dXa+ehRJZAX+25XgOm3TH+L9j
++7F+MR70KGmL+d31P8qFizTgMxb9QGwoJdtamefWDNGgw8U8o5YLM7lw/uBUhLcNn
++fKGOJppY+/VcpP3YEHlE07Uz8rmwaF+KfKOlxspSCFRpU017e4yAbu2gxuMh230V
++JscrAoGBAOhXwL0hgYjbcIpnuiJIn+0r8Vqxxx/eWpQjnUXXZngbW3d+R/YkW+k1
++85AnqrtZjWv+MSiG6pNab21IuBJ+kpsPOTBNVajKDPRxHNt+jdm0DKjYX/U4NoaX
+++yCggDfw9xcWLR2xmVlpb5M3qZ3zLsWd8C4dw9wfoAd01kF5CUrNAoGBAMxep6eE
++Z2XfRWBP16QB5mCSviwpxC2t78+9GKtZzv/r9skdY4pJRjKEkUBS+IQmELeYTZee
++RaQeREP+1YU7LS4OjLTuyzQnZYOcPXOEMnzA6xrkYTmhf8w/L96lxuenSF9p105V
++FjPX7vpFDgdwBuZzyy7KoK2fl5eXjzRK6uKRAoGBAJrlKyjBAQXnoFxFJsGFv/Ny
++oOchL2qUPGLCaNk6RFASPPpUL/ltkpt5TQrFHHzmXkf+y3BZ8beRn54werb/DGdf
++e3WI48XcCKL2Ezz/CTvNXcXllU4lea8P/MBrACVLT2S5c2khEOZGSmIlG76iHy5p
++SslpLT1qaq+jOYD7W4czAoGBAIg/Gm+tmkPqLkA1Om1WmZW3KXLGgsken9/TZceR
++NKqdTzC+Qlww2XcDC4A3UFgZYHpliQ++2RgULYKp464nc3QJsyNJ3M1vmQJoKPet
++dv3V8hHtliZrqogqH+nD2e/E2upGj4mODs06n1GDXq+gBJmih3SHFckVD7plCiLc
++nJcLAoGAVVpkv4iAUD8UGbVhb54eNMAQLQJ+41J4yrtMBY59l4N9fW7HEe2dzMC2
++BmVxuagcX7HSjtxIqP1tk1aySUCQmtykVuHFyXjg6ODVo+ICQb/F8QhXLsWRZ6P/
++HyxrzI9ICJfqYf75vcGqhuoJhgC39N3zIb2cp3Gu5vJ2PmN+eyM=
++-----END RSA PRIVATE KEY-----
+diff --git a/target/product/security/testkey.pk8 b/target/product/security/testkey.pk8
+index 586c1bd5cf96f9358f36b37ea98fef93f4d0a8e3..058e124e5f1a6f9f8923df18ffbc479445be5ecb 100644
+GIT binary patch
+literal 1216
+zcmV;x1V8&Qf&{z*0RS)!1_>&LNQU<f0RaI800e>rrZ9p8q5=T`0)hbn0J(eB_{2)O
+z0L|Lu1ggNKD$4e$*?fKcOLaHuI6*lJYr`4g{05N=cuvUfVum~~)X7r0Ff|V-1~WPE
+zKg!NQw>@}%E~(kxtWP_?M%?mK!jEl$0@tf#7DP&@A4da2|87#~4Yt4!<fR|NiE}Pk
+zc~E^Wkn|zJI|WeXmQ;c5iVIZRAHgjSOhakIo=vz-=|nNcZR3HWGm{Lf5JwmXS-spU
+z(-iAfSF&)zj@J{C#=?%LPcve9a%!QBTr>kIzuO)uZ-!@42A97c^d0+1$}y`#J09e%
+z&znQFErhRTD~$-C`&Md#x(K}Y#3TVSpi1<wsS55eVe`K(v16`S9RdLZ0)hbmd#B_3
+zEr%wnGv`9B$14~dhff>kQvRqiP9;XrD|=k>f)PPduM1rI-!Pu+S$%alhBqc4BVTX?
+zA|{|JhcqkCeo#~&8|IX9-+d}CJ@(>(wDYR0kH?q}*fGUwFIR%9NsOAa&nmS;7{AvB
+zOv#W?;8S#9qQNVCt~KstI98ro<Y}SO5-n<B2>)GOubzbxSpk2x<#-O8bjSF=W9(my
+zN4*LfV*Yo1Px7H+%{UCjzfc<r33k?|dG&)dXfW|lDCL68?p!~(6(KFdXMCZKCYo6L
+z^<1R=*bsR{)3r15xv*$oihQG`#>!F%RB2O9dwYz4ZtbAP<00F96(+|k0)c@5=vTnK
+zA%Te7aEfQTB1oU@EAd*f#~<EWlp~!**JgMdTX%j(_9R>BHS>@ss=HZ@YyL4PhU$}A
+zZ*54p5`L1K4>>SRRjA4g^l=>9evR3*45-*&^*A<$m-`@~fH&~>7ZxoYv6)$EZ<9Bv
+zo%1fmo$xLl!`vUB2Xxj!c?n9*0)c@5%wDIbglA>nMPN_Yqygq&lD;e{#4WAw&%GF{
+zS<e6K_Q@S%ib+N?gpoi}_=F}9x0p?ro<*b{L__}7g*z=S4ve(!%QPotgPc8cgfe`<
+z>l)-?IiY{dKQG>;#^<L<UuoA)RTeYX?)pUz2XF@FbIUHupsk;mmzR$;O6uZ~0)c@5
+zn&m4f!2t#5pj<^J!G*u`a-ioSFKU!LV!~+IIz&(sJo;2G`E8P$c})t%9DL?pNB+xj
+zS@E}#pPn#!w*L%gUwd_k<Hg(vqV^L!{|P(IUB%^<P9=G-5B$Ju03}OLWVv%`ArR(9
+zN@67&zM>y4X-dgyEj?;#ucJAD`&)-I0)c@5h(8){t(rsXE<iOpZC06;w<&VQg2^7A
+z-_vEsku<8EPcXhhTrk;p0}FsRP*@pYdS!_ZzS$TQErO}zt|xPJ39}<f+|6&90%$1r
+zt#<v@@)7NpCTpsQDj(^?+3&>K>PC-=jt<Q_pHYKeub>2(qK9;c70DG3x@8I?+?<yS
+z0)c>4T4cY7fKWda8MR?=o*p#75G?|J<5GCayG#X+eV2oMeQw7Q?VZfPwgzQ!xu_gp
+zvC@v*NT~g7lUA}xK#-c;q*md@$#~%C;MJqz0ztpU@d#Hg#gS*D{~s)C%#TP2m+E2u
+e`MtrahUy810Jrqr^C7*Qr*W?4@^(IBetRP^5kEcv
+
+literal 1217
+zcmV;y1U~yPf&{$+0RS)!1_>&LNQU<f0RaI800e>rr!ay9qXGc{0)hbn0M?Tk1m4CA
+zB(d$sV&K`>B|bjQZ0jB3{|1bx=)9=SYtwjcrwXTR<_^0LnKfDe**<rvL+9u{OJum@
+z{-V?7R`KFzs2jhsFtvEX1Vg?|au~Qq^&u68@HnAPiNd}(e~!M-kIKW^9^){{>XXo?
+z!`w>qP$CUb2nRCYfR`8UY6UY{=BAYFEVJ^2prmHVdX(5ZF$p?nH!d$^62NY4Lh)D_
+z-~I!E%nZ~-+HBp!xFlE^NCC4YWD`%n-k8ZKcSzgyXKGXpfmF!5$_KgPM^!Ts#A}-O
+zZ{F<8j%nw}qR@_bCLokQnR0zR1pacF9hu*ot~j8w7k{H2TWbF49|8db0)hbn0FMm2
+zSd@eZZOil8LF+r^ZYh5=o$?dxssvrd@O{PJN8(UP#IeNlL<!OgW+RbRJAV3b*YEHs
+z-0jeqslnozk4x-D8oerZ%Oj=Mt%82tp=Ho7P8JSX^?MdHTh}Ri|FnNK3WqH`6qj||
+z@web_*XS|#iosqrTCaCNRk{!KMRlTvd5$&3GqeJB<W5*Nq1tt1t@`yiq?4(?5b_hI
+zSF92#92@0nm;7qddzq*FiFeXvOzWzAbvvBeOk`&oj_CbIYkuOxewA09a6}$&tCOS?
+zt7b~cnEEA@KPytf`NisF?@AlW0ZHc<q7(smmIw?;qzBwbcFW$Dy-cBmdjf%h0P4V*
+z7aW_FCyWQbo|i=!g;$Ywo~N}d_PUec)~HCtrwtgU=%}LFQ)p*vGrsbeyA(~D__e#O
+zB1ZHqEX{Ow>arW*N_QWU=dJbtwUa9MNB6mRRfiD@u-F457<P+TYVmw+#Qi|17#@X(
+zZ(j;5y}JX3pCNgxRdA<SdUbnYn*xD>0O|hs88oP`H<{-WtCyW#0(F+HjcFBTNtPVs
+zqOAxo7-A$eO)H3r6sgRe?MH7gF5FJ$Tk3bck@E0NKQy`twmC#7`?TOyTgJ~$><(c=
+zegFe}?aLXyS&y+x7cyW?K{hgS`ZOu%e`OsJB7tT%e$vUP84FySkKHZd#R8E)%>sde
+z0Gxnk4`^q&#Rvr|X}T^DSmg_(X~iRQq<mtP<Zv*98VI`?@NjIAjPOMAB7aO}(hZ3b
+z`y<kGY%fi6$cXq)M<HkHhWZr@nsfP8&SD&-+NCB>j#>*`b>&xVy7{s?@%B>l*r?UT
+zWofQjN<Um3)6xQ2ziXy)IQ7KlQKP4pX99tN0Gt0$W+NLPdS;poa%B^g0i(Ie2=KV>
+z+qr0%Y;#)55J7EtGjdx74aSIRNZLvuA3cfg=kcW}3-?Ohe|UTbd3%Dz{Ubm)=h@$h
+z^0YwLsa02~o`+_B=3mQ)WXwP_fX>WJrp<9hszYeD7Xa?hso~qjW(SiJU+Bp}E&;YH
+zGXjBtV=ArL8r`H~*_EbpVp|2xsYW66=~;8`kD4v(aiPJi8`ByM)}o1ZhZ|~p>uyzH
+zw4p3uqoir?dUseWHOKf>xwmY}&%k#`MgFNpFR|mPj0O9er&4Gc#l%UD4Z+(RrHVV$
+f`+<Wg9yE52+IqAFhbH|TjTC!{W#5k#^PapnkGxO<
+
+diff --git a/target/product/security/testkey.x509.pem b/target/product/security/testkey.x509.pem
+index e242d83e2..c2dc16848 100644
+--- a/target/product/security/testkey.x509.pem
++++ b/target/product/security/testkey.x509.pem
+@@ -1,27 +1,24 @@
+ -----BEGIN CERTIFICATE-----
+-MIIEqDCCA5CgAwIBAgIJAJNurL4H8gHfMA0GCSqGSIb3DQEBBQUAMIGUMQswCQYD
+-VQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4g
+-VmlldzEQMA4GA1UEChMHQW5kcm9pZDEQMA4GA1UECxMHQW5kcm9pZDEQMA4GA1UE
+-AxMHQW5kcm9pZDEiMCAGCSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbTAe
+-Fw0wODAyMjkwMTMzNDZaFw0zNTA3MTcwMTMzNDZaMIGUMQswCQYDVQQGEwJVUzET
+-MBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4gVmlldzEQMA4G
+-A1UEChMHQW5kcm9pZDEQMA4GA1UECxMHQW5kcm9pZDEQMA4GA1UEAxMHQW5kcm9p
++MIID+zCCAuOgAwIBAgIJAJKlKMdz16FBMA0GCSqGSIb3DQEBCwUAMIGUMQswCQYD
++VQQGEwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4g
++VmlldzEQMA4GA1UECgwHQW5kcm9pZDEQMA4GA1UECwwHQW5kcm9pZDEQMA4GA1UE
++AwwHQW5kcm9pZDEiMCAGCSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbTAe
++Fw0xNDEyMjMwNjQ0MDhaFw00MjA1MTAwNjQ0MDhaMIGUMQswCQYDVQQGEwJVUzET
++MBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4gVmlldzEQMA4G
++A1UECgwHQW5kcm9pZDEQMA4GA1UECwwHQW5kcm9pZDEQMA4GA1UEAwwHQW5kcm9p
+ ZDEiMCAGCSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbTCCASAwDQYJKoZI
+-hvcNAQEBBQADggENADCCAQgCggEBANaTGQTexgskse3HYuDZ2CU+Ps1s6x3i/waM
+-qOi8qM1r03hupwqnbOYOuw+ZNVn/2T53qUPn6D1LZLjk/qLT5lbx4meoG7+yMLV4
+-wgRDvkxyGLhG9SEVhvA4oU6Jwr44f46+z4/Kw9oe4zDJ6pPQp8PcSvNQIg1QCAcy
+-4ICXF+5qBTNZ5qaU7Cyz8oSgpGbIepTYOzEJOmc3Li9kEsBubULxWBjf/gOBzAzU
+-RNps3cO4JFgZSAGzJWQTT7/emMkod0jb9WdqVA2BVMi7yge54kdVMxHEa5r3b97s
+-zI5p58ii0I54JiCUP5lyfTwE/nKZHZnfm644oLIXf6MdW2r+6R8CAQOjgfwwgfkw
+-HQYDVR0OBBYEFEhZAFY9JyxGrhGGBaR0GawJyowRMIHJBgNVHSMEgcEwgb6AFEhZ
+-AFY9JyxGrhGGBaR0GawJyowRoYGapIGXMIGUMQswCQYDVQQGEwJVUzETMBEGA1UE
+-CBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4gVmlldzEQMA4GA1UEChMH
+-QW5kcm9pZDEQMA4GA1UECxMHQW5kcm9pZDEQMA4GA1UEAxMHQW5kcm9pZDEiMCAG
+-CSqGSIb3DQEJARYTYW5kcm9pZEBhbmRyb2lkLmNvbYIJAJNurL4H8gHfMAwGA1Ud
+-EwQFMAMBAf8wDQYJKoZIhvcNAQEFBQADggEBAHqvlozrUMRBBVEY0NqrrwFbinZa
+-J6cVosK0TyIUFf/azgMJWr+kLfcHCHJsIGnlw27drgQAvilFLAhLwn62oX6snb4Y
+-LCBOsVMR9FXYJLZW2+TcIkCRLXWG/oiVHQGo/rWuWkJgU134NDEFJCJGjDbiLCpe
+-+ZTWHdcwauTJ9pUbo8EvHRkU3cYfGmLaLfgn9gP+pWA7LFQNvXwBnDa6sppCccEX
+-31I828XzgXpJ4O+mDL1/dBd+ek8ZPUP0IgdyZm5MTYPhvVqGCHzzTy3sIeJFymwr
+-sBbmg2OAUNLEMO6nwmocSdN2ClirfxqCzJOLSDE4QyS9BAH6EhY6UFcOaE0=
++hvcNAQEBBQADggENADCCAQgCggEBALl71fjESroAzdrkBKrApCrK9qnZfH38S3U3
++6jhBOQtrwxnh/AaRC3hOyO5ihjwv1MlSuTA1DygGMznwP8rOQbc9eH4uqdnerE87
++v0bc8lPCj22AAterZBZESqgfRwND/25S6A22wA/kpR/CiXMuWHlQfS6Q9CHBOwVQ
++5ZZUge2KC1TbH8EtDkxDacOeTbhN6UQxxm3jgaIzkwyrEEcYB1m93CrTFOtVV7Jw
++wo7XE5LGwo6nTzNieXJqoYxcNAMpv9seKW+GZ1EGl78e9B37SMoxq0I7HuStz5tD
++tS2Er2YrjQig+1ZqgroIvPfEJAEyoEr0r6kK7jBh878usWOuWB0CAQOjUDBOMB0G
++A1UdDgQWBBTV37ltjIiA28uNs8Z1hb6zasy5UzAfBgNVHSMEGDAWgBTV37ltjIiA
++28uNs8Z1hb6zasy5UzAMBgNVHRMEBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQAZ
++7pvK3yDr+O0G8ggDfaISkEeg0agocRcXGT/MRiPBz+n45+bEoym4hC2SdCxvHXES
++5AHkFxjWavoQqAD8We955NCmpGzDip4hUctlXzqxYfSTvGiLArG92+Hcbu5RNx/7
++o3Of39Mdge2jVKQuKAALWnb8TgJ/2k3KAUFzVqMXPY4asmnWtyW2FIKLdZU/yYTX
+++8Tp0AhP+N84HUGg5BwQRD10/OGGY54rLfFy2aSLPxUZQ+VTSZB9Z9XRLxohsF/V
++XBcZyCdPP254wDYL5R0HGWZv7CeBlVjw3FqDRI9aljdYfLpAk+clnRBwWOWHsiOE
++pJXgkkLmpq0uDXsSMJZ2
+ -----END CERTIFICATE-----
+-- 
+2.36.0
+

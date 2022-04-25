@@ -74,5 +74,5 @@ index dc064624..c5df5095
          dev->device.setContrast = hw_output_set_contrast;
          dev->device.setSat = hw_output_set_sat;
 -- 
-2.35.1
+2.36.0
 

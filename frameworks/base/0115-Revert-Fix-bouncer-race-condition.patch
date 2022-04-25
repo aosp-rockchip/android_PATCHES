@@ -61,5 +61,5 @@ index 3cf07d14cbf..ba8a1a945a7 100644
              switch (mCurrentSecuritySelection) {
                  case Pattern:
 -- 
-2.35.1
+2.36.0
 

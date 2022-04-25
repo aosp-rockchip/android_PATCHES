@@ -54,5 +54,5 @@ index 73a07bc3..737d40b6 100644
    // we've displayed the entire text buffer.
    SetColor(UIElement::LOG);
 -- 
-2.35.1
+2.36.0
 

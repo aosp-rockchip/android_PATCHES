@@ -55,5 +55,5 @@ index 5db59e53d1..8f60bb21c9 100644
  # Once in this namespace, access to libraries in /system/lib is restricted. Only
  # libs listed here can be used.
 -- 
-2.35.1
+2.36.0
 

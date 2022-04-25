@@ -46,5 +46,5 @@ index 0d9570697db..f36d97c4d12 100644
              // the display contains home stack. Although there is no next activity at the moment,
              // another home activity should be started later. Keep this activity alive until next
 -- 
-2.35.1
+2.36.0
 

@@ -25,5 +25,5 @@ index cb90cc7d9..2c47c7191 100755
      ALOGE_IF(status != NO_ERROR, "Unable to set BQ usage bits for GPU rendering: %d", status);
  }
 -- 
-2.35.1
+2.36.0
 

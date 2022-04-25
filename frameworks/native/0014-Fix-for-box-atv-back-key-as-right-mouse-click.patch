@@ -36,5 +36,5 @@ index 2d7d73b4a..96767dc5b 100644
      if (mBtnMiddle) {
          result |= AMOTION_EVENT_BUTTON_TERTIARY;
 -- 
-2.35.1
+2.36.0
 

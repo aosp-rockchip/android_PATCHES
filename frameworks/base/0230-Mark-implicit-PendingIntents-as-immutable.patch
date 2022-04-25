@@ -58,5 +58,5 @@ index b25df5f9c07..5e7280840bb 100644
          } catch (IOException e) {
              Log.e(TAG, "Couldn't dump heap for leak", e);
 -- 
-2.35.1
+2.36.0
 

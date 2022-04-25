@@ -339,5 +339,5 @@ index 85e4a1668a3..e95ccab3896 100644
          assertFalse(appWindow.canBeImeTarget());
          appWindow.mAttrs.flags &= ~FLAG_NOT_FOCUSABLE;
 -- 
-2.35.1
+2.36.0
 

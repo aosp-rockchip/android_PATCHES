@@ -28,5 +28,5 @@ index ac58f3d6a94..5f644eff722 100644
                          KEY_LIGHT_IDLE_MAINTENANCE_MIN_BUDGET,
                          !COMPRESS_TIME ? 1 * 60 * 1000L : 15 * 1000L);
 -- 
-2.35.1
+2.36.0
 

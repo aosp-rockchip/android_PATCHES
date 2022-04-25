@@ -173,5 +173,5 @@ index a5a5f81bdff..d583048fbb2 100644
      public void testAddNotification_setsUserSentiment() {
          mEntryManager.addNotification(mSbn, mRankingMap);
 -- 
-2.35.1
+2.36.0
 

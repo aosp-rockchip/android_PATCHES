@@ -28,5 +28,5 @@ index c5f62b8b4d..5fffa3a235 100644
                  deleteIntent.putExtra(BluetoothDevice.EXTRA_CONNECTION_ACCESS_RESULT,
                          BluetoothDevice.CONNECTION_ACCESS_NO);
 -- 
-2.35.1
+2.36.0
 

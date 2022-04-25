@@ -65,5 +65,5 @@ index 593121c..65e7ef9 100644
  
    ns.GetLink(ctx.GetSystemNamespaceName()).AddSharedLib({"@{LLNDK_LIBRARIES}"});
 -- 
-2.35.1
+2.36.0
 

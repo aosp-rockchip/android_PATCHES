@@ -1,0 +1,29 @@
+From 3734f3e315f8bb8ba4fb08a6a1d08b21eff7fde9 Mon Sep 17 00:00:00 2001
+From: Hao Xiaowei <hxw@rock-chips.com>
+Date: Tue, 12 Sep 2017 15:43:03 +0800
+Subject: [PATCH 174/185] main.mk : import rk prebuild.mk to generate manifest
+ version info
+
+Change-Id: Idfcf96b8c3805bcb043063eec0256bf182a771ca
+Signed-off-by: Hao Xiaowei <hxw@rock-chips.com>
+---
+ core/main.mk | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/core/main.mk b/core/main.mk
+index 6d9fcfc0e..3e644eadc 100644
+--- a/core/main.mk
++++ b/core/main.mk
+@@ -19,6 +19,9 @@ $(DEFAULT_GOAL): droid_targets
+ .PHONY: droid_targets
+ droid_targets:
+ 
++# Include prebuild.mk
++-include device/rockchip/common/prebuild.mk
++
+ # Set up various standard variables based on configuration
+ # and host information.
+ include build/make/core/config.mk
+-- 
+2.36.0
+

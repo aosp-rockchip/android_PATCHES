@@ -286,5 +286,5 @@ index 6a707eb3616..93ca34ad1a4 100644
      public void autoNightModeSwitch_batterySaverOn() throws RemoteException {
          mService.setNightMode(MODE_NIGHT_NO);
 -- 
-2.35.1
+2.36.0
 

@@ -1,90 +1,18 @@
 remote url:
+aosp	https://android.googlesource.com/platform/external/tinyalsa (fetch)
+aosp	https://android.googlesource.com/platform/external/tinyalsa (push)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (fetch)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (push)
 remote branch:
   m/master -> android-11.0-ebook-rkr2
   rk/rk33/mid/11.0/develop
-commit 9dc314842bb547381a7207585b1911fb156317f0
-Author: Chen Jinsen <kevin.chen@rock-chips.com>
-Date:   Wed Oct 30 11:38:17 2019 +0800
+commit bb72d52a81b8fa58c43681edd057430887b050a4
+Merge: 752b58e 7a9faa3
+Author: Xin Li <delphij@google.com>
+Date:   Wed Oct 30 15:35:41 2019 -0700
 
-    Add channel_fixed when channels = 2
+    [automerger skipped] DO NOT MERGE - qt-qpr1-dev-plus-aosp-without-vendor@5915889 into stage-aosp-master am: d968f23fb2
+    am: 7a9faa352d -s ours
+    am skip reason: subject contains skip directive
     
-    Change-Id: I48451ecd97df3a501486e0541e129f47283a3ddf
-    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
-    (cherry picked from commit 020639e0a0e305c50976375158be4e9bc430d777)
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 9dc314842bb547381a7207585b1911fb156317f0
-Author: Chen Jinsen <kevin.chen@rock-chips.com>
-Date:   Wed Oct 30 11:38:17 2019 +0800
-
-    Add channel_fixed when channels = 2
-    
-    Change-Id: I48451ecd97df3a501486e0541e129f47283a3ddf
-    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
-    (cherry picked from commit 020639e0a0e305c50976375158be4e9bc430d777)
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 9dc314842bb547381a7207585b1911fb156317f0
-Author: Chen Jinsen <kevin.chen@rock-chips.com>
-Date:   Wed Oct 30 11:38:17 2019 +0800
-
-    Add channel_fixed when channels = 2
-    
-    Change-Id: I48451ecd97df3a501486e0541e129f47283a3ddf
-    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
-    (cherry picked from commit 020639e0a0e305c50976375158be4e9bc430d777)
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 9dc314842bb547381a7207585b1911fb156317f0
-Author: Chen Jinsen <kevin.chen@rock-chips.com>
-Date:   Wed Oct 30 11:38:17 2019 +0800
-
-    Add channel_fixed when channels = 2
-    
-    Change-Id: I48451ecd97df3a501486e0541e129f47283a3ddf
-    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
-    (cherry picked from commit 020639e0a0e305c50976375158be4e9bc430d777)
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 9dc314842bb547381a7207585b1911fb156317f0
-Author: Chen Jinsen <kevin.chen@rock-chips.com>
-Date:   Wed Oct 30 11:38:17 2019 +0800
-
-    Add channel_fixed when channels = 2
-    
-    Change-Id: I48451ecd97df3a501486e0541e129f47283a3ddf
-    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
-    (cherry picked from commit 020639e0a0e305c50976375158be4e9bc430d777)
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/tinyalsa (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 9dc314842bb547381a7207585b1911fb156317f0
-Author: Chen Jinsen <kevin.chen@rock-chips.com>
-Date:   Wed Oct 30 11:38:17 2019 +0800
-
-    Add channel_fixed when channels = 2
-    
-    Change-Id: I48451ecd97df3a501486e0541e129f47283a3ddf
-    Signed-off-by: Chen Jinsen <kevin.chen@rock-chips.com>
-    (cherry picked from commit 020639e0a0e305c50976375158be4e9bc430d777)
+    Change-Id: Ib305b3a0b338db8cb1125a1e25111e955395c510

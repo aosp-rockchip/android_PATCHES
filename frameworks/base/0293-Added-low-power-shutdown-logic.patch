@@ -70,5 +70,5 @@ index a46ab3a9e35..5baf95abddf
          mDrawable.setBatteryLevel(level);
          mCharging = pluggedIn;
 -- 
-2.35.1
+2.36.0
 

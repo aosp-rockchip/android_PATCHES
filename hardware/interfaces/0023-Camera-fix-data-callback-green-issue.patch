@@ -30,5 +30,5 @@ index 3efed0e41..12344b090 100755
              case PixelFormat::YCRCB_420_SP: {
                  if (req->frameIn->mFourcc == V4L2_PIX_FMT_YUYV){
 -- 
-2.35.1
+2.36.0
 

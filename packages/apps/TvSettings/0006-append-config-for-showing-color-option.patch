@@ -54,5 +54,5 @@ index 933e15eb..40427446 100755
          String curColorMode = DrmDisplaySetting.getColorMode();
          Log.i(TAG, "curColorMode:" + curColorMode);
 -- 
-2.35.1
+2.36.0
 

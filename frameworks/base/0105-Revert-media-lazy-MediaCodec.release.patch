@@ -70,5 +70,5 @@ index 400ce1bc98e..8899fee7a73 100644
      status_t enableOnFrameRenderedListener(jboolean enable);
  
 -- 
-2.35.1
+2.36.0
 

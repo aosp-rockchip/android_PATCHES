@@ -70,5 +70,5 @@ index 438dee701..ffb6ad210 100644
  
  func ndkPathDeps(ctx ModuleContext) android.Paths {
 -- 
-2.35.1
+2.36.0
 

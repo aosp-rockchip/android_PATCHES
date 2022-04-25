@@ -100,5 +100,5 @@ index ef81c0a5d20..08d7f3556d3 100644
              EventLogTags.writeWmBootAnimationDone(SystemClock.uptimeMillis());
              Trace.asyncTraceEnd(TRACE_TAG_WINDOW_MANAGER, "Stop bootanim", 0);
 -- 
-2.35.1
+2.36.0
 

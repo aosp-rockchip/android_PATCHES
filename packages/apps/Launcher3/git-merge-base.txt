@@ -1,72 +1,16 @@
 remote url:
+aosp	https://android.googlesource.com/platform/packages/apps/Launcher3 (fetch)
+aosp	https://android.googlesource.com/platform/packages/apps/Launcher3 (push)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Launcher3 (fetch)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Launcher3 (push)
 remote branch:
   m/master -> android-11.0-ebook-rkr2
   rk/rk33/mid/11.0/develop
-commit 6883c8e870557ad283885f6abbc8e6363a0c96a1
-Merge: 91ec43d3d 9f2dc52e5
-Author: 卞金晨 <kenjc.bian@rock-chips.com>
-Date:   Mon Jan 25 17:38:24 2021 +0800
+commit 7b96ec1f938fa3d50a32ac7c67da97688be6e9eb
+Merge: 1958761a8 fd2f276d4
+Author: android-build-team Robot <android-build-team-robot@google.com>
+Date:   Fri Sep 25 23:10:55 2020 +0000
 
-    Merge "Override the package Launcher3Go." into rk33/mid/11.0/develop
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Launcher3 (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Launcher3 (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 6883c8e870557ad283885f6abbc8e6363a0c96a1
-Merge: 91ec43d3d 9f2dc52e5
-Author: 卞金晨 <kenjc.bian@rock-chips.com>
-Date:   Mon Jan 25 17:38:24 2021 +0800
-
-    Merge "Override the package Launcher3Go." into rk33/mid/11.0/develop
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Launcher3 (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Launcher3 (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 6883c8e870557ad283885f6abbc8e6363a0c96a1
-Merge: 91ec43d3d 9f2dc52e5
-Author: 卞金晨 <kenjc.bian@rock-chips.com>
-Date:   Mon Jan 25 17:38:24 2021 +0800
-
-    Merge "Override the package Launcher3Go." into rk33/mid/11.0/develop
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Launcher3 (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Launcher3 (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 6883c8e870557ad283885f6abbc8e6363a0c96a1
-Merge: 91ec43d3d 9f2dc52e5
-Author: 卞金晨 <kenjc.bian@rock-chips.com>
-Date:   Mon Jan 25 17:38:24 2021 +0800
-
-    Merge "Override the package Launcher3Go." into rk33/mid/11.0/develop
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Launcher3 (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Launcher3 (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 6883c8e870557ad283885f6abbc8e6363a0c96a1
-Merge: 91ec43d3d 9f2dc52e5
-Author: 卞金晨 <kenjc.bian@rock-chips.com>
-Date:   Mon Jan 25 17:38:24 2021 +0800
-
-    Merge "Override the package Launcher3Go." into rk33/mid/11.0/develop
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Launcher3 (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/packages/apps/Launcher3 (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 6883c8e870557ad283885f6abbc8e6363a0c96a1
-Merge: 91ec43d3d 9f2dc52e5
-Author: 卞金晨 <kenjc.bian@rock-chips.com>
-Date:   Mon Jan 25 17:38:24 2021 +0800
-
-    Merge "Override the package Launcher3Go." into rk33/mid/11.0/develop
+    Snap for 6864616 from fd2f276d4e0b5b7e6f711e200f4471c7bce78a4d to rvc-qpr1-release
+    
+    Change-Id: Ie668ced2b72cc573297b4ece06df84829f88de33

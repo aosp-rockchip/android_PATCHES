@@ -23,5 +23,5 @@ index e4cf423ab83..82b858efe39 100755
                      Slog.e(TAG, "Build fingerprint is not consistent, warning user");
                      mUiHandler.post(() -> {
 -- 
-2.35.1
+2.36.0
 

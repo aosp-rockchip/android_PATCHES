@@ -57,5 +57,5 @@ index 7780592..6390e86 100644
          wifi_rssi_event_handler handler;
          s8 max_rssi = 0, min_rssi = 0;
 -- 
-2.35.1
+2.36.0
 

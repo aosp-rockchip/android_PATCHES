@@ -452,5 +452,5 @@ index 9671df8b..725d90e7 100644
                  .acquireContentProviderClient(MediaStore.AUTHORITY)) {
              ((MediaProvider) cpc.getLocalContentProvider())
 -- 
-2.35.1
+2.36.0
 

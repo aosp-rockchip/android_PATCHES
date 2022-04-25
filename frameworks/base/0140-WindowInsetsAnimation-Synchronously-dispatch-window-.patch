@@ -101,5 +101,5 @@ index 9e954f29438..007af249c58 100644
                  if (mAnimationControl.applyChangeInsets(state)) {
                      mAnimationControl.finish(mAnimatingShown);
 -- 
-2.35.1
+2.36.0
 

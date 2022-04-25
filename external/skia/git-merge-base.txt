@@ -1,78 +1,33 @@
 remote url:
+aosp	https://android.googlesource.com/platform/external/skia (fetch)
+aosp	https://android.googlesource.com/platform/external/skia (push)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (fetch)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (push)
 remote branch:
-  m/master -> android-11.0-ebook-rkr2
-commit ea2e32f94ec19595fc722b1e1efcb0137c4f381c
-Author: Bian Jin chen <kenjc.bian@rock-chips.com>
-Date:   Thu Dec 31 15:42:43 2020 +0800
+  rk/rk33/mid/11.0/develop
+commit 58ebf05ec50f8fcc87d4e5d0fbfb898a73510a72
+Merge: 46261462fc b433136467
+Author: android-autoroll <android-autoroll@skia-corp.google.com.iam.gserviceaccount.com>
+Date:   Fri Jun 19 18:16:25 2020 +0000
 
-    skia: add shard libs for eink hwc.
+    Roll Skia from cf8c53436c77 to b43313646796 (1 revision)
     
-    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
-    Change-Id: Iaeb3026e0648ed09b88ea62c6d97a3bc254a457c
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-commit ea2e32f94ec19595fc722b1e1efcb0137c4f381c
-Author: Bian Jin chen <kenjc.bian@rock-chips.com>
-Date:   Thu Dec 31 15:42:43 2020 +0800
-
-    skia: add shard libs for eink hwc.
+    https://skia.googlesource.com/skia.git/+log/cf8c53436c77..b43313646796
     
-    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
-    Change-Id: Iaeb3026e0648ed09b88ea62c6d97a3bc254a457c
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-commit ea2e32f94ec19595fc722b1e1efcb0137c4f381c
-Author: Bian Jin chen <kenjc.bian@rock-chips.com>
-Date:   Thu Dec 31 15:42:43 2020 +0800
-
-    skia: add shard libs for eink hwc.
+    If this roll has caused a breakage, revert this CL and stop the roller
+    using the controls here:
+    https://skia-autoroll.corp.goog/r/android-next-autoroll
+    Please CC stani@google.com on the revert to ensure that a human
+    is aware of the problem.
     
-    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
-    Change-Id: Iaeb3026e0648ed09b88ea62c6d97a3bc254a457c
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-commit ea2e32f94ec19595fc722b1e1efcb0137c4f381c
-Author: Bian Jin chen <kenjc.bian@rock-chips.com>
-Date:   Thu Dec 31 15:42:43 2020 +0800
-
-    skia: add shard libs for eink hwc.
+    To report a problem with the AutoRoller itself, please file a bug:
+    https://bugs.chromium.org/p/skia/issues/entry?template=Autoroller+Bug
     
-    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
-    Change-Id: Iaeb3026e0648ed09b88ea62c6d97a3bc254a457c
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-commit ea2e32f94ec19595fc722b1e1efcb0137c4f381c
-Author: Bian Jin chen <kenjc.bian@rock-chips.com>
-Date:   Thu Dec 31 15:42:43 2020 +0800
-
-    skia: add shard libs for eink hwc.
+    Documentation for the AutoRoller is here:
+    https://skia.googlesource.com/buildbot/+doc/master/autoroll/README.md
     
-    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
-    Change-Id: Iaeb3026e0648ed09b88ea62c6d97a3bc254a457c
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/external/skia (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-commit ea2e32f94ec19595fc722b1e1efcb0137c4f381c
-Author: Bian Jin chen <kenjc.bian@rock-chips.com>
-Date:   Thu Dec 31 15:42:43 2020 +0800
-
-    skia: add shard libs for eink hwc.
-    
-    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
-    Change-Id: Iaeb3026e0648ed09b88ea62c6d97a3bc254a457c
+    Bug: 159177162
+    Test: Presubmit checks and Skia's test infrastructure.
+    Exempt-From-Owner-Approval: The autoroll bot does not require owner approval.
+    Merged-In: I217b84628a0d652336bb170804f094d4f9cf6c85
+    Change-Id: I0cba53ebbf069ac135bba4e206843a8e761daf2e

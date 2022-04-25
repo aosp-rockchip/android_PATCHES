@@ -1,84 +1,18 @@
 remote url:
+aosp	https://android.googlesource.com/platform/hardware/broadcom/wlan (fetch)
+aosp	https://android.googlesource.com/platform/hardware/broadcom/wlan (push)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/wlan (fetch)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/wlan (push)
 remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/10.0/develop
-commit da58a38881fea8dc63036c4e3794f9275a452254
-Author: Alex Zhao <zzc@rock-chips.com>
-Date:   Mon Dec 7 17:32:28 2020 +0800
+commit 71f18dd0868c4871f01d0bb17f9ba05129d1163b
+Author: Roger Wang <wangroger@google.com>
+Date:   Mon Apr 8 17:53:53 2019 +0800
 
-    enable p2p capabilities for bcm wifi
+    wifi: new FW(4375b1)
     
-    Signed-off-by: Alex Zhao <zzc@rock-chips.com>
-    Change-Id: I44ae55df5220acd79b408ccfa74b04e94e2bde4b
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/wlan (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/wlan (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/10.0/develop
-commit da58a38881fea8dc63036c4e3794f9275a452254
-Author: Alex Zhao <zzc@rock-chips.com>
-Date:   Mon Dec 7 17:32:28 2020 +0800
-
-    enable p2p capabilities for bcm wifi
+    release tag: LEMUR09T_REL_18_35_316
     
-    Signed-off-by: Alex Zhao <zzc@rock-chips.com>
-    Change-Id: I44ae55df5220acd79b408ccfa74b04e94e2bde4b
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/wlan (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/wlan (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/10.0/develop
-commit da58a38881fea8dc63036c4e3794f9275a452254
-Author: Alex Zhao <zzc@rock-chips.com>
-Date:   Mon Dec 7 17:32:28 2020 +0800
-
-    enable p2p capabilities for bcm wifi
-    
-    Signed-off-by: Alex Zhao <zzc@rock-chips.com>
-    Change-Id: I44ae55df5220acd79b408ccfa74b04e94e2bde4b
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/wlan (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/wlan (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/10.0/develop
-commit da58a38881fea8dc63036c4e3794f9275a452254
-Author: Alex Zhao <zzc@rock-chips.com>
-Date:   Mon Dec 7 17:32:28 2020 +0800
-
-    enable p2p capabilities for bcm wifi
-    
-    Signed-off-by: Alex Zhao <zzc@rock-chips.com>
-    Change-Id: I44ae55df5220acd79b408ccfa74b04e94e2bde4b
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/wlan (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/wlan (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/10.0/develop
-commit da58a38881fea8dc63036c4e3794f9275a452254
-Author: Alex Zhao <zzc@rock-chips.com>
-Date:   Mon Dec 7 17:32:28 2020 +0800
-
-    enable p2p capabilities for bcm wifi
-    
-    Signed-off-by: Alex Zhao <zzc@rock-chips.com>
-    Change-Id: I44ae55df5220acd79b408ccfa74b04e94e2bde4b
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/wlan (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/hardware/broadcom/wlan (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/10.0/develop
-commit da58a38881fea8dc63036c4e3794f9275a452254
-Author: Alex Zhao <zzc@rock-chips.com>
-Date:   Mon Dec 7 17:32:28 2020 +0800
-
-    enable p2p capabilities for bcm wifi
-    
-    Signed-off-by: Alex Zhao <zzc@rock-chips.com>
-    Change-Id: I44ae55df5220acd79b408ccfa74b04e94e2bde4b
+    Bug: 130142724
+    Test: wlan could turned ON on b1 card
+    Change-Id: Idc8c813ace70fcc05120e2069d3ec64802579036
+    Signed-off-by: Roger Wang <wangroger@google.com>

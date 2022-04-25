@@ -1,0 +1,32 @@
+From c42f316be1981b6c25f7ec4de085a0db21aca8bc Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Tue, 2 Jun 2020 11:02:14 +0800
+Subject: [PATCH 173/185] core: Makefile: only use test-keys in eng build.
+
+Due to the new test suite: GOATS, we need to change the build
+fingerprint, So that the test report can be uploaded to APFE.
+
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+Change-Id: I58bbe0400d265be088cc45f6bd5b4a22aae3ff45
+---
+ core/Makefile | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/core/Makefile b/core/Makefile
+index 9aa46b351..5805ec25f 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -330,7 +330,9 @@ BUILD_KEYS := dev-keys
+ endif
+ 
+ # For user fingerprint
+-ifeq ($(TARGET_BUILD_VARIANT),user)
++ifeq ($(TARGET_BUILD_VARIANT),eng)
++BUILD_KEYS := test-keys
++else
+ BUILD_KEYS := release-keys
+ endif
+ 
+-- 
+2.36.0
+

@@ -39,5 +39,5 @@ index fae0fe2d8..8c8aa9b8e 100644
          if (mForcedRotation == isForcedRotation) {
              return;
 -- 
-2.35.1
+2.36.0
 

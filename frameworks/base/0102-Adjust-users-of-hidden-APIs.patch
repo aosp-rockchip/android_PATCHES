@@ -94,5 +94,5 @@ index 624b67ccda8..63dbb0f9d79 100644
          List<ConversationInfo> conversations = getConversationsInPrimary();
          assertEquals(1, conversations.size());
 -- 
-2.35.1
+2.36.0
 

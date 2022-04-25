@@ -32,5 +32,5 @@ index e3faffa0699..a635f982d37 100644
          PHONE_PERMISSIONS.add(Manifest.permission.READ_CALL_LOG);
          PHONE_PERMISSIONS.add(Manifest.permission.WRITE_CALL_LOG);
 -- 
-2.35.1
+2.36.0
 

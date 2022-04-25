@@ -55,5 +55,5 @@ index 330f9952350..56ef468407c 100644
      private void addHistoricalSessionLocked(PackageInstallerSession session) {
          CharArrayWriter writer = new CharArrayWriter();
 -- 
-2.35.1
+2.36.0
 

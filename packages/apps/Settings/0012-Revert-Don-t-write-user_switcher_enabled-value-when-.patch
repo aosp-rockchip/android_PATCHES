@@ -29,5 +29,5 @@ index 58de14963f..a5fdf9b327 100644
          if (mUserCapabilities.mDisallowSwitchUser) {
              mSwitchBar.setDisabledByAdmin(RestrictedLockUtilsInternal
 -- 
-2.35.1
+2.36.0
 

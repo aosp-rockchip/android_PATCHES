@@ -41,5 +41,5 @@ index 27782fa74da..171aef400b0 100644
           * Combines all of the attributes that have been set and returns a new
           * {@link VibrationAttributes} object.
 -- 
-2.35.1
+2.36.0
 

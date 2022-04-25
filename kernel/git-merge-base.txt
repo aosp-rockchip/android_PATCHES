@@ -1,17 +1,14 @@
 remote url:
+aosp	https://android.googlesource.com/platform/kernel (fetch)
+aosp	https://android.googlesource.com/platform/kernel (push)
 rk29	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/kernel (fetch)
 rk29	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/rk/kernel (push)
 remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk29/develop-4.19
-commit bd95fea1eaeaa8646203d2934dc51c1a1cbf72b6
-Author: Tao Huang <huangtao@rock-chips.com>
-Date:   Fri Feb 26 16:18:21 2021 +0800
+commit 96fca358eecac5a94c0a284c48fa02c727aef1c3
+Merge: a1564ca5418e bd95fea1eaea
+Author: tug <tugy@skyth-tek.com>
+Date:   Fri Mar 5 14:45:57 2021 +0800
 
-    scripts/gcc-wrapper.py: ignore vfs.c:1259
+    Merge tag '257ed1ed4218f931e0b1276a99cc6bbcdd018e20' into quartz64
     
-    fs/incfs/vfs.c: In function 'ioctl_create_file':
-    fs/incfs/vfs.c:1259:10: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]
-    
-    Signed-off-by: Tao Huang <huangtao@rock-chips.com>
-    Change-Id: I4a9e167927d32180871776767fe3e4ff0c8342a9
+    Android 11.0 Ebook release rkr2;aosp:refs/tags/android-11.0.0_r28

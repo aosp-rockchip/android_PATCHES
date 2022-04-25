@@ -24,5 +24,5 @@ index b0212162cf7..e835b8319a2 100644
              "com.android.internal.action.EUICC_FACTORY_RESET";
      private static final String ACTION_EUICC_REMOVE_INVISIBLE_SUBSCRIPTIONS =
 -- 
-2.35.1
+2.36.0
 

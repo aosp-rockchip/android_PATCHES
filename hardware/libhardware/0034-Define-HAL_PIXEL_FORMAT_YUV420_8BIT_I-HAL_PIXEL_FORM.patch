@@ -28,5 +28,5 @@ index a1a230bf..8b47d64b 100755
      HAL_PIXEL_FORMAT_BPP_2              = 0x31,
      HAL_PIXEL_FORMAT_BPP_4              = 0x32,
 -- 
-2.35.1
+2.36.0
 

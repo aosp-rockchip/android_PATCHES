@@ -1,119 +1,18 @@
 remote url:
+aosp	https://android.googlesource.com/platform/frameworks/opt/net/ethernet (fetch)
+aosp	https://android.googlesource.com/platform/frameworks/opt/net/ethernet (push)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/ethernet (fetch)
 rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/ethernet (push)
 remote branch:
   m/master -> android-11.0-ebook-rkr2
   rk/rk33/mid/11.0/develop
-commit 4cea315effc6d31b9122b19d18a0d6a7b46a8930
-Author: Bian Jin chen <kenjc.bian@rock-chips.com>
-Date:   Fri Jan 29 10:16:04 2021 +0800
+commit bb92f4c7f08722711d0613c94153ed4296ffdc5a
+Merge: 74f3b67 8193fea
+Author: Remi NGUYEN VAN <reminv@google.com>
+Date:   Tue Jun 2 00:41:51 2020 +0000
 
-    Do not block message while cts is running.
+    Add TRANSPORT_TEST to test ethernet interfaces am: 2d4d2efadd am: 8193fea316
     
-    Test: CtsNetTestCases
-    android.net.cts.CaptivePortalApiTest#testApiCallbacks
+    Original change: undetermined
     
-    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
-    Change-Id: If34606726d0f5df1a00714fe5b321bc89eb73de5
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/ethernet (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/ethernet (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 4cea315effc6d31b9122b19d18a0d6a7b46a8930
-Author: Bian Jin chen <kenjc.bian@rock-chips.com>
-Date:   Fri Jan 29 10:16:04 2021 +0800
-
-    Do not block message while cts is running.
-    
-    Test: CtsNetTestCases
-    android.net.cts.CaptivePortalApiTest#testApiCallbacks
-    
-    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
-    Change-Id: If34606726d0f5df1a00714fe5b321bc89eb73de5
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/ethernet (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/ethernet (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 4cea315effc6d31b9122b19d18a0d6a7b46a8930
-Author: Bian Jin chen <kenjc.bian@rock-chips.com>
-Date:   Fri Jan 29 10:16:04 2021 +0800
-
-    Do not block message while cts is running.
-    
-    Test: CtsNetTestCases
-    android.net.cts.CaptivePortalApiTest#testApiCallbacks
-    
-    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
-    Change-Id: If34606726d0f5df1a00714fe5b321bc89eb73de5
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/ethernet (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/ethernet (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 4cea315effc6d31b9122b19d18a0d6a7b46a8930
-Author: Bian Jin chen <kenjc.bian@rock-chips.com>
-Date:   Fri Jan 29 10:16:04 2021 +0800
-
-    Do not block message while cts is running.
-    
-    Test: CtsNetTestCases
-    android.net.cts.CaptivePortalApiTest#testApiCallbacks
-    
-    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
-    Change-Id: If34606726d0f5df1a00714fe5b321bc89eb73de5
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/ethernet (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/ethernet (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 4cea315effc6d31b9122b19d18a0d6a7b46a8930
-Author: Bian Jin chen <kenjc.bian@rock-chips.com>
-Date:   Fri Jan 29 10:16:04 2021 +0800
-
-    Do not block message while cts is running.
-    
-    Test: CtsNetTestCases
-    android.net.cts.CaptivePortalApiTest#testApiCallbacks
-    
-    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
-    Change-Id: If34606726d0f5df1a00714fe5b321bc89eb73de5
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/ethernet (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/ethernet (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 4cea315effc6d31b9122b19d18a0d6a7b46a8930
-Author: Bian Jin chen <kenjc.bian@rock-chips.com>
-Date:   Fri Jan 29 10:16:04 2021 +0800
-
-    Do not block message while cts is running.
-    
-    Test: CtsNetTestCases
-    android.net.cts.CaptivePortalApiTest#testApiCallbacks
-    
-    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
-    Change-Id: If34606726d0f5df1a00714fe5b321bc89eb73de5
-remote url:
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/ethernet (fetch)
-rk	ssh://gw@192.168.1.202/home/gw/repositories/repo_sdb/rk3566_ebook_android11/platform/frameworks/opt/net/ethernet (push)
-remote branch:
-  m/master -> android-11.0-ebook-rkr2
-  rk/rk33/mid/11.0/develop
-commit 4cea315effc6d31b9122b19d18a0d6a7b46a8930
-Author: Bian Jin chen <kenjc.bian@rock-chips.com>
-Date:   Fri Jan 29 10:16:04 2021 +0800
-
-    Do not block message while cts is running.
-    
-    Test: CtsNetTestCases
-    android.net.cts.CaptivePortalApiTest#testApiCallbacks
-    
-    Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
-    Change-Id: If34606726d0f5df1a00714fe5b321bc89eb73de5
+    Change-Id: I739b5ca504011c319aec4d90d9a07c27226af3fe

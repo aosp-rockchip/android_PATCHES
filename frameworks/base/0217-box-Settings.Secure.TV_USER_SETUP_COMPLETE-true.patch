@@ -45,5 +45,5 @@ index a63497e8b94..0a224ea6157 100644
                      com.android.internal.R.bool.config_dreamsEnabledByDefault);
              loadBooleanSetting(stmt, Settings.Secure.SCREENSAVER_ACTIVATE_ON_DOCK,
 -- 
-2.35.1
+2.36.0
 

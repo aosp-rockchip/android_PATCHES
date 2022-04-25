@@ -1,0 +1,32 @@
+From bd0a013806ca632705f9dba5f2db012d2aaf46cc Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Thu, 21 Nov 2019 14:37:51 +0800
+Subject: [PATCH 172/185] BUILD_NUMBER: keep timestamp with
+ ROCKCHIP_BUILD_NUMBER.
+
+Change-Id: Id837e02d3abd7d2f6683da8746fd676a7c829da1
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+---
+ core/main.mk | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/core/main.mk b/core/main.mk
+index 357c70da3..6d9fcfc0e 100644
+--- a/core/main.mk
++++ b/core/main.mk
+@@ -55,7 +55,11 @@ ifeq ($(strip $(HAS_BUILD_NUMBER)),false)
+   # it will change every time.  Pick a stable value.
+   FILE_NAME_TAG := eng.$(BUILD_USERNAME)
+ else
+-  FILE_NAME_TAG := $(file <$(BUILD_NUMBER_FILE))
++  ifdef ROCKCHIP_BUILD_NUMBER
++    FILE_NAME_TAG := $(ROCKCHIP_BUILD_NUMBER)
++  else
++    FILE_NAME_TAG := $(file <$(BUILD_NUMBER_FILE))
++  endif
+ endif
+ .KATI_READONLY := FILE_NAME_TAG
+ 
+-- 
+2.36.0
+

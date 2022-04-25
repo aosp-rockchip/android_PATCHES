@@ -35,5 +35,5 @@ index 1e66d1df..3d61cc7f 100644
    drmModeResPtr res = drmModeGetResources(fd());
    if (!res) {
 -- 
-2.35.1
+2.36.0
 

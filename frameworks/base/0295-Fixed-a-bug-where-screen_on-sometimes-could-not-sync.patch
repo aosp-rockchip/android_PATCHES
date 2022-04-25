@@ -63,5 +63,5 @@ index f850273ec33..72e9acda723 100755
              ALOGD("Excessive delay in autosuspend_disable() while turning screen on");
          }
 -- 
-2.35.1
+2.36.0
 

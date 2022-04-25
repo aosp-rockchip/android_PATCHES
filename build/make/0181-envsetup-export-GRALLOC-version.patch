@@ -1,0 +1,28 @@
+From 19548e1d0ed7b0ce10e6b188b539be3663df2289 Mon Sep 17 00:00:00 2001
+From: Bian Jin chen <kenjc.bian@rock-chips.com>
+Date: Tue, 3 Nov 2020 15:38:02 +0800
+Subject: [PATCH 181/185] envsetup: export GRALLOC version.
+
+Signed-off-by: Bian Jin chen <kenjc.bian@rock-chips.com>
+Change-Id: Idb1987899f83536b2fe8f32106bb147761f0a470
+---
+ envsetup.sh | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/envsetup.sh b/envsetup.sh
+index 7da3db177..6965dec50 100644
+--- a/envsetup.sh
++++ b/envsetup.sh
+@@ -323,6 +323,9 @@ function setpaths()
+     unset BOARD_HS_DYNAMIC_AFBC_TARGET
+     export BOARD_HS_DYNAMIC_AFBC_TARGET=$(get_build_var BOARD_HS_DYNAMIC_AFBC_TARGET)
+ 
++    unset TARGET_RK_GRALLOC_VERSION
++    export TARGET_RK_GRALLOC_VERSION=$(get_build_var TARGET_RK_GRALLOC_VERSION)
++
+     # needed for building linux on MacOS
+     # TODO: fix the path
+     #export HOST_EXTRACFLAGS="-I "$T/system/kernel_headers/host_include
+-- 
+2.36.0
+

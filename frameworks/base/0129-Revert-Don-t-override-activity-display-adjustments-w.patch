@@ -180,5 +180,5 @@ index 90d8bab8425..c328d720426 100644
      public void testResumeAfterNewIntent() {
          final Activity activity = mActivityTestRule.launchActivity(new Intent());
 -- 
-2.35.1
+2.36.0
 

@@ -68,5 +68,5 @@ index fc48e7f18f5..f216db6fc71 100644
          // Consider all internal states as OFF
          if (state == BluetoothAdapter.STATE_BLE_ON || state == BluetoothAdapter.STATE_BLE_TURNING_ON
 -- 
-2.35.1
+2.36.0
 

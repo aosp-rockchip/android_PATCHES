@@ -194,5 +194,5 @@ index 2e49929ec03..0d680a2c35b 100644
      public void testLockChannelsForOEM_channelSpecific_clearData() {
          NotificationChannel a = new NotificationChannel("a", "a", IMPORTANCE_HIGH);
 -- 
-2.35.1
+2.36.0
 

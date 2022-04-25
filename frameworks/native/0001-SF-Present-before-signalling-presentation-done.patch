@@ -38,5 +38,5 @@ index b411e0a04..6878e99b7 100644
          // The layer buffer from the previous frame (if any) is released
          // by HWC only when the release fence from this frame (if any) is
 -- 
-2.35.1
+2.36.0
 
